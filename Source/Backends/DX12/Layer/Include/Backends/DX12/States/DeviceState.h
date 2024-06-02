@@ -36,6 +36,7 @@
 #include <Backends/DX12/Resource/PhysicalResourceIdentifierMap.h>
 #include <Backends/DX12/FeatureProxies.Gen.h>
 #include <Backends/DX12/ShaderData/ConstantShaderDataBuffer.h>
+#include <Backends/DX12/Layer.h>
 
 // Backend
 #include <Backend/Environment.h>
@@ -168,6 +169,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;
+
+    /// Current SDK
+    D3D12GPUOpenSDKRuntime sdk;
 
     /// Environment actions
     IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);

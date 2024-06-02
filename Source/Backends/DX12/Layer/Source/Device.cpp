@@ -76,6 +76,7 @@
 #include <Common/IComponentTemplate.h>
 #include <Common/GlobalUID.h>
 #include <Common/IntervalActionThread.h>
+#include <Common/FileSystem.h>
 
 // Detour
 #include <Detour/detours.h>
@@ -94,6 +95,7 @@ TrackedAllocator trackedAllocator;
 
 /// Known GUIDs
 static const GUID D3D12ExperimentalShadingModelGUID = GlobalUID::FromString("{76f5573e-f13a-40f5-b297-81ce9e18933f}").AsPlatformGUID();
+static const GUID D3D12SDKConfigurationGUID         = GlobalUID::FromString("{7cda6aca-a03e-49c8-9458-0334d20e07ce}").AsPlatformGUID();
 
 static void ApplyStartupEnvironment(DeviceState* state) {
     MessageStream stream;
@@ -174,6 +176,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
     REFIID riid, void **ppDevice,
+    const D3D12GPUOpenSDKRuntime& sdk,
     const D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO* info
 ) {
     // Set allocators
@@ -187,6 +190,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     auto *state = new (allocators, kAllocStateDevice) DeviceState(allocators.Tag(kAllocStateDevice));
     state->object = device;
     state->uid = D3D12GPUOpenProcessInfo.deviceUID++;
+    state->sdk = sdk;
 
     // Create detours
     device = CreateDetour(state->allocators, device, state);
@@ -471,6 +475,54 @@ static void ConditionallyEnableExperimentalMode() {
     EnableExperimentalFeaturesWithFastTrack(0u, nullptr, nullptr, nullptr);
 }
 
+static std::filesystem::path GetD3D12CorePath() {
+    return GetCurrentModuleDirectory() / "Dependencies" / "D3D12";
+}
+
+static void ConditionallyCreateDeviceFactory() {
+    ID3D12SDKConfiguration1* sdkConfig{nullptr};
+    
+    // Only invoke on first run, successive device creations are lost otherwise
+    if (D3D12GPUOpenProcessInfo.isAgilitySDKOverrideEnabled) {
+        return;
+    }
+
+    // Keep track
+    D3D12GPUOpenProcessInfo.isAgilitySDKOverrideEnabled = true;
+
+    // Query if the application already links the sdk, and if the version satisfies our requirements
+    if (HMODULE executableHandle = GetModuleHandle(nullptr)) {
+        auto existingSDKVersion = reinterpret_cast<const uint32_t*>(GetProcAddress(executableHandle, "D3D12SDKVersion"));
+        if (existingSDKVersion && *existingSDKVersion >= kD3D12AgilitySDKVersion) {
+            D3D12GPUOpenProcessInfo.sdk.isAgilitySDKOverride714 = true;
+            return;
+        }
+    }
+    
+    // Check the local override exists
+    std::filesystem::path d3d12CorePath = GetD3D12CorePath();
+    if (!std::filesystem::exists(d3d12CorePath / "D3D12Core.dll")) {
+        return;
+    }
+    
+    // Try to query the configuration
+    if (FAILED(D3D12GPUOpenFunctionTableNext.next_D3D12GetInterfaceOriginal(D3D12SDKConfigurationGUID, _uuidof(ID3D12SDKConfiguration1), reinterpret_cast<void**>(&sdkConfig)))) {
+        return;
+    }
+
+    // Try to create factory
+    if (FAILED(sdkConfig->CreateDeviceFactory(kD3D12AgilitySDKVersion, d3d12CorePath.string().c_str(), _uuidof(ID3D12DeviceFactory), reinterpret_cast<void**>(&D3D12GPUOpenProcessInfo.deviceFactory)))) {
+        sdkConfig->Release();
+        return;
+    }
+
+    // Try to override the sdk version
+    D3D12GPUOpenProcessInfo.sdk.isAgilitySDKOverride714 = true;
+
+    // Cleanup
+    sdkConfig->Release();
+}
+
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
@@ -480,11 +532,19 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     // Object
     ID3D12Device *device{nullptr};
 
-    // Try to enable for faster instrumentation
+    // Conditional enables
+    ConditionallyCreateDeviceFactory();
     ConditionallyEnableExperimentalMode();
 
-    // Pass down callchain
-    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
+    // Create from the SDK override if possible
+    HRESULT hr;
+    if (D3D12GPUOpenProcessInfo.deviceFactory) {
+        hr = D3D12GPUOpenProcessInfo.deviceFactory->CreateDevice(pAdapter, minimumFeatureLevel, __uuidof(ID3D12Device), reinterpret_cast<void**>(&device));
+    } else {
+        hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, __uuidof(ID3D12Device), reinterpret_cast<void**>(&device));
+    }
+
+    // OK?
     if (FAILED(hr)) {
         return hr;
     }
@@ -501,8 +561,43 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         minimumFeatureLevel,
         riid,
         ppDevice,
+        D3D12GPUOpenProcessInfo.sdk,
         info
     );
+}
+
+DX12_C_LINKAGE HRESULT WINAPI HookD3D12GetInterface(REFCLSID rclsid, REFIID riid, void** ppvDebug) {
+    // Set allocators
+#if !defined(NDEBUG)
+    Allocators allocators = trackedAllocator.GetAllocators();
+#else // !defined(NDEBUG)
+    Allocators allocators = {};
+#endif // !defined(NDEBUG)
+    
+    // Pass down callchain
+    void* handle{nullptr};
+    if (HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12GetInterfaceOriginal(rclsid, riid, &handle); FAILED(hr)) {
+        return hr;
+    }
+    
+    // Known wrapped
+    if (rclsid == D3D12SDKConfigurationGUID) {
+        if (riid == _uuidof(ID3D12SDKConfiguration)) {
+            auto* state = new (allocators, kAllocStateFence) SDKConfigurationState();
+            state->allocators = allocators;
+            handle = CreateDetour(state->allocators, static_cast<ID3D12SDKConfiguration*>(handle), state);
+        } else if (riid == _uuidof(ID3D12SDKConfiguration1)) {
+            auto* state = new (allocators, kAllocStateFence) SDKConfigurationState();
+            state->allocators = allocators;
+            handle = CreateDetour(state->allocators, static_cast<ID3D12SDKConfiguration1*>(handle), state);
+        } else {
+            ASSERT(false, "Unexpected interface");
+        }
+    }
+
+    // Write
+    *ppvDebug = handle;
+    return S_OK;
 }
 
 HRESULT WINAPI HookID3D12CreateDevice(
@@ -513,11 +608,19 @@ HRESULT WINAPI HookID3D12CreateDevice(
     // Object
     ID3D12Device *device{nullptr};
 
-    // Try to enable for faster instrumentation
+    // Conditional enables
+    ConditionallyCreateDeviceFactory();
     ConditionallyEnableExperimentalMode();
 
-    // Pass down callchain
-    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
+    // Create from the SDK override if possible
+    HRESULT hr;
+    if (D3D12GPUOpenProcessInfo.deviceFactory) {
+        hr = D3D12GPUOpenProcessInfo.deviceFactory->CreateDevice(pAdapter, minimumFeatureLevel, __uuidof(ID3D12Device), reinterpret_cast<void**>(&device));
+    } else {
+        hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, __uuidof(ID3D12Device), reinterpret_cast<void**>(&device));
+    }
+
+    // OK?
     if (FAILED(hr)) {
         return hr;
     }
@@ -539,6 +642,7 @@ HRESULT WINAPI HookID3D12CreateDevice(
         minimumFeatureLevel,
         riid,
         ppDevice,
+        D3D12GPUOpenProcessInfo.sdk,
         D3D12DeviceGPUOpenGPUReshapeInfo ? &*D3D12DeviceGPUOpenGPUReshapeInfo : nullptr
     );
 }
@@ -594,6 +698,7 @@ AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCre
         creationParams->FeatureLevel,
         creationParams->iid,
         reinterpret_cast<void**>(&device),
+        D3D12GPUOpenSDKRuntime {},
         D3D12DeviceGPUOpenGPUReshapeInfo ? &*D3D12DeviceGPUOpenGPUReshapeInfo : nullptr
     );
     if (FAILED(hr)) {
@@ -629,6 +734,96 @@ HRESULT WINAPI HookID3D12DeviceCheckFeatureSupport(ID3D12Device* device, D3D12_F
 
     // Pass down call chain
     return table.next->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
+}
+
+HRESULT HookID3D12SDKConfigurationCreateDeviceFactory(ID3D12SDKConfiguration *_this, UINT version, LPCSTR path, IID iid, void **ppvFactory) {
+    auto table = GetTable(_this);
+
+    // Object
+    ID3D12DeviceFactory* factory{nullptr};
+
+    // Current runtimes
+    D3D12GPUOpenSDKRuntime sdk;
+
+    // SDK path
+    std::filesystem::path d3d12CorePath    = GetD3D12CorePath();
+    std::string           d3d12CorePathStr = d3d12CorePath.string();
+
+    // Override the path if the SDK precedes this one
+    if (version >= kD3D12AgilitySDKVersion) {
+        sdk.isAgilitySDKOverride714 = true;
+    } else if (std::filesystem::exists(d3d12CorePath / "D3D12Core.dll")) {
+        sdk.isAgilitySDKOverride714 = true;
+        path = d3d12CorePathStr.c_str();
+    }
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateDeviceFactory(table.next, version, path, __uuidof(ID3D12DeviceFactory), reinterpret_cast<void**>(&factory));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create state
+    auto* state = new (table.state->allocators, kAllocStateFence) DeviceFactoryState();
+    state->allocators = table.state->allocators;
+    state->sdk = sdk;
+
+    // Create detours
+    factory = CreateDetour(state->allocators, factory, state);
+
+    // Query to external object if requested
+    if (ppvFactory) {
+        hr = factory->QueryInterface(iid, ppvFactory);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    factory->Release();
+    return S_OK;
+}
+
+HRESULT HookID3D12DeviceFactoryEnableExperimentalFeatures(ID3D12DeviceFactory *_this, UINT version, const IID *iid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
+    auto table = GetTable(_this);
+    return table.next->EnableExperimentalFeatures(version, iid, pConfigurationStructs, pConfigurationStructSizes);
+}
+
+HRESULT HookID3D12DeviceFactoryCreateDevice(ID3D12DeviceFactory *_this, IUnknown *pAdapter, D3D_FEATURE_LEVEL minimumFeatureLevel, IID riid, void **ppDevice) {
+    auto table = GetTable(_this);
+    
+    // Object
+    ID3D12Device *device{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->CreateDevice(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Supported?
+    if (!IsSupportedFeatureLevel(pAdapter, minimumFeatureLevel)) {
+        return device->QueryInterface(riid, ppDevice);
+    }
+
+    // Create wrappers and states
+    return D3D12CreateDeviceGPUOpen(
+        device,
+        pAdapter,
+        minimumFeatureLevel,
+        riid,
+        ppDevice,
+        table.state->sdk,
+        D3D12DeviceGPUOpenGPUReshapeInfo ? &*D3D12DeviceGPUOpenGPUReshapeInfo : nullptr
+    );
+}
+
+SDKConfigurationState::~SDKConfigurationState() {
+    
+}
+
+DeviceFactoryState::~DeviceFactoryState() {
+    
 }
 
 DeviceState::~DeviceState() {
@@ -668,6 +863,10 @@ bool GlobalDeviceDetour::Install() {
     }
 
     // Attach against original address
+    D3D12GPUOpenFunctionTableNext.next_D3D12GetInterfaceOriginal = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(GetProcAddress(handle, "D3D12GetInterface"));
+    DetourAttach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
+
+    // Attach against original address
     D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(handle, "D3D12CreateDevice"));
     DetourAttach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
 
@@ -681,6 +880,7 @@ bool GlobalDeviceDetour::Install() {
 
 void GlobalDeviceDetour::Uninstall() {
     // Detach from detour
+    DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
     DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
     DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
 }

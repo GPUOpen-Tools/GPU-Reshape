@@ -75,6 +75,9 @@ using PFN_AMD_AGS_SET_MARKER = AGSReturnCode(__stdcall *)(AGSContext* context, I
 /// Vendor specific device IID
 static constexpr GUID kIIDD3D12DeviceVendor = { 0xc443b53a, 0xe4f6, 0x48f5, { 0x98, 0xed, 0xbe, 0x76, 0x8b, 0x47, 0xf, 0x6d } };
 
+/// SDK Version
+static constexpr uint32_t kD3D12AgilitySDKVersion = 714;
+
 /// Optional gpu reshape information
 struct D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO {
     /// Shared registry
@@ -83,6 +86,7 @@ struct D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO {
 
 /// Optional function table
 struct D3D12GPUOpenFunctionTable {
+    PFN_D3D12_GET_INTERFACE  next_D3D12GetInterfaceOriginal{nullptr};
     PFN_D3D12_CREATE_DEVICE  next_D3D12CreateDeviceOriginal{nullptr};
     PFN_CREATE_DXGI_FACTORY  next_CreateDXGIFactoryOriginal{nullptr};
     PFN_CREATE_DXGI_FACTORY1 next_CreateDXGIFactory1Original{nullptr};
@@ -102,13 +106,25 @@ struct D3D12GPUOpenFunctionTable {
     PFN_AMD_AGS_SET_MARKER     next_AMDAGSSetMarker{nullptr};
 };
 
+/// SDK state
+struct D3D12GPUOpenSDKRuntime {
+    bool isAgilitySDKOverride714{false};
+};
+
 /// Process state
 struct D3D12GPUOpenProcessState {
     /// Runtime feature set
     bool isExperimentalModeEnabled{false};
     bool isExperimentalShaderModelsEnabled{false};
+    bool isAgilitySDKOverrideEnabled{false};
     bool applicationRequestedExperimentalShadingModels{false};
     bool isDXBCConversionEnabled{false};
+
+    /// Global SDK
+    D3D12GPUOpenSDKRuntime sdk;
+
+    /// Shared device factory
+    ID3D12DeviceFactory* deviceFactory{nullptr};
 
     /// Device UID allocator
     std::atomic<uint32_t> deviceUID; 
