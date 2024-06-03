@@ -170,6 +170,40 @@ public:
         return type;
     }
 
+    /// Find or compile a named type declaration
+    /// \param typeDecl given type declaration, must be namable
+    /// \param name given name
+    template<typename T>
+    const T* CompileOrFindNamedType(const T& typeDecl, const char* name) {
+        auto&& it = namedLookup.find(name);
+
+        // Named types use name as key
+        // TODO: Validate fetched type against requested
+        if (it != namedLookup.end()) {
+            if constexpr(std::is_same_v<T, Backend::IL::Type>) {
+                return it->second;
+            } else {
+                return it->second->As<T>();
+            }
+        }
+
+        // Not found, allocate the type
+        const T* type = programMap.AddUnsortedType(identifierMap.AllocID(), typeDecl);
+
+        // Only certain named types
+        switch (type->kind) {
+            default:
+                ASSERT(false, "Type does not support naming");
+                break;
+            case Backend::IL::TypeKind::Struct:
+                CompileType(static_cast<const Backend::IL::StructType*>(type), name);
+                break;
+        }
+
+        // OK
+        return type;
+    }
+
     /// Add a type mapping from IL to DXIL
     /// \param type IL type
     /// \param index DXIL index
