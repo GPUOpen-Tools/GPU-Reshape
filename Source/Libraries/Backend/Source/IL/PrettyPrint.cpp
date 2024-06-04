@@ -250,6 +250,11 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "StorePrimitiveOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value << " primitiveIndex:%" << store->primitiveIndex;
             break;
         }
+        case OpCode::EmitIndices: {
+            auto store = instr->As<IL::EmitIndicesInstruction>();
+            line << "EmitIndices primitive index:%" << store->primitiveIndex << " vertex index 0:%" << store->vertexIndex0 << " vertex index 1:%" << store->vertexIndex1 << " vertex index 2:%" << store->vertexIndex2;
+            break;
+        }
         case OpCode::IsInf: {
             auto isInf = instr->As<IL::IsInfInstruction>();
             line << "IsInf %" << isInf->value;
@@ -1829,6 +1834,14 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"Column\": " << store->column << ",";
             out.Line() << "\"Value\": " << store->value << ",";
             out.Line() << "\"PrimitiveIndex\": " << store->primitiveIndex << ",";
+            break;
+        }
+        case IL::OpCode::EmitIndices: {
+            auto store = instr->As<IL::EmitIndicesInstruction>();
+            out.Line() << "\"PrimitiveIndex\": " << store->primitiveIndex << ",";
+            out.Line() << "\"VertexIndex0\": " << store->vertexIndex0 << ",";
+            out.Line() << "\"VertexIndex1\": " << store->vertexIndex1 << ",";
+            out.Line() << "\"VertexIndex2\": " << store->vertexIndex2 << ",";
             break;
         }
         case IL::OpCode::IsInf: {

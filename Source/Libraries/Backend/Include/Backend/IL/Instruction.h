@@ -177,6 +177,15 @@ namespace IL {
         ID primitiveIndex;
     };
 
+    struct EmitIndicesInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::EmitIndices;
+
+        ID primitiveIndex;
+        ID vertexIndex0;
+        ID vertexIndex1;
+        ID vertexIndex2;
+    };
+
     struct AddInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Add;
 
@@ -893,6 +902,8 @@ namespace IL {
                 return sizeof(StoreVertexOutputInstruction);
             case OpCode::StorePrimitiveOutput:
                 return sizeof(StorePrimitiveOutputInstruction);
+            case OpCode::EmitIndices:
+                return sizeof(EmitIndicesInstruction);
             case OpCode::IsInf:
                 return sizeof(IsInfInstruction);
             case OpCode::IsNaN:

@@ -140,6 +140,7 @@ namespace Backend::IL {
             case OpCode::StoreOutput:
             case OpCode::StoreVertexOutput:
             case OpCode::StorePrimitiveOutput:
+            case OpCode::EmitIndices:
             case OpCode::SampleTexture:
             case OpCode::StoreTexture:
             case OpCode::LoadTexture:

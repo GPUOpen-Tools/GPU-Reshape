@@ -462,6 +462,29 @@ namespace Studio.Models.IL
         public uint PrimitiveIndex;
     }
 
+    public class EmitIndicesInstruction : Instruction
+    {
+        /// <summary>
+        /// Output primitive index
+        /// </summary>
+        public uint PrimitiveIndex;
+
+        /// <summary>
+        /// Vertex index 0
+        /// </summary>
+        public uint VertexIndex0;
+
+        /// <summary>
+        /// Vertex index 1
+        /// </summary>
+        public uint VertexIndex1;
+
+        /// <summary>
+        /// Vertex index 2
+        /// </summary>
+        public uint VertexIndex2;
+    }
+
     public class SampleTextureInstruction : Instruction
     {
         /// <summary>

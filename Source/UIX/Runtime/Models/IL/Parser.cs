@@ -981,6 +981,17 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.EmitIndices:
+                {
+                    instruction = new EmitIndicesInstruction()
+                    {
+                        PrimitiveIndex = node.PrimitiveIndex,
+                        VertexIndex0 = node.VertexIndex0,
+                        VertexIndex1 = node.VertexIndex1,
+                        VertexIndex2 = node.VertexIndex2
+                    };
+                    break;
+                }
                 case OpCode.SampleTexture:
                 {
                     instruction = new SampleTextureInstruction()

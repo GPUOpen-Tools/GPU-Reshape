@@ -632,6 +632,18 @@ namespace Runtime.ViewModels.IL
                     AssembleInlineOperand(typed.PrimitiveIndex, builder);
                     break;
                 }
+                case OpCode.EmitIndices:
+                {
+                    var typed = (EmitIndicesInstruction)instruction;
+                    AssembleInlineOperand(typed.PrimitiveIndex, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.VertexIndex0, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.VertexIndex1, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.VertexIndex2, builder);
+                    break;
+                }
                 case OpCode.SampleTexture:
                 {
                     var typed = (SampleTextureInstruction)instruction;

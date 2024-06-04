@@ -1671,6 +1671,35 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
 
         /*
          * DXIL Specification
+         *   declare void @dx.op.emitIndices(
+         *       i32,                            ; opcode
+         *       i32,                            ; primitive ID
+         *       i32,                            ; vertex ID 0
+         *       i32,                            ; vertex ID 1
+         *       i32)                            ; vertex ID 2
+         */
+
+        case DXILOpcodes::EmitIndices: {
+            uint32_t primitiveID = reader.GetMappedRelative(anchor);
+            uint32_t vertexID0 = reader.GetMappedRelative(anchor);
+            uint32_t vertexID1 = reader.GetMappedRelative(anchor);
+            uint32_t vertexID2 = reader.GetMappedRelative(anchor);
+
+            // Emit
+            IL::EmitIndicesInstruction instr{};
+            instr.opCode = IL::OpCode::EmitIndices;
+            instr.result = IL::InvalidID;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.primitiveIndex = primitiveID;
+            instr.vertexIndex0 = vertexID0;
+            instr.vertexIndex1 = vertexID1;
+
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        /*
+         * DXIL Specification
          *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
          *   ; returns: status
          *   declare %dx.types.ResRet.f32 @dx.op.bufferLoad.f32(

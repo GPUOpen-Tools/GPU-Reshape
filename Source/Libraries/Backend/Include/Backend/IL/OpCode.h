@@ -136,6 +136,7 @@ namespace IL {
         StoreOutput,
         StoreVertexOutput,
         StorePrimitiveOutput,
+        EmitIndices,
 
         /// Resource
         SampleTexture,

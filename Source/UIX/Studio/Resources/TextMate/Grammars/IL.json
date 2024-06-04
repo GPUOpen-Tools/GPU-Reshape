@@ -64,7 +64,7 @@
     },
     {
       "name": "keyword.op.register",
-      "match": "\\b(Alloca|Load|Store|StoreOutput|StoreVertexOutput|StorePrimitiveOutput)\\b"
+      "match": "\\b(Alloca|Load|Store|StoreOutput|StoreVertexOutput|StorePrimitiveOutput|EmitIndices)\\b"
     },
     {
       "name": "keyword.op.resource",

@@ -87,12 +87,14 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
             default:
                 return it;
                 // TODO: SPIRV StoreOutput -> vertex and primitive
-                // TODO: DXIL EmitIndices
             case IL::OpCode::StoreVertexOutput:
                 outputIndex = it->As<IL::StoreVertexOutputInstruction>()->vertexIndex;
                 break;
             case IL::OpCode::StorePrimitiveOutput:
                 outputIndex = it->As<IL::StorePrimitiveOutputInstruction>()->primitiveIndex;
+                break;
+            case IL::OpCode::EmitIndices:
+                outputIndex = it->As<IL::EmitIndicesInstruction>()->primitiveIndex;
                 break;
         }
 
@@ -128,6 +130,7 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
         IL::Emitter<> pre(program, context.basicBlock);
 
         // Failure conditions: output index is not thread ID
+        // TODO: add another check for thread ID + constant offset
         IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.KernelValue(Backend::IL::KernelValue::FlattenedLocalThreadID));
 
         // isNotThreadIndex block

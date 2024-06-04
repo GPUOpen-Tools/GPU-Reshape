@@ -19,6 +19,7 @@ namespace Backend::IL {
             case ::IL::OpCode::StoreOutput:
             case ::IL::OpCode::StoreVertexOutput:
             case ::IL::OpCode::StorePrimitiveOutput:
+            case ::IL::OpCode::EmitIndices:
 
             /** No resource immediates */
             case ::IL::OpCode::SampleTexture:

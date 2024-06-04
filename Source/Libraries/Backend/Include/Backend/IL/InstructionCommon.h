@@ -403,6 +403,14 @@ namespace Backend::IL {
                 functor(typed->primitiveIndex);
                 break;
             }
+            case ::IL::OpCode::EmitIndices: {
+                auto typed = instr->As<::IL::EmitIndicesInstruction>();
+                functor(typed->primitiveIndex);
+                functor(typed->vertexIndex0);
+                functor(typed->vertexIndex1);
+                functor(typed->vertexIndex2);
+                break;
+            }
             case ::IL::OpCode::SampleTexture: {
                 auto typed = instr->As<::IL::SampleTextureInstruction>();
                 functor(typed->texture);
