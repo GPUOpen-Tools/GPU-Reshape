@@ -25,6 +25,7 @@
 // 
 
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCHeader.h>
 #include <Backends/DX12/Layer.h>
 
 // System
@@ -35,6 +36,9 @@
 
 // Std
 #include <string>
+
+// MD5
+#include <MD5/MD5.h>
 
 // Special includes
 #ifndef NDEBUG
@@ -113,6 +117,29 @@ bool DXILSigner::Sign(void *code, uint64_t length) {
     }
 #endif // defined(NDEBUG)
 
+    // Use bypass signing?
+#if USE_DXIL_BYPASS_SIGNING
+    // If in debug, try to actually validate and sign it.
+    // This may produce some false positives if the source binaries
+    // are invalid, but they can be ignored.
+#if !defined(NDEBUG)
+    if (SignWithValidation(code, length)) {
+        return true;
+    }
+#endif // !NDEBUG
+
+    // Just trust the instrumented binaries
+    SignWithBypass(code);
+    return true;
+#else // USE_DXIL_BYPASS_SIGNING
+    // No bypass, perform full validation and signing
+    return SignWithValidation(code, length);
+#endif // USE_DXIL_BYPASS_SIGNING
+}
+
+bool DXILSigner::SignWithValidation(void *code, uint64_t length) {
+    Microsoft::WRL::ComPtr<IDxcOperationResult> result;
+
     // Create a pinned blob (no-copy)
     Microsoft::WRL::ComPtr<IDxcBlobEncoding> pinnedBlob;
     library->CreateBlobWithEncodingFromPinned(static_cast<BYTE*>(code), static_cast<uint32_t>(length), 0u, pinnedBlob.GetAddressOf());
@@ -149,5 +176,67 @@ bool DXILSigner::Sign(void *code, uint64_t length) {
     }
 
     // OK
+    return true;
+}
+
+bool DXILSigner::SignWithBypass(void *code) {
+    auto header = static_cast<DXBCHeader*>(code);
+
+    // Create context
+    MD5_CTX ctx{};
+    MD5_Init(&ctx);
+    
+    // Chunk attributes
+    uint32_t byteCount        = static_cast<uint32_t>(header->byteCount - offsetof(DXBCHeader, reserved));
+    uint32_t bitCount         = byteCount * 8u;
+    uint32_t lastChunkLength  = byteCount % 64;
+    uint32_t lastChunkPadding = 64 - lastChunkLength;
+    uint32_t fullChunkLength  = byteCount - lastChunkLength;
+    uint32_t bitCount2o1      = (bitCount >> 2u) | 1u;
+
+    // Update all full chunks
+    MD5_Update(&ctx, &header->reserved, fullChunkLength);
+
+    // Last chunk address
+    auto* danglingChunk = reinterpret_cast<const uint8_t*>(&header->reserved) + fullChunkLength;
+
+    // Final block
+    uint32_t md5Block[16]{};
+    md5Block[0] = 0x80;
+
+    // Magic DXIL signing check
+    if (lastChunkLength >= 56) {
+        // Update last block
+        MD5_Update(&ctx, danglingChunk, lastChunkLength);
+
+        // Update padding block
+        MD5_Update(&ctx, md5Block, lastChunkPadding);
+
+        // Update final block
+        md5Block[0]  = bitCount;
+        md5Block[15] = bitCount2o1;
+        MD5_Update(&ctx, md5Block, 64);
+    } else {
+        // Update low number of bits
+        MD5_Update(&ctx, &bitCount, sizeof(bitCount));
+
+        // Update last block if needed
+        if (lastChunkLength) {
+            MD5_Update(&ctx, danglingChunk, lastChunkLength);
+        }
+
+        // Write remainder length
+        uint32_t paddingBytes = static_cast<uint32_t>(lastChunkPadding - sizeof(uint32_t));
+        std::memcpy(reinterpret_cast<uint8_t*>(md5Block) + paddingBytes - sizeof(uint32_t), &bitCount2o1, sizeof(uint32_t));
+
+        // Update final block
+        MD5_Update(&ctx, md5Block, paddingBytes);
+    }
+
+    // Copy over final checksum
+    static_assert(sizeof(header->privateChecksum) == sizeof(ctx.a) * 4u, "Unexpected checksum size");
+    std::memcpy(&header->privateChecksum, &ctx.a, sizeof(header->privateChecksum));
+
+    // Always ok
     return true;
 }

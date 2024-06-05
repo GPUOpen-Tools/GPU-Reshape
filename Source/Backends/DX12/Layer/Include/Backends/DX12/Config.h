@@ -73,6 +73,11 @@
 /// Enables the DXBC signer, as DXBC support is done through DXIL, this is not required
 #define USE_DXBC_SIGNER (0)
 
+/// Bypass signing for all DXIL signing
+/// This is needed as new DX runtimes may add additional validation, which cause source
+/// programs to fail, no fault of my own. Additionally, it's much faster.
+#define USE_DXIL_BYPASS_SIGNING (1)
+
 /// Enable instrumentation of a specific file for debugging purposes
 ///  ? Instrumentation of large applications can be difficult to debug and even harder to reproduce under the same conditions.
 ///    When such a fault occurs, it is very useful to simply be able to iterate on a binary file.

@@ -60,6 +60,7 @@ if (NOT THIN_X86_BUILD)
     include(UnorderedDense.cmake)
     include(BTree.cmake)
     include(ZLIB.cmake)
+    include(MD5.cmake)
 
     if (${ENABLE_EXPERIMENTAL})
         include(Eigen.cmake)

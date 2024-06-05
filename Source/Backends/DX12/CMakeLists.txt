@@ -445,11 +445,12 @@ target_link_libraries(
     # d3d12
     d3d12.lib
     dxgi.lib
-
+    
     # Generated source
 )
 
 # Setup dependencies
+ExternalProject_Link(GRS.Backends.DX12.Layer MD5 MD5)
 ExternalProject_Link(GRS.Backends.DX12.Layer AgilitySDK)
 ExternalProject_Link(GRS.Backends.DX12.Layer Detour Detour)
 ExternalProject_Link(GRS.Backends.DX12.Layer D3D12MA $<$<CONFIG:Debug>:D3D12MAd> $<$<CONFIG:Release>:D3D12MAr> $<$<CONFIG:RelWithDebInfo>:D3D12MArd>)

@@ -260,10 +260,11 @@ private:
 
     /// Get the mapping of a resource
     /// \param job parent job
+    /// \param block destination block for generated instructions
     /// \param source source records
     /// \param resource resource to be fetched
     /// \return empty if not found
-    DynamicRootSignatureUserMapping GetResourceUserMapping(const DXCompileJob& job, const Vector<LLVMRecord>& source, IL::ID resource);
+    DynamicRootSignatureUserMapping GetResourceUserMapping(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, IL::ID resource);
 
     /// Get a resource type from annotation
     /// \param properties resource properties
