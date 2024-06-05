@@ -5412,6 +5412,17 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
             ASSERT(false, "Unexpected handle type");
             break;
         }
+
+        /*
+         * DXIL Specification
+         *   declare %dx.types.Handle @dx.op.createHandle(
+         *       i32,                  ; opcode
+         *       i8,                   ; resource class: SRV=0, UAV=1, CBV=2, Sampler=3
+         *       i32,                  ; resource range ID (constant)
+         *       i32,                  ; index into the range
+         *       i1)                   ; non-uniform resource index: false or true
+         */
+        
         case DXILOpcodes::CreateHandle: {
             // Get the class
             metadata._class = static_cast<DXILShaderResourceClass>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(5)))->value);
@@ -5512,10 +5523,8 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
     return metadata;
 }
 
-DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunction::GetResourceUserMapping(const DXCompileJob& job, const Vector<LLVMRecord>& source, IL::ID resource) {
+DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunction::GetResourceUserMapping(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, IL::ID resource) {
     DynamicRootSignatureUserMapping out;
-
-    // TODO: This will not hold true for everything
 
     // Get and validate record
     HandleMetadata metadata = GetResourceHandleRecord(source, resource);
@@ -5524,43 +5533,6 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
     if (!metadata.entry) {
         out.dynamicOffset = metadata.rangeConstantOrValue;
         return out;
-    }
-
-    /*
-     * DXIL Specification
-     *   declare %dx.types.Handle @dx.op.createHandle(
-     *       i32,                  ; opcode
-     *       i8,                   ; resource class: SRV=0, UAV=1, CBV=2, Sampler=3
-     *       i32,                  ; resource range ID (constant)
-     *       i32,                  ; index into the range
-     *       i1)                   ; non-uniform resource index: false or true
-     */
-
-    // Compile time?
-    uint32_t rangeIndex{~0u};
-    if (auto constant = program.GetConstants().GetConstant<IL::IntConstant>(metadata.rangeConstantOrValue)) {
-        rangeIndex = static_cast<uint32_t>(constant->value);
-    } else {
-        // Get runtime instruction
-        IL::InstructionRef<> offsetInstr = program.GetIdentifierMap().Get(metadata.rangeConstantOrValue);
-        if (!offsetInstr.Is<IL::AddInstruction>()) {
-            return {};
-        }
-
-        // Get typed
-        auto _offsetInstr = offsetInstr.As<IL::AddInstruction>();
-
-        // Assume dynamic counterpart
-        out.dynamicOffset = _offsetInstr->lhs;
-
-        // Assume DXC style constant offset
-        auto constantOffset = program.GetConstants().GetConstant<IL::IntConstant>(_offsetInstr->rhs);
-        if (!constantOffset) {
-            return {};
-        }
-
-        // Assume index from base range
-        rangeIndex = static_cast<uint32_t>(constantOffset->value);
     }
 
     // Translate class
@@ -5613,6 +5585,7 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
             break;
         case DXILShadingModelClass::MS:
             rootVisibility = RootParameterVisibility::Mesh;
+            break;
     }
 
     // Get user space
@@ -5620,36 +5593,39 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
     const RootSignatureUserClass&       userClass       = visibilityClass.spaces[static_cast<uint32_t>(classType)];
     const RootSignatureUserSpace&       userSpace       = userClass.spaces.at(metadata.entry->bindSpace);
 
-    // If the range index is beyond the accessible mappings, it implies arrays or similar
-    if (rangeIndex > userSpace.lastRegister) {
-        ASSERT(out.dynamicOffset == IL::InvalidID, "Dynamic mapping with out of bounds range index");
+    // Get mapping
+    out.source = &userSpace.mappings.at(metadata.entry->registerBase);
 
-        // Validate that the end mapping is unbounded
-        // Array descriptor ranges should be fully visible at this point
-        ASSERT(userSpace.mappings.at(userSpace.lastRegister).isUnbounded, "Dynamic mapping from bounded range");
-
-        // Effective distance
-        const uint32_t distanceFromEnd = rangeIndex - userSpace.lastRegister;
-
-        // Assign distance as the dynamic offset to validate
-        out.dynamicOffset = program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(distanceFromEnd)}
-        )->id;
-
-        // Set to last index
-        rangeIndex = userSpace.lastRegister;
+    // Check if base, i.e. the offset is the register base
+    bool isBaseRegister = false;
+    if (auto constant = program.GetConstants().GetConstant<IL::IntConstant>(metadata.rangeConstantOrValue)) {
+        isBaseRegister = constant->value == metadata.entry->registerBase;
     }
 
-    // Assign source
-    out.source = &userSpace.mappings.at(rangeIndex);
+    // If at the base register, no need to perform dynamic indexing
+    if (!isBaseRegister) {
+        // Set dynamic offset (always base from the register range)
+        // DynamicOffset - RegBaseOffset
+        out.dynamicOffset = program.GetIdentifierMap().AllocID();
+        {
+            LLVMRecord subRecord;
+            subRecord.SetUser(true, ~0u, out.dynamicOffset);
+            subRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+            subRecord.opCount = 3u;
+            subRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+            subRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(metadata.rangeConstantOrValue);
+            subRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(metadata.entry->registerBase)->id);
+            subRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Sub);
+            block->AddRecord(subRecord);
+        }
+    }
 
     // OK
     return out;
 }
 
 void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
-    DynamicRootSignatureUserMapping userMapping = GetResourceUserMapping(job, source, _instr->resource);
+    DynamicRootSignatureUserMapping userMapping = GetResourceUserMapping(job, block, source, _instr->resource);
     ASSERT(userMapping.source || userMapping.dynamicOffset != IL::InvalidID, "Fallback user mappings not supported yet");
 
     // Static samplers are valid by default, however have no "real" data
