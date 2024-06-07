@@ -1756,7 +1756,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXCompileJob &job)
         resource.ops[4] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerBase);
         resource.ops[5] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerRange);
         resource.ops[6] = FindOrAddOperandU32Constant(*metadataBlock, block, static_cast<uint32_t>(handle.uav.shape));
-        resource.ops[7] = FindOrAddOperandBoolConstant(*metadataBlock, block, false);
+        resource.ops[7] = FindOrAddOperandBoolConstant(*metadataBlock, block, true);
         resource.ops[8] = FindOrAddOperandBoolConstant(*metadataBlock, block, false);
         resource.ops[9] = FindOrAddOperandBoolConstant(*metadataBlock, block, false);
         resource.ops[10] = extendedMdIndex;

@@ -5334,6 +5334,7 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
                 case DXILShaderResourceClass::UAVs:
                     properties.basic.shape = static_cast<uint8_t>(entry->uav.shape);
                     properties.basic.isUAV = true;
+                    properties.basic.isGloballyCoherent = true;
                     properties.typed.resource.componentType = static_cast<uint8_t>(entry->uav.componentType);
                     properties.typed.resource.componentCount = static_cast<uint8_t>(GetShapeComponentCount(entry->uav.shape));
                     properties.typed.resource.sampleCount = 1u;
