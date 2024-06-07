@@ -205,7 +205,7 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                     uint[] coordinate = detailChunk.coordinate;
                     
                     // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance($"Potential race condition detected at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}");
+                    resourceValidationObject.AddUniqueInstance($"Potential race condition detected at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}, byteOffset:{detailChunk.byteOffset}");
                 }
             }
             

@@ -301,6 +301,7 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
                 msg.detail.coordinate[1] = texelProperties.address.y;
                 msg.detail.coordinate[2] = texelProperties.address.z;
                 msg.detail.mip = texelProperties.address.mip;
+                msg.detail.byteOffset = texelProperties.offset;
             }
             
             // Export the message
