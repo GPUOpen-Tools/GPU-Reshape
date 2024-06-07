@@ -294,6 +294,16 @@ namespace Backend::IL {
                 }
             }
 
+            // If the program is sign-less, assume all coordinates are unsigned
+            if (!program->GetCapabilityTable().integerSignIsUnique) {
+                auto* uint32 = program->GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
+                if (out.x != zero) out.x = emitter.BitCast(out.x, uint32);
+                if (out.y != zero) out.y = emitter.BitCast(out.y, uint32);
+                if (out.z != zero) out.z = emitter.BitCast(out.z, uint32);
+                if (out.mip != zero) out.mip = emitter.BitCast(out.mip, uint32);
+                if (out.offset != zero) out.offset = emitter.BitCast(out.offset, uint32);
+            }
+
             // Get the base memory offset for the resource, points to the header
             ID resourceBaseMemoryOffset = emitter.Extract(emitter.LoadBuffer(emitter.Load(puidMemoryBaseBufferDataID), out.puid), zero);
             
