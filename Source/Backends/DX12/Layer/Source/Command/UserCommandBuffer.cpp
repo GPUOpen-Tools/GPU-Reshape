@@ -124,17 +124,33 @@ static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *com
 }
 
 void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
+    // Early out if no commands
+    if (!buffer.Count()) {
+        return;
+    }
+
+    // Tracked state
     UserCommandState state;
 
     // Always end the current render pass if any commands
-    if (buffer.Count() && streamState->renderPass.insideRenderPass) {
+    if (streamState->renderPass.insideRenderPass) {
         static_cast<ID3D12GraphicsCommandList4*>(commandList)->EndRenderPass();
         state.reconstructionFlags |= ReconstructionFlag::RenderPass;
     }
+
+    // Default clearing chunk size
+    static constexpr size_t kClearChunkSize = static_cast<size_t>(8e6);
+
+    // Shared clear chunk, allocated on demand
+    ShaderExportConstantAllocation sharedClearChunk;
     
     // Handle all commands
     for (const Command &command: buffer) {
         switch (static_cast<CommandType>(command.commandType)) {
+            default: {
+                ASSERT(false, "Invalid command");
+                break;
+            }
             case CommandType::SetShaderProgram: {
                 auto *cmd = command.As<SetShaderProgramCommand>();
 
@@ -256,6 +272,46 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                         cmd->offset,
                         stagingAllocation.resource,
                         stagingAllocation.offset,
+                        length
+                    );
+                }
+                break;
+            }
+            case CommandType::ClearBuffer: {
+                auto* cmd = command.As<ClearBufferCommand>();
+
+                // The reason we're not using typical clear commands is because
+                // copy queues don't support them. So, we instead copy from a zeroed
+                // resource. TODO[init]: Could add a non-copy queue path! But would
+                // pollute the descriptor heap, unless you swap them around.
+
+                // Allocate shared chunk if needed
+                if (!sharedClearChunk.resource) {
+                    sharedClearChunk = streamState->constantAllocator.Allocate(device->deviceAllocator, kClearChunkSize);
+                    std::memset(sharedClearChunk.staging, 0x0u, kClearChunkSize);
+                }
+
+                // Clearing to specific values isn't supported yet
+                // Would be trivial, just need to do it
+                ASSERT(cmd->value == 0x0, "Unsupported clear value");
+
+                // Number of writes
+                size_t chunkCount = (cmd->length + kClearChunkSize - 1) / kClearChunkSize;
+
+                // Get the data allocation
+                Allocation allocation = device->shaderDataHost->GetResourceAllocation(cmd->id);
+
+                // Write all chunks
+                for (size_t i = 0; i < chunkCount; i++) {
+                    size_t offset = kClearChunkSize * i;
+                    size_t length = std::min(kClearChunkSize, cmd->length - offset);
+
+                    // Copy from chunk to resource
+                    commandList->CopyBufferRegion(
+                        allocation.resource,
+                        cmd->offset,
+                        sharedClearChunk.resource,
+                        sharedClearChunk.offset,
                         length
                     );
                 }
