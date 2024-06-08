@@ -704,15 +704,15 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
         // Move constant ownership to the segment
         freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
 
-        // Move constant allocator to the segment
-        if (!state->constantAllocator.staging.empty()) {
-            FreeConstantAllocator(state->constantAllocator);
-        }
-
         // Move ownership to the segment
         for (const ShaderExportSegmentDescriptorAllocation& segmentDescriptor : state->segmentDescriptors) {
             segmentDescriptor.allocator->Free(segmentDescriptor.info);
         }
+    }
+
+    // Move constant allocator to the segment
+    if (!state->constantAllocator.staging.empty()) {
+        FreeConstantAllocator(state->constantAllocator);
     }
 
     // Cleanup
