@@ -30,6 +30,10 @@
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
 
+/// Use mirror allocations, manually updates device mappings
+/// Otherwise let the driver handle the paging (faster with large PRMTs)
+#define USE_MIRROR 0
+
 PhysicalResourceMappingTable::PhysicalResourceMappingTable(const Allocators& allocators, const ComRef<DeviceAllocator> &allocator) : states(allocators), allocator(allocator) {
 
 }
@@ -66,7 +70,11 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     desc.SampleDesc.Count = 1;
 
     // Create allocation
+#if USE_MIRROR
     allocation = allocator->AllocateMirror(desc);
+#else // USE_MIRROR
+    allocation = allocator->AllocateMirror(desc, AllocationResidency::Host);
+#endif // USE_MIRROR
 
 #ifndef NDEBUG
     allocation.device.resource->SetName(L"PRMTDevice");
@@ -119,6 +127,8 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
         return;
     }
 
+#if USE_MIRROR
+    
     // Generic shader read visibility
     D3D12_RESOURCE_STATES genericShaderRead = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
@@ -162,6 +172,17 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
     
     // Submit barriers
     list->ResourceBarrier(2u, barriers);
+#else // USE_MIRROR
+    // Unmap the written range
+    // i.e. "done writing to this, flush!"
+    D3D12_RANGE range;
+    range.Begin = 0;
+    range.End = sizeof(VirtualResourceMapping) * virtualMappingCount;
+    allocation.host.resource->Unmap(0, &range);
+
+    // Map contents
+    allocation.host.resource->Map(0, &range, reinterpret_cast<void**>(&virtualMappings));
+#endif // USE_MIRROR
 
     // OK
     isDirty = false;
