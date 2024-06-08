@@ -34,6 +34,9 @@
 #include <bit>
 #include <vector>
 
+/// Debugging mode, just allocates them linearly without freeing anything
+#define BUDDY_ALLOCATOR_DEBUG_LINEAR 0
+
 class BuddyAllocator {    
 public:
     static constexpr uint32_t kMaxLevels = 34;
@@ -58,6 +61,13 @@ public:
     /// \param length byte length
     /// \return kInvalidBuddyAllocation if failed
     BuddyAllocation Allocate(uint64_t length) {
+#if BUDDY_ALLOCATOR_DEBUG_LINEAR
+        BuddyAllocation alloc;
+        alloc.offset = offset;
+        alloc.nodeIndex = 0;
+        offset += length;
+        return alloc;
+#else // BUDDY_ALLOCATOR_DEBUG_LINEAR
         // Get the lowest level for this length
         uint32_t lowLevel = GetLevel(length);
 
@@ -99,13 +109,16 @@ public:
             .offset = nodes[nodeIndex].offset,
             .nodeIndex = nodeIndex
         };
+#endif // BUDDY_ALLOCATOR_DEBUG_LINEAR
     }
 
     /// Free an allocation
     /// \param allocation given allocation
     void Free(const BuddyAllocation& allocation) {
+#if !BUDDY_ALLOCATOR_DEBUG_LINEAR
         ASSERT(nodes[allocation.nodeIndex].lhs == kInvalidNode, "Expected leaf node");
         FreeNodeRecursive(allocation.nodeIndex);
+#endif // !BUDDY_ALLOCATOR_DEBUG_LINEAR
     }
 
 private:
@@ -297,4 +310,9 @@ private:
 
     /// Free node indices for later reuse
     std::vector<uint32_t> freeNodeIndices;
+
+#if BUDDY_ALLOCATOR_DEBUG_LINEAR
+    /// Linear allocation offset
+    uint64_t offset = 0;
+#endif // BUDDY_ALLOCATOR_DEBUG_LINEAR
 };
