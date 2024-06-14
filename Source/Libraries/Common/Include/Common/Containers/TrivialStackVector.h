@@ -122,6 +122,7 @@ struct TrivialStackVector {
 
     /// Clear all elements
     void Clear() {
+        fallback.clear();
         size = 0;
     }
 
