@@ -283,8 +283,8 @@ IDXModule* ShaderCompiler::CompileSlimModule(IDXModule* sourceModule) {
 
             // Dump to console
             OutputDebugStringA(stream.str().c_str());
-#endif // NDEBUG
         }
+#endif // NDEBUG
 
         // Treat as complete failure
         return nullptr;
