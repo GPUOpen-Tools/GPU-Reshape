@@ -37,6 +37,9 @@
 /// Debugging mode, just allocates them linearly without freeing anything
 #define BUDDY_ALLOCATOR_DEBUG_LINEAR 0
 
+/// Debugging mode, debugs overlapping ranges
+#define BUDDY_ALLOCATOR_DEBUG_RANGE 0
+
 class BuddyAllocator {    
 public:
     static constexpr uint32_t kMaxLevels = 34;
@@ -55,6 +58,10 @@ public:
 
         // Mark the root node as free
         PushFree(rootLevel, rootNode);
+        
+#if BUDDY_ALLOCATOR_DEBUG_RANGE
+        allocatedRanges.resize(size);
+#endif // BUDDY_ALLOCATOR_DEBUG_RANGE
     }
 
     /// Allocate a region
@@ -91,10 +98,10 @@ public:
                 // Create two children, half width's
                 nodes[nodeIndex].lhs = AllocateNode(nodeIndex, nodes[nodeIndex].offset, nextLevel);
                 nodes[nodeIndex].rhs = AllocateNode(nodeIndex, nodes[nodeIndex].offset + (1ull << nextLevel),  nextLevel);
+                
+                // Mark RHS as free
+                PushFree(availableLevel - 1, nodes[nodeIndex].rhs);
             }
-
-            // Mark RHS as free
-            PushFree(availableLevel - 1, nodes[nodeIndex].rhs);
 
             // Continue travesal from LHS
             nodeIndex = nodes[nodeIndex].lhs;
@@ -103,10 +110,20 @@ public:
             availableLevel--;
         }
 
+        // Just check if nothing's taken the range, slow and simple
+#if BUDDY_ALLOCATOR_DEBUG_RANGE
+        size_t offset = nodes[nodeIndex].offset;
+        for (size_t i = 0; i < length; i++) {
+            ASSERT(!allocatedRanges[offset + i], "Invalid range");
+            allocatedRanges[offset + i] = true;
+        }
+#endif // BUDDY_ALLOCATOR_DEBUG_RANGE
+
         // Just return the node's offset, ignore padding
         ASSERT(length <= 1ull << nodes[nodeIndex].level, "Invalid node");
         return BuddyAllocation {
             .offset = nodes[nodeIndex].offset,
+            .length = length,
             .nodeIndex = nodeIndex
         };
 #endif // BUDDY_ALLOCATOR_DEBUG_LINEAR
@@ -116,6 +133,14 @@ public:
     /// \param allocation given allocation
     void Free(const BuddyAllocation& allocation) {
 #if !BUDDY_ALLOCATOR_DEBUG_LINEAR
+        // Remove marked ranges
+#if BUDDY_ALLOCATOR_DEBUG_RANGE
+        for (size_t i = 0; i < allocation.length; i++) {
+            ASSERT(allocatedRanges[allocation.offset + i], "Invalid range");
+            allocatedRanges[allocation.offset + i] = false;
+        }
+#endif // BUDDY_ALLOCATOR_DEBUG_RANGE
+        
         ASSERT(nodes[allocation.nodeIndex].lhs == kInvalidNode, "Expected leaf node");
         FreeNodeRecursive(allocation.nodeIndex);
 #endif // !BUDDY_ALLOCATOR_DEBUG_LINEAR
@@ -315,4 +340,8 @@ private:
     /// Linear allocation offset
     uint64_t offset = 0;
 #endif // BUDDY_ALLOCATOR_DEBUG_LINEAR
+
+#if BUDDY_ALLOCATOR_DEBUG_RANGE
+    std::vector<bool> allocatedRanges;
+#endif // BUDDY_ALLOCATOR_DEBUG_RANGE
 };

@@ -33,6 +33,9 @@ struct BuddyAllocation {
     /// Byte offset of the allocation
     uint64_t offset{0ull};
 
+    /// Byte length of the allocation
+    uint64_t length{0ull};
+
     /// Internal node index
     uint32_t nodeIndex{UINT32_MAX};
 };
