@@ -87,7 +87,15 @@ bool DXILSigner::Install() {
     }
 
     // Signing may not be required
+#if USE_DXIL_BYPASS_SIGNING
+    // If using the signing bypass, the method is fast enough as is
+    // also, this avoids issues with some Agility SDKs requiring signing
+    // regardless.
+    needsSigning = true;
+#else // USE_DXIL_BYPASS_SIGNING
+    // Experimental shading models bypass signers
     needsSigning = !D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled;
+#endif // USE_DXIL_BYPASS_SIGNING
 
     // OK
     return true;
