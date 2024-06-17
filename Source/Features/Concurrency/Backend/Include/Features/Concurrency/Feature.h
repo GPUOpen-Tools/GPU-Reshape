@@ -27,7 +27,7 @@
 #pragma once
 
 // Feature
-#include <Features/Concurrency/FailureCode.h>
+#include <Features/Concurrency/Container.h>
 
 // Common
 #include <Common/ComRef.h>
@@ -41,15 +41,13 @@
 #include <Backend/IL/VisitContext.h>
 #include <Backend/Scheduler/SchedulerPrimitive.h>
 
-// Addressing
-#include <Addressing/TexelMemoryAllocation.h>
-
 // Message
 #include <Message/MessageStream.h>
 
 // Forward declarations
 class IShaderSGUIDHost;
 class TexelMemoryAllocator;
+class ConcurrencyValidationListener;
 class IScheduler;
 
 class ConcurrencyFeature final : public IFeature, public IShaderFeature {
@@ -88,19 +86,14 @@ public:
     void OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount);
 
 private:
-    struct Allocation {
-        /// The underlying allocation
-        TexelMemoryAllocation memory;
-
-        /// Assigned initial failure code
-        FailureCode failureCode{FailureCode::None};
-    };
+    /// Shared container
+    ConcurrencyContainer container;
 
     /// Shared texel allocator
     ComRef<TexelMemoryAllocator> texelAllocator;
 
-    /// All allocations
-    std::unordered_map<uint64_t, Allocation> allocations;
+    /// Optional, validation listener
+    ComRef<ConcurrencyValidationListener> validationListener;
 
 private:
     struct MappingTag {
@@ -132,8 +125,4 @@ private:
 
     /// Shared stream
     MessageStream stream;
-
-private:
-    /// Shared lock
-    std::mutex mutex;
 };

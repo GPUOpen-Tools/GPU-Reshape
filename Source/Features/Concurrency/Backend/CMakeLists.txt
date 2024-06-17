@@ -33,6 +33,7 @@ Project_AddShaderSchema(Generated Schemas/Concurrency.xml Include/Schemas/Featur
 add_library(
     GRS.Features.Concurrency.Backend SHARED
     Source/Feature.cpp
+    Source/ValidationListener.cpp
     Source/Plugin.cpp
 
     # Generated

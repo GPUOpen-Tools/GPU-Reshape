@@ -22,9 +22,10 @@
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
 // FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-// 
+//
 
 #include <Features/Concurrency/Feature.h>
+#include <Features/Concurrency/ValidationListener.h>
 #include <Features/Descriptor/Feature.h>
 
 // Backend
@@ -48,6 +49,11 @@
 #include <Schemas/Features/Concurrency.h>
 #include <Schemas/Instrumentation.h>
 #include <Schemas/InstrumentationCommon.h>
+
+#if CONCURRENCY_ENABLE_VALIDATION
+// Bridge
+#include <Bridge/IBridge.h>
+#endif // CONCURRENCY_ENABLE_VALIDATION
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -89,6 +95,14 @@ bool ConcurrencyFeature::Install() {
     if (!texelAllocator->Install()) {
         return false;
     }
+
+#if CONCURRENCY_ENABLE_VALIDATION
+    // Create listener
+    validationListener = registry->New<ConcurrencyValidationListener>(container);
+
+    // Register to bridge
+    registry->Get<IBridge>()->Register(ResourceRaceConditionMessage::kID, validationListener);
+#endif // CONCURRENCY_ENABLE_VALIDATION
 
     // OK
     return true;
@@ -133,35 +147,22 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         bool isWrite = false;
 
         // Instruction of interest?
-        IL::ID resource;
         switch (it->opCode) {
             default:
                 return it;
-            case IL::OpCode::LoadBuffer: {
-                resource = it->As<IL::LoadBufferInstruction>()->buffer;
+            case IL::OpCode::LoadBuffer:
+            case IL::OpCode::LoadBufferRaw:
+            case IL::OpCode::SampleTexture: {
                 break;
             }
-            case IL::OpCode::StoreBuffer: {
-                resource = it->As<IL::StoreBufferInstruction>()->buffer;
-                isWrite = true;
-                break;
-            }
-            case IL::OpCode::LoadBufferRaw: {
-                resource = it->As<IL::LoadBufferRawInstruction>()->buffer;
-                break;
-            }
-            case IL::OpCode::StoreBufferRaw: {
-                resource = it->As<IL::StoreBufferRawInstruction>()->buffer;
-                isWrite = true;
-                break;
-            }
+            case IL::OpCode::StoreBuffer:
+            case IL::OpCode::StoreBufferRaw:
             case IL::OpCode::StoreTexture: {
-                resource = it->As<IL::StoreTextureInstruction>()->texture;
                 isWrite = true;
                 break;
             }
             case IL::OpCode::LoadTexture: {
-                resource = it->As<IL::LoadTextureInstruction>()->texture;
+                IL::ID resource = it->As<IL::LoadTextureInstruction>()->texture;
 
                 // Get type
                 auto type = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
@@ -170,10 +171,6 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
                 if (type->dimension == Backend::IL::TextureDimension::SubPass) {
                     return it;
                 }
-                break;
-            }
-            case IL::OpCode::SampleTexture: {
-                resource = it->As<IL::SampleTextureInstruction>()->texture;
                 break;
             }
             case IL::OpCode::Load: {
@@ -238,15 +235,23 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         // If untracked, don't write or read any bits
         IL::ID isUntracked = pre.Equal(texelProperties.failureBlock, untracked);
 
+        // Is this texel range unsafe? i.e., modifications are invalid?
+        IL::ID unsafeTexelRange = pre.Or(texelProperties.address.isOutOfBounds, isUntracked);
+
+        // Debug. If the addressing is invalid, the range is definitely unsafe.
+#if CONCURRENCY_ENABLE_VALIDATION && TEXEL_ADDRESSING_ENABLE_FENCING
+        unsafeTexelRange = pre.Or(unsafeTexelRange, texelProperties.invalidAddressing);
+#endif // CONCURRENCY_ENABLE_VALIDATION && TEXEL_ADDRESSING_ENABLE_FENCING
+
         // Manually select the target bit, this follows the same mechanism as the other overloads,
         // in our case we set the target bit to 0 if the address is out of bounds. Effectively disabling
         // the atomic writes without adding block branching logic.
         IL::ID guardedTexelCount = pre.Select(
-            pre.Or(texelProperties.address.isOutOfBounds, isUntracked),
+            unsafeTexelRange,
             program.GetConstants().UInt(0)->id,
             texelProperties.address.texelCount
         );
-        
+
         // Read the previous lock, semantics change if write
         IL::ID previousLock;
         if (isWrite) {
@@ -276,6 +281,11 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         // the valid behaviour is here, today, Reshape will only report errors for in bounds texels,
         // as the bounds feature will snuff out invalid addressing.
         IL::ID unsafeCond = pre.And(pre.NotEqual(previousLock, zero), pre.Not(texelProperties.address.isOutOfBounds));
+        
+#if CONCURRENCY_ENABLE_VALIDATION && TEXEL_ADDRESSING_ENABLE_FENCING
+        // Under fencing, report just the invalid addressing cases
+        IL::ID unsafeCond = texelProperties.invalidAddressing;
+#endif // CONCURRENCY_ENABLE_VALIDATION && TEXEL_ADDRESSING_ENABLE_FENCING
 
         // If untracked, this can never fail
         unsafeCond = pre.And(unsafeCond, pre.Not(isUntracked));
@@ -302,6 +312,17 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
                 msg.detail.coordinate[2] = texelProperties.address.z;
                 msg.detail.mip = texelProperties.address.mip;
                 msg.detail.byteOffset = texelProperties.offset;
+
+                // Under fencing, repurpose the channels
+#if CONCURRENCY_ENABLE_VALIDATION
+                msg.detail.coordinate[0] = texelProperties.texelBaseOffsetAlign32;
+                msg.detail.coordinate[1] = texelProperties.address.texelOffset;
+                msg.detail.coordinate[2] = unsafe.UInt32(texelProperties.texelCountLiteral);
+                msg.detail.mip = guardedTexelCount;
+#if TEXEL_ADDRESSING_ENABLE_FENCING
+                msg.detail.byteOffset = texelProperties.resourceTexelCount;
+#endif // TEXEL_ADDRESSING_ENABLE_FENCING
+#endif // CONCURRENCY_ENABLE_VALIDATION
             }
             
             // Export the message
@@ -333,7 +354,7 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
 }
 
 void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
-    std::lock_guard guard(mutex);
+    std::lock_guard guard(container.mutex);
 
     // Actual creation parameters for texel addressing
     ResourceInfo filteredInfo = source.resource;
@@ -355,8 +376,11 @@ void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
     TexelMemoryAllocation memory = texelAllocator->Allocate(filteredInfo);
 
     // Create allocation
-    Allocation& allocation = allocations[source.resource.token.puid];
+    ConcurrencyContainer::Allocation& allocation = container.allocations[source.resource.token.puid];
     allocation.memory = memory;
+#if CONCURRENCY_ENABLE_VALIDATION
+    allocation.info = source.resource;
+#endif // CONCURRENCY_ENABLE_VALIDATION
 
     // Mark for pending enqueue
     pendingMappingQueue.push_back(MappingTag {
@@ -371,20 +395,20 @@ void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
 }
 
 void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
-    std::lock_guard guard(mutex);
+    std::lock_guard guard(container.mutex);
 
     // Get allocation
-    Allocation& allocation = allocations.at(source.token.puid);
+    ConcurrencyContainer::Allocation& allocation = container.allocations.at(source.token.puid);
 
     // Free underlying memory
     texelAllocator->Free(allocation.memory);
 
     // Remove local tracking
-    allocations.erase(source.token.puid);
+    container.allocations.erase(source.token.puid);
 }
 
 void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
-    std::lock_guard guard(mutex);
+    std::lock_guard guard(container.mutex);
 
     // Not interested in empty submissions
     if (!contextCount) {
@@ -404,12 +428,12 @@ void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, co
         // Assign the memory lookups
         for (const MappingTag& tag : pendingMappingQueue) {
             // May have been destroyed
-            if (!allocations.contains(tag.puid)) {
+            if (!container.allocations.contains(tag.puid)) {
                 continue;
             }
 
             // Get allocation
-            Allocation& allocation = allocations[tag.puid];
+            ConcurrencyContainer::Allocation& allocation = container.allocations[tag.puid];
 
             // Assign the PUID -> Memory Offset mapping
             builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);

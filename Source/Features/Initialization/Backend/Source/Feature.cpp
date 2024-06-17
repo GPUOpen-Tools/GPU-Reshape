@@ -199,8 +199,8 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
                 break;
             }
             case IL::OpCode::StoreBuffer:
-            case IL::OpCode::StoreTexture:
-            case IL::OpCode::StoreBufferRaw: {
+            case IL::OpCode::StoreBufferRaw:
+            case IL::OpCode::StoreTexture: {
                 isWrite = true;
                 break;
             }
