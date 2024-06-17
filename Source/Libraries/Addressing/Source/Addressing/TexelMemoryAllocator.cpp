@@ -131,7 +131,11 @@ void TexelMemoryAllocator::Initialize(CommandBuilder &builder, const TexelMemory
     // DW1, special failure block
     headerDWords[static_cast<uint32_t>(TexelMemoryDWordFields::FailureBlock)] = failureBlockCode;
 
-    // DW2 .. n, all subresource offsets
+    // DW2, number of blocks
+    ASSERT(allocation.texelBlockCount > 0, "Invalid allocation");
+    headerDWords[static_cast<uint32_t>(TexelMemoryDWordFields::TexelCount)] = allocation.texelBlockCount * 32u;
+
+    // DW3 .. n, all subresource offsets
     for (size_t i = 0; i < allocation.addressInfo.subresourceOffsets.Size(); i++) {
         headerDWords[static_cast<uint32_t>(TexelMemoryDWordFields::SubresourceOffsetStart) + i] = static_cast<uint32_t>(allocation.addressInfo.subresourceOffsets[i]);
     }

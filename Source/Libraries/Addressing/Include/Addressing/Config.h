@@ -26,48 +26,5 @@
 
 #pragma once
 
-// Address
-#include <Addressing/IL/TexelAddress.h>
-#include <Addressing/Config.h>
-
-// Backend
-#include <Backend/IL/ID.h>
-
-struct TexelProperties {
-    /// Address of the texel
-    TexelAddress<IL::ID> address;
-    
-    /// Source view coordinates
-    IL::ID x{};
-    IL::ID y{};
-    IL::ID z{};
-    IL::ID mip{};
-    IL::ID offset{};
-
-    /// The value type texel count
-    /// This may not represent the runtime width
-    uint32_t texelCountLiteral{};
-
-    /// The packed token of the owning resource
-    IL::ID packedToken{IL::InvalidID};
-
-    /// Assigned PUID of the owning resource
-    IL::ID puid{IL::InvalidID};
-
-    /// The memory base offset of the initialization masks
-    IL::ID texelBaseOffsetAlign32{IL::InvalidID};
-
-    /// Failure block code
-    IL::ID failureBlock{IL::InvalidID};
-
-#if TEXEL_ADDRESSING_ENABLE_FENCING
-    /// Total number of texels in the resource
-    IL::ID resourceTexelCount{IL::InvalidID};
-
-    /// True if invalid addressing (i.e. out of bounds)
-    IL::ID invalidAddressing{IL::InvalidID};
-#endif // TEXEL_ADDRESSING_ENABLE_FENCING
-
-    /// Debugging value
-    IL::ID debug{};
-};
+/// Enables address fencing, determines if any addressing is out of bounds
+#define TEXEL_ADDRESSING_ENABLE_FENCING (0)

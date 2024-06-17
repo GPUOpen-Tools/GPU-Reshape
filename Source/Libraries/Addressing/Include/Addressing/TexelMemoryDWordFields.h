@@ -33,6 +33,9 @@ enum class TexelMemoryDWordFields {
     /// Special block with failure conditions
     FailureBlock = 1u,
 
+    /// Total number of texels in the resource
+    TexelCount = 2u,
+
     /// Total number of dwords
     Count,
 

@@ -327,6 +327,17 @@ namespace Backend::IL {
 
             // Get failure condition
             out.failureBlock = subresourceEmitter.ReadFieldDWord(TexelMemoryDWordFields::FailureBlock);
+            
+#if TEXEL_ADDRESSING_ENABLE_FENCING
+            // Read the total number of texels
+            out.resourceTexelCount = subresourceEmitter.ReadFieldDWord(TexelMemoryDWordFields::TexelCount);
+
+            // Determine if the absolute offset is out of bounds
+            out.invalidAddressing = emitter.GreaterThan(
+                emitter.Add(out.address.texelOffset, out.address.texelCount),
+                out.resourceTexelCount
+            );
+#endif // TEXEL_ADDRESSING_ENABLE_FENCING
 
             // OK
             return out;
