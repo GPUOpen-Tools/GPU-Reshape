@@ -308,6 +308,18 @@ static ResourceCreateFlagSet GetPlacedResourceFlags(const T *desc) {
     return flags;
 }
 
+static D3D12_HEAP_FLAGS SanitizePlacedCommittedHeapFlags(D3D12_HEAP_FLAGS flags) {
+    return flags & ~(
+        D3D12_HEAP_FLAG_DENY_BUFFERS |
+        D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES |
+        D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES |
+        D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
+        D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS |
+        D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES |
+        D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES
+    );
+}
+
 HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * heap, UINT64 heapFlags, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE * clearValue, const IID& riid, void ** pResource) {
     auto table = GetTable(device);
 
@@ -322,7 +334,10 @@ HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * 
     if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
         // Let the internal committed heap emulate the desired heap
         D3D12_HEAP_DESC heapDesc = heap->GetDesc();
-        
+
+        // Some flags are not appropriate for the emulated path
+        heapDesc.Flags = SanitizePlacedCommittedHeapFlags(heapDesc.Flags);
+
         // Safe-guarded path
         HRESULT hr = table.bottom->next_CreateCommittedResource(table.next, &heapDesc.Properties, heapDesc.Flags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
         if (FAILED(hr)) {
@@ -368,6 +383,9 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource1(ID3D12Device* device, ID3D1
     if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
         // Let the internal committed heap emulate the desired heap
         D3D12_HEAP_DESC heapDesc = pHeap->GetDesc();
+
+        // Some flags are not appropriate for the emulated path
+        heapDesc.Flags = SanitizePlacedCommittedHeapFlags(heapDesc.Flags);
         
         // Safe-guarded path
         HRESULT hr = table.bottom->next_CreateCommittedResource2(table.next, &heapDesc.Properties, heapDesc.Flags, pDesc, InitialState, pOptimizedClearValue, nullptr, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
@@ -414,6 +432,9 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource2(ID3D12Device* device, ID3D1
     if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
         // Let the internal committed heap emulate the desired heap
         D3D12_HEAP_DESC heapDesc = pHeap->GetDesc();
+
+        // Some flags are not appropriate for the emulated path
+        heapDesc.Flags = SanitizePlacedCommittedHeapFlags(heapDesc.Flags);
         
         // Safe-guarded path
         HRESULT hr = table.bottom->next_CreateCommittedResource3(table.next, &heapDesc.Properties, heapDesc.Flags, pDesc, InitialLayout, pOptimizedClearValue, nullptr, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
