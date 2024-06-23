@@ -397,9 +397,15 @@ void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
 void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
     std::lock_guard guard(container.mutex);
 
-    // Get allocation
-    ConcurrencyContainer::Allocation& allocation = container.allocations.at(source.token.puid);
+    // Do not fault on app errors
+    auto allocationIt = container.allocations.find(source.token.puid);
+    if (allocationIt == container.allocations.end()) {
+        return;
+    }
 
+    // Get allocation
+    ConcurrencyContainer::Allocation& allocation = allocationIt->second;
+    
     // Free underlying memory
     texelAllocator->Free(allocation.memory);
 

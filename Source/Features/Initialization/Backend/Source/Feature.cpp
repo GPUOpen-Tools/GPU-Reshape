@@ -432,8 +432,14 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
 void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
     std::lock_guard guard(mutex);
 
+    // Do not fault on app errors
+    auto allocationIt = allocations.find(source.token.puid);
+    if (allocationIt == allocations.end()) {
+        return;
+    }
+
     // Get allocation
-    Allocation& allocation = allocations.at(source.token.puid);
+    Allocation& allocation = allocationIt->second;
 
     // Free underlying memory
     texelAllocator->Free(allocation.memory);
