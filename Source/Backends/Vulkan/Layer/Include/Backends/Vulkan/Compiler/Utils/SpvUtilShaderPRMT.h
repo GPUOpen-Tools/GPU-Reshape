@@ -51,14 +51,29 @@ struct SpvUtilShaderPRMT {
     /// Export a given value
     /// \param job source job
     /// \param stream the current spirv stream
+    /// \param function the owning function (used for source traceback)
     /// \param resource source resource
     /// \param result output result
-    void GetToken(const SpvJob& job, SpvStream& stream, IL::ID resource, IL::ID result);
+    void GetToken(const SpvJob& job, SpvStream& stream, IL::ID function, IL::ID resource, IL::ID result);
 
     /// Copy to a new block
     /// \param remote the new block table
     /// \param out the destination shader export
     void CopyTo(SpvPhysicalBlockTable& remote, SpvUtilShaderPRMT& out);
+
+public:
+    /// Create a PRM control structure for a resource
+    /// \param job source job
+    /// \param stream the current spirv stream
+    /// \param function the owning function (used for source traceback)
+    /// \param resource source resource
+    /// \return PRM control structure
+    IL::ID CreatePRMControl(const SpvJob& job, SpvStream& stream, IL::ID function, IL::ID resource);
+
+    /// Get the PRM control type
+    const Backend::IL::Type *GetPRMControlType() const {
+        return prmControl;
+    }
 
 private:
     struct SpvPRMTOffset {
@@ -75,14 +90,19 @@ private:
     /// Get the PRMT offset for a given resource
     /// \param job source job
     /// \param stream current stream
+    /// \param function the owning function (used for source traceback)
     /// \param resource resource to be tracked
     /// \return allocated identifier
-    SpvPRMTOffset GetResourcePRMTOffset(const SpvJob& job, SpvStream& stream, IL::ID resource);
+    SpvPRMTOffset GetResourcePRMTOffset(const SpvJob& job, SpvStream& stream, IL::ID function, IL::ID resource);
 
 private:
     struct DynamicSpvValueDecoration {
-        /// Source operand
-        SpvValueDecoration source;
+        /// Descriptor set index
+        /// Kept in IL ID's as it may be dynamic or not
+        IL::ID descriptorSet{IL::InvalidID};
+
+        /// Descriptor wise offset, used for PRM offsets
+        IL::ID descriptorOffset{IL::InvalidID};
 
         /// Dynamic offset into source
         IL::ID dynamicOffset{IL::InvalidID};
@@ -93,9 +113,10 @@ private:
 
     /// Find the originating resource decoration
     /// \param job source job
+    /// \param function the owning function (used for source traceback)
     /// \param resource resource to be traced
     /// \return found decoration
-    DynamicSpvValueDecoration GetSourceResourceDecoration(const SpvJob& job, SpvStream& stream, IL::ID resource);
+    DynamicSpvValueDecoration GetSourceResourceDecoration(const SpvJob& job, SpvStream& stream, IL::ID function, IL::ID resource);
 
 private:
     /// Shared allocators
@@ -113,4 +134,5 @@ private:
     /// Type map
     const Backend::IL::Type *buffer32UIPtr{nullptr};
     const Backend::IL::Type *buffer32UI{nullptr};
+    const Backend::IL::Type *prmControl{nullptr};
 };

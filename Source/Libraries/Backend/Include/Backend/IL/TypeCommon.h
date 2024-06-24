@@ -124,4 +124,13 @@ namespace Backend::IL {
                 return true;
         }
     }
+
+    inline const bool IsPointerToResourceType(const Type* type) {
+        auto ptr = type->Cast<PointerType>();
+        if (!ptr) {
+            return false;
+        }
+
+        return IsResourceType(ptr->pointee);
+    }
 }

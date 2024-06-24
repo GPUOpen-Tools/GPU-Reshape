@@ -68,8 +68,31 @@ void SpvPhysicalBlockFunction::Parse() {
             // Ignore control (this will bite you later)
             ctx++;
 
+            // Associated metadata
+            IdentifierMetadata& md = identifierMetadata.at(ctx.GetResult());
+            md.function.optionalControlStructure = IL::InvalidID;
+            
+            // Get the type
+            auto type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx++)->As<Backend::IL::FunctionType>();
+            
+            // Check parameters for control
+            bool requiresControlMetadata = false;
+            for (const Backend::IL::Type* parameterType : type->parameterTypes) {
+                // If the parameter is a resource type, we need to track a bit of extra metadata with it.
+                // This also means that parameterized users need to be recompiled, such as calls
+                if (Backend::IL::IsPointerToResourceType(parameterType)) {
+                    requiresControlMetadata = true;
+                    break;
+                }
+            }
+
+            // If there's any control md, preallocate the id
+            if (requiresControlMetadata) {
+                md.function.optionalControlStructure = program.GetIdentifierMap().AllocID();
+            }
+
             // Set the function type
-            function->SetFunctionType(table.typeConstantVariable.typeMap.GetTypeFromId(ctx++)->As<Backend::IL::FunctionType>());
+            function->SetFunctionType(type);
         }
 
         // Next instruction
@@ -113,6 +136,10 @@ void SpvPhysicalBlockFunction::ParseFunctionHeader(IL::Function *function, SpvPa
                 return;
             }
             case SpvOpFunctionParameter: {
+                // Keep track of the linear index
+                IdentifierMetadata& md = identifierMetadata.at(ctx.GetResult());
+                md.parameter.linearIndex = function->GetParameters().GetCount();
+                
                 function->GetParameters().Add(new (allocators) Backend::IL::Variable {
                     .id = ctx.GetResult(),
                     .addressSpace = Backend::IL::AddressSpace::Function,
@@ -841,8 +868,26 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 instr->target = target;
                 instr->arguments.count = ctx.PendingWords();
 
+                // Do we need to append a control structure?
+                bool requiresControlStructure = false;
+                
                 for (uint32_t i = 0; ctx.HasPendingWords(); i++) {
                     instr->arguments[i] = ctx++;
+
+                    // Check if this parameter requires control data
+                    // Functions may be compiled out of order, so we cannot rely on pre-parsing
+                    if (Backend::IL::IsPointerToResourceType(program.GetTypeMap().GetType(instr->arguments[i]))) {
+                        requiresControlStructure = true;
+                    }
+                }
+
+                // If there's a control structure, make sure to track it
+                if (requiresControlStructure) {
+                    // Mark this block as dirty to recompile it later
+                    basicBlock->MarkAsDirty();
+
+                    // Mark the instruction for a full recompile
+                    instr->source = instr->source.Modify();
                 }
                 
                 basicBlock->Append(instr);
@@ -1195,6 +1240,37 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
     }
 }
 
+void SpvPhysicalBlockFunction::CompileControlStructure(const SpvJob &job, const SpvIdMap &idMap, const IL::Function &fn) {
+    const Backend::IL::FunctionType* type = fn.GetFunctionType();
+    ASSERT(type, "Function without a given type");
+
+    // Get metadata
+    IdentifierMetadata& md = identifierMetadata.at(fn.GetID());
+    if (md.function.optionalControlStructure == IL::InvalidID) {
+        return;
+    }
+
+    // uint32
+    const Backend::IL::IntType *uintType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.signedness = false});
+        
+    // Check parameters for control
+    TrivialStackVector<const Backend::IL::Type*, 16> controlTypes;
+    for (const Backend::IL::Type* parameterType : type->parameterTypes) {
+        if (Backend::IL::IsPointerToResourceType(parameterType)) {
+            // Resource handle, pass PRM control
+            controlTypes.Add(table.shaderPRMT.GetPRMControlType());
+        } else {
+            // Not interesting, just pass a dummy uint
+            controlTypes.Add(uintType);
+        }
+    }
+
+    // Create control structure
+    Backend::IL::StructType structDecl;
+    structDecl.memberTypes.insert(structDecl.memberTypes.end(), controlTypes.begin(), controlTypes.end());
+    md.function.type = program.GetTypeMap().FindTypeOrAdd(structDecl);
+}
+
 bool SpvPhysicalBlockFunction::Compile(const SpvJob& job, SpvIdMap &idMap) {
     // Create data associations
     CreateDataResourceMap(job);
@@ -1202,6 +1278,11 @@ bool SpvPhysicalBlockFunction::Compile(const SpvJob& job, SpvIdMap &idMap) {
     // Create push constant data block
     table.typeConstantVariable.CreatePushConstantBlock(job);
 
+    // Pre-pass, create all control structures as functions may be compiled out of order
+    for (IL::Function* fn : program.GetFunctionList()) {
+        CompileControlStructure(job, idMap, *fn);
+    }
+    
     // Compile all function declarations
     for (IL::Function* fn : program.GetFunctionList()) {
         if (!CompileFunction(job, idMap, *fn, true)) {
@@ -1226,6 +1307,16 @@ bool SpvPhysicalBlockFunction::CompileFunction(const SpvJob& job, SpvIdMap &idMa
     const Backend::IL::FunctionType* type = fn.GetFunctionType();
     ASSERT(type, "Function without a given type");
 
+    // Get metadata
+    IdentifierMetadata& md = identifierMetadata.at(fn.GetID());
+
+    // If there's a control structure, we need to replace the function type
+    if (md.function.optionalControlStructure != IL::InvalidID) {
+        auto typeDecl = *type;
+        typeDecl.parameterTypes.push_back(md.function.type);
+        type = program.GetTypeMap().FindTypeOrAdd(typeDecl);
+    }
+    
     // Emit function open
     SpvInstruction& spvFn = block->stream.Allocate(SpvOpFunction, 5);
     spvFn[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(type->returnType);
@@ -1238,6 +1329,13 @@ bool SpvPhysicalBlockFunction::CompileFunction(const SpvJob& job, SpvIdMap &idMa
         SpvInstruction& spvParam = block->stream.Allocate(SpvOpFunctionParameter, 3);
         spvParam[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(parameter->type);
         spvParam[2] = parameter->id;
+    }
+
+    // Create control parameter declaration
+    if (md.function.optionalControlStructure != IL::InvalidID) {
+        SpvInstruction& spvParam = block->stream.Allocate(SpvOpFunctionParameter, 3);
+        spvParam[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(md.function.type);
+        spvParam[2] = md.function.optionalControlStructure;
     }
 
     // Compile all basic blocks if the definition is being emitted
@@ -1261,6 +1359,57 @@ bool SpvPhysicalBlockFunction::CompileFunction(const SpvJob& job, SpvIdMap &idMa
 
     // OK
     return true;
+}
+
+IL::ID SpvPhysicalBlockFunction::CreateControlStructure(const SpvJob& job, SpvStream& stream, const IL::CallInstruction *call, IL::ID function) {
+    // Get metadata
+    const IdentifierMetadata& md = identifierMetadata.at(call->target);
+    
+    // Allocate identifiers
+    IL::ID id = table.scan.header.bound++;
+    IL::ID zero = table.scan.header.bound++;
+
+    // Get target function
+    IL::Function *type = program.GetFunctionList().GetFunction(call->target);
+
+    // uint32
+    uint32_t uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{}));
+
+    // Constant dummy zero
+    SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+    spvZero[1] = uintTypeId;
+    spvZero[2] = zero;
+    spvZero[3] = 0;
+
+    // All elements
+    TrivialStackVector<IL::ID, 16> elements;
+
+    // Setup control array arguments
+    for (uint32_t i = 0; i < type->GetFunctionType()->parameterTypes.size(); i++) {
+        const Backend::IL::Type* parameterType = type->GetFunctionType()->parameterTypes[i];
+        
+        // No control data for non-resources
+        if (!Backend::IL::IsPointerToResourceType(parameterType)) {
+            elements.Add(zero);
+            continue;
+        }
+
+        // Create PRM control for the resource
+        elements.Add(table.shaderPRMT.CreatePRMControl(job, stream, function, call->arguments[i]));
+    }
+    
+    // Create a composite representing all these elements
+    SpvInstruction& spvConstruct = stream.Allocate(SpvOpCompositeConstruct, 3 + static_cast<uint32_t>(elements.Size()));
+    spvConstruct[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(md.function.type);
+    spvConstruct[2] = id;
+
+    // Fill elements
+    for (uint32_t i = 0; i < elements.Size(); i++) {
+        spvConstruct[3 + i] = elements[i];
+    }
+
+    // OK
+    return id;
 }
 
 bool SpvPhysicalBlockFunction::IsTriviallyCopyableSpecial(IL::BasicBlock *bb, const IL::BasicBlock::Iterator& it) {
@@ -2072,7 +2221,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             }
             case IL::OpCode::ResourceToken: {
                 auto *token = instr.As<IL::ResourceTokenInstruction>();
-                table.shaderPRMT.GetToken(job, stream, idMap.Get(token->resource), token->result);
+                table.shaderPRMT.GetToken(job, stream, fn.GetID(), idMap.Get(token->resource), token->result);
                 break;
             }
             case IL::OpCode::Alloca: {
@@ -2126,6 +2275,35 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                     spv[1] = idMap.Get(_return->value);
                 } else {
                     stream.TemplateOrAllocate(SpvOpReturn, 1, _return->source);
+                }
+                break;
+            }
+            case IL::OpCode::Call: {
+                auto *call = instr.As<IL::CallInstruction>();
+
+                // Get metadata
+                const IdentifierMetadata& md = identifierMetadata.at(call->target);
+
+                // Determine number of arguments
+                uint32_t argumentCount = call->arguments.count;
+
+                // Create the local control structure if needed
+                IL::ID controlId = IL::InvalidID;
+                if (md.function.optionalControlStructure != IL::InvalidID) {
+                    argumentCount++;
+                    controlId = CreateControlStructure(job, stream, call, fn.GetID());
+                }
+
+                // Create instruction
+                SpvInstruction& spv = stream.Allocate(SpvOpFunctionCall, 4 + argumentCount);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = idMap.Get(call->result);
+                spv[3] = idMap.Get(call->target);
+                std::memcpy(&spv.Word(4), &call->arguments[0], sizeof(SpvId) * call->arguments.count);
+
+                // Control is always last
+                if (controlId != IL::InvalidID) {
+                    spv[4 + call->arguments.count] = controlId;
                 }
                 break;
             }
