@@ -52,6 +52,7 @@
 // Common
 #include <Common/Sink.h>
 #include <Common/Containers/TrivialStackVector.h>
+#include <Common/Containers/TrivialStackAllocation.h>
 
 // Std
 #ifndef NDEBUG
@@ -127,6 +128,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
     // Reserve source traceback
     sourceTraceback.resize(block->records.size());
+
+    // Shared instruction container
+    TrivialStackAllocation<256> instructionStack;
 
     // Visit function records
     for (uint32_t recordIdx = 0; recordIdx < static_cast<uint32_t>(block->records.size()); recordIdx++) {
@@ -505,7 +509,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 GRS_SINK(pointee, inBounds);
 
                 // Allocate instruction
-                auto *instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(addressCount));
+                auto *instr = instructionStack.Alloc<IL::AddressChainInstruction>(IL::AddressChainInstruction::GetSize(addressCount));
                 instr->opCode = IL::OpCode::AddressChain;
                 instr->result = result;
                 instr->source = IL::Source::Code(recordIdx);
@@ -843,7 +847,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 const uint32_t caseCount = remaining / 2;
 
                 // Create instruction
-                auto *instr = ALLOCA_SIZE(IL::SwitchInstruction, IL::SwitchInstruction::GetSize(caseCount));
+                auto *instr = instructionStack.Alloc<IL::SwitchInstruction>(IL::SwitchInstruction::GetSize(caseCount));
                 instr->opCode = IL::OpCode::Switch;
                 instr->result = IL::InvalidID;
                 instr->source = IL::Source::Code(recordIdx);
@@ -902,7 +906,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 const uint32_t valueCount = remaining / 2;
 
                 // Create instruction
-                auto *instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(valueCount));
+                auto *instr = instructionStack.Alloc<IL::PhiInstruction>(IL::PhiInstruction::GetSize(valueCount));
                 instr->opCode = IL::OpCode::Phi;
                 instr->result = result;
                 instr->source = IL::Source::Code(recordIdx);

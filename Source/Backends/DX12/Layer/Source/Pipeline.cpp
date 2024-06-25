@@ -403,7 +403,7 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                 auto object = StateSubObjectWriter::Read<D3D12_GLOBAL_ROOT_SIGNATURE>(subObject);
 
                 writer.Add(subObject.Type, D3D12_GLOBAL_ROOT_SIGNATURE {
-                    .pGlobalRootSignature = GetState(object.pGlobalRootSignature)->nativeObject
+                    .pGlobalRootSignature = GetState(object.pGlobalRootSignature)->object
                 });
                 break;
             }

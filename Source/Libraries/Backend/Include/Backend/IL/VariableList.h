@@ -59,6 +59,7 @@ namespace IL {
         void CopyTo(VariableList& out) const {
             out.revision = revision;
             out.variables = variables;
+            out.variableMap = variableMap;
         }
 
         /// Get the variable from an identifier
@@ -71,6 +72,11 @@ namespace IL {
             }
 
             return it->second;
+        }
+
+        /// Get the number of variables
+        uint32_t GetCount() const {
+            return static_cast<uint32_t>(variables.size());
         }
 
         /// Iterator accessors

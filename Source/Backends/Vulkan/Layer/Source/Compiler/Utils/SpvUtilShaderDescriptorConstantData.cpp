@@ -27,6 +27,7 @@
 #include <Backends/Vulkan/Compiler/Utils/SpvUtilShaderDescriptorConstantData.h>
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvJob.h>
+#include <Backends/Vulkan/Resource/DescriptorData.h>
 
 SpvUtilShaderDescriptorConstantData::SpvUtilShaderDescriptorConstantData(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
     allocators(allocators),
@@ -117,7 +118,7 @@ void SpvUtilShaderDescriptorConstantData::CompileRecords(const SpvJob &job) {
     table.entryPoint.AddInterface(SpvStorageClassUniform, descriptorConstantId);
 }
 
-IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorData(SpvStream& stream, uint32_t index) {
+IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorData(SpvStream& stream, IL::ID offset, uint32_t index) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Id allocations
@@ -139,7 +140,6 @@ IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorData(SpvStream& stream,
     uint32_t zeroUintId = table.scan.header.bound++;
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
     uint32_t fourUintId = table.scan.header.bound++;
-    uint32_t indexId = table.scan.header.bound++;
     uint32_t indexWithOffsetId = table.scan.header.bound++;
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
     uint32_t rowUintId = table.scan.header.bound++;
@@ -155,6 +155,41 @@ IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorData(SpvStream& stream,
     spvZero[2] = zeroUintId;
     spvZero[3] = 0;
 
+    // Offset * Stride + Index
+    IL::ID elementIndex = table.scan.header.bound++;
+    {
+        // Allocate identifiers
+        uint32_t mulId    = table.scan.header.bound++;
+        uint32_t strideId = table.scan.header.bound++;
+        uint32_t indexId  = table.scan.header.bound++;
+
+        // Stride
+        SpvInstruction &spvStride = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        spvStride[1] = uintTypeId;
+        spvStride[2] = strideId;
+        spvStride[3] = kDescriptorDataDWordCount;
+
+        // Index
+        SpvInstruction &spvIndex = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        spvIndex[1] = uintTypeId;
+        spvIndex[2] = indexId;
+        spvIndex[3] = index;
+
+        // Offset * Stride
+        SpvInstruction& mul = stream.Allocate(SpvOpIMul, 5);
+        mul[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+        mul[2] = mulId;
+        mul[3] = offset;
+        mul[4] = strideId;
+
+        // Mul + Index
+        SpvInstruction& add = stream.Allocate(SpvOpIAdd, 5);
+        add[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+        add[2] = elementIndex;
+        add[3] = mulId;
+        add[4] = indexId;
+    }
+    
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
     // 4
     SpvInstruction &spvFour = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
@@ -162,17 +197,11 @@ IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorData(SpvStream& stream,
     spvFour[2] = fourUintId;
     spvFour[3] = 4;
 
-    // Index
-    SpvInstruction &spvIndex = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvIndex[1] = uintTypeId;
-    spvIndex[2] = indexId;
-    spvIndex[3] = index;
-
     // Offset index (PCID + DescriptorSetOffset)
     SpvInstruction& spvOffsetIndex = stream.Allocate(SpvOpIAdd, 5);
     spvOffsetIndex[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
     spvOffsetIndex[2] = indexWithOffsetId;
-    spvOffsetIndex[3] = indexId;
+    spvOffsetIndex[3] = elementIndex;
     spvOffsetIndex[4] = pcId;
 
     // Row
