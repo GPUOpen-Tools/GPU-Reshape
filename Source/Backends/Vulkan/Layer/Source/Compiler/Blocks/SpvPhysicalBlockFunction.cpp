@@ -38,6 +38,7 @@
 // Common
 #include <Common/Alloca.h>
 #include <Common/Containers/TrivialStackVector.h>
+#include <Common/Containers/TrivialStackAllocation.h>
 #include <Common/Sink.h>
 
 void SpvPhysicalBlockFunction::Parse() {
@@ -163,6 +164,9 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
     // Current source association
     SpvSourceAssociation sourceAssociation{};
+
+    // Shared instruction container
+    TrivialStackAllocation<256> instructionStack;
 
     // Parse all instructions
     while (ctx && ctx->GetOp() != SpvOpFunctionEnd) {
@@ -587,7 +591,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 ASSERT((ctx->GetWordCount() - 3) % 2 == 0, "Unexpected case word count");
 
                 // Create instruction
-                auto* instr = ALLOCA_SIZE(IL::SwitchInstruction, IL::SwitchInstruction::GetSize(caseCount));
+                auto* instr = instructionStack.Alloc<IL::SwitchInstruction>(IL::SwitchInstruction::GetSize(caseCount));
                 instr->opCode = IL::OpCode::Switch;
                 instr->result = IL::InvalidID;
                 instr->source = source.Modify();
@@ -617,7 +621,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 ASSERT((ctx->GetWordCount() - 3) % 2 == 0, "Unexpected value word count");
 
                 // Create instruction
-                auto* instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(valueCount));
+                auto* instr = instructionStack.Alloc<IL::PhiInstruction>(IL::PhiInstruction::GetSize(valueCount));
                 instr->opCode = IL::OpCode::Phi;
                 instr->result = ctx.GetResult();
                 instr->source = source;
@@ -861,7 +865,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpFunctionCall: {
                 IL::ID target = ctx++;
                 
-                auto *instr = ALLOCA_SIZE(IL::CallInstruction, IL::CallInstruction::GetSize(ctx.PendingWords()));
+                auto *instr = instructionStack.Alloc<IL::CallInstruction>(IL::CallInstruction::GetSize(ctx.PendingWords()));
                 instr->opCode = IL::OpCode::Call;
                 instr->result = ctx.GetResult();
                 instr->source = source;
@@ -1116,7 +1120,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 const uint32_t chainCount = ctx.PendingWords() + 1u;
 
                 // Allocate instruction
-                auto *instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(chainCount));
+                auto *instr = instructionStack.Alloc<IL::AddressChainInstruction>(IL::AddressChainInstruction::GetSize(chainCount));
                 instr->opCode = IL::OpCode::AddressChain;
                 instr->result = ctx.GetResult();
                 instr->source = source;
@@ -1491,6 +1495,9 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
     SpvStream& stream = block->stream;
 
     Backend::IL::TypeMap& ilTypeMap = program.GetTypeMap();
+    
+    // Shared instruction container
+    TrivialStackAllocation<256> instructionStack;
 
     // Emit label
     SpvInstruction& label = stream.Allocate(SpvOpLabel, 2);
@@ -2211,7 +2218,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *_export = instr.As<IL::ExportInstruction>();
 
                 // Map all values
-                auto values = ALLOCA_ARRAY(IL::ID, _export->values.count);
+                auto values = instructionStack.AllocArray<IL::ID>(_export->values.count);
                 for (uint32_t i = 0; i < _export->values.count; i++) {
                     values[i] = idMap.Get(_export->values[i]);
                 }
