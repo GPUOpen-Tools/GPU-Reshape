@@ -71,7 +71,7 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
 
     // Control structure for a resource mapping
     prmControl = ilTypeMap.FindTypeOrAdd(Backend::IL::ArrayType {
-        .elementType = intType,
+        .elementType = uintType,
         .count = 3
     });
 
