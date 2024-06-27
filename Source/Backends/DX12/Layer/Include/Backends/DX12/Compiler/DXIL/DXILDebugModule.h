@@ -217,8 +217,17 @@ private:
         };
     };
 
+    /// Value validation kind
+    enum class ThinValueKind {
+        None,
+        Function
+    };
+
     /// Lightweight value definition
     struct ThinValue {
+        /// Kind of this value
+        ThinValueKind kind{ThinValueKind::None};
+        
         /// Optional type
         uint32_t thinType{~0u};
 

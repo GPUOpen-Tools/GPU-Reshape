@@ -241,6 +241,7 @@ void DXILDebugModule::ParseTypes(LLVMBlock *block) {
 
 void DXILDebugModule::ParseModuleFunction(const LLVMRecord& record) {
     ThinValue& value = thinValues.emplace_back();
+    value.kind = ThinValueKind::Function;
 
     // Set type
     value.thinType = record.Op32(0);
@@ -303,14 +304,16 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
             case LLVMFunctionRecord::InstCall:
             case LLVMFunctionRecord::InstCall2: {
                 const ThinValue& called = thinValues.at(anchor - record.Op(3));
+                ASSERT(called.kind == ThinValueKind::Function, "Mismatched thin type");
 
+                // Ignore non-semantic instructions from cross-referencing
+                if (!called.bIsNonSemantic) {
+                    instructionMetadata.emplace_back();
+                }
+                
                 // Allocate return value if need be
                 if (!thinTypes[called.thinType].function.isVoidReturn) {
                     thinValues.emplace_back();
-                }
-
-                if (!called.bIsNonSemantic) {
-                    instructionMetadata.emplace_back();
                 }
                 break;
             }
