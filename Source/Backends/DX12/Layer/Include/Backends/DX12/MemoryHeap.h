@@ -33,5 +33,6 @@
 HRESULT WINAPI HookID3D12DeviceCreateHeap(ID3D12Device*, const D3D12_HEAP_DESC *pDesc, REFIID riid, void **ppvHeap);
 HRESULT WINAPI HookID3D12DeviceCreateHeap1(ID3D12Device*, const D3D12_HEAP_DESC *pDesc, ID3D12ProtectedResourceSession *pProtectedSession, REFIID riid, void **ppvHeap);
 HRESULT WINAPI HookID3D12DeviceOpenExistingHeapFromAddress(ID3D12Device3* _this, const void* pAddress, const IID& riid, void** ppvHeap);
+HRESULT WINAPI HookID3D12DeviceOpenExistingHeapFromAddress1(ID3D12Device3* device, const void* pAddress, SIZE_T size, const IID& riid, void** ppvHeap);
 HRESULT WINAPI HookID3D12DeviceOpenExistingHeapFromFileMapping(ID3D12Device3* _this, HANDLE hFileMapping, const IID& riid, void** ppvHeap);
 HRESULT WINAPI HookID3D12HeapGetDevice(ID3D12Heap*, REFIID riid, void **ppDevice);

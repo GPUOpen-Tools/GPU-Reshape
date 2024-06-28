@@ -149,6 +149,7 @@
         "CheckFeatureSupport",
         "OpenSharedHandle",
         "OpenExistingHeapFromAddress",
+        "OpenExistingHeapFromAddress1",
         "OpenExistingHeapFromFileMapping"
       ]
     },
