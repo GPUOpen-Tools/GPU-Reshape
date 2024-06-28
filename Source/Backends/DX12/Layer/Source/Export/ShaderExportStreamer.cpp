@@ -282,7 +282,13 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
         ShaderExportSegmentDescriptorAllocation allocation;
         allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count());
         allocation.allocator = sharedGPUHeapAllocator;
-        state->segmentDescriptors.push_back(allocation);
+
+        // Keep track of it, no actual (user) heap ownership so leave that null
+        state->segmentDescriptors.push_back(ShaderExportSegmentDescriptorEntry {
+            .resourceHeap = nullptr,
+            .samplerHeap = nullptr,
+            .segment = allocation
+        });
 
         // Assign constant data buffer
         if (freeConstantShaderDataBuffers.empty()) {
@@ -421,11 +427,11 @@ void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamSta
     commandList->ResourceBarrier(1u, &barrier);
 }
 
-bool ShaderExportStreamer::LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* heap, ShaderExportSegmentDescriptorAllocation* out) {
-    // Try to find a matching heap entry
-    // The given segment may already have been allocated
-    for (const ShaderExportReferencedHeapEntry& entry : state->referencedHeaps) {
-        if (entry.heap == heap) {
+bool ShaderExportStreamer::LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, ShaderExportSegmentDescriptorAllocation* out) {
+    // Try to find a matching heap entry, the given segment may already have been allocated
+    // Note: Keep it linear until it's a problem
+    for (const ShaderExportSegmentDescriptorEntry& entry : state->segmentDescriptors) {
+        if (entry.resourceHeap == resourceHeap && entry.samplerHeap == samplerHeap) {
             *out = entry.segment;
             return true;
         }
@@ -465,13 +471,11 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     // Invalidate the relevant persistent parameters
     InvalidateHeapMappingsFor(state, heap->type);
     
+    // Add as referenced
+    state->referencedHeaps.push_back(heap);
+
     // No need to recreate if not resource heap
     if (!state->resourceHeap) {
-        // Not of interest, but keep track of it
-        state->referencedHeaps.push_back(ShaderExportReferencedHeapEntry {
-            .heap = heap
-        });
-
         // OK
         return;
     }
@@ -483,21 +487,20 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     ShaderExportSegmentDescriptorAllocation allocation;
     
     // Try to find existing allocation first
-    if (!LinearFindHeapSegment(state, state->resourceHeap, &allocation)) {
+    if (!LinearFindHeapSegment(state, state->resourceHeap, state->samplerHeap, &allocation)) {
         // Not found, allocate initial segment from shared allocator
         allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
         allocation.allocator = state->resourceHeap->allocator;
-        state->segmentDescriptors.push_back(allocation);
 
-        // Map immutable to current heap
-        MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
-
-        // Add as referenced heap
-        // Used for later searches
-        state->referencedHeaps.push_back(ShaderExportReferencedHeapEntry {
-            .heap = state->resourceHeap,
+        // Keep track of the allocation, used for later searches
+        state->segmentDescriptors.push_back(ShaderExportSegmentDescriptorEntry {
+            .resourceHeap = state->resourceHeap,
+            .samplerHeap = state->samplerHeap,
             .segment = allocation
         });
+        
+        // Map immutable to current heap
+        MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
     }
 
     // Set current for successive binds
@@ -731,8 +734,8 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     }
 
     // Move ownership to the segment
-    for (const ShaderExportSegmentDescriptorAllocation& segmentDescriptor : state->segmentDescriptors) {
-        segmentDescriptor.allocator->Free(segmentDescriptor.info);
+    for (const ShaderExportSegmentDescriptorEntry& segmentDescriptor : state->segmentDescriptors) {
+        segmentDescriptor.segment.allocator->Free(segmentDescriptor.segment.info);
     }
 
     // Cleanup
@@ -820,12 +823,12 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
 
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {
     // Map the command state to shared segment
-    for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
+    for (const ShaderExportSegmentDescriptorEntry& allocation : state->segmentDescriptors) {
         // Update the segment counters
         device->object->CreateUnorderedAccessView(
             segment->allocation->counter.allocation.device.resource, nullptr,
             &segment->allocation->counter.view,
-            descriptorLayout.GetExportCounter(allocation.info.cpuHandle)
+            descriptorLayout.GetExportCounter(allocation.segment.info.cpuHandle)
         );
 
         // Update the segment streams
@@ -833,7 +836,7 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
             device->object->CreateUnorderedAccessView(
                 segment->allocation->streams[i].allocation.device.resource, nullptr,
                 &segment->allocation->streams[i].view,
-                descriptorLayout.GetExportStream(allocation.info.cpuHandle, static_cast<uint32_t>(i))
+                descriptorLayout.GetExportStream(allocation.segment.info.cpuHandle, static_cast<uint32_t>(i))
             );
         }
     }
@@ -842,10 +845,8 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
     ASSERT(state->commandContextHandle != kInvalidCommandContextHandle, "Unmapped command context handle");
     segment->commandContextHandles.push_back(state->commandContextHandle);
 
-    // Move ownership to the segment (ignore the heap segment, lifetime tied elsewhere)
-    for (const ShaderExportReferencedHeapEntry& referencedHeap : state->referencedHeaps) {
-        segment->referencedHeaps.push_back(referencedHeap.heap);
-    }
+    // Move ownership to the segment
+    segment->referencedHeaps.insert(segment->referencedHeaps.end(), state->referencedHeaps.begin(), state->referencedHeaps.end());
 
     // Empty out
     state->referencedHeaps.clear();

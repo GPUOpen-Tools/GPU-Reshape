@@ -288,10 +288,11 @@ private:
 
     /// Perform a linear search for a given heap segment
     /// \param state the state to search in
-    /// \param heap heap to search for
+    /// \param resourceHeap the resource heap to search for
+    /// \param samplerHeap the sampler heap to search for, matched in pair with the resource heap
     /// \param out shared segment allocation
     /// \return true if found
-    bool LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* heap, ShaderExportSegmentDescriptorAllocation* out);
+    bool LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, ShaderExportSegmentDescriptorAllocation* out);
     
     /// Get the expected bind state of a pipeline
     ShaderExportStreamBindState& GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline);

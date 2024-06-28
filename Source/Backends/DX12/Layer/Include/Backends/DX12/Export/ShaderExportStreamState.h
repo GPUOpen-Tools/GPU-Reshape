@@ -165,12 +165,12 @@ struct ShaderExportRenderPassState {
     bool insideRenderPass{false};
 };
 
-struct ShaderExportReferencedHeapEntry {
-    /// The heap that was referenced
-    DescriptorHeapState* heap{nullptr};
+struct ShaderExportSegmentDescriptorEntry {
+    /// The heaps that was referenced
+    DescriptorHeapState* resourceHeap{nullptr};
+    DescriptorHeapState* samplerHeap{nullptr};
 
-    /// The previously allocated segment
-    /// Ownership is tied to the segmentDescriptors, not here
+    /// The allocated segment
     ShaderExportSegmentDescriptorAllocation segment{};
 };
 
@@ -209,10 +209,10 @@ struct ShaderExportStreamState {
     bool isInstrumented{false};
 
     /// All segment descriptors, lifetime bound to deferred segment
-    Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
+    Vector<ShaderExportSegmentDescriptorEntry> segmentDescriptors;
 
     /// All references heaps
-    Vector<ShaderExportReferencedHeapEntry> referencedHeaps;
+    Vector<DescriptorHeapState*> referencedHeaps;
 
     /// Shared constants buffer
     ConstantShaderDataBuffer constantShaderDataBuffer;
