@@ -421,6 +421,20 @@ void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamSta
     commandList->ResourceBarrier(1u, &barrier);
 }
 
+bool ShaderExportStreamer::LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* heap, ShaderExportSegmentDescriptorAllocation* out) {
+    // Try to find a matching heap entry
+    // The given segment may already have been allocated
+    for (const ShaderExportReferencedHeapEntry& entry : state->referencedHeaps) {
+        if (entry.heap == heap) {
+            *out = entry.segment;
+            return true;
+        }
+    }
+
+    // None found
+    return false;
+}
+
 void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, ID3D12GraphicsCommandList* commandList) {
     // Set heap
     // TODO: Just host this in an array, much, much cleaner...
@@ -451,25 +465,40 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     // Invalidate the relevant persistent parameters
     InvalidateHeapMappingsFor(state, heap->type);
     
-    // Add as referenced
-    state->referencedHeaps.push_back(heap);
-
     // No need to recreate if not resource heap
     if (!state->resourceHeap) {
+        // Not of interest, but keep track of it
+        state->referencedHeaps.push_back(ShaderExportReferencedHeapEntry {
+            .heap = heap
+        });
+
+        // OK
         return;
     }
 
     // Data race begone!
     std::lock_guard guard(mutex);
 
-    // Allocate initial segment from shared allocator
+    // Final segment allocation
     ShaderExportSegmentDescriptorAllocation allocation;
-    allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
-    allocation.allocator = state->resourceHeap->allocator;
-    state->segmentDescriptors.push_back(allocation);
+    
+    // Try to find existing allocation first
+    if (!LinearFindHeapSegment(state, state->resourceHeap, &allocation)) {
+        // Not found, allocate initial segment from shared allocator
+        allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
+        allocation.allocator = state->resourceHeap->allocator;
+        state->segmentDescriptors.push_back(allocation);
 
-    // Map immutable to current heap
-    MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
+        // Map immutable to current heap
+        MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
+
+        // Add as referenced heap
+        // Used for later searches
+        state->referencedHeaps.push_back(ShaderExportReferencedHeapEntry {
+            .heap = state->resourceHeap,
+            .segment = allocation
+        });
+    }
 
     // Set current for successive binds
     state->currentSegment = allocation.info;
@@ -813,8 +842,10 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
     ASSERT(state->commandContextHandle != kInvalidCommandContextHandle, "Unmapped command context handle");
     segment->commandContextHandles.push_back(state->commandContextHandle);
 
-    // Move ownership to the segment
-    segment->referencedHeaps.insert(segment->referencedHeaps.end(), state->referencedHeaps.begin(), state->referencedHeaps.end());
+    // Move ownership to the segment (ignore the heap segment, lifetime tied elsewhere)
+    for (const ShaderExportReferencedHeapEntry& referencedHeap : state->referencedHeaps) {
+        segment->referencedHeaps.push_back(referencedHeap.heap);
+    }
 
     // Empty out
     state->referencedHeaps.clear();

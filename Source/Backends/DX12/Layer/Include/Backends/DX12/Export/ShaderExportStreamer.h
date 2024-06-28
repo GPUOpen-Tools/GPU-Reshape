@@ -286,6 +286,13 @@ private:
     /// Free a descriptor data segment
     void FreeDescriptorDataSegment(const DescriptorDataSegment& dataSegment);
 
+    /// Perform a linear search for a given heap segment
+    /// \param state the state to search in
+    /// \param heap heap to search for
+    /// \param out shared segment allocation
+    /// \return true if found
+    bool LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* heap, ShaderExportSegmentDescriptorAllocation* out);
+    
     /// Get the expected bind state of a pipeline
     ShaderExportStreamBindState& GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline);
 
