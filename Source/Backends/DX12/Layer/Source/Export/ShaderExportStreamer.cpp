@@ -285,7 +285,13 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
         ShaderExportSegmentDescriptorAllocation allocation;
         allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count());
         allocation.allocator = sharedGPUHeapAllocator;
-        state->segmentDescriptors.push_back(allocation);
+
+        // Keep track of it, no actual (user) heap ownership so leave that null
+        state->segmentDescriptors.push_back(ShaderExportSegmentDescriptorEntry {
+            .resourceHeap = nullptr,
+            .samplerHeap = nullptr,
+            .segment = allocation
+        });
 
         // Assign constant data buffer
         if (freeConstantShaderDataBuffers.empty()) {
@@ -427,6 +433,20 @@ void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamSta
     commandList->ResourceBarrier(1u, &barrier);
 }
 
+bool ShaderExportStreamer::LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, ShaderExportSegmentDescriptorAllocation* out) {
+    // Try to find a matching heap entry, the given segment may already have been allocated
+    // Note: Keep it linear until it's a problem
+    for (const ShaderExportSegmentDescriptorEntry& entry : state->segmentDescriptors) {
+        if (entry.resourceHeap == resourceHeap && entry.samplerHeap == samplerHeap) {
+            *out = entry.segment;
+            return true;
+        }
+    }
+
+    // None found
+    return false;
+}
+
 void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, ID3D12GraphicsCommandList* commandList) {
     // Set heap
     // TODO: Just host this in an array, much, much cleaner...
@@ -462,20 +482,32 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
 
     // No need to recreate if not resource heap
     if (!state->resourceHeap) {
+        // OK
         return;
     }
 
     // Data race begone!
     std::lock_guard guard(mutex);
 
-    // Allocate initial segment from shared allocator
+    // Final segment allocation
     ShaderExportSegmentDescriptorAllocation allocation;
-    allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
-    allocation.allocator = state->resourceHeap->allocator;
-    state->segmentDescriptors.push_back(allocation);
+    
+    // Try to find existing allocation first
+    if (!LinearFindHeapSegment(state, state->resourceHeap, state->samplerHeap, &allocation)) {
+        // Not found, allocate initial segment from shared allocator
+        allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
+        allocation.allocator = state->resourceHeap->allocator;
 
-    // Map immutable to current heap
-    MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
+        // Keep track of the allocation, used for later searches
+        state->segmentDescriptors.push_back(ShaderExportSegmentDescriptorEntry {
+            .resourceHeap = state->resourceHeap,
+            .samplerHeap = state->samplerHeap,
+            .segment = allocation
+        });
+        
+        // Map immutable to current heap
+        MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
+    }
 
     // Set current for successive binds
     state->currentSegment = allocation.info;
@@ -705,8 +737,8 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
         freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
 
         // Move ownership to the segment
-        for (const ShaderExportSegmentDescriptorAllocation& segmentDescriptor : state->segmentDescriptors) {
-            segmentDescriptor.allocator->Free(segmentDescriptor.info);
+        for (const ShaderExportSegmentDescriptorEntry& segmentDescriptor : state->segmentDescriptors) {
+            segmentDescriptor.segment.allocator->Free(segmentDescriptor.segment.info);
         }
     }
 
@@ -802,12 +834,12 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ID3D12Grap
     // Uses descriptors?
     if (state->hasDescriptorState) {
         // Map the command state to shared segment
-        for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
+        for (const ShaderExportSegmentDescriptorEntry& allocation : state->segmentDescriptors) {
             // Update the segment counters
             device->object->CreateUnorderedAccessView(
                 segment->allocation->counter.allocation.device.resource, nullptr,
                 &segment->allocation->counter.view,
-                descriptorLayout.GetExportCounter(allocation.info.cpuHandle)
+                descriptorLayout.GetExportCounter(allocation.segment.info.cpuHandle)
             );
 
             // Update the segment streams
@@ -815,7 +847,7 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ID3D12Grap
                 device->object->CreateUnorderedAccessView(
                     segment->allocation->streams[i].allocation.device.resource, nullptr,
                     &segment->allocation->streams[i].view,
-                    descriptorLayout.GetExportStream(allocation.info.cpuHandle, static_cast<uint32_t>(i))
+                    descriptorLayout.GetExportStream(allocation.segment.info.cpuHandle, static_cast<uint32_t>(i))
                 );
             }
         }
