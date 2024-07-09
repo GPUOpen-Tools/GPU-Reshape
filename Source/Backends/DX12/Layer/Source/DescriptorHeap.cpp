@@ -35,6 +35,9 @@
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
 
+// Common
+#include <Common/Format.h>
+
 HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const D3D12_DESCRIPTOR_HEAP_DESC *desc, REFIID riid, void **pHeap) {
     auto table = GetTable(device);
 
@@ -57,13 +60,16 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     // Heap of interest?
     if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
         // Get desired bound
-        uint32_t bound = ShaderExportFixedTwoSidedDescriptorAllocator::GetDescriptorBound(table.state->exportHost.GetUnsafe());
+        uint32_t requestedBound = ShaderExportFixedTwoSidedDescriptorAllocator::GetDescriptorBound(table.state->exportHost.GetUnsafe());
+
+        // Current bound
+        uint32_t instrumentationBound = requestedBound;
 
         // There is little to no insight for the internal driver limits, so, attempt various sizes
         for (uint32_t divisor = 0; divisor < 4; divisor++) {
             // Copy description
             D3D12_DESCRIPTOR_HEAP_DESC expandedHeap = *desc;
-            expandedHeap.NumDescriptors += bound;
+            expandedHeap.NumDescriptors += instrumentationBound;
 
             // Pass down callchain
             HRESULT hr = table.next->CreateDescriptorHeap(&expandedHeap, __uuidof(ID3D12DescriptorHeap), reinterpret_cast<void**>(&heap));
@@ -72,20 +78,40 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
             }
 
             // Attempt next count
-            bound /= 2;
+            instrumentationBound /= 2;
 
             // Invalidate
             heap = nullptr;
         }
 
-        // Succeeded?
-        if (heap) {
-            // Set count
-            state->physicalDescriptorCount = desc->NumDescriptors + bound;
+        // If this failed, we've reached internal driver limits
+        // Use a fallback path that dirty-reserves the last descriptors
+        if (!heap) {
+            // Copy description and allocate the max number of guaranteed descriptors
+            D3D12_DESCRIPTOR_HEAP_DESC expandedHeap = *desc;
+            expandedHeap.NumDescriptors = 1'000'000;
 
-            // Create unique allocator
-            state->allocator = table.state->exportStreamer->AllocateTwoSidedAllocator(heap, desc->NumDescriptors, bound);
+            // Pass down callchain
+            HRESULT hr = table.next->CreateDescriptorHeap(&expandedHeap, __uuidof(ID3D12DescriptorHeap), reinterpret_cast<void**>(&heap));
+            if (FAILED(hr)) {
+                return hr;
+            }
+
+            // Request a "small" range
+            // While this is not ideal, it does reduce the chance of collisions, assuming
+            // applications allocate from front to back.
+            instrumentationBound = requestedBound / 4;
+
+            // Limit the user (virtual) range by the full bound
+            state->virtualDescriptorCount = expandedHeap.NumDescriptors - instrumentationBound;
+            state->isHighReserved = true;
         }
+
+        // Set count
+        state->physicalDescriptorCount = state->virtualDescriptorCount + instrumentationBound;
+
+        // Create unique allocator
+        state->allocator = table.state->exportStreamer->AllocateTwoSidedAllocator(heap, state->virtualDescriptorCount, instrumentationBound);
     }
 
     // If exhausted, fall back to user requirements
@@ -103,6 +129,9 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
         state->gpuDescriptorBase = heap->GetGPUDescriptorHandleForHeapStart();
     }
+
+    // Final object
+    state->object = heap;
 
     // Set base
     state->cpuDescriptorBase = heap->GetCPUDescriptorHandleForHeapStart();
@@ -283,6 +312,38 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_DSV_DIMENSION dimensi
     }
 }
 
+static void ValidateHighReserved(DeviceState* state, const DescriptorHeapState* heap, uint32_t offset) {
+    // Ensure that either the heap range is fully valid, or the descriptor is within bounds
+    if (!heap->isHighReserved || offset < heap->virtualDescriptorCount) {
+         return;   
+    }
+
+    // The perfect bound
+    uint32_t idealBound = ShaderExportFixedTwoSidedDescriptorAllocator::GetDescriptorBound(state->exportHost.GetUnsafe());
+
+    // Assume a TIER1 limit
+    uint32_t driverLimit = 1'000'000;
+
+    // Query device options 19, if possible
+    if (D3D12_FEATURE_DATA_D3D12_OPTIONS19 options; SUCCEEDED(state->object->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS19, &options, sizeof(options)))) {
+        driverLimit = options.MaxViewDescriptorHeapSize;
+    }
+
+    // Display friendly message
+    MessageBoxA(nullptr, Format(
+        "GPU Reshape has exhausted the user descriptor heap {}, please decrease the descriptor count (max {}, ideally {})\n\n"
+        "Your driver reports a limit of {} view descriptors. On such driver constraints, GPU Reshape reserves the "
+        "high descriptor range of user heaps, as there is no other mechanism to inject descriptors.",
+        static_cast<const void*>(heap->object),
+        driverLimit - idealBound / 4,
+        driverLimit - idealBound,
+        driverLimit
+    ).c_str(), "GPU Reshape - Descriptor Heap Exhaustion", 0x0);
+
+    // There is no defined behaviour at this point, abort
+    ExitProcess(1u);
+}
+
 void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
@@ -294,6 +355,9 @@ void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12
 
         // Table wise offset
         const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
+
+        // Validate the reserved ranges
+        ValidateHighReserved(table.state, heap, tableOffset);
         
         // Null descriptors are handled separately
         if (pResource) {
@@ -321,6 +385,9 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
 
         // Table wise offset
         const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
+
+        // Validate the reserved ranges
+        ValidateHighReserved(table.state, heap, tableOffset);
         
         // Null descriptors are handled separately
         if (pResource) {
@@ -349,6 +416,9 @@ void WINAPI HookID3D12DeviceCreateRenderTargetView(ID3D12Device* _this, ID3D12Re
         // Table wise offset
         const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
 
+        // Validate the reserved ranges
+        ValidateHighReserved(table.state, heap, tableOffset);
+
         // Null descriptors are handled separately
         if (pResource) {
             // TODO: SRB masking
@@ -376,6 +446,9 @@ void WINAPI HookID3D12DeviceCreateDepthStencilView(ID3D12Device* _this, ID3D12Re
         // Table wise offset
         const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
 
+        // Validate the reserved ranges
+        ValidateHighReserved(table.state, heap, tableOffset);
+
         // Null descriptors are handled separately
         if (pResource) {
             // TODO: SRB masking
@@ -402,6 +475,9 @@ void WINAPI HookID3D12DeviceCreateSampler(ID3D12Device* _this, const D3D12_SAMPL
         // Table wise offset
         const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
 
+        // Validate the reserved ranges
+        ValidateHighReserved(table.state, heap, tableOffset);
+
         // Write mapping
         heap->prmTable->WriteMapping(tableOffset, nullptr, VirtualResourceMapping {
             .puid = 0,
@@ -426,6 +502,9 @@ void WINAPI HookID3D12DeviceCreateSampler2(ID3D12Device* _this, const D3D12_SAMP
 
         // Table wise offset
         const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
+
+        // Validate the reserved ranges
+        ValidateHighReserved(table.state, heap, tableOffset);
 
         // Write mapping
         heap->prmTable->WriteMapping(tableOffset, nullptr, VirtualResourceMapping {
@@ -477,10 +556,14 @@ void WINAPI HookID3D12DeviceCopyDescriptors(ID3D12Device* _this, UINT NumDestDes
             // Valid heaps?
             if (srcHeap && dstHeap) {
                 const uint32_t srcOffset = srcHeap->GetOffsetFromHeapHandle(src);
+                const uint32_t dstOffset = dstHeap->GetOffsetFromHeapHandle(dst);
+
+                // Validate the reserved ranges
+                ValidateHighReserved(table.state, dstHeap, dstOffset);
                 
                 // Copy the mapping
                 dstHeap->prmTable->WriteMapping(
-                    dstHeap->GetOffsetFromHeapHandle(dst),
+                    dstOffset,
                     srcHeap->prmTable->GetMappingState(srcOffset),
                     srcHeap->prmTable->GetMapping(srcOffset)
                 );
@@ -527,7 +610,10 @@ void WINAPI HookID3D12DeviceCopyDescriptorsSimple(ID3D12Device* _this, UINT NumD
             // Get offsets
             const uint32_t dstOffset = dstHeap->GetOffsetFromHeapHandle(dst);
             const uint32_t srcOffset = srcHeap->GetOffsetFromHeapHandle(src);
-            
+
+            // Validate the reserved ranges
+            ValidateHighReserved(table.state, dstHeap, dstOffset);
+
             // Copy the mapping
             dstHeap->prmTable->WriteMapping(
                 dstOffset,
