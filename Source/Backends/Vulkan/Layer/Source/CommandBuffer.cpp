@@ -241,6 +241,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     commandBuffer->context = {};
 
     // Cleanup user context
+    commandBuffer->userContext.buffer.Clear();
     commandBuffer->userContext.eventStack.Flush();
     commandBuffer->userContext.eventStack.SetRemapping(commandBuffer->table->eventRemappingTable);
     commandBuffer->userContext.buffer.Clear();
@@ -672,6 +673,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPipelineBarrier2(CommandBufferObject* comma
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {
+    // Commit all pending commands prior to ending
+    CommitCommands(commandBuffer);
+    
     // Reset the context
     commandBuffer->context = {};
 
