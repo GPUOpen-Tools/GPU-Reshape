@@ -320,7 +320,11 @@ namespace Backend::IL {
                 if (!hasNonVaryingReEnrant) {
                     for (auto && tag : loopItem.latchAndExitEdges) {
                         if (tag.to != headerItem.definition->header) {
-                            outerWork.cfgWorkStack.push(tag);
+                            if (!cfgExecutableEdges.contains(tag)) {
+                                outerWork.cfgWorkStack.push(tag);
+                                cfgExecutableEdges.insert(tag);
+                            }
+                            
                             knownExitEdge = true;
                         }
                     }
@@ -334,10 +338,15 @@ namespace Backend::IL {
                     // If there's no known exits, add them all (could have been varying)
                     if (!knownExitEdge && !loopWork.loop->loopBypass) {
                         for (const BasicBlock* exit : loopItem.header->definition->exitBlocks) {
-                            outerWork.cfgWorkStack.push(Edge {
+                            Edge tag {
                                 .from = loopItem.header->definition->header,
                                 .to = exit
-                            });
+                            };
+                            
+                            if (!cfgExecutableEdges.contains(tag)) {
+                                outerWork.cfgWorkStack.push(tag);
+                                cfgExecutableEdges.insert(tag);
+                            }
                         }
                     }
                     break;
@@ -622,12 +631,13 @@ namespace Backend::IL {
                 return;
             }
 
-            cfgExecutableEdges.insert(edge);
-
             // Active loops require special consideration
             if (work.loop && TraverseLoopLatchAndExits(work, edge)) {
                 return;
             }
+
+            // Only insert after, loop exit conditions check for previously executed edges
+            cfgExecutableEdges.insert(edge);
 
             // Add to work stack
             work.cfgWorkStack.push(edge);
