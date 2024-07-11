@@ -1,16 +1,32 @@
 #pragma once
 
+/// Enables control flow debugging for propagation engines
+#define PROPAGATION_DEBUG_CONTROL_FLOW 0
+
 // Backend
 #include <Backend/IL/InstructionCommon.h>
 #include <Backend/IL/Analysis/UserAnalysis.h>
 #include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
 #include <Backend/IL/Analysis/CFG/LoopAnalysis.h>
 #include <Backend/IL/Utils/PropagationResult.h>
+#if PROPAGATION_DEBUG_CONTROL_FLOW
+#include <Backend/IL/PrettyGraph.h>
+#include <Backend/IL/PrettyPrint.h>
+#endif // PROPAGATION_DEBUG_CONTROL_FLOW
+
+// Common
+#if PROPAGATION_DEBUG_CONTROL_FLOW
+#include <Common/FileSystem.h>
+#include <Common/GlobalUID.h>
+#endif // PROPAGATION_DEBUG_CONTROL_FLOW
 
 // Std
 #include <set>
 #include <vector>
 #include <queue>
+#if PROPAGATION_DEBUG_CONTROL_FLOW
+#include <fstream>
+#endif // PROPAGATION_DEBUG_CONTROL_FLOW
 
 namespace Backend::IL {
     class PropagationEngine {
@@ -31,6 +47,25 @@ namespace Backend::IL {
         /// \param context propagation context
         template<typename F>
         bool Compute(F& context) {
+#if PROPAGATION_DEBUG_CONTROL_FLOW
+            std::filesystem::path path = GetIntermediatePath("Debug") / "PropagationEngine";
+            CreateDirectoryTree(path);
+
+            // Unique ID for propagation
+            debugUid = GlobalUID::New().ToString();
+            
+            // Pretty print the blocks
+            std::ofstream outIL(path / (debugUid + ".propagation.il.txt"));
+            IL::PrettyPrint(&program, function, IL::PrettyPrintContext(outIL));
+            outIL.close();
+            
+            // Print function graph for debugging
+            PrettyDotGraph(function, path / (debugUid + ".propagation.il.dot"), path / (debugUid + ".propagation.il.png"));
+
+            // Open debug stream
+            debugStream = std::ofstream(path / (debugUid + ".propagation.txt"));
+#endif // PROPAGATION_DEBUG_CONTROL_FLOW
+            
             // Compute instruction user analysis to ssa-edges
             if (userAnalysis = program.GetAnalysisMap().FindPassOrCompute<UserAnalysis>(program); !userAnalysis) {
                 return false;
@@ -202,6 +237,10 @@ namespace Backend::IL {
             Edge edge = outerWork.cfgWorkStack.front();
             outerWork.cfgWorkStack.pop();
 
+#if PROPAGATION_DEBUG_CONTROL_FLOW
+            debugStream << "PropagateLoopHeader from:%" << (edge.from ? edge.from->GetID() : InvalidID) << " to:%" << (edge.to ? edge.to->GetID() : InvalidID) << std::endl;
+#endif // PROPAGATION_DEBUG_CONTROL_FLOW
+            
             // Current incoming edge, changed on the next iteration
             Edge incomingEdge = edge;
 
@@ -281,7 +320,11 @@ namespace Backend::IL {
                 if (!hasNonVaryingReEnrant) {
                     for (auto && tag : loopItem.latchAndExitEdges) {
                         if (tag.to != headerItem.definition->header) {
-                            outerWork.cfgWorkStack.push(tag);
+                            if (!cfgExecutableEdges.contains(tag)) {
+                                outerWork.cfgWorkStack.push(tag);
+                                cfgExecutableEdges.insert(tag);
+                            }
+                            
                             knownExitEdge = true;
                         }
                     }
@@ -295,10 +338,15 @@ namespace Backend::IL {
                     // If there's no known exits, add them all (could have been varying)
                     if (!knownExitEdge && !loopWork.loop->loopBypass) {
                         for (const BasicBlock* exit : loopItem.header->definition->exitBlocks) {
-                            outerWork.cfgWorkStack.push(Edge {
+                            Edge tag {
                                 .from = loopItem.header->definition->header,
                                 .to = exit
-                            });
+                            };
+                            
+                            if (!cfgExecutableEdges.contains(tag)) {
+                                outerWork.cfgWorkStack.push(tag);
+                                cfgExecutableEdges.insert(tag);
+                            }
                         }
                     }
                     break;
@@ -334,6 +382,10 @@ namespace Backend::IL {
         void PropagateCFG(WorkItem& work, F& context) {
             Edge edge = work.cfgWorkStack.front();
             work.cfgWorkStack.pop();
+
+#if PROPAGATION_DEBUG_CONTROL_FLOW
+            debugStream << "PropagateCFG from:%" << (edge.from ? edge.from->GetID() : InvalidID) << " to:%" << (edge.to ? edge.to->GetID() : InvalidID) << std::endl;
+#endif // PROPAGATION_DEBUG_CONTROL_FLOW
 
             // Certain instructions must always be propagated
             // Phi instructions depend on the incoming edge
@@ -388,6 +440,10 @@ namespace Backend::IL {
             if (ssaExclusion.contains(instr)) {
                 return;
             }
+
+#if PROPAGATION_DEBUG_CONTROL_FLOW
+            debugStream << "PropagateSSA result:%" << instr->result << std::endl;
+#endif // PROPAGATION_DEBUG_CONTROL_FLOW
 
             // TODO: This is a hack, maybe supply a context to the visitor?
             workContext = &work;
@@ -575,12 +631,13 @@ namespace Backend::IL {
                 return;
             }
 
-            cfgExecutableEdges.insert(edge);
-
             // Active loops require special consideration
             if (work.loop && TraverseLoopLatchAndExits(work, edge)) {
                 return;
             }
+
+            // Only insert after, loop exit conditions check for previously executed edges
+            cfgExecutableEdges.insert(edge);
 
             // Add to work stack
             work.cfgWorkStack.push(edge);
@@ -646,6 +703,14 @@ namespace Backend::IL {
 
         /// Current work context, this is a hack
         WorkItem* workContext{nullptr};
+
+#if PROPAGATION_DEBUG_CONTROL_FLOW
+        /// Assigned uid
+        std::string debugUid;
+
+        /// Destination debug stream
+        std::ofstream debugStream;
+#endif // PROPAGATION_DEBUG_CONTROL_FLOW
 
     private:
         /// All known executable edges visible to the current control flow

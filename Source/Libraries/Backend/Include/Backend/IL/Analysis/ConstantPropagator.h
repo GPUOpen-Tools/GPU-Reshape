@@ -398,6 +398,11 @@ namespace IL {
                 .value = storeValue.constant
             };
 
+            // If the value is unknown, ignore propagation
+            if (propagatedMemory->memory->lattice == Backend::IL::PropagationResult::None) {
+                return Backend::IL::PropagationResult::Ignore;
+            }
+
             // Inform the propagator that this has been mapped, without assigning a value to it
             return propagatedMemory->memory->lattice;
         }

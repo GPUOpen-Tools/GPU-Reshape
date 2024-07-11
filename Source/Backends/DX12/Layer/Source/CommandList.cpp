@@ -474,6 +474,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     state->proxies.context = &state->userContext;
 
     // Cleanup user context
+    state->userContext.buffer.Clear();
     state->userContext.eventStack.Flush();
     state->userContext.eventStack.SetRemapping(device->eventRemappingTable);
     state->userContext.handle = reinterpret_cast<CommandContextHandle>(state->object);
@@ -1171,6 +1172,9 @@ HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list) {
     // Get device
     auto device = GetTable(table.state->parent);
 
+    // Commit all pending commands prior to closing
+    CommitCommands(table.state);
+    
     // Inform the streamer
     device.state->exportStreamer->CloseCommandList(table.state->streamState);
 

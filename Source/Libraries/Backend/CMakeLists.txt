@@ -46,6 +46,7 @@ add_library(
     Source/StartupEnvironment.cpp
     Source/ShaderSGUIDHostListener.cpp
     Source/IL/PrettyPrint.cpp
+    Source/IL/PrettyGraph.cpp
     Source/IL/Function.cpp
     Source/IL/BasicBlock.cpp
 

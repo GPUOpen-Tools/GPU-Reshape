@@ -208,6 +208,9 @@ namespace IL {
     private:
         Allocators allocators;
 
+        /// The identifier map
+        IdentifierMap identifierMap;
+
         /// Functions within this program
         FunctionList functions;
 
@@ -216,9 +219,6 @@ namespace IL {
 
         /// Global constants
         Backend::IL::ConstantMap constants;
-
-        /// The identifier map
-        IdentifierMap identifierMap;
 
         /// The type map
         Backend::IL::TypeMap typeMap;

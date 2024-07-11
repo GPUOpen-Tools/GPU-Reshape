@@ -29,6 +29,9 @@
 #include <Backend/IL/PrettyPrint.h>
 #include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
 #include <Backend/IL/InstructionCommon.h>
+#ifndef NDEBUG
+#include <Backend/IL/PrettyGraph.h>
+#endif // NDEBUG
 
 // Common
 #include <Common/Containers/BitArray.h>
@@ -187,68 +190,17 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
 #endif
 
 #ifndef NDEBUG
-        {
-            std::filesystem::path path = GetIntermediatePath("Crash");
+        // Pretty graph the function
+        std::filesystem::path path = GetIntermediatePath("Crash");
+        PrettyDotGraph(*this, path / "fn.graph.txt", path / "fn.graph.png");
 
-            // Pretty print the graph
-            std::ofstream out(path / "fn.graph.txt");
-            IL::PrettyPrintBlockDotGraph(*this, IL::PrettyPrintContext(out));
-            out.close();
+        // Pretty print the blocks
+        std::ofstream outIL(path / "fn.il.txt");
+        IL::PrettyPrint(nullptr, *this, IL::PrettyPrintContext(outIL));
+        outIL.close();
+#endif // NDEBUG
 
-            // Pretty print the graph
-            std::ofstream outIL(path / "fn.il.txt");
-            IL::PrettyPrint(nullptr, *this, IL::PrettyPrintContext(outIL));
-            outIL.close();
-
-            // Toolset path
-            std::filesystem::path graphVizDir = GetBaseModuleDirectory() / "GraphViz";
-
-            // Check if the toolset is available
-            if (std::filesystem::exists(graphVizDir)) {
-#ifdef _MSC_VER
-                // Startup information
-                STARTUPINFO startupInfo;
-                ZeroMemory(&startupInfo, sizeof(startupInfo));
-
-                // Populate
-                startupInfo.cb = sizeof(startupInfo);
-
-                // Process information
-                PROCESS_INFORMATION processInfo;
-                ZeroMemory(&processInfo, sizeof(processInfo));
-
-                // Executable
-                std::string dotPath = (graphVizDir / "dot.exe").string();
-                std::string arg     = "";
-
-                // Output
-                arg += " -Tpng";
-                arg += " -o" + (path / "fn.graph.png").string();
-
-                // Input
-                arg += " " + (path / "fn.graph.txt").string();
-
-                // Run graph viz
-                CreateProcess(
-                    dotPath.c_str(),
-                    arg.data(),
-                    NULL,
-                    NULL,
-                    FALSE,
-                    0,
-                    NULL,
-                    NULL,
-                    &startupInfo,
-                    &processInfo
-                );
-
-                CloseHandle(processInfo.hProcess);
-                CloseHandle(processInfo.hThread);
-#endif
-            }
-        };
-#endif
-
+        // Fault
         ASSERT(false, "Failed to reorder dominant blocks");
         return false;
     }
