@@ -55,11 +55,15 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     // Keep reference
     device->AddRef();
 
+    // Is this heap shader visible?
+    bool shaderVisible = desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
     // Object
     ID3D12DescriptorHeap* heap{nullptr};
 
     // Heap of interest?
-    if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
+    // If this is not shader visible, there is no need to inject the instrumentation region
+    if (shaderVisible && desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
         // Get desired bound
         uint32_t requestedBound = ShaderExportFixedTwoSidedDescriptorAllocator::GetDescriptorBound(table.state->exportHost.GetUnsafe());
 
@@ -115,7 +119,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
         state->allocator = table.state->exportStreamer->AllocateTwoSidedAllocator(heap, state->virtualDescriptorCount, instrumentationBound);
     }
 
-    // If exhausted, fall back to user requirements
+    // If exhausted or not special, fall back to user requirements
     if (!heap) {
         state->exhausted = true;
 
@@ -127,7 +131,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     }
             
     // GPU base if heap supports
-    if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
+    if (shaderVisible) {
         state->gpuDescriptorBase = heap->GetGPUDescriptorHandleForHeapStart();
     }
 
