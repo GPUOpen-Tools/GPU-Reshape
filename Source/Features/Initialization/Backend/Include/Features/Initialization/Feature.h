@@ -235,23 +235,34 @@ private:
         uint32_t memoryBaseAlign32{0};
     };
 
+    struct DiscardTag {
+        uint32_t puid{0};
+    };
+
     /// Context lookup
     std::map<CommandContextHandle, CommandContextInfo> commandContexts;
 
     /// Current queues, base indicated by commit
     std::vector<InitialiationTag> pendingInitializationQueue;
     std::vector<MappingTag> pendingMappingQueue;
+    std::vector<DiscardTag> pendingDiscardQueue;
 
     /// The current committed bases
     /// All pending initializations use this value as the base commit id
     uint64_t committedInitializationBase = 0ull;
 
 private:
-    /// Monotonically incremented primitive counter
+    /// Monotonically incremented primitive counters
     uint64_t exclusiveTransferPrimitiveMonotonicCounter{0};
+    uint64_t exclusiveComputePrimitiveMonotonicCounter{0};
 
-    /// Primitive used for all transfer synchronization
+    /// Primitives used for all synchronization
     SchedulerPrimitiveID exclusiveTransferPrimitiveID{InvalidSchedulerPrimitiveID};
+    SchedulerPrimitiveID exclusiveComputePrimitiveID{InvalidSchedulerPrimitiveID};
+
+private:
+    /// Any pending compute-only synchronization?
+    bool pendingComputeSynchronization{false};
     
 private:
     /// Shared lock

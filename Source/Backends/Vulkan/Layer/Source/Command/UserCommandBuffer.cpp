@@ -122,6 +122,10 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
     // Handle all commands
     for (const Command& command : buffer) {
         switch (static_cast<CommandType>(command.commandType)) {
+            default: {
+                ASSERT(false, "Invalid command for target");
+                break;
+            }
             case CommandType::SetShaderProgram: {
                 auto* cmd = command.As<SetShaderProgramCommand>();
 

@@ -90,8 +90,9 @@ bool InitializationFeature::Install() {
     // Get scheduler
     scheduler = registry->Get<IScheduler>();
 
-    // Create monotonic primitive
+    // Create monotonic primitives
     exclusiveTransferPrimitiveID = scheduler->CreatePrimitive();
+    exclusiveComputePrimitiveID = scheduler->CreatePrimitive();
     
     // Allocate puid mapping buffer
     puidMemoryBaseBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
@@ -420,6 +421,14 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
 #if USE_METADATA_CLEAR_CHECKS
     if (source.createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
         allocation.failureCode = FailureCode::MetadataRequiresHardwareClear;
+
+        // Mark for pending discard
+        pendingDiscardQueue.push_back(DiscardTag {
+            .puid = source.resource.token.puid
+        });
+
+        // Ensure any submission waits on the queue
+        pendingComputeSynchronization = true;
     }
 #endif // USE_METADATA_CLEAR_CHECKS
 
@@ -581,8 +590,7 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
     }
 
     // Any mappings to push?
-    if (!pendingMappingQueue.empty())
-    {
+    if (!pendingMappingQueue.empty()) {
         // Allocate the next sync value
         ++exclusiveTransferPrimitiveMonotonicCounter;
         
@@ -620,11 +628,49 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
         scheduler->Schedule(Queue::ExclusiveTransfer, buffer, &event);
     }
 
+    // Any discards to push?
+    if (!pendingDiscardQueue.empty()) {
+        // Allocate the next sync value
+        ++exclusiveComputePrimitiveMonotonicCounter;
+        
+        // Create builder
+        CommandBuffer buffer;
+        CommandBuilder builder(buffer);
+
+        // Discard all resources
+        for (const DiscardTag& tag : pendingDiscardQueue) {
+            // May have been destroyed
+            if (!allocations.contains(tag.puid)) {
+                continue;
+            }
+
+            // Discard the entire resource
+            builder.Discard(tag.puid);
+        }
+
+        // Clear discards
+        pendingDiscardQueue.clear();
+
+        // Submit to the compute queue
+        SchedulerPrimitiveEvent event;
+        event.id = exclusiveComputePrimitiveID;
+        event.value = exclusiveComputePrimitiveMonotonicCounter;
+        scheduler->Schedule(Queue::Compute, buffer, &event);
+    }
+
     // Submissions always wait for the last mappings
     submitContext.waitPrimitives.Add(SchedulerPrimitiveEvent {
         .id = exclusiveTransferPrimitiveID,
         .value = exclusiveTransferPrimitiveMonotonicCounter
     });
+
+    // If needed, wait on the last discards
+    if (pendingComputeSynchronization) {
+        submitContext.waitPrimitives.Add(SchedulerPrimitiveEvent {
+            .id = exclusiveComputePrimitiveID,
+            .value = exclusiveComputePrimitiveMonotonicCounter
+        });
+    }
 
     // Set commit base
     // Note: We track on the first context, once the first context has completed, all the rest have

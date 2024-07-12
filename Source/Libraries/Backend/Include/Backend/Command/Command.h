@@ -124,6 +124,10 @@ struct ClearBufferCommand : public TCommand<ClearBufferCommand, CommandType::Cle
     uint32_t value;
 };
 
+struct DiscardCommand : public TCommand<DiscardCommand, CommandType::Discard> {
+    uint32_t puid;
+};
+
 struct DispatchCommand : public TCommand<DispatchCommand, CommandType::Dispatch> {
     uint32_t groupCountX;
     uint32_t groupCountY;

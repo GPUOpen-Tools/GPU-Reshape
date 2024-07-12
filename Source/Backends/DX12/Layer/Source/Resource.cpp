@@ -109,7 +109,7 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     table.state->states_Resources.Add(state);
 
     // Allocate PUID
-    state->virtualMapping.token.puid = table.state->physicalResourceIdentifierMap.AllocatePUID();
+    state->virtualMapping.token.puid = table.state->physicalResourceIdentifierMap.AllocatePUID(state);
 
     // Translate dimension
     switch (desc->Dimension) {
@@ -329,6 +329,7 @@ HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * 
     // Get the required flags
     ResourceCreateFlagSet flags = GetPlacedResourceFlags(desc);
 
+#if USE_EMULATED_COMMITTED_ON_PLACED
     // TODO: Reshape should support generic modifications, so figure out a system for this
     // If we require a hardware clear, safe-guard the resource
     if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
@@ -343,8 +344,10 @@ HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * 
         if (FAILED(hr)) {
             return hr;
         }
-    } else {
-        // Application path
+#endif // USE_EMULATED_COMMITTED_ON_PLACED
+
+    // Application path
+    if (!resource) {
         HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, Next(heap), heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
         if (FAILED(hr)) {
             return hr;
@@ -378,6 +381,7 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource1(ID3D12Device* device, ID3D1
     // Get the required flags
     ResourceCreateFlagSet flags = GetPlacedResourceFlags(pDesc);
 
+#if USE_EMULATED_COMMITTED_ON_PLACED
     // TODO: Reshape should support generic modifications, so figure out a system for this
     // If we require a hardware clear, safe-guard the resource
     if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
@@ -392,8 +396,10 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource1(ID3D12Device* device, ID3D1
         if (FAILED(hr)) {
             return hr;
         }
-    } else {
-        // Application path
+#endif // USE_EMULATED_COMMITTED_ON_PLACED
+
+    // Application path
+    if (!resource) {
         HRESULT hr = table.bottom->next_CreatePlacedResource1(table.next, Next(pHeap), HeapOffset, pDesc, InitialState, pOptimizedClearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
         if (FAILED(hr)) {
             return hr;
@@ -427,6 +433,7 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource2(ID3D12Device* device, ID3D1
     // Get the required flags
     ResourceCreateFlagSet flags = GetPlacedResourceFlags(pDesc);
 
+#if USE_EMULATED_COMMITTED_ON_PLACED
     // TODO: Reshape should support generic modifications, so figure out a system for this
     // If we require a hardware clear, safe-guard the resource
     if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
@@ -441,8 +448,11 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource2(ID3D12Device* device, ID3D1
         if (FAILED(hr)) {
             return hr;
         }
-    } else {
-        // Application path
+    }
+#endif // USE_EMULATED_COMMITTED_ON_PLACED
+
+    // Application path
+    if (!resource) {
         HRESULT hr = table.bottom->next_CreatePlacedResource2(table.next, Next(pHeap), HeapOffset, pDesc, InitialLayout, pOptimizedClearValue, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
         if (FAILED(hr)) {
             return hr;

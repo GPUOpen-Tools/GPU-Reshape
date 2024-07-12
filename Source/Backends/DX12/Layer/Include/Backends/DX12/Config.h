@@ -96,6 +96,9 @@
 /// Current heap method
 #define DESCRIPTOR_HEAP_METHOD DESCRIPTOR_HEAP_METHOD_POSTFIX
 
+/// Emulate placed resources as committed
+#define USE_EMULATED_COMMITTED_ON_PLACED 0
+
 /** Constants **/
 
 /// Maximum number of dwords in a root signature

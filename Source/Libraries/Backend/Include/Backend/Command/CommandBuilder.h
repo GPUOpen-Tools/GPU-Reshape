@@ -117,6 +117,14 @@ struct CommandBuilder {
         });
     }
 
+    /// Discard a resource
+    /// \param puid the resource puid
+    void Discard(uint32_t puid) {
+        buffer.Add(DiscardCommand {
+            .puid = puid
+        });
+    }
+
     /// Full pipeline UAV barrier
     void UAVBarrier() {
         buffer.Add(UAVBarrierCommand{});

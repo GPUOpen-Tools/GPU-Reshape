@@ -69,7 +69,7 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
         // Create mapping template
         D3D12_RESOURCE_DESC desc = bottomBuffer->GetDesc();
         bufferState->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-        bufferState->virtualMapping.token.puid = deviceTable.state->physicalResourceIdentifierMap.AllocatePUID();
+        bufferState->virtualMapping.token.puid = deviceTable.state->physicalResourceIdentifierMap.AllocatePUID(bufferState);
         bufferState->virtualMapping.token.formatId = static_cast<uint32_t>(Translate(desc.Format));
         bufferState->virtualMapping.token.formatSize = GetFormatByteSize(desc.Format);
         bufferState->virtualMapping.token.width = static_cast<uint32_t>(desc.Width);

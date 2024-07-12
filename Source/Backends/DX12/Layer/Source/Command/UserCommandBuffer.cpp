@@ -148,7 +148,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
     for (const Command &command: buffer) {
         switch (static_cast<CommandType>(command.commandType)) {
             default: {
-                ASSERT(false, "Invalid command");
+                ASSERT(false, "Invalid command for target");
                 break;
             }
             case CommandType::SetShaderProgram: {
@@ -315,6 +315,17 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                         length
                     );
                 }
+                break;
+            }
+            case CommandType::Discard: {
+                auto* cmd = command.As<DiscardCommand>();
+
+                // Get the resource state
+                ResourceState* resourceState = device->physicalResourceIdentifierMap.GetState(cmd->puid);
+                ASSERT(resourceState, "Invalid resource PUID");
+
+                // Discard the entire resource
+                commandList->DiscardResource(resourceState->object, nullptr);
                 break;
             }
             case CommandType::Dispatch: {

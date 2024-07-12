@@ -33,35 +33,62 @@
 #include <Common/Assert.h>
 
 // Std
+#include <mutex>
 #include <vector>
 
+// Forward declarations
+struct ResourceState;
+
 struct PhysicalResourceIdentifierMap {
-    PhysicalResourceIdentifierMap(const Allocators& allocators) : freePUIDs(allocators) {
-        
+    PhysicalResourceIdentifierMap(const Allocators& allocators) : states(allocators), freePUIDs(allocators) {
+        states.resize(1u << IL::kResourceTokenPUIDBitCount);
     }
     
     /// Allocate a new PUID
     /// \return
-    uint32_t AllocatePUID() {
+    uint32_t AllocatePUID(ResourceState* state) {
+        std::lock_guard guard(mutex);
+
+        // Determine PUID
+        uint32_t puid;
         if (freePUIDs.empty()) {
             ASSERT(puidHead < IL::kResourceTokenPUIDInvalidStart, "Exceeded maximum resource count");
-            return puidHead++;
+            puid = puidHead++;
+        } else {
+            puid = freePUIDs.back();
+            freePUIDs.pop_back();
         }
 
-        uint32_t puid = freePUIDs.back();
-        freePUIDs.pop_back();
+        // Keep track of state
+        states[puid] = state;
         return puid;
+    }
+
+    /// Get the resource state
+    /// \param puid owning puid
+    /// \return resource state
+    ResourceState* GetState(uint32_t puid) {
+        std::lock_guard guard(mutex);
+        return states[puid];
     }
 
     /// Free a puid
     /// \param puid
     void FreePUID(uint32_t puid) {
+        std::lock_guard guard(mutex);
         freePUIDs.push_back(puid);
+        states[puid] = nullptr;
     }
 
 private:
+    /// Shared lock
+    std::mutex mutex;
+    
     /// Current head counter
     uint32_t puidHead{IL::kResourceTokenPUIDReservedCount};
+
+    /// All states
+    Vector<ResourceState*> states;
 
     /// All free indices
     Vector<uint32_t> freePUIDs;
