@@ -59,6 +59,8 @@ public:
     FeatureInfo GetInfo() override;
     FeatureHookTable GetHookTable() override;
     void CollectMessages(IMessageStorage *storage) override;
+    void Activate(FeatureActivationStage stage) override;
+    void Deactivate() override;
 
     /// IShaderFeature
     void CollectExports(const MessageStream &exports) override;
@@ -86,6 +88,14 @@ public:
     void OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount);
 
 private:
+    /// Map an allocation
+    /// \param allocation allocation to be mapped
+    void MapAllocationNoLock(ConcurrencyContainer::Allocation& allocation);
+
+    /// Map all pending allocations
+    void MapPendingAllocationsNoLock();
+
+private:
     /// Shared container
     ConcurrencyContainer container;
 
@@ -103,6 +113,9 @@ private:
 
     /// Current queue
     std::vector<MappingTag> pendingMappingQueue;
+
+    /// Is incremental mapping enabled?
+    bool incrementalMapping{false};
 
 private:
     /// Monotonically incremented primitive counter

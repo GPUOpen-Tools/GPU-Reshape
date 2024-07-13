@@ -34,7 +34,10 @@
 #include <Addressing/TexelMemoryAllocation.h>
 
 // Backend
-#include <Backend/Resource/ResourceInfo.h>
+#include <Backend/Resource/ResourceCreateInfo.h>
+
+// Common
+#include <Common/Containers/SlotArray.h>
 
 // Std
 #include <unordered_map>
@@ -42,20 +45,28 @@
 
 struct ConcurrencyContainer {
     struct Allocation {
-#if CONCURRENCY_ENABLE_VALIDATION
-        /// Debugging resource info
-        ResourceInfo info;
-#endif // CONCURRENCY_ENABLE_VALIDATION
+        /// Resource info
+        ResourceCreateInfo createInfo;
         
         /// The underlying allocation
         TexelMemoryAllocation memory;
 
         /// Assigned initial failure code
         FailureCode failureCode{FailureCode::None};
+
+        /// Has this resource been mapped, i.e. bound to any memory?
+        /// By default, resources are unmapped until requested
+        bool mapped{false};
+
+        /// Slot keys
+        uint64_t pendingMappingKey{};
     };
 
     /// All allocations
     std::unordered_map<uint64_t, Allocation> allocations;
+
+    /// All allocations pending mapping
+    SlotArray<Allocation*, &Allocation::pendingMappingKey> pendingMappingQueue;
     
     /// Shared lock
     std::mutex mutex;

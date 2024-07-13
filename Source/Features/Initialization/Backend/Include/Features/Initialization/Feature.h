@@ -48,6 +48,7 @@
 #include <Message/MessageStream.h>
 
 // Common
+#include <Common/Containers/SlotArray.h>
 #include <Common/ComRef.h>
 
 // Std
@@ -74,6 +75,8 @@ public:
     FeatureInfo GetInfo() override;
     FeatureHookTable GetHookTable() override;
     void CollectMessages(IMessageStorage *storage) override;
+    void Activate(FeatureActivationStage stage) override;
+    void Deactivate() override;
 
     /// IShaderFeature
     void CollectExports(const MessageStream &exports) override;
@@ -206,19 +209,39 @@ private:
 
 private:
     struct Allocation {
+        /// Resource info
+        ResourceCreateInfo createInfo;
+        
         /// The underlying allocation
         TexelMemoryAllocation memory;
 
         /// Assigned initial failure code
         FailureCode failureCode{FailureCode::None};
+
+        /// Has this resource been mapped, i.e. bound to any memory?
+        /// By default, resources are unmapped until requested
+        bool mapped{false};
+
+        /// Slot keys
+        uint64_t pendingMappingKey{};
     };
 
+    /// Map an allocation
+    /// \param allocation allocation to be mapped
+    void MapAllocationNoLock(Allocation& allocation);
+    
+    /// Map all pending allocations
+    void MapPendingAllocationsNoLock();
+    
     /// Shared texel allocator
     ComRef<TexelMemoryAllocator> texelAllocator;
 
     /// All allocations
     std::unordered_map<uint64_t, Allocation> allocations;
 
+    /// All allocations pending mapping
+    SlotArray<Allocation*, &Allocation::pendingMappingKey> pendingMappingAllocations;
+    
 private:
     struct CommandContextInfo {
         /// The next committed bases upon join
@@ -250,6 +273,9 @@ private:
     /// The current committed bases
     /// All pending initializations use this value as the base commit id
     uint64_t committedInitializationBase = 0ull;
+
+    /// Is incremental mapping enabled?
+    bool incrementalMapping{false};
 
 private:
     /// Monotonically incremented primitive counters

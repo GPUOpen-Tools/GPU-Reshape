@@ -168,6 +168,34 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
+void InitializationFeature::Activate(FeatureActivationStage stage) {
+    std::lock_guard guard(mutex);
+    
+    switch (stage) {
+        default: {
+            break;
+        }
+        case FeatureActivationStage::Instrumentation: {
+            // Slowly start mapping allocations, as many as we can before the actual commit
+            incrementalMapping = true;
+            break;
+        }
+        case FeatureActivationStage::Commit: {
+            // Pipelines are about to be committed, get all the allocations ready
+            // Next submission will pick it up
+            MapPendingAllocationsNoLock();
+
+            // Disable incremental
+            incrementalMapping = false;
+            break;
+        }
+    }
+}
+
+void InitializationFeature::Deactivate() {
+    
+}
+
 void InitializationFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Analyze structural usage for all source users
     program.GetAnalysisMap().FindPassOrCompute<IL::StructuralUserAnalysis>(program);
@@ -373,16 +401,16 @@ static uint32_t GetWorkgroupCount(uint64_t value, uint32_t align) {
     return Cast32Checked((value + align - 1) / align);
 }
 
-void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
-    std::lock_guard guard(mutex);
+void InitializationFeature::MapAllocationNoLock(Allocation &allocation) {
+    ASSERT(!allocation.mapped, "Allocation double-mapping");
 
     // Actual creation parameters for texel addressing
-    ResourceInfo filteredInfo = source.resource;
+    ResourceInfo filteredInfo = allocation.createInfo.resource;
 
     // If tiled, reduce all (volume) dimensions to 1
     // since it's not actually being tracked, and can have
     // massive size requirements.
-    if (source.createFlags & ResourceCreateFlag::Tiled) {
+    if (allocation.createInfo.createFlags & ResourceCreateFlag::Tiled) {
         filteredInfo.token.width = 1u;
         filteredInfo.token.height = 1u;
 
@@ -393,25 +421,21 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     }
 
     // Create allocation
-    TexelMemoryAllocation memory = texelAllocator->Allocate(filteredInfo);
-
-    // Create allocation
-    Allocation& allocation = allocations[source.resource.token.puid];
-    allocation.memory = memory;
+    allocation.memory = texelAllocator->Allocate(filteredInfo);
 
     // Mark for pending enqueue
     pendingMappingQueue.push_back(MappingTag {
-        .puid = source.resource.token.puid,
+        .puid = allocation.createInfo.resource.token.puid,
         .memoryBaseAlign32 = allocation.memory.texelBaseBlock
     });
 
     // If this texture was opened from an external handle, we just assume
     // everything has been initialized. Carrying initialization states across
     // completely opaque sources is outside the scope of this feature.
-    if (source.createFlags & ResourceCreateFlag::OpenedFromExternalHandle) {
-        if (!puidSRBInitializationSet.contains(source.resource.token.puid)) {
+    if (allocation.createInfo.createFlags & ResourceCreateFlag::OpenedFromExternalHandle) {
+        if (!puidSRBInitializationSet.contains(allocation.createInfo.resource.token.puid)) {
             pendingInitializationQueue.push_back(InitialiationTag {
-                .info = source.resource,
+                .info = allocation.createInfo.resource,
                 .srb = ~0u
             });
         }
@@ -419,12 +443,12 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
 
     // If the resource requires a clear for stable metadata, mark the failure code as such
 #if USE_METADATA_CLEAR_CHECKS
-    if (source.createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+    if (allocation.createInfo.createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
         allocation.failureCode = FailureCode::MetadataRequiresHardwareClear;
 
         // Mark for pending discard
         pendingDiscardQueue.push_back(DiscardTag {
-            .puid = source.resource.token.puid
+            .puid = allocation.createInfo.resource.token.puid
         });
 
         // Ensure any submission waits on the queue
@@ -433,9 +457,34 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
 #endif // USE_METADATA_CLEAR_CHECKS
 
     // Virtual resources are not tracked (yet)
-    if (source.createFlags & ResourceCreateFlag::Tiled) {
+    if (allocation.createInfo.createFlags & ResourceCreateFlag::Tiled) {
         allocation.failureCode = FailureCode::Untracked;
     }
+
+    // Mapped!
+    allocation.mapped = true;
+}
+
+void InitializationFeature::MapPendingAllocationsNoLock() {
+    // Manually map all unmapped allocations
+    for (Allocation* allocation : pendingMappingAllocations) {
+        MapAllocationNoLock(*allocation);
+    }
+
+    // Cleanup
+    pendingMappingAllocations.Clear();
+}
+
+void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
+    std::lock_guard guard(mutex);
+
+    // Create allocation
+    Allocation& allocation = allocations[source.resource.token.puid];
+    allocation.createInfo = source;
+    allocation.mapped = false;
+
+    // Add to pending queue
+    pendingMappingAllocations.Add(&allocation);
 }
 
 void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
@@ -451,7 +500,12 @@ void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
     Allocation& allocation = allocationIt->second;
 
     // Free underlying memory
-    texelAllocator->Free(allocation.memory);
+    if (allocation.mapped) {
+        texelAllocator->Free(allocation.memory);
+    } else {
+        // Still in mapping queue, remove it
+        pendingMappingAllocations.Remove(&allocation);
+    }
 
     // Remove local tracking
     allocations.erase(source.token.puid);
@@ -587,6 +641,23 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
     // Not interested in empty submissions
     if (!contextCount) {
         return;
+    }
+
+    // Incremental mapping?
+    if (incrementalMapping) {
+        static constexpr size_t kIncrementalSubmissionBudget = 100;
+
+        // Number of mappings to handle
+        size_t mappingCount = std::min(pendingMappingAllocations.Size(), kIncrementalSubmissionBudget);
+
+        // Map from end of container
+        for (int64_t i = pendingMappingAllocations.Size() - 1; i >= static_cast<int64_t>(pendingMappingAllocations.Size() - mappingCount); i--) {
+            Allocation *allocation = pendingMappingAllocations[i];
+            MapAllocationNoLock(*allocation);
+
+            // Removing from end of container, just pops
+            pendingMappingAllocations.Remove(allocation);
+        }
     }
 
     // Any mappings to push?

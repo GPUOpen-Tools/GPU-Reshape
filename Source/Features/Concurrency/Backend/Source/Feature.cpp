@@ -129,6 +129,34 @@ void ConcurrencyFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
+void ConcurrencyFeature::Activate(FeatureActivationStage stage) {
+    std::lock_guard guard(container.mutex);
+    
+    switch (stage) {
+        default: {
+            break;
+        }
+        case FeatureActivationStage::Instrumentation: {
+            // Slowly start mapping allocations, as many as we can before the actual commit
+            incrementalMapping = true;
+            break;
+        }
+        case FeatureActivationStage::Commit: {
+            // Pipelines are about to be committed, get all the allocations ready
+            // Next submission will pick it up
+            MapPendingAllocationsNoLock();
+
+            // Disable incremental
+            incrementalMapping = false;
+            break;
+        }
+    }
+}
+
+void ConcurrencyFeature::Deactivate() {
+    
+}
+
 void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
@@ -353,16 +381,16 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
     });
 }
 
-void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
-    std::lock_guard guard(container.mutex);
+void ConcurrencyFeature::MapAllocationNoLock(ConcurrencyContainer::Allocation &allocation) {
+    ASSERT(!allocation.mapped, "Allocation double-mapping");
 
     // Actual creation parameters for texel addressing
-    ResourceInfo filteredInfo = source.resource;
+    ResourceInfo filteredInfo = allocation.createInfo.resource;
 
     // If tiled, reduce all (volume) dimensions to 1
     // since it's not actually being tracked, and can have
     // massive size requirements.
-    if (source.createFlags & ResourceCreateFlag::Tiled) {
+    if (allocation.createInfo.createFlags & ResourceCreateFlag::Tiled) {
         filteredInfo.token.width = 1u;
         filteredInfo.token.height = 1u;
 
@@ -372,26 +400,44 @@ void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
         }
     }
 
-    // Create allocation
-    TexelMemoryAllocation memory = texelAllocator->Allocate(filteredInfo);
-
-    // Create allocation
-    ConcurrencyContainer::Allocation& allocation = container.allocations[source.resource.token.puid];
-    allocation.memory = memory;
-#if CONCURRENCY_ENABLE_VALIDATION
-    allocation.info = source.resource;
-#endif // CONCURRENCY_ENABLE_VALIDATION
+    // Create mapping
+    allocation.memory = texelAllocator->Allocate(filteredInfo);
 
     // Mark for pending enqueue
     pendingMappingQueue.push_back(MappingTag {
-        .puid = source.resource.token.puid,
+        .puid = allocation.createInfo.resource.token.puid,
         .memoryBaseAlign32 = allocation.memory.texelBaseBlock
     });
 
     // Virtual resources are not tracked (yet)
-    if (source.createFlags & ResourceCreateFlag::Tiled) {
+    if (allocation.createInfo.createFlags & ResourceCreateFlag::Tiled) {
         allocation.failureCode = FailureCode::Untracked;
     }
+
+    // Mapped!
+    allocation.mapped = true;
+}
+
+void ConcurrencyFeature::MapPendingAllocationsNoLock() {
+    // Manually map all unmapped allocations
+    for (ConcurrencyContainer::Allocation* allocation : container.pendingMappingQueue) {
+        MapAllocationNoLock(*allocation);
+    }
+
+    // Cleanup
+    container.pendingMappingQueue.Clear();
+}
+
+void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
+    std::lock_guard guard(container.mutex);
+
+    // Create allocation
+    ConcurrencyContainer::Allocation& allocation = container.allocations[source.resource.token.puid];
+    allocation.createInfo = source;
+    allocation.mapped = false;
+
+    // Add to pending queue
+    container.pendingMappingQueue.Add(&allocation);
 }
 
 void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
@@ -406,8 +452,13 @@ void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
     // Get allocation
     ConcurrencyContainer::Allocation& allocation = allocationIt->second;
     
-    // Free underlying memory
-    texelAllocator->Free(allocation.memory);
+    // Free underlying memory if mapped
+    if (allocation.mapped) {
+        texelAllocator->Free(allocation.memory);
+    } else {
+        // Still in mapping queue, remove it
+        container.pendingMappingQueue.Remove(&allocation);
+    }
 
     // Remove local tracking
     container.allocations.erase(source.token.puid);
@@ -419,6 +470,23 @@ void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, co
     // Not interested in empty submissions
     if (!contextCount) {
         return;
+    }
+
+    // Incremental mapping?
+    if (incrementalMapping) {
+        static constexpr size_t kIncrementalSubmissionBudget = 100;
+
+        // Number of mappings to handle
+        size_t mappingCount = std::min(container.pendingMappingQueue.Size(), kIncrementalSubmissionBudget);
+
+        // Map from end of container
+        for (int64_t i = container.pendingMappingQueue.Size() - 1; i >= static_cast<int64_t>(container.pendingMappingQueue.Size() - mappingCount); i--) {
+            ConcurrencyContainer::Allocation *allocation = container.pendingMappingQueue[i];
+            MapAllocationNoLock(*allocation);
+
+            // Removing from end of container, just pops
+            container.pendingMappingQueue.Remove(allocation);
+        }
     }
 
     // Any mappings to push?
