@@ -684,7 +684,18 @@ void InstrumentationController::CommitInstrumentation() {
     batch->stampBegin = std::chrono::high_resolution_clock::now();
 
     // Summarize the needed feature set
+    batch->previousFeatureBitSet = previousFeatureBitSet;
     batch->featureBitSet = featureBitSet;
+
+    // Inform activation, state-less
+    for (size_t i = 0; i < table->features.size(); i++) {
+        if (batch->featureBitSet & (1ull << i)) {
+            table->features[i]->Activate(FeatureActivationStage::Instrumentation);
+        }
+    }
+
+    // Keep track of last bit set
+    previousFeatureBitSet = featureBitSet;
 
     // Task group
     // TODO: Tie lifetime of this task group to the controller
@@ -1012,6 +1023,21 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     auto bridge = registry->Get<IBridge>();
     table->sguidHost->Commit(bridge.GetUnsafe());
     
+    // Feature events
+    for (size_t i = 0; i < table->features.size(); i++) {
+        uint64_t bit = 1ull << i;;
+
+        // Inform activation, state-less
+        if (batch->featureBitSet & bit) {
+            table->features[i]->Activate(FeatureActivationStage::Commit);
+        }
+
+        // Inform feature deactivation
+        if (!(batch->featureBitSet & bit) && (batch->previousFeatureBitSet & bit)) {
+            table->features[i]->Deactivate();
+        }
+    }
+
     // Commit all pending entries
     for (Batch::CommitEntry entry : batch->commitEntries) {
         if (auto pipeline = entry.state->GetInstrument(entry.combinedHash)) {

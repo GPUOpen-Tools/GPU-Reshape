@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,47 +26,10 @@
 
 #pragma once
 
-// Backend
-#include "FeatureActivationStage.h"
-#include "FeatureHookTable.h"
-#include "FeatureInfo.h"
+enum class FeatureActivationStage {
+    /// Instrumentation has been activated
+    Instrumentation,
 
-// Common
-#include <Common/IComponent.h>
-
-// Forward declarations
-class IMessageStorage;
-
-class IFeature : public TComponent<IFeature> {
-public:
-    COMPONENT(IFeature);
-
-    /// Install this feature
-    /// \return success code
-    virtual bool Install() = 0;
-
-    /// Post install this feature
-    /// Useful for streaming reliant operations
-    /// \return success code
-    virtual bool PostInstall() { return true; }
-
-    /// Get general information about this feature
-    /// \return feature info
-    virtual FeatureInfo GetInfo() = 0;
-
-    /// Get the hook table of this feature
-    /// \return constructed hook table
-    virtual FeatureHookTable GetHookTable() { return {}; }
-
-    /// Activate this feature
-    /// \param stage stage being activated
-    virtual void Activate(FeatureActivationStage stage) { }
-
-    /// Deactivate this feature
-    /// i.e. the feature is no longer in us
-    virtual void Deactivate() { }
-    
-    /// Collect all produced messages
-    /// \param storage the output storage
-    virtual void CollectMessages(IMessageStorage* storage) { }
+    /// The feature is being committed, and may be invoked at any point after this
+    Commit
 };

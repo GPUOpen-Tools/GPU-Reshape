@@ -192,8 +192,9 @@ private:
             uint64_t combinedHash{0};
         };
         
-        /// Given feature set
-        uint64_t featureBitSet;
+        /// Given feature sets
+        uint64_t previousFeatureBitSet{0};
+        uint64_t featureBitSet{0};
 
         /// Compiler diagnostics
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
@@ -249,6 +250,10 @@ private:
 
     /// Pending compilation bucket?
     bool hasPendingBucket{false};
+
+private:
+    /// The previous feature set during summarization
+    uint64_t previousFeatureBitSet{0};
 
 private:
     bool synchronousRecording{false};

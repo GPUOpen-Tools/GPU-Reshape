@@ -77,6 +77,11 @@ struct SlotArray {
         }
     }
 
+    /// Clear this container
+    void Clear() {
+        array.clear();
+    }
+
     /// Get element at index
     /// \param i index
     /// \return value
