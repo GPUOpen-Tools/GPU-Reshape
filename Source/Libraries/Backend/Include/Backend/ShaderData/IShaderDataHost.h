@@ -32,6 +32,7 @@
 #include "ShaderDataEventInfo.h"
 #include "ShaderDataDescriptorInfo.h"
 #include "ShaderDataInfo.h"
+#include "ShaderDataCapabilityTable.h"
 
 // Common
 #include <Common/IComponent.h>
@@ -84,4 +85,8 @@ public:
     /// \param count if [out] is null, filled with the number of resources
     /// \param out if not null, filled with all resources up to [count]
     virtual void Enumerate(uint32_t* count, ShaderDataInfo* out, ShaderDataTypeSet mask) = 0;
+
+    /// Get the target capabilities
+    /// \return capability table
+    virtual ShaderDataCapabilityTable GetCapabilityTable() =  0;
 };

@@ -40,16 +40,18 @@
 static constexpr uint32_t kMaxTrackedTexelBlocks = UINT32_MAX; // ~4gb
 
 /// Max number of tracked texels
-static constexpr uint64_t kMaxTrackedTexels = kMaxTrackedTexelBlocks * 32; // 128gb of R1
+static constexpr uint64_t kMaxTrackedTexels = kMaxTrackedTexelBlocks * 32ull; // 128gb of R1
 
 /// Debugging toggle
 /// Useful for validating incorrect tile mappings
 #define USE_TILED_RESOURCES 1
 
 bool TexelMemoryAllocator::Install(size_t requestedTexels) {
-    // If default, assume maximum
-    texelCapacity = requestedTexels ? requestedTexels : kMaxTrackedTexels;
-
+    // Default size?
+    if (!requestedTexels) {
+        requestedTexels = kMaxTrackedTexels;
+    }
+    
     // Try to get data host
     shaderDataHost = registry->Get<IShaderDataHost>();
     if (!shaderDataHost) {
@@ -61,18 +63,36 @@ bool TexelMemoryAllocator::Install(size_t requestedTexels) {
     if (!scheduler) {
         return false;
     }
+
+    // Determine number of (aligned) blocks
+    uint64_t blockCount = (requestedTexels + 31) / 32;
+
+    // Snap to next power of two
+    blockCapacityAlignPow2 = std::max(std::bit_ceil(blockCount - 1ull), 1ull);
+
+    // Just because we want a lot of texels, doesn't mean the hardware supports it
+    // Query max, and if exceeding align to a safe (lower) power of two
+    uint64_t hardwareTexelLimit = shaderDataHost->GetCapabilityTable().bufferMaxElementCount;
+    if (blockCapacityAlignPow2 > hardwareTexelLimit) {
+        blockCapacityAlignPow2 = std::min(blockCapacityAlignPow2, std::bit_floor(hardwareTexelLimit));
+    }
+
+    // We are always allocating pow2 - 1 to stay within numeric limits
+    blockCapacityAlignPow2--;
+    
+    // Total number of texels
+    texelCapacity = blockCapacityAlignPow2 * 32;
     
     // Create residency allocator
-    tileResidencyAllocator.Install(texelCapacity * sizeof(uint32_t));
+    tileResidencyAllocator.Install(blockCapacityAlignPow2 * sizeof(uint32_t));
 
-    // Create buddy allocator
-    // +1 to align to next power of two
-    texelBuddyAllocator.Install(texelCapacity + 1ull);
+    // Create buddy allocator (+1 for pow2 alignment)
+    texelBuddyAllocator.Install(blockCapacityAlignPow2 + 1u);
         
     // Allocate texel mask buffer
     texelBlocksBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
 #if USE_TILED_RESOURCES
-        .elementCount = kMaxTrackedTexelBlocks,
+        .elementCount = blockCapacityAlignPow2,
         .format = Backend::IL::Format::R32UInt,
         .flagSet = ShaderDataBufferFlag::Tiled
 #else // USE_TILED_RESOURCES 
@@ -109,7 +129,7 @@ TexelMemoryAllocation TexelMemoryAllocator::Allocate(const ResourceInfo &info) {
 
     // Just assume the starting offset from the buddy allocation
     out.texelBaseBlock = Cast32Checked(out.buddy.offset);
-    ASSERT(out.texelBaseBlock + allocationDWords < texelCapacity, "Texel capacity exceeded");
+    ASSERT(out.texelBaseBlock + allocationDWords < blockCapacityAlignPow2, "Texel capacity exceeded");
         
     // Allocate all tiles in range
     tileResidencyAllocator.Allocate(

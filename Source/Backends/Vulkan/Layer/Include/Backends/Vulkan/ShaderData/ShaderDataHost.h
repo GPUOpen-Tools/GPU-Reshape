@@ -87,6 +87,7 @@ public:
     void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
     void Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
+    ShaderDataCapabilityTable GetCapabilityTable() override;
 
 private:
     struct ResourceEntry {
@@ -116,6 +117,9 @@ private:
 private:
     /// Parent device
     DeviceDispatchTable* table;
+
+    /// All capabilities
+    ShaderDataCapabilityTable capabilityTable;
 
     /// Shared lock
     std::mutex mutex;

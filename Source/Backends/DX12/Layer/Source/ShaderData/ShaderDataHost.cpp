@@ -58,6 +58,15 @@ bool ShaderDataHost::Install() {
         return false;
     }
 
+    // Query virtual address support
+    if (FAILED(device->object->CheckFeatureSupport(D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT, &virtualAddressOptions, sizeof(virtualAddressOptions)))) {
+        virtualAddressOptions.MaxGPUVirtualAddressBitsPerProcess  = UINT32_MAX;
+        virtualAddressOptions.MaxGPUVirtualAddressBitsPerResource = UINT32_MAX;
+    }
+
+    // Fill capability table
+    capabilityTable.bufferMaxElementCount = UINT64_MAX;
+
     // OK
     return true;
 }
@@ -344,6 +353,10 @@ void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescripto
         // Next!
         offset++;
     }
+}
+
+ShaderDataCapabilityTable ShaderDataHost::GetCapabilityTable() {
+    return capabilityTable;
 }
 
 ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {

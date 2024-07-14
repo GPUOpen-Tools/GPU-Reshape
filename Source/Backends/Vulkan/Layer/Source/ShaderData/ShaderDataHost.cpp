@@ -58,6 +58,9 @@ bool ShaderDataHost::Install() {
         return false;
     }
 
+    // Fill capability table
+    capabilityTable.bufferMaxElementCount = table->physicalDeviceProperties.limits.maxTexelBufferElements;
+
     // OK
     return true;
 }
@@ -343,6 +346,10 @@ void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataT
 
         *count = value;
     }
+}
+
+ShaderDataCapabilityTable ShaderDataHost::GetCapabilityTable() {
+    return capabilityTable;
 }
 
 ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {

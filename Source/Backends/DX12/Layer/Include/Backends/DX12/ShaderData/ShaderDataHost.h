@@ -86,6 +86,7 @@ public:
     void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
     void Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
+    ShaderDataCapabilityTable GetCapabilityTable() override;
 
 private:
     struct ResourceEntry {
@@ -107,6 +108,10 @@ private:
 
     /// Device queried options
     D3D12_FEATURE_DATA_D3D12_OPTIONS options{};
+    D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT virtualAddressOptions{};
+
+    /// All capabilities
+    ShaderDataCapabilityTable capabilityTable;
 
     /// Shared lock
     std::mutex mutex;

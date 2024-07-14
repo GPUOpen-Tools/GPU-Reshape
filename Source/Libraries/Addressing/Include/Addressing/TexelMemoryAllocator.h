@@ -103,6 +103,9 @@ private:
     ShaderDataID texelBlocksBufferID{InvalidShaderDataID};
 
 private:
+    // Maximum number of blocks
+    size_t blockCapacityAlignPow2{0};
+
     /// Maximum number of texels
     size_t texelCapacity{0};
 };
