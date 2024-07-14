@@ -650,13 +650,26 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
         // Number of mappings to handle
         size_t mappingCount = std::min(pendingMappingAllocations.Size(), kIncrementalSubmissionBudget);
 
+        // End of incremental update
+        int64_t end = static_cast<int64_t>(pendingMappingAllocations.Size() - mappingCount);
+
         // Map from end of container
-        for (int64_t i = pendingMappingAllocations.Size() - 1; i >= static_cast<int64_t>(pendingMappingAllocations.Size() - mappingCount); i--) {
+        for (int64_t i = pendingMappingAllocations.Size() - 1; i >= end; i--) {
             Allocation *allocation = pendingMappingAllocations[i];
             MapAllocationNoLock(*allocation);
 
             // Removing from end of container, just pops
             pendingMappingAllocations.Remove(allocation);
+        }
+    }
+
+    // Force map all allocations pending initialization
+    for (const InitialiationTag& tag : pendingInitializationQueue) {
+        if (auto it = allocations.find(tag.info.token.puid); it != allocations.end() && !it->second.mapped) {
+            MapAllocationNoLock(it->second);
+
+            // Removing from pending queue
+            pendingMappingAllocations.Remove(&it->second);
         }
     }
 
@@ -750,8 +763,10 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
     
     // Initialize all PUIDs
     for (const InitialiationTag& tag : pendingInitializationQueue) {
+        auto it = allocations.find(tag.info.token.puid);
+        
         // May have been destroyed
-        if (!allocations.contains(tag.info.token.puid)) {
+        if (it == allocations.end()) {
             continue;
         }
 

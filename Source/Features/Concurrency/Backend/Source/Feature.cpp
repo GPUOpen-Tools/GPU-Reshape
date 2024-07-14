@@ -479,8 +479,11 @@ void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, co
         // Number of mappings to handle
         size_t mappingCount = std::min(container.pendingMappingQueue.Size(), kIncrementalSubmissionBudget);
 
+        // End of incremental update
+        int64_t end = static_cast<int64_t>(container.pendingMappingQueue.Size() - mappingCount);
+
         // Map from end of container
-        for (int64_t i = container.pendingMappingQueue.Size() - 1; i >= static_cast<int64_t>(container.pendingMappingQueue.Size() - mappingCount); i--) {
+        for (int64_t i = container.pendingMappingQueue.Size() - 1; i >= end; i--) {
             ConcurrencyContainer::Allocation *allocation = container.pendingMappingQueue[i];
             MapAllocationNoLock(*allocation);
 
@@ -490,8 +493,7 @@ void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, co
     }
 
     // Any mappings to push?
-    if (!pendingMappingQueue.empty())
-    {
+    if (!pendingMappingQueue.empty()) {
         // Allocate the next sync value
         ++exclusiveTransferPrimitiveMonotonicCounter;
         
