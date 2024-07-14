@@ -123,6 +123,10 @@ private:
 
     /// Primitive used for all transfer synchronization
     SchedulerPrimitiveID exclusiveTransferPrimitiveID{InvalidSchedulerPrimitiveID};
+
+private:
+    /// Is this feature currently activated?
+    bool activated{false};
     
 private:
     /// Hosts

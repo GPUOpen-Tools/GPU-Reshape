@@ -190,10 +190,13 @@ void InitializationFeature::Activate(FeatureActivationStage stage) {
             break;
         }
     }
+    
+    // Treat as activated
+    activated = true;
 }
 
 void InitializationFeature::Deactivate() {
-    
+    activated = false;
 }
 
 void InitializationFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
@@ -483,8 +486,12 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     allocation.createInfo = source;
     allocation.mapped = false;
 
-    // Add to pending queue
-    pendingMappingAllocations.Add(&allocation);
+    // If activated, create it immediately, otherwise add it to the pending queue
+    if (activated) {
+        MapAllocationNoLock(allocation);
+    } else {
+        pendingMappingAllocations.Add(&allocation);
+    }
 }
 
 void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {

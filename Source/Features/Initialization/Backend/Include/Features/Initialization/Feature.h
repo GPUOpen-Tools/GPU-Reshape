@@ -289,6 +289,9 @@ private:
 private:
     /// Any pending compute-only synchronization?
     bool pendingComputeSynchronization{false};
+
+    /// Is this feature currently activated?
+    bool activated{false};
     
 private:
     /// Shared lock

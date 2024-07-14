@@ -151,10 +151,13 @@ void ConcurrencyFeature::Activate(FeatureActivationStage stage) {
             break;
         }
     }
+    
+    // Treat as activated
+    activated = true;
 }
 
 void ConcurrencyFeature::Deactivate() {
-    
+    activated = false;
 }
 
 void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
@@ -436,8 +439,12 @@ void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
     allocation.createInfo = source;
     allocation.mapped = false;
 
-    // Add to pending queue
-    container.pendingMappingQueue.Add(&allocation);
+    // If activated, create it immediately, otherwise add it to the pending queue
+    if (activated) {
+        MapAllocationNoLock(allocation);
+    } else {
+        container.pendingMappingQueue.Add(&allocation);
+    }
 }
 
 void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
