@@ -233,6 +233,26 @@ void InstrumentationController::PropagateInstrumentationInfo(ShaderModuleState *
     );
 }
 
+void InstrumentationController::ActivateAndCommitFeatures(uint64_t featureBitSet, uint64_t previousFeatureBitSet) {
+    // Set the enabled feature bit set
+    SetDeviceCommandFeatureSetAndCommit(table, featureBitSet);
+    
+    // Feature events
+    for (size_t i = 0; i < table->features.size(); i++) {
+        uint64_t bit = 1ull << i;;
+
+        // Inform activation, state-less
+        if (featureBitSet & bit) {
+            table->features[i]->Activate(FeatureActivationStage::Commit);
+        }
+
+        // Inform feature deactivation
+        if (!(featureBitSet & bit) && (previousFeatureBitSet & bit)) {
+            table->features[i]->Deactivate();
+        }
+    }
+}
+
 bool InstrumentationController::FilterPipeline(PipelineState *state, const FilterEntry &filter) {
     // Test type
     if (filter.type != PipelineType::Count && filter.type != state->type) {
@@ -653,15 +673,15 @@ void InstrumentationController::CommitInstrumentation() {
     if (pendingResummarization) {
         featureBitSet = SummarizeFeatureBitSet();
 
-        // Set the enabled feature bit set
-        SetDeviceCommandFeatureSetAndCommit(table, featureBitSet);
-
         // Mark as summarized
         pendingResummarization = false;
     }
     
     // If no dirty objects, nothing to instrument
     if (immediateBatch.dirtyObjects.empty()) {
+        // Nothing to instrument, activate the features as "instrumented"
+        ActivateAndCommitFeatures(featureBitSet, previousFeatureBitSet);
+        previousFeatureBitSet = featureBitSet;
         return;
     }
 
@@ -1022,21 +1042,9 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Commit all sguid changes
     auto bridge = registry->Get<IBridge>();
     table->sguidHost->Commit(bridge.GetUnsafe());
-    
-    // Feature events
-    for (size_t i = 0; i < table->features.size(); i++) {
-        uint64_t bit = 1ull << i;;
 
-        // Inform activation, state-less
-        if (batch->featureBitSet & bit) {
-            table->features[i]->Activate(FeatureActivationStage::Commit);
-        }
-
-        // Inform feature deactivation
-        if (!(batch->featureBitSet & bit) && (batch->previousFeatureBitSet & bit)) {
-            table->features[i]->Deactivate();
-        }
-    }
+    // Activate the features
+    ActivateAndCommitFeatures(batch->featureBitSet, batch->previousFeatureBitSet);
 
     // Commit all pending entries
     for (Batch::CommitEntry entry : batch->commitEntries) {

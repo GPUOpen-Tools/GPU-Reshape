@@ -135,6 +135,11 @@ protected:
     /// Propagate instrumentation states
     /// \param state destination shader
     void PropagateInstrumentationInfo(ShaderModuleState* state);
+
+    /// Activate all relevant features and commit them
+    /// \param featureBitSet enabled feature set
+    /// \param previousFeatureBitSet previously enabled feature set
+    void ActivateAndCommitFeatures(uint64_t featureBitSet, uint64_t previousFeatureBitSet);
     
 private:
     struct FilterEntry {
