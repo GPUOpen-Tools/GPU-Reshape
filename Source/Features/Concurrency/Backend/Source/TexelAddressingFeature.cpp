@@ -24,8 +24,8 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <Features/Concurrency/Feature.h>
-#include <Features/Concurrency/ValidationListener.h>
+#include <Features/Concurrency/TexelAddressingFeature.h>
+#include <Features/Concurrency/TexelAddressing/ValidationListener.h>
 #include <Features/Descriptor/Feature.h>
 
 // Backend
@@ -62,7 +62,7 @@
 // Common
 #include <Common/Registry.h>
 
-bool ConcurrencyFeature::Install() {
+bool TexelAddressingConcurrencyFeature::Install() {
     // Must have the export host
     auto exportHost = registry->Get<IShaderExportHost>();
     if (!exportHost) {
@@ -108,28 +108,28 @@ bool ConcurrencyFeature::Install() {
     return true;
 }
 
-FeatureHookTable ConcurrencyFeature::GetHookTable() {
+FeatureHookTable TexelAddressingConcurrencyFeature::GetHookTable() {
     FeatureHookTable table{};
-    table.createResource = BindDelegate(this, ConcurrencyFeature::OnCreateResource);
-    table.destroyResource = BindDelegate(this, ConcurrencyFeature::OnDestroyResource);
-    table.preSubmit = BindDelegate(this, ConcurrencyFeature::OnSubmitBatchBegin);
+    table.createResource = BindDelegate(this, TexelAddressingConcurrencyFeature::OnCreateResource);
+    table.destroyResource = BindDelegate(this, TexelAddressingConcurrencyFeature::OnDestroyResource);
+    table.preSubmit = BindDelegate(this, TexelAddressingConcurrencyFeature::OnSubmitBatchBegin);
     return table;
 }
 
-void ConcurrencyFeature::CollectExports(const MessageStream &exports) {
+void TexelAddressingConcurrencyFeature::CollectExports(const MessageStream &exports) {
     stream.Append(exports);
 }
 
-void ConcurrencyFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
+void TexelAddressingConcurrencyFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Analyze structural usage for all source users
     program.GetAnalysisMap().FindPassOrCompute<IL::StructuralUserAnalysis>(program);
 }
 
-void ConcurrencyFeature::CollectMessages(IMessageStorage *storage) {
+void TexelAddressingConcurrencyFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-void ConcurrencyFeature::Activate(FeatureActivationStage stage) {
+void TexelAddressingConcurrencyFeature::Activate(FeatureActivationStage stage) {
     std::lock_guard guard(container.mutex);
     
     switch (stage) {
@@ -156,11 +156,11 @@ void ConcurrencyFeature::Activate(FeatureActivationStage stage) {
     activated = true;
 }
 
-void ConcurrencyFeature::Deactivate() {
+void TexelAddressingConcurrencyFeature::Deactivate() {
     activated = false;
 }
 
-void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
+void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
     
@@ -384,7 +384,7 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
     });
 }
 
-void ConcurrencyFeature::MapAllocationNoLock(ConcurrencyContainer::Allocation &allocation) {
+void TexelAddressingConcurrencyFeature::MapAllocationNoLock(ConcurrencyContainer::Allocation &allocation) {
     ASSERT(!allocation.mapped, "Allocation double-mapping");
 
     // Actual creation parameters for texel addressing
@@ -421,7 +421,7 @@ void ConcurrencyFeature::MapAllocationNoLock(ConcurrencyContainer::Allocation &a
     allocation.mapped = true;
 }
 
-void ConcurrencyFeature::MapPendingAllocationsNoLock() {
+void TexelAddressingConcurrencyFeature::MapPendingAllocationsNoLock() {
     // Manually map all unmapped allocations
     for (ConcurrencyContainer::Allocation* allocation : container.pendingMappingQueue) {
         MapAllocationNoLock(*allocation);
@@ -431,7 +431,7 @@ void ConcurrencyFeature::MapPendingAllocationsNoLock() {
     container.pendingMappingQueue.Clear();
 }
 
-void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
+void TexelAddressingConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
     std::lock_guard guard(container.mutex);
 
     // Create allocation
@@ -447,7 +447,7 @@ void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
     }
 }
 
-void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
+void TexelAddressingConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
     std::lock_guard guard(container.mutex);
 
     // Do not fault on app errors
@@ -471,7 +471,7 @@ void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
     container.allocations.erase(source.token.puid);
 }
 
-void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
+void TexelAddressingConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
     std::lock_guard guard(container.mutex);
 
     // Not interested in empty submissions
@@ -545,7 +545,7 @@ void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, co
     });
 }
 
-FeatureInfo ConcurrencyFeature::GetInfo() {
+FeatureInfo TexelAddressingConcurrencyFeature::GetInfo() {
     FeatureInfo info;
     info.name = "Concurrency";
     info.description = "Instrumentation and validation of race conditions across events or queues";

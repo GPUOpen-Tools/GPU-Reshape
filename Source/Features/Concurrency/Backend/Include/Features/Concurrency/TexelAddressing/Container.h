@@ -27,8 +27,8 @@
 #pragma once
 
 // Feature
-#include <Features/Concurrency/Config.h>
-#include <Features/Concurrency/FailureCode.h>
+#include <Features/Concurrency/TexelAddressing/Config.h>
+#include <Features/Concurrency/TexelAddressing/FailureCode.h>
 
 // Addressing
 #include <Addressing/TexelMemoryAllocation.h>

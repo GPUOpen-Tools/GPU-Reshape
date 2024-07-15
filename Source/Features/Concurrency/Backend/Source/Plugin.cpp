@@ -34,9 +34,9 @@
 #include <Backend/IFeatureHost.h>
 
 // Concurrency
-#include <Features/Concurrency/Feature.h>
+#include <Features/Concurrency/TexelAddressingFeature.h>
 
-static ComRef<ComponentTemplate<ConcurrencyFeature>> feature{nullptr};
+static ComRef<ComponentTemplate<TexelAddressingConcurrencyFeature>> texelAddressingFeature{nullptr};
 
 DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
     info->name = "Concurrency";
@@ -50,8 +50,8 @@ DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
     }
 
     // Install the concurrency feature
-    feature = registry->New<ComponentTemplate<ConcurrencyFeature>>();
-    host->Register(feature);
+    texelAddressingFeature = registry->New<ComponentTemplate<TexelAddressingConcurrencyFeature>>();
+    host->Register(texelAddressingFeature);
 
     // OK
     return true;
@@ -64,6 +64,6 @@ DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
     }
 
     // Uninstall the feature
-    host->Deregister(feature);
-    feature.Release();
+    host->Deregister(texelAddressingFeature);
+    texelAddressingFeature.Release();
 }

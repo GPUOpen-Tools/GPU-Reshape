@@ -24,46 +24,56 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+#pragma once
+
 // Common
-#include <Common/Registry.h>
-#include <Common/ComponentTemplate.h>
-#include <Common/Plugin/Plugin.h>
-#include <Common/Plugin/PluginInfo.h>
+#include <Common/ComRef.h>
 
 // Backend
-#include <Backend/IFeatureHost.h>
+#include <Backend/ShaderProgram/IShaderProgram.h>
+#include <Backend/ShaderData/ShaderData.h>
 
-// Initialization
-#include <Features/Initialization/TexelAddressingFeature.h>
+class SRBMaskingShaderProgram final : public IShaderProgram {
+public:
+    /// Constructor
+    /// \param initializationMaskBufferID
+    SRBMaskingShaderProgram(ShaderDataID initializationMaskBufferID);
 
-static ComRef<ComponentTemplate<TexelAddressingInitializationFeature>> texelAddressingFeature{nullptr};
+    /// Install the masking program
+    /// \return
+    bool Install();
 
-DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
-    info->name = "Initialization";
-    info->description = "Instrumentation and validation of resource initialization prior to reads";
-}
+    /// IShaderProgram
+    void Inject(IL::Program &program) override;
 
-DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
-    auto host = registry->Get<IFeatureHost>();
-    if (!host) {
-        return false;
+    /// Interface querying
+    void *QueryInterface(ComponentID id) override {
+        switch (id) {
+            case IComponent::kID:
+                return static_cast<IComponent*>(this);
+            case IShaderProgram::kID:
+                return static_cast<IShaderProgram*>(this);
+        }
+
+        return nullptr;
     }
 
-    // Install the Initialization feature
-    texelAddressingFeature = registry->New<ComponentTemplate<TexelAddressingInitializationFeature>>();
-    host->Register(texelAddressingFeature);
-
-    // OK
-    return true;
-}
-
-DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
-    auto host = registry->Get<IFeatureHost>();
-    if (!host) {
-        return;
+    /// Get the mask ID
+    ShaderDataID GetMaskEventID() const {
+        return maskEventID;
     }
 
-    // Uninstall the feature
-    host->Deregister(texelAddressingFeature);
-    texelAddressingFeature.Release();
-}
+    /// Get the PUID ID
+    ShaderDataID GetPUIDEventID() const {
+        return puidEventID;
+    }
+
+private:
+    /// Shared data host
+    ComRef<IShaderDataHost> shaderDataHost{nullptr};
+
+    /// Shader data
+    ShaderDataID initializationMaskBufferID{InvalidShaderDataID};
+    ShaderDataID maskEventID{InvalidShaderDataID};
+    ShaderDataID puidEventID{InvalidShaderDataID};
+};

@@ -27,7 +27,7 @@
 #pragma once
 
 // Feature
-#include <Features/Concurrency/Container.h>
+#include <Features/Concurrency/TexelAddressing/Container.h>
 
 // Bridge
 #include <Bridge/IBridgeListener.h>

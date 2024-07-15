@@ -25,7 +25,7 @@
 // 
 
 // Concurrency
-#include <Features/Concurrency/ValidationListener.h>
+#include <Features/Concurrency/TexelAddressing/ValidationListener.h>
 
 // Message
 #include <Message/MessageStream.h>

@@ -24,9 +24,9 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#include <Features/Initialization/MaskCopyRangeShaderProgram.h>
-#include <Features/Initialization/MaskCopyRangeParameters.h>
-#include <Features/Initialization/KernelShared.h>
+#include <Features/Initialization/TexelAddressing/MaskCopyRangeShaderProgram.h>
+#include <Features/Initialization/TexelAddressing/MaskCopyRangeParameters.h>
+#include <Features/Initialization/TexelAddressing/KernelShared.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>

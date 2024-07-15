@@ -27,7 +27,7 @@
 #pragma once
 
 // Feature
-#include <Features/Initialization/FailureCode.h>
+#include <Features/Initialization/TexelAddressing/FailureCode.h>
 
 // Backend
 #include <Backend/IFeature.h>
@@ -65,9 +65,9 @@ class TexelMemoryAllocator;
 class IShaderProgramHost;
 struct CommandBuffer;
 
-class InitializationFeature final : public IFeature, public IShaderFeature {
+class TexelAddressingInitializationFeature final : public IFeature, public IShaderFeature {
 public:
-    COMPONENT(InitializationFeature);
+    COMPONENT(TexelAddressingInitializationFeature);
 
     /// IFeature
     bool Install() override;

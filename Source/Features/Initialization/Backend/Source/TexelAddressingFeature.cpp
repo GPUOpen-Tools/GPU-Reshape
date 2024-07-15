@@ -25,13 +25,13 @@
 // 
 
 // Feature
-#include <Features/Initialization/Feature.h>
-#include <Features/Initialization/MaskBlitShaderProgram.h>
-#include <Features/Initialization/MaskCopyRangeShaderProgram.h>
+#include <Features/Initialization/TexelAddressingFeature.h>
+#include <Features/Initialization/TexelAddressing/MaskBlitShaderProgram.h>
+#include <Features/Initialization/TexelAddressing/MaskCopyRangeShaderProgram.h>
 #include <Features/Descriptor/Feature.h>
-#include <Features/Initialization/MaskBlitParameters.h>
-#include <Features/Initialization/MaskCopyRangeParameters.h>
-#include <Features/Initialization/KernelShared.h>
+#include <Features/Initialization/TexelAddressing/MaskBlitParameters.h>
+#include <Features/Initialization/TexelAddressing/MaskCopyRangeParameters.h>
+#include <Features/Initialization/TexelAddressing/KernelShared.h>
 
 // Addressing
 #include <Addressing/IL/BitIndexing.h>
@@ -71,7 +71,7 @@
 /// Debugging toggle
 #define USE_METADATA_CLEAR_CHECKS 1
 
-bool InitializationFeature::Install() {
+bool TexelAddressingInitializationFeature::Install() {
     // Must have the export host
     auto exportHost = registry->Get<IShaderExportHost>();
     if (!exportHost) {
@@ -121,7 +121,7 @@ bool InitializationFeature::Install() {
     return true;
 }
 
-bool InitializationFeature::PostInstall() {
+bool TexelAddressingInitializationFeature::PostInstall() {
     // Command buffer for stages
     CommandBuffer  buffer;
     CommandBuilder builder(buffer);
@@ -144,31 +144,31 @@ bool InitializationFeature::PostInstall() {
     return true;
 }
 
-FeatureHookTable InitializationFeature::GetHookTable() {
+FeatureHookTable TexelAddressingInitializationFeature::GetHookTable() {
     FeatureHookTable table{};
-    table.createResource = BindDelegate(this, InitializationFeature::OnCreateResource);
-    table.destroyResource = BindDelegate(this, InitializationFeature::OnDestroyResource);
-    table.mapResource = BindDelegate(this, InitializationFeature::OnMapResource);
-    table.copyResource = BindDelegate(this, InitializationFeature::OnCopyResource);
-    table.resolveResource = BindDelegate(this, InitializationFeature::OnResolveResource);
-    table.clearResource = BindDelegate(this, InitializationFeature::OnClearResource);
-    table.writeResource = BindDelegate(this, InitializationFeature::OnWriteResource);
-    table.discardResource = BindDelegate(this, InitializationFeature::OnDiscardResource);
-    table.beginRenderPass = BindDelegate(this, InitializationFeature::OnBeginRenderPass);
-    table.preSubmit = BindDelegate(this, InitializationFeature::OnSubmitBatchBegin);
-    table.join = BindDelegate(this, InitializationFeature::OnJoin);
+    table.createResource = BindDelegate(this, TexelAddressingInitializationFeature::OnCreateResource);
+    table.destroyResource = BindDelegate(this, TexelAddressingInitializationFeature::OnDestroyResource);
+    table.mapResource = BindDelegate(this, TexelAddressingInitializationFeature::OnMapResource);
+    table.copyResource = BindDelegate(this, TexelAddressingInitializationFeature::OnCopyResource);
+    table.resolveResource = BindDelegate(this, TexelAddressingInitializationFeature::OnResolveResource);
+    table.clearResource = BindDelegate(this, TexelAddressingInitializationFeature::OnClearResource);
+    table.writeResource = BindDelegate(this, TexelAddressingInitializationFeature::OnWriteResource);
+    table.discardResource = BindDelegate(this, TexelAddressingInitializationFeature::OnDiscardResource);
+    table.beginRenderPass = BindDelegate(this, TexelAddressingInitializationFeature::OnBeginRenderPass);
+    table.preSubmit = BindDelegate(this, TexelAddressingInitializationFeature::OnSubmitBatchBegin);
+    table.join = BindDelegate(this, TexelAddressingInitializationFeature::OnJoin);
     return table;
 }
 
-void InitializationFeature::CollectExports(const MessageStream &exports) {
+void TexelAddressingInitializationFeature::CollectExports(const MessageStream &exports) {
     stream.Append(exports);
 }
 
-void InitializationFeature::CollectMessages(IMessageStorage *storage) {
+void TexelAddressingInitializationFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-void InitializationFeature::Activate(FeatureActivationStage stage) {
+void TexelAddressingInitializationFeature::Activate(FeatureActivationStage stage) {
     std::lock_guard guard(mutex);
     
     switch (stage) {
@@ -195,16 +195,16 @@ void InitializationFeature::Activate(FeatureActivationStage stage) {
     activated = true;
 }
 
-void InitializationFeature::Deactivate() {
+void TexelAddressingInitializationFeature::Deactivate() {
     activated = false;
 }
 
-void InitializationFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
+void TexelAddressingInitializationFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Analyze structural usage for all source users
     program.GetAnalysisMap().FindPassOrCompute<IL::StructuralUserAnalysis>(program);
 }
 
-void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
+void TexelAddressingInitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
     
@@ -404,7 +404,7 @@ static uint32_t GetWorkgroupCount(uint64_t value, uint32_t align) {
     return Cast32Checked((value + align - 1) / align);
 }
 
-void InitializationFeature::MapAllocationNoLock(Allocation &allocation) {
+void TexelAddressingInitializationFeature::MapAllocationNoLock(Allocation &allocation) {
     ASSERT(!allocation.mapped, "Allocation double-mapping");
 
     // Actual creation parameters for texel addressing
@@ -468,7 +468,7 @@ void InitializationFeature::MapAllocationNoLock(Allocation &allocation) {
     allocation.mapped = true;
 }
 
-void InitializationFeature::MapPendingAllocationsNoLock() {
+void TexelAddressingInitializationFeature::MapPendingAllocationsNoLock() {
     // Manually map all unmapped allocations
     for (Allocation* allocation : pendingMappingAllocations) {
         MapAllocationNoLock(*allocation);
@@ -478,7 +478,7 @@ void InitializationFeature::MapPendingAllocationsNoLock() {
     pendingMappingAllocations.Clear();
 }
 
-void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
+void TexelAddressingInitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     std::lock_guard guard(mutex);
 
     // Create allocation
@@ -494,7 +494,7 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     }
 }
 
-void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
+void TexelAddressingInitializationFeature::OnDestroyResource(const ResourceInfo &source) {
     std::lock_guard guard(mutex);
 
     // Do not fault on app errors
@@ -519,7 +519,7 @@ void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
     puidSRBInitializationSet.erase(source.token.puid);
 }
 
-void InitializationFeature::OnMapResource(const ResourceInfo &source) {
+void TexelAddressingInitializationFeature::OnMapResource(const ResourceInfo &source) {
     std::lock_guard guard(mutex);
 
     // Skip if already initialized
@@ -563,36 +563,36 @@ void InitializationFeature::OnMapResource(const ResourceInfo &source) {
     });
 }
 
-void InitializationFeature::OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
+void TexelAddressingInitializationFeature::OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
     std::lock_guard guard(mutex);
     CopyResourceMaskRange(context->buffer, source, dest);
     OnMetadataInitializationEvent(context, dest);
 }
 
-void InitializationFeature::OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
+void TexelAddressingInitializationFeature::OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
     std::lock_guard guard(mutex);
     // todo[init]: How can we handle resolve mapping sensibly?
     BlitResourceMask(context->buffer, dest);
     OnMetadataInitializationEvent(context, dest);
 }
 
-void InitializationFeature::OnClearResource(CommandContext* context, const ResourceInfo& resource) {
+void TexelAddressingInitializationFeature::OnClearResource(CommandContext* context, const ResourceInfo& resource) {
     std::lock_guard guard(mutex);
     BlitResourceMask(context->buffer, resource);
     OnMetadataInitializationEvent(context, resource);
 }
 
-void InitializationFeature::OnWriteResource(CommandContext* context, const ResourceInfo& resource) {
+void TexelAddressingInitializationFeature::OnWriteResource(CommandContext* context, const ResourceInfo& resource) {
     std::lock_guard guard(mutex);
     BlitResourceMask(context->buffer, resource);
 }
 
-void InitializationFeature::OnDiscardResource(CommandContext *context, const ResourceInfo &resource) {
+void TexelAddressingInitializationFeature::OnDiscardResource(CommandContext *context, const ResourceInfo &resource) {
     std::lock_guard guard(mutex);
     OnMetadataInitializationEvent(context, resource);
 }
 
-void InitializationFeature::OnBeginRenderPass(CommandContext *context, const RenderPassInfo &passInfo) {
+void TexelAddressingInitializationFeature::OnBeginRenderPass(CommandContext *context, const RenderPassInfo &passInfo) {
     std::lock_guard guard(mutex);
     
     // TODO: Only blit the "active" render pass region
@@ -642,7 +642,7 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
     }
 }
 
-void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
+void TexelAddressingInitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
     std::lock_guard guard(mutex);
 
     // Not interested in empty submissions
@@ -782,7 +782,7 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
     }
 }
 
-void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
+void TexelAddressingInitializationFeature::OnJoin(CommandContextHandle contextHandle) {
     std::lock_guard guard(mutex);
 
     // If untracked, ignore
@@ -811,7 +811,7 @@ void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
     commandContexts.erase(contextHandle);
 }
 
-void InitializationFeature::OnMetadataInitializationEvent(CommandContext *context, const ResourceInfo &info) {
+void TexelAddressingInitializationFeature::OnMetadataInitializationEvent(CommandContext *context, const ResourceInfo &info) {
     // If this is a resource with metadata clear requirements, mark the block as safe now
     if (Allocation& allocation = allocations[info.token.puid]; allocation.failureCode == FailureCode::MetadataRequiresHardwareClear) {
         CommandBuilder builder(context->buffer);
@@ -845,7 +845,7 @@ static void ChunkedExecution(CommandBuilder& builder, const ComRef<T>& program, 
     builder.UAVBarrier();
 }
 
-void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const ResourceInfo &info) {
+void TexelAddressingInitializationFeature::BlitResourceMask(CommandBuffer& buffer, const ResourceInfo &info) {
     const ResourceProgram<MaskBlitShaderProgram>& program = blitPrograms[{info.token.GetType(), info.isVolumetric}];
     
     // todo[init]: cpu side copy check
@@ -900,7 +900,7 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
     }
 }
 
-void InitializationFeature::CopyResourceMaskRange(CommandBuffer& buffer, const ResourceInfo &source, const ResourceInfo &dest) {
+void TexelAddressingInitializationFeature::CopyResourceMaskRange(CommandBuffer& buffer, const ResourceInfo &source, const ResourceInfo &dest) {
     if (source.token.type == dest.token.type) {
         CopyResourceMaskRangeSymmetric(buffer, source, dest);
     } else {
@@ -908,7 +908,7 @@ void InitializationFeature::CopyResourceMaskRange(CommandBuffer& buffer, const R
     }
 }
 
-void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer, const ResourceInfo &source, const ResourceInfo &dest) {
+void TexelAddressingInitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer, const ResourceInfo &source, const ResourceInfo &dest) {
     const ResourceProgram<MaskCopyRangeShaderProgram>& program = copyPrograms[{source.token.GetType(), dest.token.GetType(), source.isVolumetric}];
     
     // todo[init]: cpu side copy check
@@ -972,7 +972,7 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
     }
 }
 
-void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffer, const ResourceInfo &source, const ResourceInfo &dest) {
+void TexelAddressingInitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffer, const ResourceInfo &source, const ResourceInfo &dest) {
     // This is an asymmetric copy, if either is volumetric, the copy is
     bool isVolumetric = source.isVolumetric || dest.isVolumetric;
 
@@ -1060,7 +1060,7 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
 }
 
 template<typename T, typename ... A>
-bool InitializationFeature::CreateProgram(const ComRef<IShaderProgramHost> &programHost, ResourceProgram<T> &out, A &&...args) {
+bool TexelAddressingInitializationFeature::CreateProgram(const ComRef<IShaderProgramHost> &programHost, ResourceProgram<T> &out, A &&...args) {
     out.program = registry->New<T>(args...);
 
     // Try to install program
@@ -1073,21 +1073,21 @@ bool InitializationFeature::CreateProgram(const ComRef<IShaderProgramHost> &prog
     return true;
 }
 
-bool InitializationFeature::CreateBlitProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType type, bool isVolumetric) {
+bool TexelAddressingInitializationFeature::CreateBlitProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType type, bool isVolumetric) {
     return CreateProgram(programHost, blitPrograms[{type, isVolumetric}], texelAllocator->GetTexelBlocksBufferID(), type, isVolumetric);
 }
 
-bool InitializationFeature::CreateCopyProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric) {
+bool TexelAddressingInitializationFeature::CreateCopyProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric) {
     return CreateProgram(programHost, copyPrograms[{from, to, isVolumetric}], texelAllocator->GetTexelBlocksBufferID(), from, to, isVolumetric);
 }
 
-bool InitializationFeature::CreateBlitPrograms(const ComRef<IShaderProgramHost> &programHost) {
+bool TexelAddressingInitializationFeature::CreateBlitPrograms(const ComRef<IShaderProgramHost> &programHost) {
     return CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Buffer, false) &&
            CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Texture, false) &&
            CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Texture, true);
 }
 
-bool InitializationFeature::CreateCopyPrograms(const ComRef<IShaderProgramHost> &programHost) {
+bool TexelAddressingInitializationFeature::CreateCopyPrograms(const ComRef<IShaderProgramHost> &programHost) {
     // Matching types
     if (!CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Buffer, Backend::IL::ResourceTokenType::Buffer, false) ||
         !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Texture, false) ||
@@ -1107,7 +1107,7 @@ bool InitializationFeature::CreateCopyPrograms(const ComRef<IShaderProgramHost> 
     return true;
 }
 
-FeatureInfo InitializationFeature::GetInfo() {
+FeatureInfo TexelAddressingInitializationFeature::GetInfo() {
     FeatureInfo info;
     info.name = "Initialization";
     info.description = "Instrumentation and validation of resource initialization prior to reads";

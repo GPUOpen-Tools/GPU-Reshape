@@ -24,9 +24,9 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#include <Features/Initialization/MaskBlitShaderProgram.h>
-#include <Features/Initialization/MaskBlitParameters.h>
-#include <Features/Initialization/KernelShared.h>
+#include <Features/Initialization/TexelAddressing/MaskBlitShaderProgram.h>
+#include <Features/Initialization/TexelAddressing/MaskBlitParameters.h>
+#include <Features/Initialization/TexelAddressing/KernelShared.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>

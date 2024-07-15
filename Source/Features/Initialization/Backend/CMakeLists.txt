@@ -32,9 +32,11 @@ Project_AddShaderSchema(Generated Schemas/Initialization.xml Include/Schemas/Fea
 # Create feature
 add_library(
     GRS.Features.Initialization.Backend SHARED
-    Source/Feature.cpp
-    Source/MaskBlitShaderProgram.cpp
-    Source/MaskCopyRangeShaderProgram.cpp
+    Source/TexelAddressingFeature.cpp
+    Source/ResourceAddressingFeature.cpp
+    Source/ResourceAddressing/SRBMaskingShaderProgram.cpp
+    Source/TexelAddressing/MaskBlitShaderProgram.cpp
+    Source/TexelAddressing/MaskCopyRangeShaderProgram.cpp
     Source/Plugin.cpp
 
     # Generated

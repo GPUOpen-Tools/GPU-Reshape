@@ -27,7 +27,7 @@
 #pragma once
 
 // Feature
-#include <Features/Concurrency/Container.h>
+#include <Features/Concurrency/TexelAddressing/Container.h>
 
 // Common
 #include <Common/ComRef.h>
@@ -50,9 +50,9 @@ class TexelMemoryAllocator;
 class ConcurrencyValidationListener;
 class IScheduler;
 
-class ConcurrencyFeature final : public IFeature, public IShaderFeature {
+class TexelAddressingConcurrencyFeature final : public IFeature, public IShaderFeature {
 public:
-    COMPONENT(ConcurrencyFeature);
+    COMPONENT(TexelAddressingConcurrencyFeature);
 
     /// IFeature
     bool Install() override;
