@@ -30,8 +30,12 @@
 #include <Backend/IL/BasicBlockList.h>
 
 // Std
+#include <stack>
 #include <variant>
 #include <vector>
+
+/// Use stack based traversal
+#define BASIC_BLOCK_TRAVERSAL_USE_STACK 1
 
 namespace IL {
     class BasicBlockTraversal {
@@ -44,7 +48,11 @@ namespace IL {
             Clear(basicBlocks);
 
             // Invoke traversal
-            TraversePostOrder(basicBlocks, basicBlocks.GetEntryPoint());
+#if BASIC_BLOCK_TRAVERSAL_USE_STACK
+            TraversePostOrderStack(basicBlocks, basicBlocks.GetEntryPoint());
+#else // BASIC_BLOCK_TRAVERSAL_USE_STACK
+            TraversePostOrderRecursion(basicBlocks, basicBlocks.GetEntryPoint());
+#endif // BASIC_BLOCK_TRAVERSAL_USE_STACK
         }
 
         /// Get the current traversal view
@@ -53,10 +61,10 @@ namespace IL {
         }
 
     private:
-        /// Perform post-order traversal
+        /// Perform post-order traversal using recursion
         /// \param basicBlocks all basic blocks
         /// \param bb basic block to traverse
-        void TraversePostOrder(BasicBlockList& basicBlocks, BasicBlock *bb) {
+        void TraversePostOrderRecursion(BasicBlockList& basicBlocks, BasicBlock *bb) {
             // Attempt to acquire the basic block
             if (!Acquire(bb)) {
                 return;
@@ -72,20 +80,20 @@ namespace IL {
                     break;
                 case OpCode::Branch: {
                     auto *instr = terminator->As<BranchInstruction>();
-                    TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->branch));
+                    TraversePostOrderRecursion(basicBlocks, basicBlocks.GetBlock(instr->branch));
                     break;
                 }
                 case OpCode::BranchConditional: {
                     auto *instr = terminator->As<BranchConditionalInstruction>();
-                    TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->pass));
-                    TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->fail));
+                    TraversePostOrderRecursion(basicBlocks, basicBlocks.GetBlock(instr->pass));
+                    TraversePostOrderRecursion(basicBlocks, basicBlocks.GetBlock(instr->fail));
                     break;
                 }
                 case OpCode::Switch: {
                     auto *instr = terminator->As<SwitchInstruction>();
-                    TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->_default));
+                    TraversePostOrderRecursion(basicBlocks, basicBlocks.GetBlock(instr->_default));
                     for (uint32_t caseIndex = 0; caseIndex < instr->cases.count; caseIndex++) {
-                        TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->cases[caseIndex].branch));
+                        TraversePostOrderRecursion(basicBlocks, basicBlocks.GetBlock(instr->cases[caseIndex].branch));
                     }
                     break;
                 }
@@ -96,6 +104,82 @@ namespace IL {
 
             // Mark as candidate
             blocks.push_back(bb);
+        }
+        
+        /// Perform post-order traversal on the stack
+        /// \param basicBlocks all basic blocks
+        /// \param root basic block to traverse
+        void TraversePostOrderStack(BasicBlockList& basicBlocks, BasicBlock *root) {
+            std::stack<BasicBlock*> frontTraversal;
+
+            // Acquire root
+            frontTraversal.push(root);
+            Acquire(root);
+
+            // Process all front blocks
+            while (!frontTraversal.empty()) {
+                BasicBlock* bb = frontTraversal.top();
+                frontTraversal.pop();
+
+                // Order set, push in reverse order
+                blocks.push_back(bb);
+
+                // Get terminator
+                const Instruction *terminator = bb->GetTerminator();
+
+                // Handle terminator
+                switch (terminator->opCode) {
+                    default: {
+                        // ASSERT(false, "Unknown terminator");
+                        break;
+                    }
+                    case OpCode::Branch: {
+                        auto *instr = terminator->As<BranchInstruction>();
+
+                        // Push target branch
+                        if (BasicBlock* branchBB = basicBlocks.GetBlock(instr->branch); Acquire(branchBB)) {
+                            frontTraversal.push(branchBB);
+                        }
+                        break;
+                    }
+                    case OpCode::BranchConditional: {
+                        auto *instr = terminator->As<BranchConditionalInstruction>();
+
+                        // Push pass branch
+                        if (BasicBlock* branchBB = basicBlocks.GetBlock(instr->pass); Acquire(branchBB)) {
+                            frontTraversal.push(branchBB);
+                        }
+                        
+                        // Push fail branch
+                        if (BasicBlock* branchBB = basicBlocks.GetBlock(instr->fail); Acquire(branchBB)) {
+                            frontTraversal.push(branchBB);
+                        }
+                        break;
+                    }
+                    case OpCode::Switch: {
+                        auto *instr = terminator->As<SwitchInstruction>();
+
+                        // Push default branch
+                        if (BasicBlock* branchBB = basicBlocks.GetBlock(instr->_default); Acquire(branchBB)) {
+                            frontTraversal.push(branchBB);
+                        }
+                        
+                        // Push case branches
+                        for (uint32_t caseIndex = 0; caseIndex < instr->cases.count; caseIndex++) {
+                            if (BasicBlock* branchBB = basicBlocks.GetBlock(instr->cases[caseIndex].branch); Acquire(branchBB)) {
+                                frontTraversal.push(branchBB);
+                            }
+                        }
+                        break;
+                    }
+                    case OpCode::Return: {
+                        break;
+                    }
+                }
+            }
+
+            // Blocks are pushed in LIFO, reverse it
+            std::ranges::reverse(blocks);
         }
 
         /// Attempt to acquire a basic block
