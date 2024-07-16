@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -29,29 +29,20 @@
 // Message
 #include <Message/MessageStream.h>
 
-// Std
-#include <string>
+// Common
+#include <Common/IComponent.h>
 
 namespace Backend {
-    struct StartupEnvironment {
-        /// Populate a stream from the current environment
-        /// \param stream destination stream
-        /// \return success code
-        bool LoadFromEnvironment(MessageStream& stream);
+    class StartupContainer : public TComponent<StartupContainer> {
+    public:
+        COMPONENT(StartupContainer);
         
-        /// Populate a stream from the config
-        /// \param stream destination stream
-        /// \return success code
-        bool LoadFromApplicationConfig(MessageStream& stream);
-        
-        /// Populate a stream from the config
-        /// \param stream destination stream
-        /// \return success code
-        bool LoadFromGlobalConfig(MessageStream& stream);
+        /// Get the stream view
+        MessageStreamView<> GetView() {
+            return stream;
+        }
 
-        /// Write a startup environment
-        /// \param stream given stream to write
-        /// \return final path
-        std::string WriteEnvironment(const MessageStream& stream);
+        /// Underlying container
+        MessageStream stream;
     };
 }

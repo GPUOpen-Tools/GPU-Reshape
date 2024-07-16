@@ -57,6 +57,7 @@
 // Backend
 #include <Backend/EnvironmentInfo.h>
 #include <Backend/StartupEnvironment.h>
+#include <Backend/StartupContainer.h>
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
 #include <Backend/IL/Format.h>
@@ -75,20 +76,16 @@
 #include <cstring>
 
 static void ApplyStartupEnvironment(DeviceDispatchTable* table) {
-    MessageStream stream;
-    
-    // Attempt to load
-    Backend::StartupEnvironment startupEnvironment;
-    startupEnvironment.LoadFromConfig(stream);
-    startupEnvironment.LoadFromEnvironment(stream);
+    // Get container
+    auto container = table->registry.Get<Backend::StartupContainer>();
 
     // Empty?
-    if (stream.IsEmpty()) {
+    if (container->stream.IsEmpty()) {
         return;
     }
-
+    
     // Commit initial stream
-    table->bridge->GetInput()->AddStream(stream);
+    table->bridge->GetInput()->AddStream(container->stream);
     table->bridge->Commit();
 }
 
@@ -470,7 +467,7 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
         }
     }
 
-    // Query and apply environment
+    // Apply environment
     ApplyStartupEnvironment(table);
 
     // Finally, post-install all features for late work

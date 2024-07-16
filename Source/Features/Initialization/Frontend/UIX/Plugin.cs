@@ -72,7 +72,9 @@ namespace GRS.Features.Initialization.UIX
             {
                 Name = Resources.Workspace_Configuration_Initialization_Name,
                 Description = Resources.Workspace_Configuration_Initialization_Description,
-                Flags = WorkspaceConfigurationFlag.CanDetail | WorkspaceConfigurationFlag.RequiresSynchronousRecording,
+                Flags = WorkspaceConfigurationFlag.CanDetail |
+                        WorkspaceConfigurationFlag.RequiresSynchronousRecording |
+                        WorkspaceConfigurationFlag.CanUseTexelAddressing,
                 FeatureName = "Initialization"
             });
 

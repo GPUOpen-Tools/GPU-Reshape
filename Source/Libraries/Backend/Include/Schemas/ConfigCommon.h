@@ -26,32 +26,11 @@
 
 #pragma once
 
-// Message
-#include <Message/MessageStream.h>
+// Backend
+#include <Schemas/Config.h>
 
-// Std
-#include <string>
-
-namespace Backend {
-    struct StartupEnvironment {
-        /// Populate a stream from the current environment
-        /// \param stream destination stream
-        /// \return success code
-        bool LoadFromEnvironment(MessageStream& stream);
-        
-        /// Populate a stream from the config
-        /// \param stream destination stream
-        /// \return success code
-        bool LoadFromApplicationConfig(MessageStream& stream);
-        
-        /// Populate a stream from the config
-        /// \param stream destination stream
-        /// \return success code
-        bool LoadFromGlobalConfig(MessageStream& stream);
-
-        /// Write a startup environment
-        /// \param stream given stream to write
-        /// \return final path
-        std::string WriteEnvironment(const MessageStream& stream);
-    };
+/// Collapse operator
+inline SetTexelAddressingMessage& operator|=(SetTexelAddressingMessage& lhs, const SetTexelAddressingMessage& rhs) {
+    lhs.enabled = rhs.enabled;
+    return lhs;
 }

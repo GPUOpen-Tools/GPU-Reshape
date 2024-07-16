@@ -192,6 +192,16 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
+        /// Should the configuration synchronously record?
+        /// </summary>
+        [DataMember]
+        public bool TexelAddressing
+        {
+            get => _texelAddressing;
+            set => this.RaiseAndSetIfChanged(ref _texelAddressing, value);
+        }
+
+        /// <summary>
         /// Name of the configuration, kept for suspension purposes
         /// </summary>
         [DataMember]
@@ -439,6 +449,16 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
+        /// Append all global settings
+        /// Not exposed as properties as their value may not change during a program
+        /// </summary>
+        private void AppendGlobalConfig(OrderedMessageView<ReadWriteMessageStream> view)
+        {
+            var texelMessage = view.Add<SetTexelAddressingMessage>();
+            texelMessage.enabled = TexelAddressing ? 1 : 0;
+        }
+
+        /// <summary>
         /// Invoked on start
         /// </summary>
         private async void OnStart()
@@ -493,6 +513,9 @@ namespace Studio.ViewModels
             {
                 busPropertyService.CommitRedirect(view, false);
             }
+
+            // Add all global options
+            AppendGlobalConfig(view);
             
             // Start process
             service.StartBootstrappedProcess(processInfo, view.Storage, ref _discoveryProcessInfo);
@@ -835,6 +858,11 @@ namespace Studio.ViewModels
         /// Internal synchronous recording state
         /// </summary>
         private bool _synchronousRecording;
+        
+        /// <summary>
+        /// Internal texel addressing state
+        /// </summary>
+        private bool _texelAddressing = true;
         
         /// <summary>
         /// Internal name state

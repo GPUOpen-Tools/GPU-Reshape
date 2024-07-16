@@ -46,6 +46,7 @@ namespace Studio.ViewModels.Workspace.Configurations
         /// </summary>
         public WorkspaceConfigurationFlag Flags =>
             WorkspaceConfigurationFlag.RequiresSynchronousRecording |
+            WorkspaceConfigurationFlag.CanUseTexelAddressing |
             WorkspaceConfigurationFlag.CanSafeGuard |
             WorkspaceConfigurationFlag.CanDetail;
 

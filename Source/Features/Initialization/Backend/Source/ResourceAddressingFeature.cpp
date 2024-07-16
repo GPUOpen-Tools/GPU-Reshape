@@ -260,6 +260,7 @@ void ResourceAddressingInitializationFeature::Inject(IL::Program &program, const
         
         // Get token details
         IL::ID PUID = token.GetPUID();
+        IL::ID packedToken = token.GetPackedToken();
 
         // Get the current mask
         IL::ID currentMask = pre.Extract(pre.LoadBuffer(pre.Load(initializationMaskBufferDataID), PUID), program.GetConstants().UInt(0)->id);
@@ -283,6 +284,7 @@ void ResourceAddressingInitializationFeature::Inject(IL::Program &program, const
         // Detailed instrumentation?
         if (config.detail) {
             msg.chunks |= UninitializedResourceMessage::Chunk::Detail;
+            msg.detail.token = packedToken;
 
             // Texel addressing constants
             msg.detail.coordinate[0] = zero;

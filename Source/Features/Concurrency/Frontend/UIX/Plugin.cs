@@ -68,7 +68,8 @@ namespace GRS.Features.Concurrency.UIX
             {
                 Name = Resources.Workspace_Configuration_Concurrency_Name,
                 Description = Resources.Workspace_Configuration_Concurrency_Description,
-                Flags = WorkspaceConfigurationFlag.CanDetail,
+                Flags = WorkspaceConfigurationFlag.CanDetail | 
+                        WorkspaceConfigurationFlag.CanUseTexelAddressing,
                 FeatureName = "Concurrency"
             });
 

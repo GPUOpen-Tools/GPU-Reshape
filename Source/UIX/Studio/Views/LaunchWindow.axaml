@@ -106,22 +106,22 @@
                     <TextBox Text="{Binding Arguments}" />
                 </Grid>
                 
+                <StackPanel Orientation="Horizontal" Margin="0 15 0 0">
+                    <CheckBox
+                        IsChecked="{Binding CaptureChildProcesses}"
+                        Content="Capture Child Processes"
+                        ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"/>
+                            
+                    <CheckBox
+                        Margin="15 0 0 0"
+                        IsChecked="{Binding AttachAllDevices}"
+                        Content="Attach All Devices"
+                        ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"/>
+                </StackPanel>
+                
                 <controls:InlineSectionView Title="Additional Arguments" IsExpanded="False" Margin="0 10 0 0" >
                     <StackPanel Orientation="Vertical">
-                        <StackPanel Orientation="Horizontal">
-                            <CheckBox
-                                IsChecked="{Binding CaptureChildProcesses}"
-                                Content="Capture Child Processes"
-                                ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"/>
-                            
-                            <CheckBox
-                                Margin="15 0 0 0"
-                                IsChecked="{Binding AttachAllDevices}"
-                                Content="Attach All Devices"
-                                ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"/>
-                        </StackPanel>
-                        
-                        <TextBlock Text="Environment"  Margin="0 15 0 0" />
+                        <TextBlock Text="Environment" />
                         <Grid Margin="0 5 0 0">
                             <TextBox Text="{Binding Environment}" />
                         </Grid>
@@ -169,6 +169,14 @@
                                 Margin="0 10 0 0"
                                 ToolTip.Tip="{x:Static r:Resources.Launch_Detail}"
                                 Content="Detailed reporting">
+                            </CheckBox>
+                        
+                            <CheckBox
+                                IsChecked="{Binding TexelAddressing}"
+                                IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanUseTexelAddressing}}"
+                                Margin="0 10 0 0"
+                                ToolTip.Tip="{x:Static r:Resources.Launch_TexelAddressing}"
+                                Content="Texel addressing">
                             </CheckBox>
                         
                             <CheckBox

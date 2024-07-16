@@ -214,6 +214,15 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Enables texel addressing, imposes large memory overhead.
+        /// </summary>
+        public static string Launch_TexelAddressing {
+            get {
+                return ResourceManager.GetString("Launch_TexelAddressing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Clear all logging entries.
         /// </summary>
         public static string Log_Close_Tooltip {

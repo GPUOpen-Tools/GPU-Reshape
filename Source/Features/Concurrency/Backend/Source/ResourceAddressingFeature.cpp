@@ -162,6 +162,7 @@ void ResourceAddressingConcurrencyFeature::Inject(IL::Program &program, const Me
         // Get global id of resource
         IL::ResourceTokenEmitter token(pre, resource);
         IL::ID puid = token.GetPUID();
+        IL::ID packedToken = token.GetPackedToken();
 
         // Load buffer
         IL::ID bufferValue = pre.Load(lockBufferDataID);
@@ -202,7 +203,7 @@ void ResourceAddressingConcurrencyFeature::Inject(IL::Program &program, const Me
         // Detailed instrumentation?
         if (config.detail) {
             msg.chunks |= ResourceRaceConditionMessage::Chunk::Detail;
-            msg.detail.token = token.GetPackedToken();
+            msg.detail.token = packedToken;
 
             // Texel addressing constants
             IL::ID zero = program.GetConstants().UInt(0)->id;

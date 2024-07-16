@@ -60,6 +60,7 @@
 // Backend
 #include <Backend/EnvironmentInfo.h>
 #include <Backend/StartupEnvironment.h>
+#include <Backend/StartupContainer.h>
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
 
@@ -98,20 +99,16 @@ static const GUID D3D12ExperimentalShadingModelGUID = GlobalUID::FromString("{76
 static const GUID D3D12SDKConfigurationGUID         = GlobalUID::FromString("{7cda6aca-a03e-49c8-9458-0334d20e07ce}").AsPlatformGUID();
 
 static void ApplyStartupEnvironment(DeviceState* state) {
-    MessageStream stream;
-    
-    // Attempt to load
-    Backend::StartupEnvironment startupEnvironment;
-    startupEnvironment.LoadFromConfig(stream);
-    startupEnvironment.LoadFromEnvironment(stream);
+    // Get container
+    auto container = state->registry.Get<Backend::StartupContainer>();
 
     // Empty?
-    if (stream.IsEmpty()) {
+    if (container->stream.IsEmpty()) {
         return;
     }
-
+    
     // Commit initial stream
-    state->bridge->GetInput()->AddStream(stream);
+    state->bridge->GetInput()->AddStream(container->stream);
     state->bridge->Commit();
 }
 
