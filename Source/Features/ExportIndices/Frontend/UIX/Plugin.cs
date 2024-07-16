@@ -46,7 +46,7 @@ namespace GRS.Features.ExportIndices.UIX
         /// </summary>
         public PluginInfo Info { get; } = new()
         {
-            Name = "ExportIndicesService",
+            Name = "ExportIndices",
             Description = "Provides instrumentation around export indices for vertices and primitives in mesh shader",
             Dependencies = new string[]{ }
         };
@@ -62,6 +62,9 @@ namespace GRS.Features.ExportIndices.UIX
             
             // Add workspace extension
             workspaceService?.Extensions.Add(this);
+            
+            // Ignore the All configuration
+            workspaceService?.GetConfiguration<IAllConfigurationViewModel>()?.IgnoredFeatures.Add("Export Indices");
             
             // Add workspace configuration
             workspaceService?.GetConfiguration<IBasicConfigurationViewModel>()?.Configurations.Add(new BaseConfigurationViewModel<ExportIndicesPropertyViewModel>()
