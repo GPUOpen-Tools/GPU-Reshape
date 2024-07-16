@@ -36,7 +36,11 @@ add_subdirectory(Descriptor)
 add_subdirectory(Initialization)
 add_subdirectory(Loop)
 add_subdirectory(Waterfall)
-add_subdirectory(ExportIndices)
+
+# Experimental plugins
+if (${ENABLE_EXPERIMENTAL})
+    add_subdirectory(ExportIndices)
+endif()
 
 # Proxy object
 add_custom_target(Features)
