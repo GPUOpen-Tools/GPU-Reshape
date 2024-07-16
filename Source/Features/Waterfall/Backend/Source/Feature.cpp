@@ -163,7 +163,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     uint32_t varyingOperandIndex = 0;
 
     // If this block is not executable, it's either unreachable or going to be DCE'd
-    if (!simulationAnalysis->GetPropagationEngine().IsBlockExecutable(data->instructionSourceBlocks.at(it->result))) {
+    if (!simulationAnalysis->GetPropagationEngine().IsBlockExecutable(data->instructionSourceBlocks.at(program.GetIdentifierMap().GetSourceInstruction(it->result)))) {
         return it;
     }
 

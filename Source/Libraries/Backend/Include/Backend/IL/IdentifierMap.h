@@ -86,6 +86,44 @@ namespace IL {
             instructionMap.at(result) = {};
         }
 
+        /// Redirect an instruction
+        /// This has no semantic relevance except for programs which explicitly fetch source instructions
+        /// \param original the original instruction result
+        /// \param redirect the new / redirected result
+        void RedirectInstruction(ID original, ID redirect) {
+            ASSERT(original != InvalidID && redirect != InvalidID, "Unmapping instruction with invalid result");
+
+            // Lazy allocate, most instrumentation will not require redirects
+            if (redirect >= redirectMap.size()) {
+                redirectMap.resize(redirect + 1, InvalidID);
+            }
+
+            // If the destination is a redirect in and of itself, is the destination's redirect
+            // Ensures we always point to the source
+            if (IL::ID existingRedirect = redirectMap[original]; existingRedirect != InvalidID) {
+                original = existingRedirect;
+            }
+            
+            redirectMap[redirect] = original;
+        }
+
+        /// Get the source / original instruction id from a potentially redirected id
+        /// \param id the id to query
+        /// \return source id (always valid)
+        IL::ID GetSourceInstruction(ID id) const {
+            if (id >= redirectMap.size()) {
+                return id;
+            }
+
+            // Check the redirect map
+            if (ID redirect = redirectMap[id]; redirect != InvalidID) {
+                return redirect;
+            }
+
+            // No redirect, this is a source id
+            return id;
+        }
+
         /// Get a mapped instruction
         /// \param id the resulting id
         /// \return may be invalid if not mapped
@@ -157,6 +195,9 @@ namespace IL {
 
         /// All instructions
         std::vector<OpaqueInstructionRef> instructionMap;
+
+        /// All redirected identifiers
+        std::vector<IL::ID> redirectMap;
 
         /// All basic blocks
         std::unordered_map<ID, BasicBlock*> blockMap;

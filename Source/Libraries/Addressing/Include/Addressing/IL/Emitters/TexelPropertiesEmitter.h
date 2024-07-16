@@ -133,7 +133,7 @@ namespace Backend::IL {
 
                     // Buffer load instructions always return a 4 component float
                     // To figure out what we're <actually> using, extract a component mask from the structural users
-                    ComponentMask mask = structuralUserAnalysis->GetUsedComponentMask(_instr->result);
+                    ComponentMask mask = structuralUserAnalysis->GetUsedComponentMask(program->GetIdentifierMap().GetSourceInstruction(_instr->result));
 
                     // Get the component type
                     const Type* componentType = GetStructuralType(type, 0);

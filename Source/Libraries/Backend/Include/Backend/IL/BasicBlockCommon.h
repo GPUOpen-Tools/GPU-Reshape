@@ -42,6 +42,9 @@ namespace Backend::IL {
         idMap.RemoveInstruction(instr->result);
         idMap.AddInstruction(it, result);
 
+        // Keep track of all redirects
+        idMap.RedirectInstruction(instr->result, result);
+
         // Remap the type map
         TypeMap& typeMap = program.GetTypeMap();
         typeMap.SetType(result, typeMap.GetType(instr->result));
