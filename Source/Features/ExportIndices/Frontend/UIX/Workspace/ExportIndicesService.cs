@@ -55,7 +55,7 @@ namespace GRS.Features.ExportIndices.UIX.Workspace
         /// <summary>
         /// Feature category
         /// </summary>
-        public string Category => string.Empty;
+        public string Category => "AMD";
 
         /// <summary>
         /// Feature flags
