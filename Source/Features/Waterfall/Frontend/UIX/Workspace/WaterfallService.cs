@@ -59,7 +59,7 @@ namespace GRS.Features.Waterfall.UIX.Workspace
         /// <summary>
         /// Feature flags
         /// </summary>
-        public InstrumentationFlag Flags => InstrumentationFlag.Experimental;
+        public InstrumentationFlag Flags => InstrumentationFlag.None;
 
         /// <summary>
         /// Assigned workspace
