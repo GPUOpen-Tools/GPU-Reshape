@@ -122,23 +122,23 @@ bool TexelAddressingInitializationFeature::Install() {
 }
 
 bool TexelAddressingInitializationFeature::PostInstall() {
-    // Command buffer for stages
-    CommandBuffer  buffer;
-    CommandBuilder builder(buffer);
+    // Create pre-initialized (external) null buffer
+    OnCreateResource(ResourceCreateInfo {
+        .resource = ResourceInfo::Buffer(ResourceToken {
+            .puid = IL::kResourceTokenPUIDReservedNullBuffer,
+            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer)
+        }),
+        .createFlags = ResourceCreateFlag::OpenedFromExternalHandle
+    });
 
-    // Default sub resource base mask
-    uint32_t fullSRB = ~0u;
-
-    // Mark null resources as initialized
-    // todo[init]: null!
-#if 0
-    builder.StageBuffer(initializationMaskBufferID, IL::kResourceTokenPUIDReservedNullBuffer * sizeof(uint32_t), sizeof(uint32_t), &fullSRB);
-    builder.StageBuffer(initializationMaskBufferID, IL::kResourceTokenPUIDReservedNullTexture * sizeof(uint32_t), sizeof(uint32_t), &fullSRB);
-#endif // 0
-    
-    // Schedule blocking
-    scheduler->Schedule(Queue::Graphics, buffer, nullptr);
-    scheduler->WaitForPending();
+    // Create pre-initialized (external) null texture
+    OnCreateResource(ResourceCreateInfo {
+        .resource = ResourceInfo::Texture(ResourceToken {
+            .puid = IL::kResourceTokenPUIDReservedNullTexture,
+            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
+        }, false),
+        .createFlags = ResourceCreateFlag::OpenedFromExternalHandle
+    });
 
     // OK
     return true;
