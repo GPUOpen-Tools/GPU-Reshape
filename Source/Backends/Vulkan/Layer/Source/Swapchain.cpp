@@ -151,6 +151,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroySwapchainKHR(VkDevice device, VkSwapcha
             continue;
         }
         
+        // Invoke proxies for all handles
+        for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+            proxyTable.destroyResource.TryInvoke(GetResourceInfoFor(imageState));
+        }
+        
         // Release the token
         table->physicalResourceIdentifierMap.FreePUID(imageState->virtualMappingTemplate.token.puid);
 
