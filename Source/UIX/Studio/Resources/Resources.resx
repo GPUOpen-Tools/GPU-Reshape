@@ -146,4 +146,7 @@ Do you consent to this?</value>
     <data name="Launch_TexelAddressing" xml:space="preserve">
         <value>Enables texel addressing, imposes large memory overhead</value>
     </data>
+    <data name="Features_TexelAddressing_Info" xml:space="preserve">
+        <value>Texel Addressing enables tracking initialization / concurrency events on a per-texel level, greatly improving accuracy. This incurs a heavy memory and performance overhead, disable to track on a per-resource level.</value>
+    </data>
 </root>

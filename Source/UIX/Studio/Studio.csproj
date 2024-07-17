@@ -201,6 +201,10 @@
         <DependentUpon>MiniSectionView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Setting\FeaturesSettingView.axaml.cs">
+        <DependentUpon>FeaturesSettingView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

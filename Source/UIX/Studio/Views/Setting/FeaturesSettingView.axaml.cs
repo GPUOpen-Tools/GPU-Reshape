@@ -24,31 +24,24 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.ComponentModel;
-using DynamicData;
-using Studio.ViewModels.Setting;
+using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
+using ReactiveUI;
 
-namespace Studio.Services
+namespace Studio.Views.Setting
 {
-    public class SettingsService : ISettingsService
+    public partial class FeaturesSettingView : UserControl, IViewFor
     {
-        /// <summary>
-        /// Root settings view model
-        /// </summary>
-        public ISettingViewModel ViewModel { get; } = new SettingViewModel();
-        
-        public SettingsService()
+        public object? ViewModel { get; set; }
+
+        public FeaturesSettingView()
         {
-            // Standard settings
-            ViewModel.Items.AddRange(new ISettingViewModel[]
-            {
-                new FeaturesSettingViewModel(),
-                new DiscoverySettingViewModel(),
-                new ApplicationListSettingViewModel()
-            });
-            
-            // Bind suspension
-            ((INotifyPropertyChanged)ViewModel).BindTypedSuspension();
+            InitializeComponent();
+        }
+
+        private void InitializeComponent()
+        {
+            AvaloniaXamlLoader.Load(this);
         }
     }
 }

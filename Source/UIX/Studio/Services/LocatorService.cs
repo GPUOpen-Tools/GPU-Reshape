@@ -40,6 +40,7 @@ namespace Studio.Services
             
             // Setting types
             AddDerived(typeof(ViewModels.Setting.DiscoverySettingViewModel), typeof(Views.Setting.DiscoverySettingView));
+            AddDerived(typeof(ViewModels.Setting.FeaturesSettingViewModel), typeof(Views.Setting.FeaturesSettingView));
             AddDerived(typeof(ViewModels.Setting.ApplicationListSettingViewModel), typeof(Views.Setting.ApplicationListSettingView));
             AddDerived(typeof(ViewModels.Setting.ApplicationSettingViewModel), typeof(Views.Setting.ApplicationSettingView));
             AddDerived(typeof(ViewModels.Setting.PDBSettingViewModel), typeof(Views.Setting.PDBSettingView));

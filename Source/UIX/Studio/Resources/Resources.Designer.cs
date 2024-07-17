@@ -151,6 +151,15 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Texel Addressing enables tracking initialization / concurrency events on a per-texel level, greatly improving accuracy. This incurs a heavy memory and performance overhead, disable to track on a per-resource level..
+        /// </summary>
+        public static string Features_TexelAddressing_Info {
+            get {
+                return ResourceManager.GetString("Features_TexelAddressing_Info", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Display help.
         /// </summary>
         public static string Help_Tooltip {
