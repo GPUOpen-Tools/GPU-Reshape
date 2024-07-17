@@ -95,10 +95,8 @@ namespace Backend::IL {
             auto&& sortMap = GetSortMap<T>();
 
             auto &constantPtr = sortMap[constant.SortKey(type)];
-            if (!constantPtr) {
-                constantPtr = AllocateConstant<T>(id, type, constant);
-                idMap[id] = constantPtr;
-            }
+            constantPtr = AllocateConstant<T>(id, type, constant);
+            idMap[id] = constantPtr;
 
             return constantPtr;
         }
