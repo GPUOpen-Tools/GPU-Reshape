@@ -434,6 +434,9 @@ void TexelAddressingConcurrencyFeature::MapPendingAllocationsNoLock() {
 void TexelAddressingConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
     std::lock_guard guard(container.mutex);
 
+    // Validation
+    ASSERT(!container.allocations.contains(source.resource.token.puid), "Double PUID allocation");
+
     // Create allocation
     ConcurrencyContainer::Allocation& allocation = container.allocations[source.resource.token.puid];
     allocation.createInfo = source;

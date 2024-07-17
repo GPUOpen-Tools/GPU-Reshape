@@ -481,6 +481,9 @@ void TexelAddressingInitializationFeature::MapPendingAllocationsNoLock() {
 void TexelAddressingInitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     std::lock_guard guard(mutex);
 
+    // Validation
+    ASSERT(!allocations.contains(source.resource.token.puid), "Double PUID allocation");
+    
     // Create allocation
     Allocation& allocation = allocations[source.resource.token.puid];
     allocation.createInfo = source;
