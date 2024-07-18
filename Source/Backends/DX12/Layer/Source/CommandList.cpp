@@ -477,7 +477,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     state->userContext.buffer.Clear();
     state->userContext.eventStack.Flush();
     state->userContext.eventStack.SetRemapping(device->eventRemappingTable);
-    state->userContext.handle = reinterpret_cast<CommandContextHandle>(state->object);
+    state->userContext.handle = reinterpret_cast<CommandContextHandle>(state->streamState);
 
     // Set stream context handle
     state->streamState->commandContextHandle = state->userContext.handle;
@@ -1230,7 +1230,7 @@ AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList
     return D3D12GPUOpenFunctionTableNext.next_AMDAGSSetMarker(context, Next(commandList), data);
 }
 
-static void InvokePreSubmitBatchHook(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment, ID3D12CommandList** commandLists, uint32_t commandListCount, SubmissionContext& context) {
+static void InvokePreSubmitBatchHook(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment, CommandContextHandle* handles, uint32_t commandListCount, SubmissionContext& context) {
     ShaderExportStreamSegmentUserContext& preContext = segment->userPreContext;
     ShaderExportStreamSegmentUserContext& postContext = segment->userPostContext;
     
@@ -1252,7 +1252,7 @@ static void InvokePreSubmitBatchHook(const CommandQueueTable& table, const Devic
     
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
-        proxyTable.preSubmit.TryInvoke(context, reinterpret_cast<const CommandContextHandle*>(commandLists), commandListCount);
+        proxyTable.preSubmit.TryInvoke(context, handles, commandListCount);
     }
 }
 
@@ -1367,7 +1367,8 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
 
     // Final list of commands to submit
     TrivialStackVector<ID3D12CommandList*, 64u> unwrapped;
-    
+    TrivialStackVector<CommandContextHandle, 64> contextHandles;
+
     // Reserve a slot for the streaming pre patching
     unwrapped.Add(nullptr);
 
@@ -1380,11 +1381,14 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
 
         // Pass down unwrapped
         unwrapped.Add(listTable.next);
+
+        // Keep track of handle
+        contextHandles.Add(reinterpret_cast<CommandContextHandle>(listTable.state->streamState));
     }
 
     // Run the submission hook
     SubmissionContext submitContext;
-    InvokePreSubmitBatchHook(table, device, segment, unwrapped.Data() + 1, count, submitContext);
+    InvokePreSubmitBatchHook(table, device, segment, contextHandles.Data(), count, submitContext);
 
     // Record the streaming pre patching
     unwrapped[0] = RecordExecutePreCommandList(table, device, segment);
@@ -1407,7 +1411,7 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
 
     // Run post submission for all proxies
     for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
-        proxyTable.postSubmit.TryInvoke(reinterpret_cast<const CommandContextHandle*>(unwrapped.Data() + 1), count);
+        proxyTable.postSubmit.TryInvoke(contextHandles.Data(), count);
     }
 
     // Notify streamer of submission
