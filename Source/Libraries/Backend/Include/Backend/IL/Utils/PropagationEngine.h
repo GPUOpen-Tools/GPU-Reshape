@@ -474,7 +474,7 @@ namespace Backend::IL {
                     break;
                 }
                 case PropagationResult::Mapped: {
-                    if (propagationResult != latticeResult) {
+                    if (static_cast<uint32_t>(propagationResult) > static_cast<uint32_t>(latticeResult)) {
                         SeedSSAEdges(work, edge, instr);
                     }
 
@@ -488,7 +488,7 @@ namespace Backend::IL {
                 case PropagationResult::Varying: {
                     ssaExclusion.insert(instr);
 
-                    if (propagationResult != latticeResult) {
+                    if (static_cast<uint32_t>(propagationResult) > static_cast<uint32_t>(latticeResult)) {
                         SeedSSAEdges(work, edge, instr);
                     }
 
@@ -603,6 +603,11 @@ namespace Backend::IL {
                     continue;
                 }
 
+                // Do not seed edges back to loop headers
+                if (work.loop && ref.basicBlock == work.loop->header->definition->header) {
+                    return;
+                }
+                
                 // Add to stack
                 work.ssaWorkStack.push(SSAItem {
                     .edge = Edge {
