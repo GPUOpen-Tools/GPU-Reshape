@@ -122,6 +122,9 @@ bool TexelAddressingInitializationFeature::Install() {
 }
 
 bool TexelAddressingInitializationFeature::PostInstall() {
+    // todo[init]: Track does rare race condition
+    return true;
+    
     // Create pre-initialized (external) null buffer
     OnCreateResource(ResourceCreateInfo {
         .resource = ResourceInfo::Buffer(ResourceToken {
