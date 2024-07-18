@@ -836,12 +836,18 @@ static void ChunkedExecution(CommandBuilder& builder, const ComRef<T>& program, 
     for (uint64_t offset = 0; offset < chunkCount; offset += kMaxDispatchThreadGroupPerDimension) {
         auto workgroupCount = std::min<uint32_t>(kMaxDispatchThreadGroupPerDimension, Cast32Checked(chunkCount - offset));
 
+        // Number of threads for this chunk group
+        uint32_t threadCount = workgroupCount * kKernelSize.threadsX;
+
+        // Total width of this chunk group
+        params.dispatchWidth = std::min(threadCount, static_cast<uint32_t>(width - params.dispatchOffset));
+
         // Dispatch the current chunk size
         builder.SetDescriptorData(program->GetDataID(), params);
         builder.Dispatch(workgroupCount, 1, 1);
 
         // Advance offset
-        params.dispatchOffset += workgroupCount * kKernelSize.threadsX;
+        params.dispatchOffset += threadCount;
     }
 
     // Finalize all writes before potential usage
