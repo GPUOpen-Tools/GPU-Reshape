@@ -66,9 +66,12 @@ bool MaskCopyRangeShaderProgram::Install() {
 void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     Backend::IL::ConstantMap& constants = program.GetConstants();
 
+    // Get entry point
+    IL::Function* entryPoint = program.GetEntryPoint();
+    
     // Must have termination block
-    IL::BasicBlock* basicBlock = Backend::IL::GetTerminationBlock(program);
-    if (!basicBlock) {
+    IL::BasicBlock* entryBlock = Backend::IL::GetTerminationBlock(program);
+    if (!entryBlock) {
         return;
     }
         
@@ -81,18 +84,35 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     // Get shader data
     IL::ShaderStruct<MaskCopyRangeParameters> data = program.GetShaderDataMap().Get(dataID)->id;
 
+    // Create blocks
+    IL::BasicBlock* exitBlock = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* bodyBlock = entryPoint->GetBasicBlocks().AllocBlock();
+
+    // Split the entry point for early out
+    IL::BasicBlock::Iterator bodyIt = entryBlock->Split(bodyBlock, entryBlock->GetTerminator());
+
+    // Get dispatch offsets
+    IL::Emitter<> entryEmitter(program, *entryBlock);
+    IL::ID dispatchID = entryEmitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
+    IL::ID dispatchXID = entryEmitter.Extract(dispatchID, constants.UInt(0)->id);
+
+    // Guard against the current chunk bounds (relative, not absolute)
+    entryEmitter.BranchConditional(
+        entryEmitter.LessThan(dispatchXID, data.Get<&MaskCopyRangeParameters::dispatchWidth>(entryEmitter)),
+        bodyBlock,
+        exitBlock,
+        IL::ControlFlow::Selection(bodyBlock)
+    );
+
+    // Exit block, just returns
+    IL::Emitter<>(program, *exitBlock).Return();
+
     // Append prior terminator
-    IL::Emitter<> emitter(program, *basicBlock, basicBlock->GetTerminator());
+    IL::Emitter<> emitter(program, *bodyBlock, bodyIt);
 
     // Derive token information from shader data
     IL::StructResourceTokenEmitter sourceToken(emitter, program.GetShaderDataMap().Get(sourceTokenID)->id);
     IL::StructResourceTokenEmitter destToken(emitter, program.GetShaderDataMap().Get(destTokenID)->id);
-
-    // todo[init]: guard oob dtid
-
-    // Get dispatch offsets
-    IL::ID dispatchID = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
-    IL::ID dispatchXID = emitter.Extract(dispatchID, constants.UInt(0)->id);
 
     // Base dispatch offset
     dispatchXID = emitter.Add(dispatchXID, data.Get<&MaskCopyRangeParameters::dispatchOffset>(emitter));
