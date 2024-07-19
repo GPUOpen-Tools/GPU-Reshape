@@ -407,7 +407,7 @@ static uint32_t GetWorkgroupCount(uint64_t value, uint32_t align) {
     return Cast32Checked((value + align - 1) / align);
 }
 
-void TexelAddressingInitializationFeature::MapAllocationNoLock(Allocation &allocation) {
+void TexelAddressingInitializationFeature::MapAllocationNoLock(Allocation &allocation, bool immediate) {
     ASSERT(!allocation.mapped, "Allocation double-mapping");
 
     // Actual creation parameters for texel addressing
@@ -449,7 +449,7 @@ void TexelAddressingInitializationFeature::MapAllocationNoLock(Allocation &alloc
 
     // If the resource requires a clear for stable metadata, mark the failure code as such
 #if USE_METADATA_CLEAR_CHECKS
-    if (allocation.createInfo.createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+    if (immediate && (allocation.createInfo.createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear)) {
         allocation.failureCode = FailureCode::MetadataRequiresHardwareClear;
 
         // Mark for pending discard
@@ -474,7 +474,7 @@ void TexelAddressingInitializationFeature::MapAllocationNoLock(Allocation &alloc
 void TexelAddressingInitializationFeature::MapPendingAllocationsNoLock() {
     // Manually map all unmapped allocations
     for (Allocation* allocation : pendingMappingAllocations) {
-        MapAllocationNoLock(*allocation);
+        MapAllocationNoLock(*allocation, false);
     }
 
     // Cleanup
@@ -494,7 +494,7 @@ void TexelAddressingInitializationFeature::OnCreateResource(const ResourceCreate
 
     // If activated, create it immediately, otherwise add it to the pending queue
     if (activated) {
-        MapAllocationNoLock(allocation);
+        MapAllocationNoLock(allocation, true);
     } else {
         pendingMappingAllocations.Add(&allocation);
     }
@@ -669,7 +669,7 @@ void TexelAddressingInitializationFeature::OnSubmitBatchBegin(SubmissionContext&
         // Map from end of container
         for (int64_t i = pendingMappingAllocations.Size() - 1; i >= end; i--) {
             Allocation *allocation = pendingMappingAllocations[i];
-            MapAllocationNoLock(*allocation);
+            MapAllocationNoLock(*allocation, false);
 
             // Removing from end of container, just pops
             pendingMappingAllocations.Remove(allocation);
@@ -679,7 +679,7 @@ void TexelAddressingInitializationFeature::OnSubmitBatchBegin(SubmissionContext&
     // Force map all allocations pending initialization
     for (const InitialiationTag& tag : pendingInitializationQueue) {
         if (auto it = allocations.find(tag.info.token.puid); it != allocations.end() && !it->second.mapped) {
-            MapAllocationNoLock(it->second);
+            MapAllocationNoLock(it->second, false);
 
             // Removing from pending queue
             pendingMappingAllocations.Remove(&it->second);

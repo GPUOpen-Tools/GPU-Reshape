@@ -228,7 +228,8 @@ private:
 
     /// Map an allocation
     /// \param allocation allocation to be mapped
-    void MapAllocationNoLock(Allocation& allocation);
+    /// \param immediate if true, mapped during allocation event
+    void MapAllocationNoLock(Allocation& allocation, bool immediate);
     
     /// Map all pending allocations
     void MapPendingAllocationsNoLock();
