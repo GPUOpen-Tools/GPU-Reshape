@@ -4449,6 +4449,85 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     break;
                 }
 
+                case IL::OpCode::LoadBufferRaw: {
+                    auto _instr = instr->As<IL::LoadBufferRawInstruction>();
+
+                    // Get type
+                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+
+                    // Type used for intrinsic
+                    const Backend::IL::Type* elementType = bufferType->elementType;
+
+                    // Mutate element type on structured
+                    if (auto _struct = elementType->Cast<Backend::IL::StructType>()) {
+                        ASSERT(_instr->offset != IL::InvalidID, "Offset on non-structured type");
+
+                        // Get offset
+                        auto offset = program.GetConstants().GetConstant(_instr->offset)->As<Backend::IL::IntConstant>();
+
+                        // Get the element type
+                        elementType = Backend::IL::GetStructuredTypeAtOffset(_struct, offset->value);
+                        ASSERT(elementType, "Failed to deduce element type from offset");
+                    }
+
+                    const Backend::IL::Type *componentType = Backend::IL::GetComponentType(elementType);
+
+                    // Get intrinsic
+                    const DXILFunctionDeclaration *intrinsic;
+                    switch (componentType->kind) {
+                        default:
+                            ASSERT(false, "Invalid buffer element type");
+                            return;
+                        case Backend::IL::TypeKind::Int: {
+                            auto _int = componentType->As<Backend::IL::IntType>();
+                            intrinsic = table.intrinsics.GetIntrinsic(_int->bitWidth == 16 ? Intrinsics::DxOpRawBufferLoadI16 : Intrinsics::DxOpRawBufferLoadI32);
+                            break;
+                        }
+                        case Backend::IL::TypeKind::FP: {
+                            auto _float = componentType->As<Backend::IL::FPType>();
+                            intrinsic = table.intrinsics.GetIntrinsic(_float->bitWidth == 16 ? Intrinsics::DxOpRawBufferLoadF16 : Intrinsics::DxOpRawBufferLoadF32);
+                            break;
+                        }
+                    }
+
+                    uint64_t ops[6];
+
+                    // Opcode
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::RawBufferLoad)}
+                    )->id);
+
+                    // Handle
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->buffer);
+
+                    // C0
+                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->index);
+
+                    // C1
+                    if (_instr->offset != IL::InvalidID) {
+                        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(_instr->offset);
+                    } else {
+                        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::UndefConstant{}
+                        )->id);
+                    }
+
+                    // Write mask
+                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(_instr->mask.value), 8u)->id);
+
+                    // Write alignment
+                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(_instr->alignment)->id);
+
+                    // Invoke into result
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 6, ops));
+
+                    // Set as VOS
+                    table.idRemapper.AllocSourceUserMapping(_instr->result, DXILIDUserType::VectorOnStruct, 0);
+                    break;
+                }
+
                 case IL::OpCode::StoreBuffer: {
                     auto _instr = instr->As<IL::StoreBufferInstruction>();
 
@@ -4507,6 +4586,77 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Invoke into result
                     block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 9, ops));
+                    break;
+                }
+                
+                case IL::OpCode::StoreBufferRaw: {
+                    auto _instr = instr->As<IL::StoreBufferRawInstruction>();
+
+                    // Get type
+                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+
+                    const Backend::IL::Type *componentType = Backend::IL::GetComponentType(bufferType->elementType);
+
+                    // Get intrinsic
+                    const DXILFunctionDeclaration *intrinsic;
+                    switch (componentType->kind) {
+                        default:
+                            ASSERT(false, "Invalid buffer element type");
+                            return;
+                        case Backend::IL::TypeKind::Int: {
+                            auto _int = componentType->As<Backend::IL::IntType>();
+                            intrinsic = table.intrinsics.GetIntrinsic(_int->bitWidth == 16 ? Intrinsics::DxOpRawBufferStoreI16 : Intrinsics::DxOpRawBufferStoreI32);
+                            break;
+                        }
+                        case Backend::IL::TypeKind::FP: {
+                            auto _float = componentType->As<Backend::IL::FPType>();
+                            intrinsic = table.intrinsics.GetIntrinsic(_float->bitWidth == 16 ? Intrinsics::DxOpRawBufferStoreF16 : Intrinsics::DxOpRawBufferStoreF32);
+                            break;
+                        }
+                    }
+
+                    uint64_t ops[10];
+
+                    // Opcode
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::RawBufferStore)}
+                    )->id);
+
+                    // Handle
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->buffer);
+
+                    // C0
+                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->index);
+
+                    // C1
+                    if (_instr->offset != IL::InvalidID) {
+                        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(_instr->offset);
+                    } else {
+                        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::UndefConstant{}
+                        )->id);
+                    }
+
+                    // Get component count
+                    uint32_t count = GetSVOXCount(_instr->value);
+
+                    // Visit all cases
+                    for (uint32_t i = 0; i < 4u; i++) {
+                        // Repeat last SVOX element if none remain
+                        SVOXElement element = ExtractSVOXElement(block, _instr->value, std::min(i, count - 1));
+                        ops[4 + i] = table.idRemapper.EncodeRedirectedUserOperand(element.value);
+                    }
+
+                    // Write mask
+                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(IL::ComponentMask::All), 8u)->id);
+
+                    // Write alignment
+                    ops[9] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(_instr->alignment)->id);
+
+                    // Invoke into result
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 10, ops));
                     break;
                 }
 

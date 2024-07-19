@@ -165,5 +165,75 @@ namespace Intrinsics {
         }
     };
 
-    static uint32_t kInbuiltCount = 13;
+    static DXILIntrinsicSpec DxOpRawBufferLoadF32 {
+        .uid = 13,
+        .name = "dx.op.rawBufferLoad.f32",
+        .returnType = DXILIntrinsicTypeSpec::ResRetF32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32,     // opcode
+            DXILIntrinsicTypeSpec::Handle,  // resource handle
+            DXILIntrinsicTypeSpec::I32,     // coordinate
+            DXILIntrinsicTypeSpec::I8,      // mask
+            DXILIntrinsicTypeSpec::I32      // alignment
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpRawBufferLoadI32 {
+        .uid = 14,
+        .name = "dx.op.rawBufferLoad.i32",
+        .returnType = DXILIntrinsicTypeSpec::ResRetI32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32,     // opcode
+            DXILIntrinsicTypeSpec::Handle,  // resource handle
+            DXILIntrinsicTypeSpec::I32,     // coordinate
+            DXILIntrinsicTypeSpec::I8,     // mask
+            DXILIntrinsicTypeSpec::I32      // alignment
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpRawBufferLoadF16 {
+        .uid = 15,
+        .name = "dx.op.rawBufferLoad.f16",
+        .returnType = DXILIntrinsicTypeSpec::ResRetF32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32,     // opcode
+            DXILIntrinsicTypeSpec::Handle,  // resource handle
+            DXILIntrinsicTypeSpec::I32,     // coordinate
+            DXILIntrinsicTypeSpec::I8,      // mask
+            DXILIntrinsicTypeSpec::I32      // alignment
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpRawBufferLoadI16 {
+        .uid = 16,
+        .name = "dx.op.rawBufferLoad.i16",
+        .returnType = DXILIntrinsicTypeSpec::ResRetI32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32,     // opcode
+            DXILIntrinsicTypeSpec::Handle,  // resource handle
+            DXILIntrinsicTypeSpec::I32,     // coordinate
+            DXILIntrinsicTypeSpec::I8,      // mask
+            DXILIntrinsicTypeSpec::I32      // alignment
+        }
+    };
+    
+    static DXILIntrinsicSpec DxOpRawBufferStoreI16 {
+        .uid = 17,
+        .name = "dx.op.rawBufferStore.i16",
+        .returnType = DXILIntrinsicTypeSpec::Void,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32,    // opcode
+            DXILIntrinsicTypeSpec::Handle, // resource handle
+            DXILIntrinsicTypeSpec::I32,    // coordinate c0 (index)
+            DXILIntrinsicTypeSpec::I32,    // coordinate c1 (elementOffset)
+            DXILIntrinsicTypeSpec::I1,     // value v0
+            DXILIntrinsicTypeSpec::I1,     // value v1
+            DXILIntrinsicTypeSpec::I1,     // value v2
+            DXILIntrinsicTypeSpec::I1,     // value v3
+            DXILIntrinsicTypeSpec::I8,     // write mask
+            DXILIntrinsicTypeSpec::I32,    // alignment
+        }
+    };
+
+    static uint32_t kInbuiltCount = 18;
 }
