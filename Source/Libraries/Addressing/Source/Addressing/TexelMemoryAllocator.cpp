@@ -132,10 +132,12 @@ TexelMemoryAllocation TexelMemoryAllocator::Allocate(const ResourceInfo &info) {
     ASSERT(out.texelBaseBlock + allocationDWords < blockCapacityAlignPow2, "Texel capacity exceeded");
         
     // Allocate all tiles in range
+#if USE_TILED_RESOURCES
     tileResidencyAllocator.Allocate(
         out.texelBaseBlock * sizeof(uint32_t),
         allocationDWords * sizeof(uint32_t)
     );
+#endif // USE_TILED_RESOURCES
 
     // OK
     return out;

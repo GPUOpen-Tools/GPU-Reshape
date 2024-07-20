@@ -6278,6 +6278,51 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             dwordOffset++;
         }
 
+        const Backend::IL::Type *resourceType = program.GetTypeMap().GetType(_instr->resource);
+
+        // Root descriptors don't have any view descriptor metadata, it's based on the
+        // owning resource from the virtual address. So, let the shader set up the view data.
+        if (resourceType->kind == Backend::IL::TypeKind::Buffer) {
+            auto buffer = resourceType->As<Backend::IL::BufferType>();
+
+            // Byte addressing ignores this type entirely
+            if (!buffer->byteAddressing) {
+                uint32_t viewBaseWidthId = program.GetIdentifierMap().AllocID();
+                uint32_t viewWidthId     = program.GetIdentifierMap().AllocID();
+                
+                // Assume packed format from the specified element type
+                // Texel type may not exist
+                ResourceToken token;
+                token.formatId = static_cast<uint32_t>(buffer->texelType);
+                token.formatSize = GetPODNonAlignedTypeByteSize(buffer->elementType);
+
+                // Divide the reported byte base width by the shader stride
+                LLVMRecord baseWidthDiv(LLVMFunctionRecord::InstBinOp);
+                baseWidthDiv.SetUser(true, ~0u, viewBaseWidthId);
+                baseWidthDiv.opCount = 3;
+                baseWidthDiv.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                baseWidthDiv.ops[0] = DXILIDRemapper::EncodeUserOperand(metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::ViewBaseWidth)]);
+                baseWidthDiv.ops[1] = DXILIDRemapper::EncodeUserOperand(program.GetConstants().UInt(token.formatSize)->id);
+                baseWidthDiv.ops[2] = static_cast<uint64_t>(LLVMBinOp::UDiv);
+                block->AddRecord(baseWidthDiv);
+
+                // Divide the reported byte width by the shader stride
+                LLVMRecord widthDiv(LLVMFunctionRecord::InstBinOp);
+                widthDiv.SetUser(true, ~0u, viewWidthId);
+                widthDiv.opCount = 3;
+                widthDiv.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                widthDiv.ops[0] = DXILIDRemapper::EncodeUserOperand(metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::ViewWidth)]);
+                widthDiv.ops[1] = DXILIDRemapper::EncodeUserOperand(program.GetConstants().UInt(token.formatSize)->id);
+                widthDiv.ops[2] = static_cast<uint64_t>(LLVMBinOp::UDiv);
+                block->AddRecord(widthDiv);
+
+                // Replace dwords
+                metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::PackedFormat)]  = program.GetConstants().UInt(token.packedFormat)->id;
+                metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::ViewBaseWidth)] = viewBaseWidthId;
+                metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::ViewWidth)]     = viewWidthId;
+            }
+        }
+
         // Always the first one
         rootOffset = metadataMap[0];
 
