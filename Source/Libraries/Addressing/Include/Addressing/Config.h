@@ -27,4 +27,4 @@
 #pragma once
 
 /// Enables address fencing, determines if any addressing is out of bounds
-#define TEXEL_ADDRESSING_ENABLE_FENCING (0)
+#define TEXEL_ADDRESSING_ENABLE_FENCING (1)

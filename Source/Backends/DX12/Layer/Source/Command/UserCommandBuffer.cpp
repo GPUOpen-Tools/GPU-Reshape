@@ -304,12 +304,14 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 // Write all chunks
                 for (size_t i = 0; i < chunkCount; i++) {
                     size_t offset = kClearChunkSize * i;
+                    ASSERT(cmd->length > offset, "Invalid offset");
+                    
                     size_t length = std::min(kClearChunkSize, cmd->length - offset);
 
                     // Copy from chunk to resource
                     commandList->CopyBufferRegion(
                         allocation.resource,
-                        cmd->offset,
+                        cmd->offset + offset,
                         sharedClearChunk.resource,
                         sharedClearChunk.offset,
                         length

@@ -117,14 +117,14 @@ TexelMemoryAllocation TexelMemoryAllocator::Allocate(const ResourceInfo &info) {
     out.addressInfo = addressAllocator.GetAllocationInfo(info, false);
 
     // Determine the number of texel blocks needed
-    // +1 for safety padding on region writes
-    out.texelBlockCount = Cast32Checked((out.addressInfo.texelCount + 31) / 32 + 1u);
+    out.texelBlockCount = Cast32Checked((out.addressInfo.texelCount + 31) / 32);
 
     // Number of header dwords
     out.headerDWordCount = static_cast<uint32_t>(TexelMemoryDWordFields::Count) + static_cast<uint32_t>(out.addressInfo.subresourceOffsets.Size());
 
     // Create underlying allocation
-    uint32_t allocationDWords = out.headerDWordCount + out.texelBlockCount;
+    // +1 for safety padding on region writes
+    uint32_t allocationDWords = out.headerDWordCount + out.texelBlockCount + 1u;
     out.buddy = texelBuddyAllocator.Allocate(allocationDWords);
 
     // Just assume the starting offset from the buddy allocation

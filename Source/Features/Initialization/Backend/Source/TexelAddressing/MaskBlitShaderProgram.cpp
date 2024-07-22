@@ -84,11 +84,13 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
     IL::ShaderStruct<MaskBlitParameters> data = program.GetShaderDataMap().Get(dataID)->id;
 
     // Create blocks
-    IL::BasicBlock* exitBlock = entryPoint->GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* bodyBlock = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* exitInvalidDispatchBlock   = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* exitInvalidAddressingBlock = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* texelAddressBlock          = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* writeBlock                 = entryPoint->GetBasicBlocks().AllocBlock();
 
     // Split the entry point for early out
-    IL::BasicBlock::Iterator bodyIt = entryBlock->Split(bodyBlock, entryBlock->GetTerminator());
+    IL::BasicBlock::Iterator writeTerminatorIt = entryBlock->Split(writeBlock, entryBlock->GetTerminator());
 
     // Get dispatch offsets
     IL::Emitter<> entryEmitter(program, *entryBlock);
@@ -98,62 +100,87 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
     // Guard against the current chunk bounds (relative, not absolute)
     entryEmitter.BranchConditional(
         entryEmitter.LessThan(dispatchXID, data.Get<&MaskBlitParameters::dispatchWidth>(entryEmitter)),
-        bodyBlock,
-        exitBlock,
-        IL::ControlFlow::Selection(bodyBlock)
+        texelAddressBlock,
+        exitInvalidDispatchBlock,
+        IL::ControlFlow::Selection(texelAddressBlock)
     );
 
-    // Exit block, just returns
-    IL::Emitter<>(program, *exitBlock).Return();
+    // If failed, just exit
+    IL::Emitter<>(program, *exitInvalidDispatchBlock).Return();
 
-    // Append prior terminator
-    IL::Emitter<> emitter(program, *bodyBlock, bodyIt);
+    // Texel calculation emitter
+    IL::Emitter<> texelEmitter(program, *texelAddressBlock);
 
     // Derive token information from shader data
-    IL::StructResourceTokenEmitter token(emitter, program.GetShaderDataMap().Get(destTokenID)->id);
+    IL::StructResourceTokenEmitter token(texelEmitter, program.GetShaderDataMap().Get(destTokenID)->id);
 
     // Base dispatch offset
-    dispatchXID = emitter.Add(dispatchXID, data.Get<&MaskBlitParameters::dispatchOffset>(emitter));
+    dispatchXID = texelEmitter.Add(dispatchXID, data.Get<&MaskBlitParameters::dispatchOffset>(texelEmitter));
     
     // Get memory base offset
-    IL::ID baseAlign32 = data.Get<&MaskBlitParameters::memoryBaseElementAlign32>(emitter);
+    IL::ID baseAlign32 = data.Get<&MaskBlitParameters::memoryBaseElementAlign32>(texelEmitter);
 
     // Final offset
-    IL::ID texel;
+    IL::ID texelOffset;
 
     // Setup subresource emitter
-    InlineSubresourceEmitter subresourceEmitter(emitter, token, emitter.Load(initializationMaskBufferDataID), baseAlign32);
+    InlineSubresourceEmitter subresourceEmitter(texelEmitter, token, texelEmitter.Load(initializationMaskBufferDataID), baseAlign32);
 
     // Buffer indexing just adds the linear offset
     if (type == Backend::IL::ResourceTokenType::Buffer) {
-        texel = emitter.Add(data.Get<&MaskBlitParameters::baseX>(emitter), dispatchXID);
+        texelOffset = texelEmitter.Add(data.Get<&MaskBlitParameters::baseX>(texelEmitter), dispatchXID);
     } else {
         // Texel addressing computation
-        Backend::IL::TexelAddressEmitter address(emitter, token, subresourceEmitter);
+        Backend::IL::TexelAddressEmitter address(texelEmitter, token, subresourceEmitter);
 
         // Convert to 3d
         Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
-            emitter, dispatchXID,
-            data.Get<&MaskBlitParameters::width>(emitter),
-            data.Get<&MaskBlitParameters::height>(emitter),
-            data.Get<&MaskBlitParameters::depth>(emitter)
+            texelEmitter, dispatchXID,
+            data.Get<&MaskBlitParameters::width>(texelEmitter),
+            data.Get<&MaskBlitParameters::height>(texelEmitter),
+            data.Get<&MaskBlitParameters::depth>(texelEmitter)
         );
         
         // Compute the intra-resource offset
-        texel = address.LocalTextureTexelAddress(
-            emitter.Add(data.Get<&MaskBlitParameters::baseX>(emitter), index.x),
-            emitter.Add(data.Get<&MaskBlitParameters::baseY>(emitter), index.y),
-            emitter.Add(data.Get<&MaskBlitParameters::baseZ>(emitter), index.z),
-            data.Get<&MaskBlitParameters::mip>(emitter),
+        texelOffset = address.LocalTextureTexelAddress(
+            texelEmitter.Add(data.Get<&MaskBlitParameters::baseX>(texelEmitter), index.x),
+            texelEmitter.Add(data.Get<&MaskBlitParameters::baseY>(texelEmitter), index.y),
+            texelEmitter.Add(data.Get<&MaskBlitParameters::baseZ>(texelEmitter), index.z),
+            data.Get<&MaskBlitParameters::mip>(texelEmitter),
             isVolumetric
         ).texelOffset;
     }
-
-    // Mark the given texel as initialized
     
-    // Blitting operates on a per-block basis, it assumes thread safety
+    // Get the memory base offset
+    IL::ID memoryBase = subresourceEmitter.GetResourceMemoryBase();
+    
+    // Read the total number of texels
+    IL::ID resourceTexelCount = subresourceEmitter.ReadFieldDWord(TexelMemoryDWordFields::TexelCount);
 
+    // Determine if the absolute offset is out of bounds
+    texelEmitter.BranchConditional(
+        texelEmitter.LessThan(texelOffset, resourceTexelCount),
+        writeBlock,
+        exitInvalidAddressingBlock,
+        IL::ControlFlow::Selection(writeBlock)
+    );
+
+    // If failed, just exit
+    IL::Emitter<>(program, *exitInvalidAddressingBlock).Return();
+   
+    // Append prior terminator
+    IL::Emitter<> writeEmitter(program, *writeBlock, writeTerminatorIt);
+    
+    // Mark the given texel as initialized
+    // Blitting operates on a per-block basis, it assumes thread safety
     // todo[init]: fix this!
-    WriteTexelAddressBlock(emitter, initializationMaskBufferDataID, subresourceEmitter.GetResourceMemoryBase(), emitter.Div(texel, constants.UInt(32)->id), constants.UInt(~0u)->id);
+    WriteTexelAddressBlock(
+        writeEmitter,
+        initializationMaskBufferDataID,
+        memoryBase,
+        writeEmitter.Div(texelOffset, constants.UInt(32)->id),
+        constants.UInt(~0u)->id
+    );
+    
     // AtomicOrTexelAddress(emitter, initializationMaskBufferDataID, baseAlign32, texel);
 }

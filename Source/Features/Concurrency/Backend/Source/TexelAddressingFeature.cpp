@@ -269,10 +269,10 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
         // Is this texel range unsafe? i.e., modifications are invalid?
         IL::ID unsafeTexelRange = pre.Or(texelProperties.address.isOutOfBounds, isUntracked);
 
-        // Debug. If the addressing is invalid, the range is definitely unsafe.
-#if CONCURRENCY_ENABLE_VALIDATION && TEXEL_ADDRESSING_ENABLE_FENCING
+        // If the addressing is invalid, the range is definitely unsafe
+#if TEXEL_ADDRESSING_ENABLE_FENCING
         unsafeTexelRange = pre.Or(unsafeTexelRange, texelProperties.invalidAddressing);
-#endif // CONCURRENCY_ENABLE_VALIDATION && TEXEL_ADDRESSING_ENABLE_FENCING
+#endif // TEXEL_ADDRESSING_ENABLE_FENCING
 
         // Manually select the target bit, this follows the same mechanism as the other overloads,
         // in our case we set the target bit to 0 if the address is out of bounds. Effectively disabling
@@ -314,7 +314,7 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
         IL::ID unsafeCond = pre.And(pre.NotEqual(previousLock, zero), pre.Not(texelProperties.address.isOutOfBounds));
         
 #if CONCURRENCY_ENABLE_VALIDATION && TEXEL_ADDRESSING_ENABLE_FENCING
-        // Under fencing, report just the invalid addressing cases
+        // Under validation, report just the invalid addressing cases
         IL::ID unsafeCond = texelProperties.invalidAddressing;
 #endif // CONCURRENCY_ENABLE_VALIDATION && TEXEL_ADDRESSING_ENABLE_FENCING
 

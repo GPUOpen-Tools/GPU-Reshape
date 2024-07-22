@@ -122,9 +122,6 @@ bool TexelAddressingInitializationFeature::Install() {
 }
 
 bool TexelAddressingInitializationFeature::PostInstall() {
-    // todo[init]: Track does rare race condition
-    return true;
-    
     // Create pre-initialized (external) null buffer
     OnCreateResource(ResourceCreateInfo {
         .resource = ResourceInfo::Buffer(ResourceToken {
@@ -305,7 +302,16 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
 
             // If untracked, don't write any bits
             IL::ID isUntracked = emitter.Equal(texelProperties.failureBlock, untracked);
-            texelProperties.address.texelCount = emitter.Select(isUntracked, zero, texelProperties.address.texelCount);
+            
+            // Is this texel range unsafe? i.e., modifications are invalid?
+#if TEXEL_ADDRESSING_ENABLE_FENCING
+            IL::ID unsafeTexelRange = emitter.Or(texelProperties.invalidAddressing, isUntracked);
+#else // TEXEL_ADDRESSING_ENABLE_FENCING
+            IL::ID unsafeTexelRange = isUntracked;
+#endif // TEXEL_ADDRESSING_ENABLE_FENCING
+
+            // If unsafe, do not modify anything
+            texelProperties.address.texelCount = emitter.Select(unsafeTexelRange, zero, texelProperties.address.texelCount);
 
             // Mark it as initialized
             AtomicOpTexelAddressRegion<RegionCombinerIgnore>(
@@ -340,7 +346,16 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
 
         // If untracked, don't read any bits
         IL::ID isUntracked = pre.Equal(texelProperties.failureBlock, untracked);
-        texelProperties.address.texelCount = pre.Select(isUntracked, zero, texelProperties.address.texelCount);
+        
+        // Is this texel range unsafe? i.e., modifications are invalid?
+#if TEXEL_ADDRESSING_ENABLE_FENCING
+        IL::ID unsafeTexelRange = pre.Or(texelProperties.invalidAddressing, isUntracked);
+#else // TEXEL_ADDRESSING_ENABLE_FENCING
+        IL::ID unsafeTexelRange = isUntracked;
+#endif // TEXEL_ADDRESSING_ENABLE_FENCING
+
+        // If unsafe, do not modify anything
+        texelProperties.address.texelCount = pre.Select(unsafeTexelRange, zero, texelProperties.address.texelCount);
         
         // Fetch the bits
         // This doesn't need to be atomic, as the source memory should be visible at this point
@@ -358,8 +373,8 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
         // If the failure block has any data, this is a bad operation
         cond = pre.Or(cond, pre.NotEqual(texelProperties.failureBlock, zero));
 
-        // If untracked, this can never fail
-        cond = pre.And(cond, pre.Not(isUntracked));
+        // If unsafe, this can never fail
+        cond = pre.And(cond, pre.Not(unsafeTexelRange));
 
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(cond, mismatchBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));

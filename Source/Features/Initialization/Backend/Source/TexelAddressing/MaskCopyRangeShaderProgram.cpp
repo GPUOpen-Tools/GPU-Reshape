@@ -85,11 +85,13 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     IL::ShaderStruct<MaskCopyRangeParameters> data = program.GetShaderDataMap().Get(dataID)->id;
 
     // Create blocks
-    IL::BasicBlock* exitBlock = entryPoint->GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* bodyBlock = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* exitInvalidDispatchBlock   = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* exitInvalidAddressingBlock = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* texelAddressBlock          = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* writeBlock                 = entryPoint->GetBasicBlocks().AllocBlock();
 
     // Split the entry point for early out
-    IL::BasicBlock::Iterator bodyIt = entryBlock->Split(bodyBlock, entryBlock->GetTerminator());
+    IL::BasicBlock::Iterator writeTerminatorIt = entryBlock->Split(writeBlock, entryBlock->GetTerminator());
 
     // Get dispatch offsets
     IL::Emitter<> entryEmitter(program, *entryBlock);
@@ -99,66 +101,66 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     // Guard against the current chunk bounds (relative, not absolute)
     entryEmitter.BranchConditional(
         entryEmitter.LessThan(dispatchXID, data.Get<&MaskCopyRangeParameters::dispatchWidth>(entryEmitter)),
-        bodyBlock,
-        exitBlock,
-        IL::ControlFlow::Selection(bodyBlock)
+        texelAddressBlock,
+        exitInvalidDispatchBlock,
+        IL::ControlFlow::Selection(texelAddressBlock)
     );
 
-    // Exit block, just returns
-    IL::Emitter<>(program, *exitBlock).Return();
+    // If failed, just exit
+    IL::Emitter<>(program, *exitInvalidDispatchBlock).Return();
 
-    // Append prior terminator
-    IL::Emitter<> emitter(program, *bodyBlock, bodyIt);
+    // Texel calculation emitter
+    IL::Emitter<> texelEmitter(program, *texelAddressBlock);
 
     // Derive token information from shader data
-    IL::StructResourceTokenEmitter sourceToken(emitter, program.GetShaderDataMap().Get(sourceTokenID)->id);
-    IL::StructResourceTokenEmitter destToken(emitter, program.GetShaderDataMap().Get(destTokenID)->id);
+    IL::StructResourceTokenEmitter sourceToken(texelEmitter, program.GetShaderDataMap().Get(sourceTokenID)->id);
+    IL::StructResourceTokenEmitter destToken(texelEmitter, program.GetShaderDataMap().Get(destTokenID)->id);
 
     // Base dispatch offset
-    dispatchXID = emitter.Add(dispatchXID, data.Get<&MaskCopyRangeParameters::dispatchOffset>(emitter));
+    dispatchXID = texelEmitter.Add(dispatchXID, data.Get<&MaskCopyRangeParameters::dispatchOffset>(texelEmitter));
     
     // Get memory base offsets
-    IL::ID sourceBaseAlign32 = data.Get<&MaskCopyRangeParameters::sourceMemoryBaseElementAlign32>(emitter);
-    IL::ID destBaseAlign32 = data.Get<&MaskCopyRangeParameters::destMemoryBaseElementAlign32>(emitter);
+    IL::ID sourceBaseAlign32 = data.Get<&MaskCopyRangeParameters::sourceMemoryBaseElementAlign32>(texelEmitter);
+    IL::ID destBaseAlign32 = data.Get<&MaskCopyRangeParameters::destMemoryBaseElementAlign32>(texelEmitter);
 
     // Final offsets
     IL::ID sourceTexel;
     IL::ID destTexel;
 
     // Setup subresource emitters
-    InlineSubresourceEmitter sourceSubresourceEmitter(emitter, sourceToken, emitter.Load(initializationMaskBufferDataID), sourceBaseAlign32);
-    InlineSubresourceEmitter destSubresourceEmitter(emitter, destToken, emitter.Load(initializationMaskBufferDataID), destBaseAlign32);
+    InlineSubresourceEmitter sourceSubresourceEmitter(texelEmitter, sourceToken, texelEmitter.Load(initializationMaskBufferDataID), sourceBaseAlign32);
+    InlineSubresourceEmitter destSubresourceEmitter(texelEmitter, destToken, texelEmitter.Load(initializationMaskBufferDataID), destBaseAlign32);
     
     // Symmetric copy?
     if (from == to) {
         // Buffer indexing just adds the linear offset
         if (from == Backend::IL::ResourceTokenType::Buffer) {
-            sourceTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID);
-            destTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID);
+            sourceTexel = texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(texelEmitter), dispatchXID);
+            destTexel = texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(texelEmitter), dispatchXID);
         } else {
             // Convert to 3d
             Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
-                emitter, dispatchXID,
-                data.Get<&MaskCopyRangeParameters::width>(emitter),
-                data.Get<&MaskCopyRangeParameters::height>(emitter),
-                data.Get<&MaskCopyRangeParameters::depth>(emitter)
+                texelEmitter, dispatchXID,
+                data.Get<&MaskCopyRangeParameters::width>(texelEmitter),
+                data.Get<&MaskCopyRangeParameters::height>(texelEmitter),
+                data.Get<&MaskCopyRangeParameters::depth>(texelEmitter)
             );
             
             // Compute the source intra-resource offset
-            sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), index.x),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), index.y),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), index.z),
-                data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
+            sourceTexel = Backend::IL::TexelAddressEmitter(texelEmitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(texelEmitter), index.x),
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(texelEmitter), index.y),
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(texelEmitter), index.z),
+                data.Get<&MaskCopyRangeParameters::sourceMip>(texelEmitter),
                 isVolumetric
             ).texelOffset;
 
             // Compute the destination intra-resource offset
-            destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), index.x),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), index.y),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), index.z),
-                data.Get<&MaskCopyRangeParameters::destMip>(emitter),
+            destTexel = Backend::IL::TexelAddressEmitter(texelEmitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(texelEmitter), index.x),
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(texelEmitter), index.y),
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(texelEmitter), index.z),
+                data.Get<&MaskCopyRangeParameters::destMip>(texelEmitter),
                 isVolumetric
             ).texelOffset;
         }
@@ -168,55 +170,87 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
 
         // Convert to 3d
         Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
-            emitter, dispatchXID,
-            data.Get<&MaskCopyRangeParameters::width>(emitter),
-            data.Get<&MaskCopyRangeParameters::height>(emitter),
-            data.Get<&MaskCopyRangeParameters::depth>(emitter)
+            texelEmitter, dispatchXID,
+            data.Get<&MaskCopyRangeParameters::width>(texelEmitter),
+            data.Get<&MaskCopyRangeParameters::height>(texelEmitter),
+            data.Get<&MaskCopyRangeParameters::depth>(texelEmitter)
         );
         
         // Placement dimensions
-        IL::ID placementWidth  = data.Get<&MaskCopyRangeParameters::placementRowLength>(emitter);
-        IL::ID placementHeight = data.Get<&MaskCopyRangeParameters::placementImageHeight>(emitter);
+        IL::ID placementWidth  = data.Get<&MaskCopyRangeParameters::placementRowLength>(texelEmitter);
+        IL::ID placementHeight = data.Get<&MaskCopyRangeParameters::placementImageHeight>(texelEmitter);
         
         // z * w * h + y * w + x
-        IL::ID placementOffset = emitter.Mul(index.z, emitter.Mul(placementWidth, placementHeight));
-        placementOffset = emitter.Add(placementOffset, emitter.Mul(index.y, placementWidth));
-        placementOffset = emitter.Add(placementOffset, index.x);
+        IL::ID placementOffset = texelEmitter.Mul(index.z, texelEmitter.Mul(placementWidth, placementHeight));
+        placementOffset = texelEmitter.Add(placementOffset, texelEmitter.Mul(index.y, placementWidth));
+        placementOffset = texelEmitter.Add(placementOffset, index.x);
         
         // Buffer Placement -> Texture
         if (from == Backend::IL::ResourceTokenType::Buffer) {
             // Apply base offset to source placement
-            sourceTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), placementOffset);
+            sourceTexel = texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(texelEmitter), placementOffset);
             
             // Compute the destination intra-resource offset
-            destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), index.x),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), index.y),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), index.z),
-                data.Get<&MaskCopyRangeParameters::destMip>(emitter),
+            destTexel = Backend::IL::TexelAddressEmitter(texelEmitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(texelEmitter), index.x),
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(texelEmitter), index.y),
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(texelEmitter), index.z),
+                data.Get<&MaskCopyRangeParameters::destMip>(texelEmitter),
                 isVolumetric
             ).texelOffset;
         } else {
             // Texture -> Buffer Placement
             
             // Compute the source intra-resource offset
-            sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), index.x),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), index.y),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), index.z),
-                data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
+            sourceTexel = Backend::IL::TexelAddressEmitter(texelEmitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(texelEmitter), index.x),
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(texelEmitter), index.y),
+                texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(texelEmitter), index.z),
+                data.Get<&MaskCopyRangeParameters::sourceMip>(texelEmitter),
                 isVolumetric
             ).texelOffset;
 
             // Apply base offset to destination placement
-            destTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), placementOffset);
+            destTexel = texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(texelEmitter), placementOffset);
         }
     }
 
+    // Get the memory base offsets
+    IL::ID sourceMemoryBase = sourceSubresourceEmitter.GetResourceMemoryBase();
+    IL::ID destMemoryBase = destSubresourceEmitter.GetResourceMemoryBase();
+    
+    // Read the total number of texels
+    IL::ID destResourceTexelCount = destSubresourceEmitter.ReadFieldDWord(TexelMemoryDWordFields::TexelCount);
+
+    // Determine if the absolute offset is out of bounds
+    texelEmitter.BranchConditional(
+        texelEmitter.LessThan(destTexel, destResourceTexelCount),
+        writeBlock,
+        exitInvalidAddressingBlock,
+        IL::ControlFlow::Selection(writeBlock)
+    );
+
+    // If failed, just exit
+    IL::Emitter<>(program, *exitInvalidAddressingBlock).Return();
+   
+    // Append prior terminator
+    IL::Emitter<> writeEmitter(program, *writeBlock, writeTerminatorIt);
+    
     // Read the source initialization bit
     // This doesn't need to be atomic, as the source memory should be visible at this point
-    IL::ID sourceBit = ReadTexelAddress(emitter, initializationMaskBufferDataID, sourceSubresourceEmitter.GetResourceMemoryBase(), sourceTexel);
+    IL::ID sourceBit = ReadTexelAddress(
+        writeEmitter,
+        initializationMaskBufferDataID,
+        sourceMemoryBase,
+        sourceTexel
+    );
 
     // Write the source bit to the destination bit
-    AtomicOrTexelAddressValue(emitter, initializationMaskBufferDataID, destSubresourceEmitter.GetResourceMemoryBase(), destTexel, sourceBit);
+    AtomicOrTexelAddressValue(
+        writeEmitter,
+        initializationMaskBufferDataID,
+        destMemoryBase,
+        destTexel,
+        sourceBit
+    );
 }
