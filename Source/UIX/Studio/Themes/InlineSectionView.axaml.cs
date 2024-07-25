@@ -55,6 +55,11 @@ namespace Studio.Views.Controls
         /// </summary>
         public static readonly StyledProperty<ICommand> ExpandCommandProperty = AvaloniaProperty.Register<InlineSectionView, ICommand>(nameof(ExpandCommand));
 
+        /// <summary>
+        /// Line border brush style for the given view
+        /// </summary>
+        public static readonly StyledProperty<IBrush> LineBorderBrushProperty = AvaloniaProperty.Register<InlineSectionView, IBrush>(nameof(LineBorderBrush));
+
         public InlineSectionView()
         {
             ExpandCommand = ReactiveCommand.Create(OnExpand);
@@ -85,6 +90,7 @@ namespace Studio.Views.Controls
         private void UpdateIcon()
         {
             ExpansionIcon = IsExpanded ? ResourceLocator.GetIcon("ChevronUp")! : ResourceLocator.GetIcon("ChevronDown")!;
+            LineBorderBrush = new SolidColorBrush(ResourceLocator.GetResource<Color>("InputBorderColor")!);
         }
 
         /// <summary>
@@ -121,6 +127,15 @@ namespace Studio.Views.Controls
         {
             get => GetValue(ExpandCommandProperty);
             set => SetValue(ExpandCommandProperty, value);
+        }
+
+        /// <summary>
+        /// Line border brush getter / setter
+        /// </summary>
+        public IBrush LineBorderBrush
+        {
+            get => GetValue(LineBorderBrushProperty);
+            set => SetValue(LineBorderBrushProperty, value);
         }
     }
 }

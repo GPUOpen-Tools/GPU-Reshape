@@ -73,7 +73,7 @@
                                 Margin="5 12 0 0"
                                 VerticalAlignment="Top"
                                 HorizontalAlignment="Stretch"
-                                Background="{StaticResource InputBorderColor}"/>
+                                Background="{TemplateBinding LineBorderBrush}"/>
                         </DockPanel>
 
                         <ContentPresenter
