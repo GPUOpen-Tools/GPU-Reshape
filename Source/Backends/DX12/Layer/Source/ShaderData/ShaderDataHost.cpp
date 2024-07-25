@@ -72,6 +72,8 @@ bool ShaderDataHost::Install() {
 }
 
 ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -129,6 +131,8 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
 }
 
 ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -156,6 +160,8 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
 }
 
 ShaderDataID ShaderDataHost::CreateDescriptorData(const ShaderDataDescriptorInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -183,6 +189,7 @@ ShaderDataID ShaderDataHost::CreateDescriptorData(const ShaderDataDescriptorInfo
 }
 
 void *ShaderDataHost::Map(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to map
@@ -193,6 +200,8 @@ void *ShaderDataHost::Map(ShaderDataID rid) {
 }
 
 ShaderDataMappingID ShaderDataHost::CreateMapping(ShaderDataID data, uint64_t tileCount) {
+    std::lock_guard guard(mutex);
+    
     // Allocate index
     ShaderDataMappingID mid;
     if (freeMappingIndices.empty()) {
@@ -212,6 +221,8 @@ ShaderDataMappingID ShaderDataHost::CreateMapping(ShaderDataID data, uint64_t ti
 }
 
 void ShaderDataHost::DestroyMapping(ShaderDataMappingID mid) {
+    std::lock_guard guard(mutex);
+    
     MappingEntry& entry = mappings[mid];
 
     // Release the allocation
@@ -223,6 +234,7 @@ void ShaderDataHost::DestroyMapping(ShaderDataMappingID mid) {
 }
 
 void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to flush
@@ -233,6 +245,7 @@ void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t le
 }
 
 Allocation ShaderDataHost::GetResourceAllocation(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to map
@@ -243,11 +256,13 @@ Allocation ShaderDataHost::GetResourceAllocation(ShaderDataID rid) {
 }
 
 D3D12MA::Allocation * ShaderDataHost::GetMappingAllocation(ShaderDataMappingID mid) {
+    std::lock_guard guard(mutex);
     MappingEntry &entry = mappings[mid];
     return entry.allocation;
 }
 
 void ShaderDataHost::Destroy(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to release
@@ -278,6 +293,8 @@ void ShaderDataHost::Destroy(ShaderDataID rid) {
 }
 
 void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
+    std::lock_guard guard(mutex);
+    
     if (out) {
         uint32_t offset = 0;
 
@@ -300,6 +317,8 @@ void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataT
 }
 
 void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescriptorHandle, uint32_t stride) {
+    std::lock_guard guard(mutex);
+    
     uint32_t offset = 0;
 
     // Max number of addressable bytes (-3 for bits to bytes)
@@ -360,6 +379,8 @@ ShaderDataCapabilityTable ShaderDataHost::GetCapabilityTable() {
 }
 
 ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
+    std::lock_guard guard(mutex);
+    
     ConstantShaderDataBuffer out;
 
     // Total dword count
@@ -416,6 +437,8 @@ ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
 }
 
 ShaderConstantsRemappingTable ShaderDataHost::CreateConstantMappingTable() {
+    std::lock_guard guard(mutex);
+    
     ShaderConstantsRemappingTable out(indices.size());
 
     // Current offset
