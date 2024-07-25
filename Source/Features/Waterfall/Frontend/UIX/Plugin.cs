@@ -46,7 +46,7 @@ namespace GRS.Features.Waterfall.UIX
         public PluginInfo Info { get; } = new()
         {
             Name = "Waterfall",
-            Description = "Instrumentation and validation of waterfalling",
+            Description = "Instrumentation and validation of address scalarization / waterfalling",
             Dependencies = new string[]{ }
         };
         

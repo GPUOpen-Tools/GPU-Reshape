@@ -379,7 +379,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, c
 FeatureInfo WaterfallFeature::GetInfo() {
     FeatureInfo info;
     info.name = "Waterfall";
-    info.description = "";
+    info.description = "Instrumentation and validation of address scalarization / waterfalling";
     return info;
 }
 

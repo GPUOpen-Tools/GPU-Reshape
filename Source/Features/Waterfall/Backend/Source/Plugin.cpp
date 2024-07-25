@@ -40,7 +40,7 @@ static ComRef<ComponentTemplate<WaterfallFeature>> feature{nullptr};
 
 DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
     info->name = "Waterfall";
-    info->description = "";
+    info->description = "Instrumentation and validation of address scalarization / waterfalling";
 }
 
 DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
