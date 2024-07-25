@@ -1255,12 +1255,14 @@ void DXILPhysicalBlockFunction::MigrateConstantBlockOperand(DXILFunctionDeclarat
     if (operand >= mapOffset) {
         // Get native state and validate
         const DXILIDMap::NativeState& opState = declaration->segments.idSegment.map[operand - mapOffset];
-        ASSERT(opState.type == DXILIDType::Constant, "Unexpected native state");
+        ASSERT(opState.type == DXILIDType::Constant || opState.type == DXILIDType::Variable, "Unexpected native state");
 
         // Assume mapped
         mappedId = opState.mapped;
     } else {
-        mappedId = table.idMap.GetMappedCheckType(operand, DXILIDType::Constant);
+        DXILIDType type = table.idMap.GetType(operand);
+        ASSERT(type == DXILIDType::Constant || type == DXILIDType::Variable, "Unexpected native type");
+        mappedId = table.idMap.GetMapped(operand);
     }
 
     // Remap
