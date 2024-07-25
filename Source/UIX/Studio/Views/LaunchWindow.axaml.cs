@@ -72,6 +72,9 @@ namespace Studio.Views
 
                             // Finally, recreate the property setup with fresh metadata
                             PropertyGrid.ReloadCommand.Execute(null);
+                            
+                            // Expand all categories
+                            PropertyGrid.Categories.ForEach(c => c.IsExpanded = true);
                         });
                     
                     // Bind interactions
