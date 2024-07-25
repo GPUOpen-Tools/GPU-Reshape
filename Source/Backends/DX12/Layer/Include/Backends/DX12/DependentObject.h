@@ -38,7 +38,7 @@
 /// Simple dependency tracker
 /// TODO: Make the search faster...
 template<typename T, typename U>
-struct DependentObject {
+struct DependentObject : public ReferenceHost {
     struct Object {
         Object(const Allocators& allocators) : dependencies(allocators) {
             
@@ -137,7 +137,6 @@ private:
     }
 
 private:
-    std::mutex           mutex;
     std::map<T*, Object> map;
 
 private:

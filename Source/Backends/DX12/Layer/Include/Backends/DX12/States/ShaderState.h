@@ -47,6 +47,9 @@ struct ShaderState : public ReferenceObject {
     /// Reference counted destructor
     virtual ~ShaderState();
 
+    /// Release all host resources
+    void ReleaseHost() override;
+
     /// Add an instrument to this shader
     /// \param featureBitSet the enabled feature set
     /// \param byteCode the byteCode in question

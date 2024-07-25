@@ -28,6 +28,7 @@
 
 // Common
 #include <Common/Containers/Vector.h>
+#include <Common/Containers/ReferenceObject.h>
 
 // Std
 #include <map>
@@ -38,7 +39,7 @@
 ///  Additionally stores a unique identifier per state, as the key type may be recycled
 ///  at any moment.
 template<typename T>
-struct TrackedObject {
+struct TrackedObject : public ReferenceHost {
     struct LinearView {
         LinearView(std::mutex &mutex, Vector<T*>& object) : mutex(mutex), object(object) {
             mutex.lock();
@@ -94,6 +95,12 @@ struct TrackedObject {
 
         // Assign the unique id
         object->uid = uidCounter++;
+
+        // Set the host
+        if constexpr (IsReferenceObject<T>) {
+            ASSERT(!object->referenceHost, "Reference host double assignment");
+            object->referenceHost = this;
+        }
 
         // Append
         linear.push_back(object);
@@ -162,7 +169,4 @@ private:
 
     /// Linear traversal
     Vector<T*> linear;
-
-    /// My data! The data!
-    std::mutex mutex;
 };

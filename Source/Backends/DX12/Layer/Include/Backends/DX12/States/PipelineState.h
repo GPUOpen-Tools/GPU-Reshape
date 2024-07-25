@@ -60,6 +60,9 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
     /// Reference counted destructor
     virtual ~PipelineState();
 
+    /// Release all host resources
+    void ReleaseHost() override;
+
     /// Add an instrument to this module
     /// \param featureBitSet the enabled feature set
     /// \param pipeline the pipeline in question

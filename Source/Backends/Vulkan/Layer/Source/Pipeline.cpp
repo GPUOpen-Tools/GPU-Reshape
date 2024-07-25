@@ -196,9 +196,6 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
 }
 
 PipelineState::~PipelineState() {
-    // Remove state lookup
-    table->states_pipeline.RemoveState(this);
-
     // Type specific info
     switch (type) {
         default:
@@ -230,4 +227,10 @@ PipelineState::~PipelineState() {
 
     // Free the layout
     destroyRef(layout, table->allocators);
+}
+
+void PipelineState::ReleaseHost() {
+    // Remove state lookup
+    // Reference host has locked this
+    table->states_pipeline.RemoveStateNoLock(this);
 }

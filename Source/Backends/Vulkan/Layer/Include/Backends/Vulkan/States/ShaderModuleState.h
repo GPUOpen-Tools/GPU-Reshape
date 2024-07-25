@@ -51,6 +51,9 @@ struct ShaderModuleState : public ReferenceObject {
     /// Reference counted destructor
     virtual ~ShaderModuleState();
 
+    /// Release all host resources
+    void ReleaseHost() override;
+
     /// Add an instrument to this module
     /// \param featureBitSet the enabled feature set
     /// \param module the module in question

@@ -685,12 +685,6 @@ PipelineState::~PipelineState() {
         return;
     }
 
-    // Remove state lookup
-    // May not have a slot if it's not queried
-    if (uid != kInvalidPipelineUID) {
-        device.state->states_Pipelines.Remove(this);
-    }
-
     // Release debug name
     if (debugName) {
         destroy(debugName, device.state->allocators);
@@ -715,11 +709,24 @@ PipelineState::~PipelineState() {
     parent->Release();
 }
 
-ShaderState::~ShaderState() {
-    // Sync shader states
-    std::lock_guard guard(parent->states_Shaders.GetLock());
+void PipelineState::ReleaseHost() {
+    auto device = GetTable(parent);
     
+    // Remove state lookup
+    // May not have a slot if it's not queried
+    if (uid != kInvalidPipelineUID) {
+        // Reference host has locked this
+        device.state->states_Pipelines.RemoveNoLock(this);
+    }
+}
+
+ShaderState::~ShaderState() {
+    
+}
+
+void ShaderState::ReleaseHost() {
     // Remove tracked objects
+    // Reference host has locked these
     parent->states_Shaders.RemoveNoLock(this);
     parent->shaderSet.Remove(key);
 }
