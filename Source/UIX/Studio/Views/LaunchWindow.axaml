@@ -110,13 +110,13 @@
                     <CheckBox
                         IsChecked="{Binding CaptureChildProcesses}"
                         Content="Capture Child Processes"
-                        ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"/>
+                        ToolTip.Tip="{x:Static r:Resources.Launch_CaptureChildProcesses}"/>
                             
                     <CheckBox
                         Margin="15 0 0 0"
                         IsChecked="{Binding AttachAllDevices}"
                         Content="Attach All Devices"
-                        ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"/>
+                        ToolTip.Tip="{x:Static r:Resources.Launch_AttachAllDevices}"/>
                 </StackPanel>
                 
                 <controls:InlineSectionView Title="Additional Arguments" IsExpanded="False" Margin="0 10 0 0" >

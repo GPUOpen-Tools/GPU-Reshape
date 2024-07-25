@@ -187,6 +187,24 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Attach to all graphical devices the application creates, a workspace is automatically created per device.
+        /// </summary>
+        public static string Launch_AttachAllDevices {
+            get {
+                return ResourceManager.GetString("Launch_AttachAllDevices", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hook into the entire process tree of an application, automatically creates process hierarchy.
+        /// </summary>
+        public static string Launch_CaptureChildProcesses {
+            get {
+                return ResourceManager.GetString("Launch_CaptureChildProcesses", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Enables detailed validation reporting, affects performance..
         /// </summary>
         public static string Launch_Detail {
