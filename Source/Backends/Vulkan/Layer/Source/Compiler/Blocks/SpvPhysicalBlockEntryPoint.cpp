@@ -104,12 +104,15 @@ void SpvPhysicalBlockEntryPoint::Compile() {
     for (EntryPoint& entryPoint : entryPoints) {
         // Compile the SpvOpEntryPoint
         CompileEntryPoint(entryPoint);
-
-        // Compile all execution modes
+    }
+    
+    // Compile all execution modes
+    // Must come after the entry points
+    for (EntryPoint& entryPoint : entryPoints) {
         for (ExecutionMode& executionMode : entryPoint.executionModes) {
             CompileExecutionMode(entryPoint.id, executionMode);
         }
-    } 
+    }
 }
 
 void SpvPhysicalBlockEntryPoint::CompileEntryPoint(const EntryPoint &entryPoint) {
@@ -119,7 +122,7 @@ void SpvPhysicalBlockEntryPoint::CompileEntryPoint(const EntryPoint &entryPoint)
     // Emit instruction
     SpvInstruction& instr = block->stream.Allocate(SpvOpEntryPoint, static_cast<uint32_t>(3 + nameDWordCount + entryPoint.interfaces.size()));
     instr[1] = static_cast<uint32_t>(entryPoint.executionModel);
-    instr[2] = program.GetEntryPoint()->GetID();
+    instr[2] = entryPoint.id;
     std::memset(&instr[3], 0x0, sizeof(uint32_t) * nameDWordCount);
 
     // Write name
