@@ -439,6 +439,29 @@ namespace IL {
             return Op(*instr);
         }
 
+        /// Construct a new composite
+        /// \param type the composite type
+        /// \param vx the indices
+        /// \return instruction reference
+        template<typename... VX>
+        BasicBlock::TypedIterator<ConstructInstruction> Construct(const Backend::IL::Type* type, VX... vx) {
+            // Fold it down
+            IL::ID values[] = {vx...};
+
+            auto instr = ALLOCA_SIZE(IL::ConstructInstruction, IL::ConstructInstruction::GetSize(sizeof...(VX)));
+            instr->opCode = OpCode::Construct;
+            instr->source = Source::Invalid();
+            instr->result = map->AllocID();
+            instr->values.count = sizeof...(VX);
+
+            // Write all values
+            for (uint32_t i = 0; i < instr->values.count; i++) {
+                instr->values[i] = values[i];
+            }
+
+            return Op(*instr, type);
+        }
+
         /// Extract a value from a composite
         /// \param composite the base composite
         /// \param ix the indices

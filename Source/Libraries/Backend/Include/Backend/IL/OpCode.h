@@ -119,6 +119,7 @@ namespace IL {
         BitShiftRight,
 
         /// Structural
+        Construct,
         AddressChain,
         Extract,
         Insert,

@@ -303,6 +303,14 @@ namespace Studio.Models.IL
         public uint[] Arguments;
     }
     
+    public class ConstructInstruction : Instruction
+    {
+        /// <summary>
+        /// All values in the composite
+        /// </summary>
+        public uint[] Values;
+    }
+
     public class AddressChainInstruction : Instruction
     {
         /// <summary>

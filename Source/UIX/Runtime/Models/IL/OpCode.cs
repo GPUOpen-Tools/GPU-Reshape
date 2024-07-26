@@ -92,6 +92,7 @@ namespace Studio.Models.IL
         BitAnd,
         BitShiftLeft,
         BitShiftRight,
+        Construct,
         AddressChain,
         Extract,
         Insert,

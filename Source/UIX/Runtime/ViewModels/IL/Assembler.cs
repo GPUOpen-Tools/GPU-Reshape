@@ -498,6 +498,23 @@ namespace Runtime.ViewModels.IL
                     AssembleInlineOperand(typed.Shift, builder);
                     break;
                 }
+                case OpCode.Construct:
+                {
+                    var typed = (ConstructInstruction)instruction;
+
+                    builder.Append(' ');
+                    
+                    for (int i = 0; i < typed.Values.Length; i++)
+                    {
+                        if (i != 0)
+                        {
+                            builder.Append(", ");
+                        }
+                        
+                        AssembleInlineOperand(typed.Values[i], builder);
+                    }
+                    break;
+                }
                 case OpCode.AddressChain:
                 {
                     var typed = (AddressChainInstruction)instruction;

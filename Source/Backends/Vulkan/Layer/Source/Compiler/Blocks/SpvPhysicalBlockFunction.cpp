@@ -2437,6 +2437,19 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 spv[2] = idMap.Get(store->value);
                 break;
             }
+            case IL::OpCode::Construct: {
+                auto *construct = instr.As<IL::ConstructInstruction>();
+
+                SpvInstruction& spvConstruct = stream.Allocate(SpvOpCompositeConstruct, 3 + construct->values.count);
+                spvConstruct[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spvConstruct[2] = idMap.Get(construct->result);
+
+                // Fill elements
+                for (uint32_t i = 0; i < construct->values.count; i++) {
+                    spvConstruct[3 + i] = idMap.Get(construct->values[i]);
+                }
+                break;
+            }
             case IL::OpCode::Extract: {
                 auto *extract = instr.As<IL::ExtractInstruction>();
 

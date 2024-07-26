@@ -5020,6 +5020,42 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     break;
                 }
 
+                case IL::OpCode::Construct: {
+                    auto _instr = instr->As<IL::ConstructInstruction>();
+
+                    // Get resulting type
+                    const Backend::IL::Type *type = program.GetTypeMap().GetType(_instr->result);
+
+                    // Create svox for composite
+                    IL::ID svox = IL::InvalidID;
+                    switch (type->kind) {
+                        default: {
+                            ASSERT(false, "Unsupported construct");
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Struct: {
+                            svox = AllocateSVOStructSequential(type, _instr->values.Data(), _instr->values.count);
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Vector: {
+                            auto vector = type->As<Backend::IL::VectorType>();
+                            
+                            svox = AllocateSVOSequential(
+                                vector->dimension,
+                                _instr->values[0],
+                                vector->dimension >= 1 ? _instr->values[1] : IL::InvalidID,
+                                vector->dimension >= 2 ? _instr->values[2] : IL::InvalidID,
+                                vector->dimension >= 3 ? _instr->values[3] : IL::InvalidID
+                            );
+                            break;
+                        }
+                    }
+
+                    // Set redirect
+                    table.idRemapper.SetUserRedirect(instr->result, svox);
+                    break;
+                }
+
                 case IL::OpCode::Extract: {
                     auto _instr = instr->As<IL::ExtractInstruction>();
 

@@ -850,6 +850,19 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.Construct:
+                {
+                    ConstructInstruction chain = new();
+
+                    chain.Values = new uint[node.Values.Count];
+                    for (int i = 0; i < chain.Values.Length; i++)
+                    {
+                        chain.Values[i] = node.Values[i];
+                    }
+
+                    instruction = chain;
+                    break;
+                }
                 case OpCode.AddressChain:
                 {
                     AddressChainInstruction chain = new()

@@ -483,6 +483,10 @@ namespace Backend::IL {
 
                 return constant;
             }
+            case OpCode::Construct: {
+                // TODO: Implement cfold construct
+                return nullptr;
+            }
             case OpCode::Insert: {
                 // TODO: Implement cfold vector insertion
                 return nullptr;

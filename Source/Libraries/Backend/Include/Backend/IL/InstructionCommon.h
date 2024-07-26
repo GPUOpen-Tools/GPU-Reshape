@@ -336,6 +336,13 @@ namespace Backend::IL {
                 }
                 break;
             }
+            case ::IL::OpCode::Construct: {
+                auto typed = instr->As<::IL::ConstructInstruction>();
+                for (uint32_t i = 0; i < typed->values.count; i++) {
+                    functor(typed->values[i]);
+                }
+                break;
+            }
             case ::IL::OpCode::Extract: {
                 auto typed = instr->As<::IL::ExtractInstruction>();
                 functor(typed->composite);

@@ -471,6 +471,25 @@ namespace IL {
         ID value;
     };
 
+    struct ConstructInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Construct;
+
+        /// Get size of this instruction
+        /// \param valueCount number of values
+        /// \return byte size
+        static uint64_t GetSize(uint32_t valueCount) {
+            return sizeof(ConstructInstruction) + InlineArray<ID>::ElementSize(valueCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(ConstructInstruction) + values.ElementSize();
+        }
+
+        InlineArray<ID> values;
+    };
+
     struct AddressChain {
         ID index;
     };
@@ -945,6 +964,8 @@ namespace IL {
                 return sizeof(BitCastInstruction);
             case OpCode::AddressChain:
                 return static_cast<const AddressChainInstruction*>(instruction)->GetSize();
+            case OpCode::Construct:
+                return static_cast<const ConstructInstruction*>(instruction)->GetSize();
             case OpCode::Extract:
                 return static_cast<const ExtractInstruction*>(instruction)->GetSize();
             case OpCode::Insert:

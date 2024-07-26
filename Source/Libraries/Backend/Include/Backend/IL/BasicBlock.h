@@ -203,6 +203,11 @@ namespace IL {
                 return Get()->opCode;
             }
 
+            /// Get the ID
+            ID GetID() const {
+                return Get()->result;
+            }
+
             /// Post increment
             Iterator operator++(int) {
                 Iterator self = *this;
