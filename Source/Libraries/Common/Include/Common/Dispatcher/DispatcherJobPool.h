@@ -42,7 +42,11 @@ struct DispatcherJobPool {
     void Add(const DispatcherJob* jobs, uint32_t count) {
         MutexGuard guard(mutex);
         pool.insert(pool.end(), jobs, jobs + count);
-        var.NotifyAll();
+
+        // Notify if not paused
+        if (!pauseFlag) {
+            var.NotifyAll();
+        }
     }
 
     /// Pop a job from the pool
@@ -50,6 +54,11 @@ struct DispatcherJobPool {
     /// \return success
     bool Pop(DispatcherJob& out) {
         MutexGuard guard(mutex);
+
+        // If paused, pretend there's nothing
+        if (pauseFlag) {
+            return false;
+        }
 
         // Any jobs?
         if (pool.empty()) {
@@ -76,10 +85,26 @@ struct DispatcherJobPool {
         var.NotifyAll();
     }
 
+    /// Set the new paused state
+    /// \param paused if false, wakes all threads
+    void SetPaused(bool paused) {
+        MutexGuard guard(mutex);
+        pauseFlag = paused;
+
+        // Wake all threads if resumed
+        if (!paused) {
+            var.NotifyAll();
+        }
+    }
+
     /// Is this pool aborted?
-    [[nodiscard]]
     bool IsAbort() const {
         return abortFlag;
+    }
+
+    /// Is this pool currently paused?
+    bool IsPaused() const {
+        return pauseFlag;
     }
 
 private:
@@ -88,6 +113,9 @@ private:
 
     /// Exit flag for the pool
     bool abortFlag{false};
+
+    /// Pause flag for the pool
+    bool pauseFlag{false};
 
     /// Shared var for waits
     ConditionVariable var;

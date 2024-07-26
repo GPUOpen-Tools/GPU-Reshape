@@ -28,6 +28,10 @@
 
 
 <schema>
+    <message name="PauseInstrumentation">
+        <field name="paused" type="bool"/>
+    </message>
+
     <message name="SetVirtualFeatureRedirect">
         <field name="name" type="string"/>
         <field name="index" type="int32"/>
