@@ -284,7 +284,26 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
             }
             case IL::OpCode::StoreTexture: {
                 auto* storeTexture = instr->As<IL::StoreTextureInstruction>();
-                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(storeTexture->index, SplatToValue(program, uint32Type, storeTexture->index)), pre.ResourceSize(storeTexture->texture)));
+
+                // Get texture type
+                auto type = program.GetTypeMap().GetType(storeTexture->texture)->As<Backend::IL::TextureType>();
+
+                // Type of the index
+                const Backend::IL::Type *indexType = SplatToValue(program, uint32Type, storeTexture->index);
+                
+                // Store instructions have special considerations for cube arrays
+                // Size queries only report the width/height, so assume 6 faces (3d)
+                IL::ID size = pre.ResourceSize(storeTexture->texture);
+                if (type->dimension == Backend::IL::TextureDimension::Texture2DCube) {
+                    size = pre.Construct(
+                        indexType,
+                        pre.Extract(size, pre.UInt32(0)).GetID(),
+                        pre.Extract(size, pre.UInt32(1)).GetID(),
+                        pre.UInt32(6)
+                    );
+                }
+
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(storeTexture->index, indexType), size));
                 break;
             }
             case IL::OpCode::LoadTexture: {
