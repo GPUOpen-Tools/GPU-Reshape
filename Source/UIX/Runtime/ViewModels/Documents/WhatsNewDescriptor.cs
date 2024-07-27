@@ -24,33 +24,18 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.ComponentModel;
-using DynamicData;
-using Studio.ViewModels.Data;
-using Studio.ViewModels.Setting;
-
-namespace Studio.Services
+namespace Studio.ViewModels.Documents
 {
-    public class SettingsService : ISettingsService
+    public class WhatsNewDescriptor : IDescriptor
     {
         /// <summary>
-        /// Root settings view model
+        /// Sortable identifier
         /// </summary>
-        public ISettingViewModel ViewModel { get; } = new SettingViewModel();
-        
-        public SettingsService()
-        {
-            // Standard settings
-            ViewModel.Items.AddRange(new ISettingViewModel[]
-            {
-                new StartupViewModel(),
-                new FeaturesSettingViewModel(),
-                new DiscoverySettingViewModel(),
-                new ApplicationListSettingViewModel()
-            });
-            
-            // Bind suspension
-            ((INotifyPropertyChanged)ViewModel).BindTypedSuspension();
-        }
+        public object? Identifier { get; set; } = typeof(WhatsNewDescriptor);
+
+        /// <summary>
+        /// Owner object
+        /// </summary>
+        public object? Owner => typeof(WhatsNewDescriptor);
     }
 }

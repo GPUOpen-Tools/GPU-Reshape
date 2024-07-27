@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,33 +24,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.ComponentModel;
-using DynamicData;
-using Studio.ViewModels.Data;
-using Studio.ViewModels.Setting;
+using Avalonia.Controls;
 
-namespace Studio.Services
+namespace Studio.Views.Documents
 {
-    public class SettingsService : ISettingsService
+    public partial class WhatsNewView : UserControl
     {
-        /// <summary>
-        /// Root settings view model
-        /// </summary>
-        public ISettingViewModel ViewModel { get; } = new SettingViewModel();
-        
-        public SettingsService()
+        public WhatsNewView()
         {
-            // Standard settings
-            ViewModel.Items.AddRange(new ISettingViewModel[]
-            {
-                new StartupViewModel(),
-                new FeaturesSettingViewModel(),
-                new DiscoverySettingViewModel(),
-                new ApplicationListSettingViewModel()
-            });
-            
-            // Bind suspension
-            ((INotifyPropertyChanged)ViewModel).BindTypedSuspension();
+            InitializeComponent();
         }
     }
 }

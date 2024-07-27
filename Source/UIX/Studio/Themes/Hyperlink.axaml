@@ -30,7 +30,9 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Design.PreviewWith>
-        <Button Classes="Link" Width="100" Height="25" Content="Click me!" />
+        <Grid Width="200" Height="200">
+            <Button Classes="Link" Width="100" Height="25" Content="Click me!" />
+        </Grid>
     </Design.PreviewWith>
 
     <!-- Simple hyperlink -->

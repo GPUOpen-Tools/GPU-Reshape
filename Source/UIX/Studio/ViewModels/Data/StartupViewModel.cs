@@ -24,59 +24,33 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using ReactiveUI;
+using Studio.Services.Suspension;
 using Studio.ViewModels.Setting;
 
-namespace Studio.Services
+namespace Studio.ViewModels.Data
 {
-    public interface ISettingsService
+    public class StartupViewModel : BaseSettingViewModel
     {
         /// <summary>
-        /// Root view model
+        /// Should the user be shown the what's new document?
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
-    }
+        [DataMember]
+        public bool ShowWhatsNew
+        {
+            get => _showWhatsNew;
+            set => this.RaiseAndSetIfChanged(ref _showWhatsNew, value);
+        }
+        
+        public StartupViewModel() : base("Startup")
+        {
+            // Data only, no configurables
+            Visibility = SettingVisibility.None;
+        }
 
-    public static class SettingsServiceExtensions
-    {
         /// <summary>
-        /// Get a setting
+        /// Internal show what's new
         /// </summary>
-        public static T? Get<T>(this ISettingsService self) where T : ISettingViewModel
-        {
-            return self.ViewModel.GetItem<T>();
-        }
-        
-        /// <summary>
-        /// Get a setting or create it
-        /// </summary>
-        public static T? GetOrDefault<T>(this ISettingsService self) where T : ISettingViewModel, new()
-        {
-            if (self.Get<T>() is not { } item)
-            {
-                item = new T();
-                self.Add(item);
-            }
-
-            return item;
-        }
-        
-        /// <summary>
-        /// Add a setting
-        /// </summary>
-        public static void Add(this ISettingsService self, ISettingViewModel viewModel)
-        {
-            self.ViewModel.Items.Add(viewModel);
-        }
-        
-        /// <summary>
-        /// Ensure a setting exists, if not, creates the default value
-        /// </summary>
-        public static void EnsureDefault<T>(this ISettingsService self) where T : ISettingViewModel, new()
-        {
-            if (self.Get<T>() == null)
-            {
-                self.Add(new T());
-            }
-        }
+        private bool _showWhatsNew = true;
     }
 }

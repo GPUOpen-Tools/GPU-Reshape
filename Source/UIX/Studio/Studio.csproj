@@ -75,6 +75,7 @@
         <PackageReference Include="XamlNameReferenceGenerator" Version="1.3.4" />
     </ItemGroup>
     <ItemGroup>
+      <AvaloniaResource Include="Resources\WhatsNew\WhatsNew.md" />
       <Compile Update="Views\MainView.axaml.cs">
         <DependentUpon>MainView.axaml</DependentUpon>
       </Compile>
@@ -205,6 +206,20 @@
         <DependentUpon>FeaturesSettingView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Documents\WhatsNewView.axaml.cs">
+        <DependentUpon>WhatsNewView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <None Remove="Resources\WhatsNew\Page.md" />
+      <Compile Update="Themes\StoryRadio.cs">
+        <DependentUpon>StoryRadio.axaml</DependentUpon>
+      </Compile>
+      <None Remove="Resources\WhatsNew\Index.json" />
+      <AvaloniaResource Include="Resources\WhatsNew\Index.json" />
+      <None Remove="Resources\WhatsNew\Images\Discard.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\Discard.png" />
+      <None Remove="Resources\WhatsNew\Images\Divergent.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\Divergent.png" />
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -237,9 +252,6 @@
     </ItemGroup>
     <ItemGroup>
       <UpToDateCheckInput Remove="Views\Resources\ContextMenuView.axaml" />
-    </ItemGroup>
-    <ItemGroup>
-      <Folder Include="ViewModels\Data\" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Runtime\Runtime.csproj" />
