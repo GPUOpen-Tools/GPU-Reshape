@@ -68,5 +68,6 @@
     
     <Style Selector="Button.Link:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
     </Style>
 </Styles>
