@@ -166,14 +166,12 @@ void TexelMemoryAllocator::Initialize(CommandBuilder &builder, const TexelMemory
     builder.StageBuffer(texelBlocksBufferID, allocation.texelBaseBlock * sizeof(uint32_t), sizeof(uint32_t) * headerDWords.Size(), headerDWords.Data());
 
     // Clear all states
-#if 0 // todo[init]: figure out where the race condition comes from
     builder.ClearBuffer(
         texelBlocksBufferID,
         (allocation.texelBaseBlock + allocation.headerDWordCount) * sizeof(uint32_t),
         (allocation.texelBlockCount) * sizeof(uint32_t),
         0u
     );
-#endif // 0
 
     // Cleanup
     headerDWords.Clear();

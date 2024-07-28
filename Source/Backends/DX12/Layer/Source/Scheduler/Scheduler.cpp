@@ -162,13 +162,12 @@ void Scheduler::Schedule(Queue queue, const CommandBuffer &buffer, const Schedul
         submission.commandList->Close();
     }
 
-    // Commit the fence index
-    submission.fenceCommitID = submission.fence->CommitFence();
-
     // Submit the generated command list
     ID3D12CommandList* commandLists[] = {submission.commandList};
     bucket.queue->ExecuteCommandLists(1u, commandLists);
-    bucket.queue->Signal(submission.fence->fence, submission.fenceCommitID);
+
+    // Commit the fence index (also signals the creation queue)
+    submission.fenceCommitID = submission.fence->CommitFence();
 
     // Signal event if specified
     if (event) {
