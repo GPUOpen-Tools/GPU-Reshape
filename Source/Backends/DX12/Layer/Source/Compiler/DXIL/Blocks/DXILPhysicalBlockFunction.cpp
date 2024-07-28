@@ -2604,6 +2604,16 @@ const Backend::IL::Type* DXILPhysicalBlockFunction::GetTypeFromTextureProperties
 const Backend::IL::Type * DXILPhysicalBlockFunction::GetTypeFromBufferProperties(const DXILResourceProperties &properties) {
     Backend::IL::TypeMap &types = program.GetTypeMap();
 
+    // If raw, it's on a per byte address
+    if (static_cast<DXILShaderResourceShape>(properties.basic.shape) == DXILShaderResourceShape::RawBuffer) {
+        return types.FindTypeOrAdd(Backend::IL::BufferType{
+            .elementType = types.FindTypeOrAdd(Backend::IL::IntType { .bitWidth = 8, .signedness = false }),
+            .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
+            .texelType = Backend::IL::Format::R8,
+            .byteAddressing = true
+        });
+    }
+
     // Final format
     Backend::IL::Format format = table.metadata.GetComponentFormat(static_cast<ComponentType>(properties.typed.resource.componentType));
 
