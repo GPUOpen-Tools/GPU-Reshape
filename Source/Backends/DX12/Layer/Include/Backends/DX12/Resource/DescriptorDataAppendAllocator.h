@@ -191,7 +191,11 @@ private:
     /// Roll the current chunk
     void RollChunk() {
         // Advance current offset
-        uint64_t nextMappedOffset = mappedOffset + std::max<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT / sizeof(uint32_t), mappedSegmentLength);
+        uint64_t nextMappedOffset = mappedOffset + mappedSegmentLength;
+
+        // Align offset
+        constexpr uint64_t alignSub1 = (D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT / sizeof(uint32_t)) - 1;
+        nextMappedOffset = (nextMappedOffset + alignSub1) & ~alignSub1;
 
 #ifndef NDEBUG
         uint64_t lastSegmentBindMask = localSegmentBindMask;
