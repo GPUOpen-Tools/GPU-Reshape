@@ -173,6 +173,8 @@ struct TrackedObject : public ReferenceHost {
     }
 
     U* GetFromUID(uint64_t uid, U* _default = nullptr) {
+        std::lock_guard guard(mutex);
+        
         auto it = uidMap.find(uid);
         if (it == uidMap.end()) {
             return _default;
@@ -182,7 +184,8 @@ struct TrackedObject : public ReferenceHost {
     }
 
     /// Get the number of objects
-    size_t GetCount() const {
+    size_t GetCount() {
+        std::lock_guard guard(mutex);
         return linear.size();
     }
 

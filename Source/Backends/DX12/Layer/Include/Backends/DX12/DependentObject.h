@@ -123,6 +123,7 @@ struct DependentObject : public ReferenceHost {
 
     /// Get the number of dependencies
     uint32_t Count(T* key) {
+        std::lock_guard guard(mutex);
         return static_cast<uint32_t>(GetObj(key).dependencies.size());
     }
 
