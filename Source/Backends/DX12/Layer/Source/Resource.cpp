@@ -143,6 +143,9 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     if (state->virtualMapping.token.mipCount == 0) {
         uint32_t maxDimension = std::max<uint32_t>({static_cast<uint32_t>(desc->Width), desc->Height, desc->DepthOrArraySize});
         state->virtualMapping.token.mipCount = static_cast<uint32_t>(std::floor(std::log2(maxDimension))) + 1u;
+
+        // May be pooled later, update original description
+        state->desc.MipLevels = state->virtualMapping.token.mipCount;
     }
     
     // Assume default view
