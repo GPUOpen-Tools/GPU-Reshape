@@ -516,7 +516,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr->composite = compositeId;
                 instr->chains.count = addressCount;
 
-                for (uint32_t i = 0; i < addressCount; i++) {
+                // Parse all chains
+                uint32_t chainIndex = 0;
+                while (reader.Any()) {
                     // Get next chain
                     uint32_t nextChainId = reader.GetMappedRelativeValue(anchor);
 
@@ -554,8 +556,11 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     }
 
                     // Set index
-                    instr->chains[i].index = nextChainId;
+                    instr->chains[chainIndex++].index = nextChainId;
                 }
+
+                // Actual chain count may not be the remaining operands (with forward values)
+                instr->chains.count = chainIndex;
 
                 // Set the resulting type as a pointer to the walked type
                 ilTypeMap.SetType(instr->result, ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
@@ -5265,14 +5270,14 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstGEP: {
                 writer.Skip(2);
 
-                for (uint32_t i = 2; i < record.opCount; i++) {
+                while (writer.Any()) {
                     writer.RemapRelativeValue(anchor);
                 }
                 break;
             }
 
             case LLVMFunctionRecord::InstInBoundsGEP: {
-                for (uint32_t i = 0; i < record.opCount; i++) {
+                while (writer.Any()) {
                     writer.RemapRelativeValue(anchor);
                 }
                 break;
