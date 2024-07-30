@@ -325,6 +325,7 @@ void Scheduler::MapTiles(Queue queue, ShaderDataID id, uint32_t count, const Sch
     info.pBufferBinds = &bindInfo;
 
     // Bind all tiles
+    std::lock_guard queueGuard(table->states_queue.Get(bucket.queue)->mutex);
     table->next_vkQueueBindSparse(
         bucket.queue,
         1u,
