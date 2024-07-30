@@ -1198,18 +1198,30 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment, Tr
 }
 
 void ShaderExportStreamer::FreeConstantAllocator(ShaderExportConstantAllocator& allocator) {
+    static constexpr size_t kLargeConstantThreshold = 64'000;
+    
     // Cleanup the staging data
     if (!allocator.staging.empty()) {
+        size_t trimCount = allocator.staging.size();
+
+        // If we're below the threshold, keep the last chunk
+        // Large chunks can easily accumulate as they're swapped between different streaming state
+        if (allocator.staging.back().size < kLargeConstantThreshold) {
+            trimCount--;
+        }
+        
         // Free all staging allocations except the last
-        for (size_t i = 0; i < allocator.staging.size() - 1u; i++) {
+        for (size_t i = 0; i < trimCount; i++) {
             device->deviceAllocator->Free(allocator.staging[i].allocation);
         }
 
         // Remove all but the last
-        allocator.staging.erase(allocator.staging.begin(), allocator.staging.begin() + (allocator.staging.size() - 1u));
+        allocator.staging.erase(allocator.staging.begin(), allocator.staging.begin() + trimCount);
 
         // Reset head counter
-        allocator.staging.back().head = 0;
+        if (!allocator.staging.empty()) {
+            allocator.staging.back().head = 0;
+        }
     }
 
     // Add to free pool
