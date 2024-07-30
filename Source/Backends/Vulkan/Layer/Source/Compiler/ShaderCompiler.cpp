@@ -126,11 +126,16 @@ bool ShaderCompiler::InitializeModule(ShaderModuleState *state) {
 
 void ShaderCompiler::Worker(void *data) {
     auto *job = static_cast<ShaderJobEntry *>(data);
-    CompileShader(*job);
+    
+    // Try to compile, if failed remove the reservation
+    if (!CompileShader(*job)) {
+        job->info.state->RemoveInstrument(job->info.instrumentationKey);
+    }
+    
     destroy(job, allocators);
 }
 
-void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
+bool ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 #if SHADER_COMPILER_SERIAL
     static std::mutex mutex;
     std::lock_guard guard(mutex);
@@ -156,7 +161,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     if (!InitializeModule(job.info.state)) {
         scope.Add(DiagnosticType::ShaderParsingFailed);
         ++job.info.diagnostic->failedJobs;
-        return;
+        return false;
     }
 
     // Passed initial check?
@@ -223,7 +228,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     )) {
         scope.Add(DiagnosticType::ShaderInternalCompilerError);
         ++job.info.diagnostic->failedJobs;
-        return;
+        return false;
     }
 
     // Copy the deep creation info
@@ -254,7 +259,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     if (result != VK_SUCCESS) {
         scope.Add(DiagnosticType::ShaderCreationFailed);
         ++job.info.diagnostic->failedJobs;
-        return;
+        return false;
     }
 
     // Assign the instrument
@@ -265,4 +270,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 
     // Destroy the module
     destroy(module, allocators);
+
+    // OK
+    return true;
 }

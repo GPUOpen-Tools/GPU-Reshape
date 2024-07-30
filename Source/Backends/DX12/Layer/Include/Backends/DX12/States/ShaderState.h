@@ -77,6 +77,11 @@ struct ShaderState : public ReferenceObject {
     /// \return true if reserved
     bool Reserve(const ShaderInstrumentationKey& instrumentationKey);
 
+    /// Remove an existing instrument
+    /// \param key instrumentation key
+    /// \return true if removed
+    bool RemoveInstrument(const ShaderInstrumentationKey& key);
+
     /// Originating key
     ShaderStateKey key;
 

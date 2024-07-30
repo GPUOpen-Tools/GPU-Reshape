@@ -763,6 +763,18 @@ bool ShaderState::Reserve(const ShaderInstrumentationKey &instrumentationKey) {
     return false;
 }
 
+bool ShaderState::RemoveInstrument(const ShaderInstrumentationKey &key) {
+    ASSERT(key.featureBitSet, "Invalid instrument reservation");
+    
+    std::lock_guard lock(mutex);
+    if (auto&& it = instrumentObjects.find(key); it != instrumentObjects.end()) {
+        instrumentObjects.erase(it);
+        return true;
+    }
+
+    return false;
+}
+
 void ShaderState::AddInstrument(const ShaderInstrumentationKey &instrumentationKey, const DXStream &instrument) {
     std::lock_guard lock(mutex);
     ASSERT(instrumentationKey.featureBitSet, "Invalid instrument addition");

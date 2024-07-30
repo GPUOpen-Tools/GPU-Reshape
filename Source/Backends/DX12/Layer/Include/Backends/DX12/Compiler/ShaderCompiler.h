@@ -86,7 +86,8 @@ public:
 
 protected:
     /// Compile a given job
-    void CompileShader(const ShaderJob &job);
+    /// \return success state
+    bool CompileShader(const ShaderJob &job);
 
     /// Compile a new slim module
     /// \param sourceModule the module to compile from

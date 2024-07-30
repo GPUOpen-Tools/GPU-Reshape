@@ -112,7 +112,12 @@ void ShaderCompiler::Add(const ShaderJob& job, DispatcherBucket *bucket) {
 
 void ShaderCompiler::Worker(void *data) {
     auto *job = static_cast<ShaderJob *>(data);
-    CompileShader(*job);
+
+    // Try to compile, if failed remove the reservation
+    if (!CompileShader(*job)) {
+        job->state->RemoveInstrument(job->instrumentationKey);
+    }
+    
     destroy(job, allocators);
 }
 
@@ -164,7 +169,7 @@ bool ShaderCompiler::InitializeModule(ShaderState *state) {
     return true;
 }
 
-void ShaderCompiler::CompileShader(const ShaderJob &job) {
+bool ShaderCompiler::CompileShader(const ShaderJob &job) {
 #if SHADER_COMPILER_SERIAL
     static std::mutex mutex;
     std::lock_guard guard(mutex);
@@ -177,7 +182,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     if (!InitializeModule(job.state)) {
         scope.Add(DiagnosticType::ShaderUnknownHeader, *static_cast<const uint32_t *>(job.state->byteCode.pShaderBytecode));
         ++job.diagnostic->failedJobs;
-        return;
+        return false;
     }
 
     // Create a copy of the module, don't modify the source
@@ -241,7 +246,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Attempt to recompile
     if (!module->Compile(compileJob, stream)) {
         ++job.diagnostic->failedJobs;
-        return;
+        return false;
     }
 
     // Debugging
@@ -258,6 +263,9 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Destroy the module
     destroy(module, allocators);
+
+    // OK
+    return true;
 }
 
 IDXModule* ShaderCompiler::CompileSlimModule(IDXModule* sourceModule) {
