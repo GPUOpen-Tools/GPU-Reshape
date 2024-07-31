@@ -2322,7 +2322,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
 
                 // Number of dimensions
-                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension, false);
 
                 // Vectorize
                 IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
@@ -2369,7 +2369,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
 
                 // Number of dimensions
-                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension, false);
 
                 // Vectorize
                 IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz, cw);
@@ -2491,7 +2491,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
 
                 // Number of dimensions
-                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension, false);
                 uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(textureType->format);
 
                 // Vectorize

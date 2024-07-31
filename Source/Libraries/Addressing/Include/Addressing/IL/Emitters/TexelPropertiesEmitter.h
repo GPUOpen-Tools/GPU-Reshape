@@ -106,7 +106,7 @@ namespace Backend::IL {
 
             // Determine from resource type
             if (auto texture = resourceType->Cast<TextureType>()) {
-                dimensions = GetDimensionSize(texture->dimension);
+                dimensions = GetDimensionSize(texture->dimension, false);
                 isVolumetric = texture->dimension == TextureDimension::Texture3D;
             } else if (auto buffer = resourceType->Cast<BufferType>()) {
                 // Poof

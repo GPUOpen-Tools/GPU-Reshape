@@ -403,7 +403,7 @@ namespace Backend::IL {
                 return nullptr;
             }
             case TypeKind::Texture: {
-                auto dimension = static_cast<uint8_t>(GetDimensionSize(resource->As<TextureType>()->dimension));
+                auto dimension = static_cast<uint8_t>(GetDimensionSize(resource->As<TextureType>()->dimension, true));
                 if (dimension == 1) {
                     return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
                 }
