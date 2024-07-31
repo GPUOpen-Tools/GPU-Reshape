@@ -2609,14 +2609,35 @@ const Backend::IL::Type* DXILPhysicalBlockFunction::GetTypeFromTextureProperties
 const Backend::IL::Type * DXILPhysicalBlockFunction::GetTypeFromBufferProperties(const DXILResourceProperties &properties) {
     Backend::IL::TypeMap &types = program.GetTypeMap();
 
-    // If raw, it's on a per byte address
-    if (static_cast<DXILShaderResourceShape>(properties.basic.shape) == DXILShaderResourceShape::RawBuffer) {
-        return types.FindTypeOrAdd(Backend::IL::BufferType{
-            .elementType = types.FindTypeOrAdd(Backend::IL::IntType { .bitWidth = 8, .signedness = false }),
-            .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
-            .texelType = Backend::IL::Format::R8,
-            .byteAddressing = true
-        });
+    // Special cases
+    switch (static_cast<DXILShaderResourceShape>(properties.basic.shape)) {
+        default: {
+            break;
+        }
+        case DXILShaderResourceShape::RawBuffer: {
+            // If raw, it's on a per byte address
+            return types.FindTypeOrAdd(Backend::IL::BufferType{
+                .elementType = types.FindTypeOrAdd(Backend::IL::IntType { .bitWidth = 8, .signedness = false }),
+                .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
+                .texelType = Backend::IL::Format::R8,
+                .byteAddressing = true
+            });
+        }
+        case DXILShaderResourceShape::StructuredBuffer: {
+            // No structured type information, just report it as uint8_t[byteStride]
+            return types.FindTypeOrAdd(Backend::IL::BufferType{
+                .elementType = types.FindTypeOrAdd(Backend::IL::ArrayType {
+                    .elementType = types.FindTypeOrAdd(Backend::IL::IntType { .bitWidth = 8, .signedness = false }),
+                    .count = properties.typed.structByteStride
+                }),
+                .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
+                .texelType = Backend::IL::Format::None,
+                .byteAddressing = false
+            });
+        }
+        case DXILShaderResourceShape::CBuffer: {
+            return types.FindTypeOrAdd(Backend::IL::CBufferType{});
+        }
     }
 
     // Final format
