@@ -134,6 +134,13 @@ namespace Studio.Views.Controls
                             serviceViewModel.Install(items, dataViewModels);
                         }
                     }
+
+                    // If no services, just close it
+                    if (items.Count == 0)
+                    {
+                        control.ContextMenu.Close();
+                        return;
+                    }
                     
                     // Setup all items
                     foreach (IContextMenuItemViewModel contextMenuItemViewModel in items)
