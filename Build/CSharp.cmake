@@ -35,7 +35,7 @@ function(Project_AddDotNet NAME)
     set_target_properties(
         ${NAME} PROPERTIES
 		DOTNET_SDK "Microsoft.NET.Sdk"
-		DOTNET_TARGET_FRAMEWORK "net6.0"
+		DOTNET_TARGET_FRAMEWORK "net8.0"
         VS_GLOBAL_Platforms "x64"
 		VS_GLOBAL_RuntimeIdentifier "win-x64"
 		VS_GLOBAL_SelfContained "true"
@@ -113,7 +113,7 @@ function(Project_AddDotNetEx)
     set_target_properties(
         ${ARGS_NAME} PROPERTIES
 		DOTNET_SDK "Microsoft.NET.Sdk"
-		DOTNET_TARGET_FRAMEWORK "net6.0"
+		DOTNET_TARGET_FRAMEWORK "net8.0"
         VS_GLOBAL_Platforms "x64"
 		VS_GLOBAL_RuntimeIdentifier "win-x64"
 		VS_GLOBAL_SelfContained "true"
