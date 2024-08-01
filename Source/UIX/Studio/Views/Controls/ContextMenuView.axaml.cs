@@ -90,19 +90,18 @@ namespace Studio.Views.Controls
                     IEnumerable<object>? dataViewModelSource = null;
 
                     // Determine appropriate view model
-                    if (control is ListBox listbox)
-                    {
-                        dataViewModelSource = listbox.SelectedItems.Cast<object>();
-                    }
-                    else if (control is TreeView tree)
-                    {
-                        dataViewModelSource = tree.SelectedItems.Cast<object>();
-                    }
-                    else if (control.Parent is TreeViewItem treeViewItem)
+                    if (FindParent<TreeViewItem>(e.Source as IControl) is {} treeViewItem)
                     {
                         if (treeViewItem.TryFindParent<TreeView>() is { } parentTree)
                         {
                             dataViewModelSource = parentTree.SelectedItems.Cast<object>();
+                        }
+                    }
+                    else if (FindParent<ListBoxItem>(e.Source as IControl) is {} listBoxItem)
+                    {
+                        if (listBoxItem.TryFindParent<ListBox>() is { } parentList)
+                        {
+                            dataViewModelSource = parentList.SelectedItems.Cast<object>();
                         }
                     }
                     
@@ -163,6 +162,21 @@ namespace Studio.Views.Controls
                 item.TargetViewModels = viewModels;
                 SetViewModels(item.Items, viewModels);
             }
+        }
+
+        private static T? FindParent<T>(IControl? control) where T : class
+        {
+            while (control != null)
+            {
+                if (control is T typed)
+                {
+                    return typed;
+                }
+
+                control = control.Parent;
+            }
+
+            return null;
         }
 
         /// <summary>
