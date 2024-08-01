@@ -112,6 +112,7 @@ protected:
     void CommitShaders(DispatcherBucket* bucket, void *data);
     void CommitPipelines(DispatcherBucket* bucket, void *data);
     void CommitTable(DispatcherBucket* bucket, void *data);
+    void CommitFeatureMessages();
 
     /// Message handler
     void OnMessage(const ConstMessageStreamView<>::ConstIterator &it);
@@ -134,6 +135,11 @@ protected:
     /// Propagate instrumentation states
     /// \param state destination shader
     void PropagateInstrumentationInfo(ShaderModuleState* state);
+
+    /// Activate all relevant features and commit them
+    /// \param featureBitSet enabled feature set
+    /// \param previousFeatureBitSet previously enabled feature set
+    void ActivateAndCommitFeatures(uint64_t featureBitSet, uint64_t previousFeatureBitSet);
     
 private:
     struct FilterEntry {
@@ -191,8 +197,9 @@ private:
             uint64_t combinedHash{0};
         };
         
-        /// Given feature set
-        uint64_t featureBitSet;
+        /// Given feature sets
+        uint64_t previousFeatureBitSet{0};
+        uint64_t featureBitSet{0};
 
         /// Compiler diagnostics
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
@@ -248,6 +255,10 @@ private:
 
     /// Pending compilation bucket?
     bool hasPendingBucket{false};
+
+private:
+    /// The previous feature set during summarization
+    uint64_t previousFeatureBitSet{0};
 
 private:
     bool synchronousRecording{false};

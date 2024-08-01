@@ -29,6 +29,7 @@
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
+#include <Backends/Vulkan/States/DeviceMemoryTag.h>
 
 // Common
 #include "Common/Containers/ReferenceObject.h"
@@ -52,6 +53,9 @@ struct BufferState {
 
     /// Creation info
     VkBufferCreateInfo createInfo;
+
+    /// Bound memory tag
+    DeviceMemoryTag memoryTag;
 
     /// Optional debug name
     char* debugName{nullptr};

@@ -337,6 +337,7 @@ add_library(
     Layer/Source/SwapChain.cpp
     Layer/Source/MemoryHeap.cpp
     Layer/Source/QueryHeap.cpp
+    Layer/Source/QueueSegmentAllocator.cpp
     Layer/Source/DLL.cpp
     Layer/Source/Layer.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp
@@ -355,6 +356,7 @@ add_library(
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockOutputSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockFeatureInfo.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockDebug.cpp
+    Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockShaderSourceInfo.cpp
     Layer/Source/Compiler/DXBC/DXBCSigner.cpp
     Layer/Source/Compiler/DXBC/DXBCConverter.cpp
     Layer/Source/Compiler/DXIL/DXILModule.cpp
@@ -372,6 +374,7 @@ add_library(
     Layer/Source/Compiler/DXIL/LLVM/LLVMPrettyPrint.cpp
     Layer/Source/Compiler/DXIL/DXILSigner.cpp
     Layer/Source/Compiler/DXIL/DXILDebugModule.cpp
+    Layer/Source/Compiler/DXMSCompiler.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Controllers/MetadataController.cpp
     Layer/Source/Controllers/VersioningController.cpp
@@ -442,11 +445,12 @@ target_link_libraries(
     # d3d12
     d3d12.lib
     dxgi.lib
-
+    
     # Generated source
 )
 
 # Setup dependencies
+ExternalProject_Link(GRS.Backends.DX12.Layer MD5 MD5)
 ExternalProject_Link(GRS.Backends.DX12.Layer AgilitySDK)
 ExternalProject_Link(GRS.Backends.DX12.Layer Detour Detour)
 ExternalProject_Link(GRS.Backends.DX12.Layer D3D12MA $<$<CONFIG:Debug>:D3D12MAd> $<$<CONFIG:Release>:D3D12MAr> $<$<CONFIG:RelWithDebInfo>:D3D12MArd>)

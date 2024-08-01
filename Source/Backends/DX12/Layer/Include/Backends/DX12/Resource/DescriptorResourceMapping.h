@@ -32,6 +32,6 @@
 /// Get an undefined virtual resource mapping
 static VirtualResourceMapping GetUndefinedVirtualResourceMapping() {
     VirtualResourceMapping mapping{};
-    mapping.puid = IL::kResourceTokenPUIDInvalidUndefined;
+    mapping.token.puid = IL::kResourceTokenPUIDInvalidUndefined;
     return mapping;
 }

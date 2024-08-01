@@ -226,6 +226,8 @@ inline SpvStorageClass Translate(Backend::IL::AddressSpace space) {
             return SpvStorageClassUniform;
         case Backend::IL::AddressSpace::RootConstant:
             return SpvStorageClassPushConstant;
+        case Backend::IL::AddressSpace::Input:
+            return SpvStorageClassInput;
     }
 }
 
@@ -234,6 +236,7 @@ inline Backend::IL::AddressSpace Translate(SpvStorageClass space) {
         default:
             return Backend::IL::AddressSpace::Unexposed;
         case SpvStorageClassFunction:
+        case SpvStorageClassPrivate:
             return Backend::IL::AddressSpace::Function;
         case SpvStorageClassImage:
             return Backend::IL::AddressSpace::Texture;
@@ -243,6 +246,8 @@ inline Backend::IL::AddressSpace Translate(SpvStorageClass space) {
             return Backend::IL::AddressSpace::RootConstant;
         case SpvStorageClassUniform:
             return Backend::IL::AddressSpace::Constant;
+        case SpvStorageClassInput:
+            return Backend::IL::AddressSpace::Input;
         case SpvStorageClassOutput:
             return Backend::IL::AddressSpace::Output;
     }

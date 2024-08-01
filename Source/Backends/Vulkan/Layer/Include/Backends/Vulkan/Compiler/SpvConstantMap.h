@@ -125,53 +125,68 @@ private:
     /// \param constant
     /// \return SPIRV id
     void CompileConstant(const Backend::IL::Constant *constant) {
+        SpvId typeId = typeMap.GetSpvTypeId(constant->type);
+        
         switch (constant->kind) {
             default:
                 ASSERT(false, "Unsupported constant type for recompilation");
                 break;
             case Backend::IL::ConstantKind::Bool:
-                CompileConstant(static_cast<const Backend::IL::BoolConstant *>(constant));
+                CompileConstant(constant->As<IL::BoolConstant>(), typeId);
+                break;
             case Backend::IL::ConstantKind::Int:
-                CompileConstant(static_cast<const Backend::IL::IntConstant *>(constant));
+                CompileConstant(constant->As<IL::IntConstant>(), typeId);
+                break;
             case Backend::IL::ConstantKind::FP:
-                CompileConstant(static_cast<const Backend::IL::FPConstant *>(constant));
+                CompileConstant(constant->As<IL::FPConstant>(), typeId);
+                break;
             case Backend::IL::ConstantKind::Null:
-                CompileConstant(static_cast<const Backend::IL::NullConstant *>(constant));
+                CompileConstant(constant->As<IL::NullConstant>(), typeId);
+                break;
+            case Backend::IL::ConstantKind::Struct:
+                CompileConstant(constant->As<IL::StructConstant>(), typeId);
+                break;
+            case Backend::IL::ConstantKind::Vector:
+                CompileConstant(constant->As<IL::VectorConstant>(), typeId);
+                break;
+            case Backend::IL::ConstantKind::Array:
+                CompileConstant(constant->As<IL::ArrayConstant>(), typeId);
+                break;
         }
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::BoolConstant *constant) {
+    void CompileConstant(const Backend::IL::BoolConstant *constant, SpvId typeId) {
         if (constant->value) {
             SpvInstruction &spv = declarationStream->Allocate(SpvOpConstantTrue, 3);
-            spv[1] = typeMap.GetSpvTypeId(constant->type);
+            spv[1] = typeId;
             spv[2] = constant->id;
         } else {
             SpvInstruction &spv = declarationStream->Allocate(SpvOpConstantFalse, 3);
-            spv[1] = typeMap.GetSpvTypeId(constant->type);
+            spv[1] = typeId;
             spv[2] = constant->id;
         }
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::IntConstant *constant) {
-        auto* fpType = constant->type->As<Backend::IL::IntType>();
+    void CompileConstant(const Backend::IL::IntConstant *constant, SpvId typeId) {
+        auto* intType = constant->type->As<Backend::IL::IntType>();
 
-        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstant, 4 + fpType->bitWidth / 32);
-        spvOffset[1] = typeMap.GetSpvTypeId(constant->type);
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstant, 3 + (intType->bitWidth + 31) / 32);
+        spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
 
-        for (uint32_t i = 0; i < fpType->bitWidth; i += 32) {
+        for (uint32_t i = 0; i < intType->bitWidth; i += 32) {
             spvOffset[3 + i] |= std::bit_cast<uint64_t>(constant->value) >> i;
         }
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::FPConstant *constant) {
+    void CompileConstant(const Backend::IL::FPConstant *constant, SpvId typeId) {
         auto* fpType = constant->type->As<Backend::IL::FPType>();
 
-        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstant, 4 + fpType->bitWidth / 32);
-        spvOffset[1] = typeMap.GetSpvTypeId(constant->type);
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstant, 3 + (fpType->bitWidth + 31) / 32);
+        spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
 
         for (uint32_t i = 0; i < fpType->bitWidth; i += 32) {
@@ -180,10 +195,43 @@ private:
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::NullConstant *constant) {
+    void CompileConstant(const Backend::IL::NullConstant *constant, SpvId typeId) {
         SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantNull, 3);
-        spvOffset[1] = typeMap.GetSpvTypeId(constant->type);
+        spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
+    }
+
+    /// Compile a given constant
+    void CompileConstant(const Backend::IL::StructConstant *constant, SpvId typeId) {
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->members.size()));
+        spvOffset[1] = typeId;
+        spvOffset[2] = constant->id;
+
+        for (size_t i = 0; i < constant->members.size(); i++) {
+            spvOffset[3 + static_cast<uint32_t>(i)] = constant->members[i]->id;
+        }
+    }
+
+    /// Compile a given constant
+    void CompileConstant(const Backend::IL::VectorConstant *constant, SpvId typeId) {
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->elements.size()));
+        spvOffset[1] = typeId;
+        spvOffset[2] = constant->id;
+
+        for (size_t i = 0; i < constant->elements.size(); i++) {
+            spvOffset[3 + static_cast<uint32_t>(i)] = constant->elements[i]->id;
+        }
+    }
+
+    /// Compile a given constant
+    void CompileConstant(const Backend::IL::ArrayConstant *constant, SpvId typeId) {
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->elements.size()));
+        spvOffset[1] = typeId;
+        spvOffset[2] = constant->id;
+
+        for (size_t i = 0; i < constant->elements.size(); i++) {
+            spvOffset[3 + static_cast<uint32_t>(i)] = constant->elements[i]->id;
+        }
     }
 
 private:

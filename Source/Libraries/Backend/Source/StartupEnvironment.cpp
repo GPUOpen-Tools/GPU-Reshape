@@ -80,7 +80,7 @@ bool StartupEnvironment::LoadFromEnvironment(MessageStream& stream) {
     return true;
 }
 
-bool StartupEnvironment::LoadFromConfig(MessageStream &stream) {
+bool StartupEnvironment::LoadFromApplicationConfig(MessageStream &stream) {
     // Expected path
     std::string path = (GetIntermediatePath("Settings") / "ApplicationStartupEnvironments.json").string();
 
@@ -142,6 +142,40 @@ bool StartupEnvironment::LoadFromConfig(MessageStream &stream) {
     
     // Open file
     std::ifstream file(startupEnvironmentPath, std::ios::binary | std::ios::ate);
+    if (!file.good()) {
+        return false;
+    }
+
+    // Determine size
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    // Assign schema
+    stream.ValidateOrSetSchema(OrderedMessageSchema::GetSchema());
+    
+    // Write offset
+    const size_t offset = stream.GetByteSize();
+    
+    // Try to read stream
+    if (!file.read(reinterpret_cast<char*>(stream.ResizeData(offset + size) + offset), size)) {
+        return false;
+    }
+
+    // OK
+    return true;
+}
+
+bool StartupEnvironment::LoadFromGlobalConfig(MessageStream &stream) {
+    // Expected path
+    std::string path = (GetIntermediatePath("Settings") / "GlobalEnvironment.env").string();
+
+    // Present?
+    if (!PathExists(path)) {
+        return false;
+    }
+    
+    // Open file
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file.good()) {
         return false;
     }

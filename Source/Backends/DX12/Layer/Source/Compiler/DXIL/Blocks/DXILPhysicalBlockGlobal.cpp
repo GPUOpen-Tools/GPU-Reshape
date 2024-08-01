@@ -28,6 +28,13 @@
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
+#include <Backends/DX12/Compiler/DXIL/Blocks/DXILUnresolvedConstant.h>
+
+// Common
+#include <Common/Sink.h>
+
+// Std
+#include <bit>
 
 /*
  * LLVM DXIL Specification
@@ -36,7 +43,8 @@
 
 DXILPhysicalBlockGlobal::DXILPhysicalBlockGlobal(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table) :
     DXILPhysicalBlockSection(allocators, program, table),
-    constantMap(allocators, program.GetConstants(), program.GetIdentifierMap(), table.type.typeMap) {
+    constantMap(allocators, program.GetConstants(), program.GetIdentifierMap(), table.type.typeMap),
+    initializerResolves(allocators) {
 
 }
 
@@ -46,6 +54,12 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
 
     // Get maps
     Backend::IL::TypeMap& types = program.GetTypeMap();
+
+    // Local stack for unresolved symbols
+    LinearBlockAllocator<256> unresolvedAllocator;
+
+    // All constants pending resolves
+    TrivialStackVector<IL::Constant*, 16> unresolvedConstants;
 
     for (LLVMRecord &record: block->records) {
         if (record.Is(LLVMConstantRecord::SetType)) {
@@ -129,17 +143,110 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
             }
 
             case LLVMConstantRecord::Aggregate: {
+                // Aggregate types may contain forward references
+                bool isUnresolved{false};
+                
                 if (auto _struct = type->Cast<Backend::IL::StructType>()) {
                     Backend::IL::StructConstant decl;
 
                     // Fill members
                     for (uint32_t i = 0; i < record.opCount; i++) {
-                        decl.members.push_back(program.GetConstants().GetConstant(table.idMap.GetMapped(record.Op32(i))));
+                        uint32_t operand = record.Op32(i);
+                        
+                        if (table.idMap.IsMapped(operand)) {
+                            decl.members.push_back(program.GetConstants().GetConstant(table.idMap.GetMapped(operand)));
+                        } else {
+                            isUnresolved = true;
+                            
+                            decl.members.push_back(unresolvedAllocator.Allocate<DXILUnresolvedConstant>(DXILUnresolvedConstant {
+                                .mappedId = operand
+                            }));
+                        }
                     }
-            
-                    constant = constantMap.AddConstant(id, _struct, decl);
+
+                    // Handle resolving
+                    if (isUnresolved) {
+                        constant = unresolvedConstants.Add(constantMap.AddUnresolvedConstant(id, _struct, decl));
+                    } else {
+                        constant = constantMap.AddConstant(id, _struct, decl);
+                    }
                 } else {
-                    // TODO: Array constants
+                    Backend::IL::ArrayConstant decl;
+
+                    // Fill members
+                    for (uint32_t i = 0; i < record.opCount; i++) {
+                        uint32_t operand = record.Op32(i);
+                        
+                        if (table.idMap.IsMapped(operand)) {
+                            decl.elements.push_back(program.GetConstants().GetConstant(table.idMap.GetMapped(operand)));
+                        } else {
+                            isUnresolved = true;
+                            
+                            decl.elements.push_back(unresolvedAllocator.Allocate<DXILUnresolvedConstant>(DXILUnresolvedConstant {
+                                .mappedId = operand
+                            }));
+                        }
+                    }
+
+                    // Handle resolving
+                    const auto* array = type->As<Backend::IL::ArrayType>();
+                    if (isUnresolved) {
+                        constant = unresolvedConstants.Add(constantMap.AddUnresolvedConstant(id, array, decl));
+                    } else {
+                        constant = constantMap.AddConstant(id, array, decl);
+                    }
+                }
+                break;
+            }
+
+            case LLVMConstantRecord::Data: {
+                if (auto _array = type->Cast<Backend::IL::ArrayType>()) {
+                    Backend::IL::ArrayConstant decl;
+
+                    // Fill members
+                    for (uint32_t i = 0; i < record.opCount; i++) {
+                        switch (_array->elementType->kind) {
+                            default: {
+                                ASSERT(false, "Invalid type");
+                                break;
+                            }
+                            case Backend::IL::TypeKind::FP: {
+                                auto _type = _array->elementType->As<Backend::IL::FPType>();
+
+                                // Convert data by bit width
+                                double value = 0.0;
+                                switch (_type->bitWidth) {
+                                    default:
+                                        ASSERT(false, "Unexpected bit-width");
+                                        break;
+                                    case 32:
+                                        value = std::bit_cast<float>(record.Op32(i));
+                                        break;
+                                    case 64:
+                                        value = std::bit_cast<double>(record.Op(i));
+                                        break;
+                                }
+                                
+                                decl.elements.push_back(program.GetConstants().AddSymbolicConstant(
+                                    _type,
+                                    IL::FPConstant { .value = value }
+                                ));
+                                break;
+                            }
+                            case Backend::IL::TypeKind::Int: {
+                                decl.elements.push_back(program.GetConstants().AddSymbolicConstant(
+                                    _array->elementType->As<Backend::IL::IntType>(),
+                                    IL::IntConstant { .value = std::bit_cast<int64_t>(record.Op(i)) }
+                                ));
+                                break;
+                            }
+                        }
+                    }
+
+                    // Create constant
+                    constant = constantMap.AddConstant(id, _array, decl);
+                } else if (auto _vector = type->Cast<Backend::IL::VectorType>()) {
+                    // Not handled yet
                     constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
                 }
                 break;
@@ -155,8 +262,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
             case LLVMConstantRecord::CString:
             case LLVMConstantRecord::Cast:
             case LLVMConstantRecord::GEP:
-            case LLVMConstantRecord::InBoundsGEP:
-            case LLVMConstantRecord::Data: {
+            case LLVMConstantRecord::InBoundsGEP: {
                 // Emitting as unsorted is safe for DXIL resident types, as the IL has no applicable type anyway
                 constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
                 break;
@@ -169,6 +275,46 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
             table.idMap.SetMapped(anchor, constant->id);
         }
     }
+
+    // Resolve all remaining constants with forward references
+    for (IL::Constant *constant : unresolvedConstants) {
+        switch (constant->kind) {
+            default: {
+                ASSERT(false, "Unexpected type");
+                break;
+            }
+            case Backend::IL::ConstantKind::Array: {
+                auto* array = constant->As<IL::ArrayConstant>();
+
+                // Replace all unresolved constants
+                for (const IL::Constant*& element: array->elements) {
+                    if (auto unresolved = element->Cast<DXILUnresolvedConstant>()) {
+                        element = program.GetConstants().GetConstant(table.idMap.GetMapped(unresolved->mappedId));
+                        ASSERT(element, "Failed to resolve constant array element");
+                    }
+                }
+
+                // Remap sorting key
+                constantMap.ResolveConstant(array);
+                break;
+            }
+            case Backend::IL::ConstantKind::Struct: {
+                auto* _struct = constant->As<IL::StructConstant>();
+
+                // Replace all unresolved constants
+                for (const IL::Constant*& element: _struct->members) {
+                    if (auto unresolved = element->Cast<DXILUnresolvedConstant>()) {
+                        element = program.GetConstants().GetConstant(table.idMap.GetMapped(unresolved->mappedId));
+                        ASSERT(element, "Failed to resolve constant array element");
+                    }
+                }
+                
+                // Remap sorting key
+                constantMap.ResolveConstant(_struct);
+                break;
+            }
+        }
+    }
 }
 
 void DXILPhysicalBlockGlobal::ParseGlobalVar(struct LLVMRecord& record) {
@@ -178,23 +324,64 @@ void DXILPhysicalBlockGlobal::ParseGlobalVar(struct LLVMRecord& record) {
     IL::ID id = table.idMap.AllocMappedID(DXILIDType::Variable);
 
     // Set type, IL programs have no concept of globals for now
-    const Backend::IL::Type* pointeeType = table.type.typeMap.GetType(static_cast<uint32_t>(record.ops[0]));
+    const Backend::IL::Type* pointeeType = table.type.typeMap.GetType(static_cast<uint32_t>(record.Op(0)));
 
+    // Unpack address and constant
+    auto addressSpace = static_cast<DXILAddressSpace>(record.Op(1) >> 2);
+    auto isConstant   = static_cast<bool>(record.Op(1) & 0x1);
+    GRS_SINK(isConstant);
+
+    // Translate address space
+    Backend::IL::AddressSpace space;
+    switch (addressSpace) {
+        default:
+            space = Backend::IL::AddressSpace::Unexposed;
+            break;
+        case DXILAddressSpace::Local:
+            space = Backend::IL::AddressSpace::Function;
+            break;
+        case DXILAddressSpace::Device:
+            space = Backend::IL::AddressSpace::Resource;
+            break;
+        case DXILAddressSpace::Constant:
+            space = Backend::IL::AddressSpace::Constant;
+            break;
+        case DXILAddressSpace::GroupShared:
+            space = Backend::IL::AddressSpace::GroupShared;
+            break;
+    }
+    
     // Always stored as pointer to
     const Backend::IL::Type* pointerType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
         .pointee = pointeeType,
-        .addressSpace = Backend::IL::AddressSpace::Function
+        .addressSpace = space
     });
 
     // Set type
     program.GetTypeMap().SetType(id, pointerType);
 
-    // Add variable
-    program.GetVariableList().Add(Backend::IL::Variable {
+    auto variable = new (allocators) Backend::IL::Variable {
         .id = id,
-        .addressSpace = Backend::IL::AddressSpace::Function,
-        .type = pointerType
-    });
+        .addressSpace = space,
+        .type = pointerType,
+        .initializer = nullptr
+    };
+
+    // Check if a constant has been assigned
+    if (auto initializer = static_cast<uint32_t>(record.Op(2))) {
+        initializerResolves.emplace_back(variable, initializer - 1);
+    }
+
+    // Add variable
+    program.GetVariableList().Add(variable);
+}
+
+void DXILPhysicalBlockGlobal::ResolveGlobals() {
+    // Map all initializers
+    for (auto&& tag : initializerResolves) {
+        tag.first->initializer = program.GetConstants().GetConstant(table.idMap.GetMapped(tag.second));
+        ASSERT(tag.first->initializer, "Failed to map global initializer");
+    }
 }
 
 void DXILPhysicalBlockGlobal::ParseAlias(LLVMRecord &record) {
@@ -217,6 +404,10 @@ void DXILPhysicalBlockGlobal::CompileAlias(LLVMRecord &record) {
 void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
     // Ensure all IL constants are mapped
     for (const Backend::IL::Constant* constant : program.GetConstants()) {
+        if (constant->IsSymbolic()) {
+            continue;
+        }
+
         constantMap.GetConstant(constant);
     }
 

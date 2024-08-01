@@ -1,0 +1,71 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2024 Advanced Micro Devices, Inc.,
+  Fatalist Development AB (Avalanche Studio Group),
+  and Miguel Petersen.
+  
+  All Rights Reserved.
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
+             xmlns:studio="clr-namespace:Studio"
+             xmlns:setting1="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
+             xmlns:setting2="clr-namespace:Studio.Views.Setting"
+             xmlns:r="clr-namespace:Studio.Resources"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Studio.Views.Setting.FeaturesSettingView"
+             x:DataType="setting:FeaturesSettingViewModel" x:CompileBindings="True">
+    <UserControl.DataContext>
+        <setting:FeaturesSettingViewModel />
+    </UserControl.DataContext>
+
+    <StackPanel Orientation="Vertical">
+        <Grid Margin="0,0,0,0" HorizontalAlignment="Stretch">
+            <TextBlock Text="Feature Capabilities"/>
+            <Separator
+                Margin="110,0,0,0" 
+                Background="{StaticResource DockThemeBorderLowBrush}" 
+                HorizontalAlignment="Stretch" Height="1"/>
+        </Grid>
+                
+        <Grid Margin="15,10,0,0">
+            <StackPanel Orientation="Vertical">
+                <CheckBox
+                    IsChecked="{Binding TexelAddressing}"
+                    Content="Enable Texel Addressing"/>
+                
+                <TextBlock 
+                    Width="500"
+                    Margin="0 5 0 0"
+                    HorizontalAlignment="Left"
+                    TextWrapping="WrapWithOverflow"
+                    Text="{x:Static r:Resources.Features_TexelAddressing_Info}"/>
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</UserControl>

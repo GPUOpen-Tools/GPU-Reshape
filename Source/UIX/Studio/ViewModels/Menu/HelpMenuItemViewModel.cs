@@ -32,6 +32,7 @@ using Avalonia.Media;
 using DynamicData;
 using ReactiveUI;
 using Studio.Services;
+using Studio.ViewModels.Documents;
 
 namespace Studio.ViewModels.Menu
 {
@@ -86,6 +87,13 @@ namespace Studio.ViewModels.Menu
                 
                 new MenuItemViewModel()
                 {
+                    Header = "What's New",
+                    Command = ReactiveCommand.Create(OnWhatsNew),
+                    IconPath = "Speaker"
+                },
+                
+                new MenuItemViewModel()
+                {
                     Header = "-"
                 },
                 
@@ -108,6 +116,17 @@ namespace Studio.ViewModels.Menu
                 FileName = "https://github.com/GPUOpen-Tools/GPU-Reshape/blob/main/Documentation/QuickStart.md",
                 UseShellExecute = true
             });
+        }
+
+        /// <summary>
+        /// Invoked on what's new
+        /// </summary>
+        private void OnWhatsNew()
+        {
+            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            {
+                layoutViewModel.DocumentLayout?.OpenDocument(new WhatsNewDescriptor());
+            }
         }
 
         /// <summary>

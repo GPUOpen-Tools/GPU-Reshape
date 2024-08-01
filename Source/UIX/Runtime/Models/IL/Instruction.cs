@@ -98,6 +98,19 @@ namespace Studio.Models.IL
         public uint Value;
     }
     
+    public class WaveReadInstruction : Instruction
+    {
+        /// <summary>
+        /// Value to read
+        /// </summary>
+        public uint Value;
+        
+        /// <summary>
+        /// Lane to read from
+        /// </summary>
+        public uint Lane;
+    }
+    
     public class StoreInstruction : Instruction
     {
         /// <summary>
@@ -179,6 +192,14 @@ namespace Studio.Models.IL
         /// Failing value
         /// </summary>
         public uint Fail;
+    }
+    
+    public class KernelValueInstruction : Instruction
+    {
+        /// <summary>
+        /// Literal value
+        /// </summary>
+        public uint Value;
     }
 
     public class ControlFlow
@@ -269,6 +290,27 @@ namespace Studio.Models.IL
         public uint? Value;
     }
     
+    public class CallInstruction : Instruction
+    {
+        /// <summary>
+        /// Target function
+        /// </summary>
+        public uint Target;
+
+        /// <summary>
+        /// All arguments
+        /// </summary>
+        public uint[] Arguments;
+    }
+    
+    public class ConstructInstruction : Instruction
+    {
+        /// <summary>
+        /// All values in the composite
+        /// </summary>
+        public uint[] Values;
+    }
+
     public class AddressChainInstruction : Instruction
     {
         /// <summary>
@@ -329,11 +371,11 @@ namespace Studio.Models.IL
         /// Composite to extract
         /// </summary>
         public uint Composite;
-        
+
         /// <summary>
-        /// Literal index
+        /// All chains into the composite
         /// </summary>
-        public uint Index;
+        public uint[] Chains;
     }
     
     public class InsertInstruction : Instruction
@@ -371,7 +413,63 @@ namespace Studio.Models.IL
         /// </summary>
         public uint Value;
     }
-    
+
+    public class StoreVertexOutputInstruction : Instruction
+    {
+        /// <summary>
+        /// Output index
+        /// </summary>
+        public uint Index;
+
+        /// <summary>
+        /// Row into output
+        /// </summary>
+        public uint Row;
+
+        /// <summary>
+        /// Column into output
+        /// </summary>
+        public uint Column;
+
+        /// <summary>
+        /// Value to be stored
+        /// </summary>
+        public uint Value;
+
+        /// <summary>
+        /// Output vertex index
+        /// </summary>
+        public uint VertexIndex;
+    }
+
+    public class StorePrimitiveOutputInstruction : Instruction
+    {
+        /// <summary>
+        /// Output index
+        /// </summary>
+        public uint Index;
+
+        /// <summary>
+        /// Row into output
+        /// </summary>
+        public uint Row;
+
+        /// <summary>
+        /// Column into output
+        /// </summary>
+        public uint Column;
+
+        /// <summary>
+        /// Value to be stored
+        /// </summary>
+        public uint Value;
+
+        /// <summary>
+        /// Output primitive index
+        /// </summary>
+        public uint PrimitiveIndex;
+    }
+
     public class SampleTextureInstruction : Instruction
     {
         /// <summary>
@@ -510,6 +608,62 @@ namespace Studio.Models.IL
         /// Component write mask
         /// </summary>
         public uint ComponentMask;
+    }
+    
+    public class LoadBufferRawInstruction : Instruction
+    {
+        /// <summary>
+        /// Buffer to load from
+        /// </summary>
+        public uint Buffer;
+        
+        /// <summary>
+        /// Index to load from
+        /// </summary>
+        public uint Index;
+        
+        /// <summary>
+        /// Optional offset
+        /// </summary>
+        public uint? Offset;
+        
+        /// <summary>
+        /// Component write mask
+        /// </summary>
+        public uint ComponentMask;
+        
+        /// <summary>
+        /// Byte alignment
+        /// </summary>
+        public uint Alignment;
+    }
+    
+    public class StoreBufferRawInstruction : Instruction
+    {
+        /// <summary>
+        /// Buffer to store to
+        /// </summary>
+        public uint Buffer;
+        
+        /// <summary>
+        /// Index to store to
+        /// </summary>
+        public uint Index;
+        
+        /// <summary>
+        /// Value to store
+        /// </summary>
+        public uint Value;
+        
+        /// <summary>
+        /// Component write mask
+        /// </summary>
+        public uint ComponentMask;
+        
+        /// <summary>
+        /// Byte alignment
+        /// </summary>
+        public uint Alignment;
     }
     
     public class ResourceTokenInstruction : Instruction

@@ -42,9 +42,10 @@
 #include <Common/Registry.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/IntervalAction.h>
+#include <Common/IntervalActionThread.h>
 
 // Generated
-#include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"
+#include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
 
 // Backend
 #include <Backend/EventDataStack.h>
@@ -74,6 +75,7 @@ struct RenderPassState;
 struct FrameBufferState;
 struct FenceState;
 struct QueueState;
+struct DeviceMemoryState;
 class IFeature;
 class IBridge;
 class InstrumentationController;
@@ -160,6 +162,7 @@ struct DeviceDispatchTable {
     TrackedObject<VkFence, FenceState>                                       states_fence;
     TrackedObject<VkQueue, QueueState>                                       states_queue;
     TrackedObject<VkPipeline, PipelineState>                                 states_pipeline;
+    TrackedObject<VkDeviceMemory, DeviceMemoryState>                         states_deviceMemory;
 
     /// Dependency objects
     DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;
@@ -203,11 +206,14 @@ struct DeviceDispatchTable {
     PFN_vkFreeCommandBuffers              next_vkFreeCommandBuffers;
     PFN_vkDestroyCommandPool              next_vkDestroyCommandPool;
     PFN_vkQueueSubmit                     next_vkQueueSubmit;
+    PFN_vkQueueSubmit2                    next_vkQueueSubmit2;
+    PFN_vkQueueSubmit2KHR                 next_vkQueueSubmit2KHR;
     PFN_vkQueuePresentKHR                 next_vkQueuePresentKHR;
     PFN_vkCreateShaderModule              next_vkCreateShaderModule;
     PFN_vkDestroyShaderModule             next_vkDestroyShaderModule;
     PFN_vkCreateGraphicsPipelines         next_vkCreateGraphicsPipelines;
     PFN_vkCreateComputePipelines          next_vkCreateComputePipelines;
+    PFN_vkCreateRayTracingPipelinesKHR    next_vkCreateRayTracingPipelinesKHR;
     PFN_vkDestroyPipeline                 next_vkDestroyPipeline;
     PFN_vkGetFenceStatus                  next_vkGetFenceStatus;
     PFN_vkWaitForFences                   next_vkWaitForFences;
@@ -265,6 +271,9 @@ struct DeviceDispatchTable {
     PFN_vkDestroySwapchainKHR             next_vkDestroySwapchainKHR;
     PFN_vkGetSwapchainImagesKHR           next_vkGetSwapchainImagesKHR;
     PFN_vkSetDebugUtilsObjectNameEXT      next_vkSetDebugUtilsObjectNameEXT;
+    PFN_vkQueueBindSparse                 next_vkQueueBindSparse;
+    PFN_vkCreateSemaphore                 next_vkCreateSemaphore;
+    PFN_vkDestroySemaphore                next_vkDestroySemaphore;
 
     /// Properties
     VkPhysicalDeviceProperties                 physicalDeviceProperties{};
@@ -298,6 +307,9 @@ struct DeviceDispatchTable {
 
     /// Environment actions
     IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);
+
+    /// Synchronization action thread
+    IntervalActionThread syncPointActionThread = IntervalActionThread::FromMS(16);
 
 private:
     /// Lookup

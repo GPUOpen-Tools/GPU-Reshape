@@ -26,7 +26,9 @@
 
 #pragma once
 
+#include "Program.h"
 #include "TypeCommon.h"
+#include "Metadata/DataMetadata.h"
 
 namespace Backend::IL {
     inline uint64_t GetPODNonAlignedTypeByteSize(const Type* type) {
@@ -124,5 +126,38 @@ namespace Backend::IL {
 
     inline const Type* GetStructuredTypeAtOffset(const Type* type, uint64_t byteOffset) {
         return GetStructuredTypeAtOffsetRef(type, byteOffset);
+    }
+    
+    inline uint64_t GetTypeByteSize(Program& program, const Type* type) {
+        switch (type->kind) {
+            default: {
+                return GetPODNonAlignedTypeByteSize(type);
+            }
+            case TypeKind::Array: {
+                auto _type = type->As<ArrayType>();
+                if (auto stride = program.GetMetadataMap().GetMetadata<ArrayStrideMetadata>(type->id)) {
+                    return stride->byteStride * _type->count;
+                } else {
+                    return GetPODNonAlignedTypeByteSize(_type->elementType) * _type->count;
+                }
+            }
+            case TypeKind::Struct: {
+                auto _struct = type->As<StructType>();
+
+                // Summarize byte size
+                size_t byteSize = 0;
+                for (uint32_t i = 0; i < static_cast<uint32_t>(_struct->memberTypes.size()); i++) {
+                    // If the member has an offset, assume it
+                    if (auto offset = program.GetMetadataMap().GetMetadata<OffsetMetadata>(type->id, i)) {
+                        byteSize = offset->byteOffset;
+                    }
+
+                    // Actual size of the element
+                    byteSize += GetPODNonAlignedTypeByteSize(_struct->memberTypes[i]);
+                }
+
+                return byteSize;
+            }
+        }
     }
 }

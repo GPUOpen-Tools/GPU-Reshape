@@ -36,6 +36,7 @@
 #include <Backends/Vulkan/Resource.h>
 #include <Backends/Vulkan/Swapchain.h>
 #include <Backends/Vulkan/Debug.h>
+#include <Backends/Vulkan/Memory.h>
 
 // Std
 #include <cstring>
@@ -61,11 +62,14 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkFreeCommandBuffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(getDeviceProcAddr(object, "vkFreeCommandBuffers"));
     next_vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(getDeviceProcAddr(object, "vkDestroyCommandPool"));
     next_vkQueueSubmit = reinterpret_cast<PFN_vkQueueSubmit>(getDeviceProcAddr(object, "vkQueueSubmit"));
+    next_vkQueueSubmit2 = reinterpret_cast<PFN_vkQueueSubmit2>(getDeviceProcAddr(object, "vkQueueSubmit2"));
+    next_vkQueueSubmit2KHR = reinterpret_cast<PFN_vkQueueSubmit2KHR>(getDeviceProcAddr(object, "vkQueueSubmit2KHR"));
     next_vkQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(getDeviceProcAddr(object, "vkQueuePresentKHR"));
     next_vkCreateShaderModule = reinterpret_cast<PFN_vkCreateShaderModule>(getDeviceProcAddr(object, "vkCreateShaderModule"));
     next_vkDestroyShaderModule = reinterpret_cast<PFN_vkDestroyShaderModule>(getDeviceProcAddr(object, "vkDestroyShaderModule"));
     next_vkCreateGraphicsPipelines = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(getDeviceProcAddr(object, "vkCreateGraphicsPipelines"));
     next_vkCreateComputePipelines = reinterpret_cast<PFN_vkCreateComputePipelines>(getDeviceProcAddr(object, "vkCreateComputePipelines"));
+    next_vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(getDeviceProcAddr(object, "vkCreateRayTracingPipelinesKHR"));
     next_vkDestroyPipeline = reinterpret_cast<PFN_vkDestroyPipeline>(getDeviceProcAddr(object, "vkDestroyPipeline"));
     next_vkGetFenceStatus = reinterpret_cast<PFN_vkGetFenceStatus>(getDeviceProcAddr(object, "vkGetFenceStatus"));
     next_vkWaitForFences = reinterpret_cast<PFN_vkWaitForFences>(getDeviceProcAddr(object, "vkWaitForFences"));
@@ -123,6 +127,9 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(getDeviceProcAddr(object, "vkDestroySwapchainKHR"));
     next_vkGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(getDeviceProcAddr(object, "vkGetSwapchainImagesKHR"));
     next_vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(getDeviceProcAddr(object, "vkSetDebugUtilsObjectNameEXT"));
+    next_vkQueueBindSparse = reinterpret_cast<PFN_vkQueueBindSparse>(getDeviceProcAddr(object, "vkQueueBindSparse"));
+    next_vkCreateSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(getDeviceProcAddr(object, "vkCreateSemaphore"));
+    next_vkDestroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(getDeviceProcAddr(object, "vkDestroySemaphore"));
 
     // Populate all generated commands
     commandBufferDispatchTable.Populate(object, getDeviceProcAddr);
@@ -146,6 +153,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkCreateComputePipelines"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateComputePipelines);
+
+    if (!std::strcmp(name, "vkCreateRayTracingPipelinesKHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateRayTracingPipelinesKHR);
 
     if (!std::strcmp(name, "vkDestroyPipeline"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyPipeline);
@@ -176,6 +186,12 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkQueueSubmit"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueSubmit);
+
+    if (!std::strcmp(name, "vkQueueSubmit2"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueSubmit2);
+
+    if (!std::strcmp(name, "vkQueueSubmit2KHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueSubmit2);
 
     if (!std::strcmp(name, "vkQueuePresentKHR"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueuePresentKHR);
@@ -302,6 +318,30 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkDestroySampler"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroySampler);
+
+    if (!std::strcmp(name, "vkAllocateMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkAllocateMemory);
+
+    if (!std::strcmp(name, "vkFreeMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkFreeMemory);
+
+    if (!std::strcmp(name, "vkMapMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkMapMemory);
+
+    if (!std::strcmp(name, "vkUnmapMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkUnmapMemory);
+
+    if (!std::strcmp(name, "vkBindBufferMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindBufferMemory);
+
+    if (!std::strcmp(name, "vkBindImageMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindImageMemory);
+
+    if (!std::strcmp(name, "vkBindBufferMemory2KHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindBufferMemory2KHR);
+
+    if (!std::strcmp(name, "vkBindImageMemory2KHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindImageMemory2KHR);
 
     // Check command hooks
     if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(name)) {

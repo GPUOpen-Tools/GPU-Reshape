@@ -29,10 +29,13 @@
 // Layer
 #include "RootSignatureUserMapping.h"
 
-// Common
-#include <Common/Containers/TrivialStackVector.h>
+// Std
+#include <unordered_map>
 
 struct RootSignatureUserSpace {
     /// All mappings within this user space
-    std::vector<RootSignatureUserMapping> mappings;
+    std::unordered_map<uint32_t, RootSignatureUserMapping> mappings;
+
+    /// Range wise register bound
+    uint32_t lastRegister{0u};
 };

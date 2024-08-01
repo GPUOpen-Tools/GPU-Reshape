@@ -79,6 +79,27 @@ public:
         return constantPtr;
     }
 
+    /// Add an unresolved constant to this map
+    /// This must be resolved through ResolveConstant
+    /// \param id target identifier
+    /// \param type of the constant to be instantiated
+    /// \param constant the constant to be added
+    template<typename T>
+    Backend::IL::Constant* AddUnresolvedConstant(IL::ID id, const Backend::IL::Type* type, const T &constant) {
+        auto *constantPtr = programMap.AddUnresolvedConstant<T>(id, type, constant);
+        constants.push_back(constantPtr);
+        AddConstantMapping(constantPtr, id);
+        return constantPtr;
+    }
+
+    /// Resolve a constant
+    /// This must have been allocated through AddUnresolvedContant
+    /// \param constant the constant to be resolved
+    template<typename T>
+    void ResolveConstant(T* constant) {
+        programMap.ResolveConstant<T>(constant);
+    }
+
     /// Get constant at offset
     /// \param id source id
     /// \return nullptr if not found
@@ -149,6 +170,10 @@ private:
                 return CompileConstant(static_cast<const Backend::IL::NullConstant*>(constant));
             case Backend::IL::ConstantKind::Struct:
                 return CompileConstant(static_cast<const Backend::IL::StructConstant*>(constant));
+            case Backend::IL::ConstantKind::Vector:
+                return CompileConstant(static_cast<const Backend::IL::VectorConstant*>(constant));
+            case Backend::IL::ConstantKind::Array:
+                return CompileConstant(static_cast<const Backend::IL::ArrayConstant*>(constant));
         }
     }
 
@@ -203,6 +228,32 @@ private:
 
         for (uint32_t i = 0; i < record.opCount; i++) {
             record.ops[i] = CompileConstant(constant->members[i]);
+        }
+        
+        return Emit(constant, record);
+    }
+
+    /// Compile a given constant
+    uint64_t CompileConstant(const Backend::IL::VectorConstant* constant) {
+        LLVMRecord record(LLVMConstantRecord::Aggregate);
+        record.opCount = static_cast<uint32_t>(constant->elements.size());
+        record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
+
+        for (uint32_t i = 0; i < record.opCount; i++) {
+            record.ops[i] = CompileConstant(constant->elements[i]);
+        }
+        
+        return Emit(constant, record);
+    }
+
+    /// Compile a given constant
+    uint64_t CompileConstant(const Backend::IL::ArrayConstant* constant) {
+        LLVMRecord record(LLVMConstantRecord::Aggregate);
+        record.opCount = static_cast<uint32_t>(constant->elements.size());
+        record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
+
+        for (uint32_t i = 0; i < record.opCount; i++) {
+            record.ops[i] = CompileConstant(constant->elements[i]);
         }
         
         return Emit(constant, record);

@@ -28,6 +28,8 @@
 #include <Backend/EnvironmentInfo.h>
 #include <Backend/FeatureHost.h>
 #include <Backend/EnvironmentKeys.h>
+#include <Backend/StartupContainer.h>
+#include <Backend/StartupEnvironment.h>
 
 // Bridge
 #include <Bridge/MemoryBridge.h>
@@ -80,6 +82,17 @@ Environment::~Environment() {
     resolver->Uninstall();
 }
 
+static void LoadStartupEnvironment(Registry& registry) {
+    // Create container
+    auto container = registry.AddNew<StartupContainer>();
+    
+    // Attempt to load
+    StartupEnvironment startupEnvironment;
+    startupEnvironment.LoadFromGlobalConfig(container->stream);
+    startupEnvironment.LoadFromApplicationConfig(container->stream);
+    startupEnvironment.LoadFromEnvironment(container->stream);
+}
+
 bool Environment::Install(const EnvironmentInfo &info) {
     // Install the plugin resolver
     auto resolver = registry.AddNew<PluginResolver>();
@@ -118,6 +131,9 @@ bool Environment::Install(const EnvironmentInfo &info) {
         // Add default ping pong listener
         hostServerBridge->Register(PingPongMessage::kID, registry.New<PingPongListener>(hostServerBridge.GetUnsafe()));
     }
+
+    // Load the startup environment prior to plugin installation
+    LoadStartupEnvironment(registry);
 
     // Install feature host
     registry.AddNew<FeatureHost>();

@@ -44,7 +44,9 @@ namespace IL {
     struct Function;
     struct BasicBlock;
     struct Instruction;
+    struct VariableList;
     struct SOVValue;
+    struct Constant;
 
     /// Pretty printing context, holds printing streams and padding requirements
     struct PrettyPrintContext {
@@ -84,15 +86,17 @@ namespace IL {
 
     /// Pretty printers
     void PrettyPrint(const Program& program, PrettyPrintContext out);
-    void PrettyPrint(const Function& function, PrettyPrintContext out);
-    void PrettyPrint(const BasicBlock& basicBlock, PrettyPrintContext out);
-    void PrettyPrint(const Instruction* instr, PrettyPrintContext out);
+    void PrettyPrint(const Program* program, const VariableList& variables, PrettyPrintContext out);
+    void PrettyPrint(const Program* program, const Function& function, PrettyPrintContext out);
+    void PrettyPrint(const Program* program, const BasicBlock& basicBlock, PrettyPrintContext out);
+    void PrettyPrint(const Program* program, const Instruction* instr, PrettyPrintContext out);
     void PrettyPrint(const SOVValue& value, PrettyPrintContext out);
     void PrettyPrint(Backend::IL::Format format, PrettyPrintContext out);
     void PrettyPrint(Backend::IL::ResourceSamplerMode mode, PrettyPrintContext out);
     void PrettyPrint(const Backend::IL::Type* map, PrettyPrintContext out);
     void PrettyPrint(const Backend::IL::TypeMap& map, PrettyPrintContext out);
     void PrettyPrint(const Backend::IL::ConstantMap& map, PrettyPrintContext out);
+    void PrettyPrint(const IL::Constant* constant, PrettyPrintContext out);
     void PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out);
     void PrettyPrintBlockJsonGraph(const Function& function, PrettyPrintContext out);
     void PrettyPrintProgramJson(const Program& program, PrettyPrintContext out);

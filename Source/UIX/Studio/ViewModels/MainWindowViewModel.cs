@@ -37,6 +37,8 @@ using ReactiveUI;
 using Runtime.ViewModels;
 using Studio.Extensions;
 using Studio.Services;
+using Studio.ViewModels.Data;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Menu;
 using Studio.ViewModels.Status;
 
@@ -119,6 +121,12 @@ namespace Studio.ViewModels
                 if (Layout is { } root)
                 {
                     root.Navigate.Execute("Home");
+                }
+
+                // Show what's new unless disabled
+                if (AvaloniaLocator.Current.GetService<ISettingsService>()?.GetOrDefault<StartupViewModel>() is { ShowWhatsNew: true })
+                {
+                    DocumentLayout?.OpenDocument(new WhatsNewDescriptor());
                 }
             }
             

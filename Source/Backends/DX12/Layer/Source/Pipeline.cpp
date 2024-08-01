@@ -125,6 +125,10 @@ D3D12_PIPELINE_STATE_STREAM_DESC UnwrapPipelineStateStream(PipelineSubObjectWrit
                 writer.AppendChunk(type, reader.Skip(size), size);
                 break;
             }
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO: {
+                // Ignore cached PSO data, modified root signature will cause a mismatch
+                break;
+            }
             case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE: {
                 auto rootSignature = reader.AlignedConsume<ID3D12RootSignature *>();
 
@@ -247,6 +251,24 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                         // Create VS state
                         if (gs.BytecodeLength) {
                             state->gs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, gs));
+                        }
+                        break;
+                    }
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS: {
+                        auto&& as = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamASOffset);
+
+                        // Create AS state
+                        if (as.BytecodeLength) {
+                            state->as = state->shaders.emplace_back(GetOrCreateShaderState(table.state, as));
+                        }
+                        break;
+                    }
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS: {
+                        auto &&ms = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamMSOffset);
+
+                        // Create MS state
+                        if (ms.BytecodeLength) {
+                            state->ms = state->shaders.emplace_back(GetOrCreateShaderState(table.state, ms));
                         }
                         break;
                     }
@@ -381,7 +403,7 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                 auto object = StateSubObjectWriter::Read<D3D12_GLOBAL_ROOT_SIGNATURE>(subObject);
 
                 writer.Add(subObject.Type, D3D12_GLOBAL_ROOT_SIGNATURE {
-                    .pGlobalRootSignature = GetState(object.pGlobalRootSignature)->nativeObject
+                    .pGlobalRootSignature = GetState(object.pGlobalRootSignature)->object
                 });
                 break;
             }
@@ -487,6 +509,9 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *desc);
 
+    // Ignore cached PSO data, modified root signature will cause a mismatch
+    state->deepCopy->CachedPSO = {};
+
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
 
@@ -584,6 +609,9 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *desc);
 
+    // Ignore cached PSO data, modified root signature will cause a mismatch
+    state->deepCopy->CachedPSO = {};
+
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
 
@@ -657,12 +685,6 @@ PipelineState::~PipelineState() {
         return;
     }
 
-    // Remove state lookup
-    // May not have a slot if it's not queried
-    if (uid != kInvalidPipelineUID) {
-        device.state->states_Pipelines.Remove(this);
-    }
-
     // Release debug name
     if (debugName) {
         destroy(debugName, device.state->allocators);
@@ -687,11 +709,24 @@ PipelineState::~PipelineState() {
     parent->Release();
 }
 
-ShaderState::~ShaderState() {
-    // Sync shader states
-    std::lock_guard guard(parent->states_Shaders.GetLock());
+void PipelineState::ReleaseHost() {
+    auto device = GetTable(parent);
     
+    // Remove state lookup
+    // May not have a slot if it's not queried
+    if (uid != kInvalidPipelineUID) {
+        // Reference host has locked this
+        device.state->states_Pipelines.RemoveNoLock(this);
+    }
+}
+
+ShaderState::~ShaderState() {
+    
+}
+
+void ShaderState::ReleaseHost() {
     // Remove tracked objects
+    // Reference host has locked these
     parent->states_Shaders.RemoveNoLock(this);
     parent->shaderSet.Remove(key);
 }
@@ -722,6 +757,18 @@ bool ShaderState::Reserve(const ShaderInstrumentationKey &instrumentationKey) {
     auto&& it = instrumentObjects.find(instrumentationKey);
     if (it == instrumentObjects.end()) {
         instrumentObjects.emplace(instrumentationKey, parent->allocators);
+        return true;
+    }
+
+    return false;
+}
+
+bool ShaderState::RemoveInstrument(const ShaderInstrumentationKey &key) {
+    ASSERT(key.featureBitSet, "Invalid instrument reservation");
+    
+    std::lock_guard lock(mutex);
+    if (auto&& it = instrumentObjects.find(key); it != instrumentObjects.end()) {
+        instrumentObjects.erase(it);
         return true;
     }
 

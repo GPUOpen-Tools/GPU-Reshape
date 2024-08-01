@@ -31,12 +31,16 @@
 #include "Blocks/SpvPhysicalBlockDebugStringSource.h"
 #include "Blocks/SpvPhysicalBlockAnnotation.h"
 #include "Blocks/SpvPhysicalBlockTypeConstantVariable.h"
+#include "Blocks/SpvPhysicalBlockExtensionImport.h"
 #include "Blocks/SpvPhysicalBlockFunction.h"
 #include "Blocks/SpvPhysicalBlockEntryPoint.h"
 #include "Utils/SpvUtilShaderExport.h"
 #include "Utils/SpvUtilShaderPRMT.h"
 #include "Utils/SpvUtilShaderDescriptorConstantData.h"
 #include "Utils/SpvUtilShaderConstantData.h"
+
+// Common
+#include <Common/Containers/LinearBlockAllocator.h>
 
 /// Combined physical block table
 struct SpvPhysicalBlockTable {
@@ -47,6 +51,11 @@ struct SpvPhysicalBlockTable {
     /// \param count stream word count
     /// \return success state
     bool Parse(const uint32_t *code, uint32_t count);
+
+    /// Specialize the entire table
+    /// \param job job to specialize for
+    /// \return success state
+    bool Specialize(const SpvJob& job);
 
     /// Compile the table
     /// \param job the job to compile against
@@ -67,6 +76,7 @@ struct SpvPhysicalBlockTable {
     SpvPhysicalBlockScan scan;
 
     /// Physical blocks
+    SpvPhysicalBlockExtensionImport extensionImport;
     SpvPhysicalBlockEntryPoint entryPoint;
     SpvPhysicalBlockCapability capability;
     SpvPhysicalBlockAnnotation annotation;
@@ -79,4 +89,7 @@ struct SpvPhysicalBlockTable {
     SpvUtilShaderPRMT shaderPRMT;
     SpvUtilShaderDescriptorConstantData shaderDescriptorConstantData;
     SpvUtilShaderConstantData shaderConstantData;
+
+    /// Shared allocator
+    LinearBlockAllocator<1024> recordAllocator;
 };

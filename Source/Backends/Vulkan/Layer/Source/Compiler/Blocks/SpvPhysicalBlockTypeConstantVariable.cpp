@@ -129,6 +129,13 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 Backend::IL::PointerType type;
                 type.addressSpace = Translate(static_cast<SpvStorageClass>(ctx++));
                 type.pointee = typeMap.GetTypeFromId(ctx++);
+
+                // Validate the (potential) forward declaration matches the actual declaration
+                if (const Backend::IL::Type* declared = typeMap.GetTypeFromId(ctx.GetResult())) {
+                    const auto* declaredPtr = declared->Cast<Backend::IL::PointerType>();
+                    ASSERT(declaredPtr && declaredPtr->addressSpace == type.addressSpace, "Misformed forward declaration");
+                }
+                
                 typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
@@ -136,7 +143,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
             case SpvOpTypeArray: {
                 Backend::IL::ArrayType type;
                 type.elementType = typeMap.GetTypeFromId(ctx++);
-                type.count = ctx++;
+                type.count = static_cast<uint32_t>(program.GetConstants().GetConstant(ctx++)->As<IL::IntConstant>()->value);
 
                 typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
@@ -224,6 +231,9 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                             case Backend::IL::TextureDimension::Texture2D:
                                 type.dimension = Backend::IL::TextureDimension::Texture2DArray;
                                 break;
+                            case Backend::IL::TextureDimension::Texture2DCube:
+                                type.dimension = Backend::IL::TextureDimension::Texture2DCubeArray;
+                                break;
                         }
                     }
 
@@ -261,13 +271,22 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 typeMap.AddType(ctx.GetResult(), anchor, _struct);
                 break;
             }
+            
+            case SpvOpTypeForwardPointer: {
+                SpvId forwardId = ctx++;
+                
+                typeMap.AddType(forwardId, anchor, Backend::IL::PointerType {
+                    .pointee = nullptr,
+                    .addressSpace = Translate(static_cast<SpvStorageClass>(ctx++))
+                });
+                break;
+            }
 
             case SpvOpTypeEvent:
             case SpvOpTypeDeviceEvent:
             case SpvOpTypeReserveId:
             case SpvOpTypeQueue:
             case SpvOpTypePipe:
-            case SpvOpTypeForwardPointer:
             case SpvOpTypeOpaque: {
                 typeMap.AddType(ctx.GetResult(), anchor, Backend::IL::UnexposedType{});
                 break;
@@ -373,11 +392,50 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 break;
             }
 
+            case SpvOpConstantComposite: {
+                const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
+
+                // Regardless of composite setup, it's just a set of constants
+                std::vector<const IL::Constant*> constants;
+                constants.reserve(ctx.GetWordCount() - 2);
+
+                // Fill all constants
+                while (ctx.HasPendingWords()) {
+                    constants.push_back(program.GetConstants().GetConstant(ctx++));
+                }
+
+                switch (type->kind) {
+                    default: {
+                        constantMap.AddUnsortedConstant(ctx.GetResult(), type, Backend::IL::UnexposedConstant {});
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Array: {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::ArrayType>(), Backend::IL::ArrayConstant {
+                            .elements = std::move(constants)
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Vector: {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::VectorType>(), Backend::IL::VectorConstant {
+                            .elements = std::move(constants)
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Struct: {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::StructType>(), Backend::IL::StructConstant {
+                            .members = std::move(constants)
+                        });
+                        break;
+                    }
+                }
+                break;
+            }
+
             case SpvOpVariable: {
                 auto storageClass = static_cast<SpvStorageClass>(ctx++);
 
                 // Add variable
-                program.GetVariableList().Add(Backend::IL::Variable {
+                program.GetVariableList().Add(new (allocators) Backend::IL::Variable {
                     .id = ctx.GetResult(),
                     .addressSpace = Translate(storageClass),
                     .type = typeMap.GetTypeFromId(ctx.GetResultType())
@@ -394,6 +452,63 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
 
         // Next anchor
         anchor++;
+    }
+}
+
+void SpvPhysicalBlockTypeConstantVariable::Specialize(const SpvJob &job) {
+    // Specialize variables based on their actual pipeline signature
+    for (const Backend::IL::Variable* variable : program.GetVariableList()) {
+        if (!table.annotation.IsDecorated(variable->id)) {
+            continue;
+        }
+
+        // Get the decoration
+        const SpvValueDecoration& decoration = table.annotation.GetDecoration(variable->id);
+
+        // May not be found in the physical layout
+        if (decoration.descriptorSet >= job.instrumentationKey.physicalMapping->descriptorSets.size()) {
+            continue;
+        }
+        
+        // Get the physical mapping
+        const DescriptorLayoutPhysicalMapping& descriptorSetPhysicalMapping = job.instrumentationKey.physicalMapping->descriptorSets.at(decoration.descriptorSet);
+        
+        // Binding may not exist
+        if (decoration.descriptorOffset >= descriptorSetPhysicalMapping.bindings.size()) {
+            continue;
+        }
+
+        // Specialize per binding
+        const BindingPhysicalMapping& binding = descriptorSetPhysicalMapping.bindings.at(decoration.descriptorOffset);
+        switch (binding.type) {
+            default: {
+                // Nothing to specialize for
+                break;
+            }
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+                // SPIRV does not differentiate between storage and uniform buffers
+                // which can make some instrumentation impossible to figure out, so,
+                // help shaders a little by representing them as buffers. Also brings
+                // things in line with DXIL.
+
+                // Get the SB type
+                const Backend::IL::Type *pointee = variable->type->As<Backend::IL::PointerType>()->pointee;
+
+                // Represent the variable
+                const Backend::IL::Type* type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+                    .pointee = program.GetTypeMap().FindTypeOrAdd(Backend::IL::BufferType {
+                        .elementType = pointee,
+                        .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
+                        .texelType = Backend::IL::Format::None
+                    }),
+                    .addressSpace = Backend::IL::AddressSpace::Resource
+                });
+
+                // Modify types
+                program.GetTypeMap().SetType(variable->id, type);
+                break;
+            }
+        }
     }
 }
 
@@ -497,6 +612,9 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJo
         // Allocate new ids
         pcBlockPtrId           = table.scan.header.bound++;
         pushConstantVariableId = table.scan.header.bound++;
+
+        // Add to all entry points
+        table.entryPoint.AddInterface(SpvStorageClassPushConstant, pushConstantVariableId);
     }
 
     // Starting offset for instrumentation
@@ -545,12 +663,17 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJo
 
     // Migrate previous decorations if present
     if (sourceDecoration) {
-        for (uint32_t i = 0; i < sourceDecoration->memberDecorations.size(); i++) {
-            SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 5);
-            pcBlockMember[1] = pcBlockTypeId;
-            pcBlockMember[2] = i;
-            pcBlockMember[3] = SpvDecorationOffset;
-            pcBlockMember[4] = sourceDecoration->memberDecorations[i].blockOffset;
+        for (uint32_t i = 0; i < sourceDecoration->members.size(); i++) {
+            const SpvMemberDecoration& member = sourceDecoration->members[i];
+
+            // Emit all original pairs
+            for (const SpvDecorationPair& pair : member.decorations) {
+                SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 4 + pair.wordCount);
+                pcBlockMember[1] = pcBlockTypeId;
+                pcBlockMember[2] = i;
+                pcBlockMember[3] = pair.kind;
+                std::memcpy(&pcBlockMember[4], pair.words, sizeof(uint32_t) * pair.wordCount);
+            }
         }
     }
 
@@ -565,6 +688,41 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJo
 
     // OK
     return pushConstantVariableId;
+}
+
+IL::ID SpvPhysicalBlockTypeConstantVariable::FindOrCreateInput(SpvBuiltIn builtin, const Backend::IL::Type* type) {
+    if (IL::ID value = table.annotation.GetBuiltin(builtin); value != IL::InvalidID) {
+        return value;
+    }
+
+    // Create pointer to value type
+    type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = type,
+        .addressSpace = Backend::IL::AddressSpace::Input
+    });
+
+    // Allocate identifiers
+    IL::ID value = table.scan.header.bound++;
+
+    // Get type identifiers
+    SpvId typeId = table.typeConstantVariable.typeMap.GetSpvTypeId(type);
+
+    // Create variable
+    SpvInstruction &spvCounterVar = table.typeConstantVariable.block->stream.Allocate(SpvOpVariable, 4);
+    spvCounterVar[1] = typeId;
+    spvCounterVar[2] = value;
+    spvCounterVar[3] = SpvStorageClassInput;
+
+    // Mark as builtin
+    SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
+    pcBlockMember[1] = value;
+    pcBlockMember[2] = SpvDecorationBuiltIn;
+    pcBlockMember[3] = builtin;
+
+    // Keep record of builtin and add to entrypoint interface list
+    table.annotation.SetBuiltin(builtin, value);
+    table.entryPoint.AddInterface(SpvStorageClassInput, value);
+    return value;
 }
 
 void SpvPhysicalBlockTypeConstantVariable::Compile(SpvIdMap &idMap) {
@@ -596,6 +754,10 @@ void SpvPhysicalBlockTypeConstantVariable::Compile(SpvIdMap &idMap) {
 void SpvPhysicalBlockTypeConstantVariable::CompileConstants() {
     // Ensure all IL constants are mapped
     for (const Backend::IL::Constant* constant : program.GetConstants()) {
+        if (constant->IsSymbolic()) {
+            continue;
+        }
+
         constantMap.EnsureConstant(constant);
     }
 }

@@ -51,6 +51,9 @@ struct ShaderModuleState : public ReferenceObject {
     /// Reference counted destructor
     virtual ~ShaderModuleState();
 
+    /// Release all host resources
+    void ReleaseHost() override;
+
     /// Add an instrument to this module
     /// \param featureBitSet the enabled feature set
     /// \param module the module in question
@@ -91,6 +94,9 @@ struct ShaderModuleState : public ReferenceObject {
         return instrumentObjects.count(key) > 0;
     }
 
+    /// Reserve an instrument to be added later, defaults to nullptr
+    /// \param key instrumentation key
+    /// \return true if added, false if already present
     bool Reserve(const ShaderModuleInstrumentationKey& key) {
         ASSERT(key.featureBitSet, "Invalid instrument reservation");
     
@@ -98,6 +104,21 @@ struct ShaderModuleState : public ReferenceObject {
         auto&& it = instrumentObjects.find(key);
         if (it == instrumentObjects.end()) {
             instrumentObjects[key] = nullptr;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// Remove an existing instrument
+    /// \param key instrumentation key
+    /// \return true if removed
+    bool RemoveInstrument(const ShaderModuleInstrumentationKey& key) {
+        ASSERT(key.featureBitSet, "Invalid instrument reservation");
+    
+        std::lock_guard lock(mutex);
+        if (auto&& it = instrumentObjects.find(key); it != instrumentObjects.end()) {
+            instrumentObjects.erase(it);
             return true;
         }
 

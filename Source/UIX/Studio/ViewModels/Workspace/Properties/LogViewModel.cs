@@ -142,7 +142,7 @@ namespace Studio.ViewModels.Workspace.Properties
                 events.Add(new LogEvent
                 {
                     Severity = (LogSeverity)message.severity,
-                    Message = $"{ConnectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}"
+                    Message = $"{ConnectionViewModel?.Application?.Process} - [{message.system.String}] {message.message.String}"
                 });
             }
         }

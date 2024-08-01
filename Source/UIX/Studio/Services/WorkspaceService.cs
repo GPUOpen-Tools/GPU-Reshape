@@ -104,12 +104,13 @@ namespace Studio.Services
         /// Add a new workspace
         /// </summary>
         /// <param name="workspaceViewModel">active connection</param>
-        public void Add(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel)
+        /// <param name="openDescriptor"></param>
+        public void Add(IWorkspaceViewModel workspaceViewModel, bool openDescriptor)
         {
             _workspaces.Add(workspaceViewModel);
             
             // Submit document
-            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (openDescriptor && App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.OpenDocument(new WorkspaceOverviewDescriptor()
                 {
@@ -118,7 +119,7 @@ namespace Studio.Services
             }
             
             // Diagnostic
-            Logging.Info($"Workspace created for {workspaceViewModel.Connection?.Application?.Name} {{{workspaceViewModel.Connection?.Application?.Guid}}}");
+            Logging.Info($"Workspace created for {workspaceViewModel.Connection?.Application?.Process} {{{workspaceViewModel.Connection?.Application?.Guid}}}");
             
             // Assign as selected
             SelectedWorkspace = workspaceViewModel;
@@ -144,7 +145,7 @@ namespace Studio.Services
         public bool Remove(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel)
         {
             // Diagnostic
-            Logging.Info($"Closed workspace for {workspaceViewModel.Connection?.Application?.Name}");
+            Logging.Info($"Closed workspace for {workspaceViewModel.Connection?.Application?.Process}");
             
             // Is selected?
             if (SelectedWorkspace == workspaceViewModel)
@@ -152,8 +153,8 @@ namespace Studio.Services
                 SelectedWorkspace = null;
             }
             
-            // Destroy the workspace
-            UninstallWorkspace(workspaceViewModel);
+            // Clean the workspace
+            CleanWorkspace(workspaceViewModel);
            
             // Try to remove
             return _workspaces.Remove(workspaceViewModel);
@@ -175,7 +176,10 @@ namespace Studio.Services
                 // Destruction
                 foreach (IWorkspaceViewModel workspaceViewModel in _workspaces.Items)
                 {
-                    UninstallWorkspace(workspaceViewModel);
+                    CleanWorkspace(workspaceViewModel);
+            
+                    // Destruct internal states
+                    workspaceViewModel.PropertyCollection.Destruct();
                 }
             
                 // Remove all
@@ -184,15 +188,12 @@ namespace Studio.Services
         }
 
         /// <summary>
-        /// Uninstall a workspace
+        /// Cleanup a workspace
         /// </summary>
-        private void UninstallWorkspace(IWorkspaceViewModel workspaceViewModel)
+        private void CleanWorkspace(IWorkspaceViewModel workspaceViewModel)
         {
             // Close all documents
             CloseDocumentsFor(workspaceViewModel);
-            
-            // Destruct internal states
-            workspaceViewModel.Destruct();
         }
 
         /// <summary>

@@ -49,7 +49,7 @@ bool DeviceAllocator::Install(ID3D12Device* device, IDXGIAdapter* adapter) {
     // Attempt to create special host pool
     D3D12MA::POOL_DESC wcHostPoolDesc{};
     wcHostPoolDesc.Flags = D3D12MA::POOL_FLAG_NONE;
-    wcHostPoolDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
+    wcHostPoolDesc.HeapFlags = D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
     wcHostPoolDesc.HeapProperties.CreationNodeMask = 1u;
     wcHostPoolDesc.HeapProperties.VisibleNodeMask = 1u;
     wcHostPoolDesc.HeapProperties.Type = D3D12_HEAP_TYPE_CUSTOM;
@@ -124,6 +124,27 @@ MirrorAllocation DeviceAllocator::AllocateMirror(const D3D12_RESOURCE_DESC& desc
     return allocation;
 }
 
+D3D12MA::Allocation* DeviceAllocator::AllocateMemory(uint32_t alignment, uint64_t size) {
+    // Default to GPU memory
+    D3D12MA::ALLOCATION_DESC desc{};
+    desc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+    // Setup allocation info
+    // Align the size to the expected alignment
+    D3D12_RESOURCE_ALLOCATION_INFO info{};
+    info.Alignment = std::lcm(alignment, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+    info.SizeInBytes = (size + info.Alignment - 1) & ~(info.Alignment - 1);
+
+    // Try to allocate
+    D3D12MA::Allocation* allocation{nullptr};
+    if (FAILED(allocator->AllocateMemory(&desc, &info, &allocation))) {
+        return nullptr;
+    }
+
+    // OK
+    return allocation;
+}
+
 void DeviceAllocator::Free(const Allocation& allocation) {
     allocation.allocation->Release();
     allocation.resource->Release();
@@ -135,6 +156,10 @@ void DeviceAllocator::Free(const MirrorAllocation& mirrorAllocation) {
     }
 
     Free(mirrorAllocation.device);
+}
+
+void DeviceAllocator::Free(D3D12MA::Allocation *allocation) {
+    allocation->Release();
 }
 
 void *DeviceAllocator::Map(const Allocation &allocation) {

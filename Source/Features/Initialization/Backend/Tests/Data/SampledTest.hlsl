@@ -42,7 +42,7 @@
 void main(uint dtid : SV_DispatchThreadID) {
     float data = 1.0f;
 
-    //! MESSAGE UninitializedResource[64] LUID:{x == /*Reserved*/ 4 + 1}
+    //! MESSAGE UninitializedResource[64]
     data += textureRO.SampleLevel(defaultSampler, dtid.xx / 64.0f, 0.0f);
 
     // Store

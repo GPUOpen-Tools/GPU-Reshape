@@ -159,6 +159,7 @@ enum class LLVMFunctionRecord : uint32_t {
     InstGEP = 43,
     InstStore = 44,
     InstStoreAtomic = 45,
+    InstCmpXchg = 46,
     InstCompareExchange = 48,
     InstLandingPad = 47
 };
@@ -570,5 +571,7 @@ inline bool HasValueAllocation(LLVMFunctionRecord record, uint32_t opCount) {
             return false;
         case LLVMFunctionRecord::DebugLOC2:
             return false;
+        case LLVMFunctionRecord::InstCmpXchg:
+            return true;
     }
 }

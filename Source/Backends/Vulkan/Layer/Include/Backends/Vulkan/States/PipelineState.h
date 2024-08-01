@@ -52,6 +52,9 @@ struct PipelineState : public ReferenceObject {
     /// Reference counted destructor
     virtual ~PipelineState();
 
+    /// Release all host resources
+    void ReleaseHost() override;
+
     /// Add an instrument to this module
     /// \param featureBitSet the enabled feature set
     /// \param pipeline the pipeline in question
@@ -129,4 +132,8 @@ struct GraphicsPipelineState : public PipelineState {
 struct ComputePipelineState : public PipelineState {
     /// Recreation info
     VkComputePipelineCreateInfoDeepCopy createInfoDeepCopy;
+};
+
+struct RaytracingPipelineState : public PipelineState {
+    /// Placeholder
 };

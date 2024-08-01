@@ -28,13 +28,16 @@
 
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
-#include "ImmediateCommandList.h"
+#include <Backends/DX12/States/ImmediateCommandList.h>
+#include <Backends/DX12/States/CommandQueueExecutor.h>
 
 // Common
 #include <Common/Allocators.h>
+#include <Common/Containers/Vector.h>
 
 // Std
 #include <vector>
+#include <mutex>
 
 // Forward declarations
 struct ShaderExportQueueState;
@@ -73,8 +76,14 @@ struct __declspec(uuid("0808310A-9E0B-41B6-81E5-4840CDF1EDAA")) CommandQueueStat
     /// On demand command lists
     Vector<ImmediateCommandList> commandLists;
 
+    /// Shared executor
+    CommandQueueExecutor executor;
+
     /// Shared fence
     IncrementalFence* sharedFence{nullptr};
+
+    /// Shared lock
+    std::mutex mutex;
 
     /// Unique ID
     uint64_t uid{0};

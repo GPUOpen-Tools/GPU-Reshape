@@ -51,6 +51,7 @@ bool Generators::Spv(const GeneratorInfo &info, TemplateEngine &templateEngine) 
 
     // Streams
     std::stringstream classStream;
+    std::stringstream operandStream;
 
     // Add case for all instructions of interest
     for (auto &&instruction: info.spvJson["instructions"]) {
@@ -72,8 +73,70 @@ bool Generators::Spv(const GeneratorInfo &info, TemplateEngine &templateEngine) 
         classStream << "\t\t\treturn SpvPhysicalBlockType::" << classMappings.at(_class) << ";\n";
     }
 
+    // Cleanup last coverage
+    coverage.clear();
+
+    // Add case for all instructions of interest
+    for (auto &&instruction: info.spvJson["instructions"]) {
+        std::string _class = instruction["class"];
+
+        // If already covered, ignore
+        if (coverage.count(instruction["opcode"])) {
+            continue;
+        }
+
+        // Mapped
+        coverage.insert(static_cast<uint32_t>(instruction["opcode"]));
+
+        // Get name
+        std::string opName = instruction["opname"].get<std::string>();
+
+        // Ignore instruction coding
+        uint32_t offset = 1;
+
+        // No operands? Skip
+        if (!instruction.contains("operands")) {
+            continue;
+        }
+
+        // Open case
+        operandStream << "\t\tcase Spv" << opName << ":\n";
+
+        // All operands
+        auto&& operands = instruction["operands"];
+
+        // Visit all id references that are bounded
+        for (auto it = operands.begin(); it != operands.end(); it++) {
+            auto&& operand = *it;
+
+            // If not ref, ignore
+            if (operand["kind"] != "IdRef") {
+                offset++;
+                continue;
+            }
+            
+            std::string quantifier = operand.value("quantifier", "");
+
+            // If unbounded, and last, iterate on it
+            if (quantifier == "*" && it == --operands.end()) {
+                operandStream << "\t\t\tfor (uint32_t i = " << offset << "; i < wordCount; i++) {\n";
+                operandStream << "\t\t\t\tfunctor(words[" << offset << "]);\n";
+                operandStream << "\t\t\t}\n";
+                continue;
+            }
+
+            // Single value
+            operandStream << "\t\t\tfunctor(words[" << offset << "]);\n";
+            offset++;
+        }
+
+        // Close case
+        operandStream << "\t\t\tbreak;\n";
+    }
+
     // Replace
     templateEngine.Substitute("$CLASSES", classStream.str().c_str());
+    templateEngine.Substitute("$OPERANDS", operandStream.str().c_str());
 
     // OK
     return true;

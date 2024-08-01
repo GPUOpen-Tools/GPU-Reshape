@@ -80,9 +80,6 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyShaderModule(VkDevice device, VkShaderM
 }
 
 ShaderModuleState::~ShaderModuleState() {
-    // Remove state lookup
-    table->states_shaderModule.RemoveState(this);
-
     // Release instrumented modules
     for (auto&& kv : instrumentObjects) {
         table->next_vkDestroyShaderModule(table->object, kv.second, nullptr);
@@ -96,3 +93,9 @@ ShaderModuleState::~ShaderModuleState() {
     // If there's any dangling dependencies, someone forgot to add a reference
     ASSERT(table->dependencies_shaderModulesPipelines.Count(this) == 0, "Dangling pipeline references");
 }
+
+void ShaderModuleState::ReleaseHost() {
+    // Remove state lookup
+    // Reference host has locked these
+    table->states_shaderModule.RemoveStateNoLock(this);
+ }

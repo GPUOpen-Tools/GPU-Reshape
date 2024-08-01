@@ -26,8 +26,8 @@
 
 #pragma once
 
-// Backend
-#include "ResourceToken.h"
+// Std
+#include <cstdint>
 
 // Forward declarations
 struct AttachmentInfo;

@@ -32,11 +32,20 @@
 
 // Backend
 #include <Backend/IFeatureHost.h>
+#include <Backend/StartupContainer.h>
+
+// Message
+#include <Message/MessageStreamCommon.h>
+
+// Schemas
+#include <Schemas/ConfigCommon.h>
 
 // Initialization
-#include <Features/Initialization/Feature.h>
+#include <Features/Initialization/TexelAddressingFeature.h>
+#include <Features/Initialization/ResourceAddressingFeature.h>
 
-static ComRef<ComponentTemplate<InitializationFeature>> feature{nullptr};
+static ComRef<ComponentTemplate<TexelAddressingInitializationFeature>> texelAddressingFeature{nullptr};
+static ComRef<ComponentTemplate<ResourceAddressingInitializationFeature>> resourceAddressingFeature{nullptr};
 
 DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
     info->name = "Initialization";
@@ -49,9 +58,20 @@ DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
         return false;
     }
 
+    // Get settings
+    auto startup = registry->Get<Backend::StartupContainer>();
+
+    // Is texel addressing enabled?
+    SetTexelAddressingMessage config = CollapseOrDefault<SetTexelAddressingMessage>(startup->GetView(), SetTexelAddressingMessage { .enabled = true });
+
     // Install the Initialization feature
-    feature = registry->New<ComponentTemplate<InitializationFeature>>();
-    host->Register(feature);
+    if (config.enabled) {
+        texelAddressingFeature = registry->New<ComponentTemplate<TexelAddressingInitializationFeature>>();
+        host->Register(texelAddressingFeature);
+    } else {
+        resourceAddressingFeature = registry->New<ComponentTemplate<ResourceAddressingInitializationFeature>>();
+        host->Register(resourceAddressingFeature);
+    }
 
     // OK
     return true;
@@ -64,6 +84,11 @@ DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
     }
 
     // Uninstall the feature
-    host->Deregister(feature);
-    feature.Release();
+    if (texelAddressingFeature) {
+        host->Deregister(texelAddressingFeature);
+        texelAddressingFeature.Release();
+    } else {
+        host->Deregister(resourceAddressingFeature);
+        resourceAddressingFeature.Release();
+    }
 }

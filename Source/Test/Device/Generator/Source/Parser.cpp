@@ -399,6 +399,21 @@ bool Parser::ParseResource(Parser::Context &context) {
 
                 context.Next();
             }
+        } else if (attribute == "width") {
+            while (context) {
+                int64_t value;
+                if (!ParseInt(context, &value)) {
+                    return false;
+                }
+
+                resource.structuredSize = static_cast<uint32_t>(value);
+
+                if (!context.Is(",")) {
+                    break;
+                }
+
+                context.Next();
+            }
         } else {
             context.Error("Unknown attribute type");
             return false;
@@ -511,6 +526,10 @@ bool Parser::ParseResourceType(Parser::Context &context, ResourceType *out) {
         *out = ResourceType::Buffer;
     } else if (context.TryNext("RWBuffer")) {
         *out = ResourceType::RWBuffer;
+    } else if (context.TryNext("StructuredBuffer")) {
+        *out = ResourceType::StructuredBuffer;
+    } else if (context.TryNext("RWStructuredBuffer")) {
+        *out = ResourceType::RWStructuredBuffer;
     } else if (context.TryNext("Texture1D")) {
         *out = ResourceType::Texture1D;
     } else if (context.TryNext("RWTexture1D")) {
@@ -519,6 +538,8 @@ bool Parser::ParseResourceType(Parser::Context &context, ResourceType *out) {
         *out = ResourceType::Texture2D;
     } else if (context.TryNext("RWTexture2D")) {
         *out = ResourceType::RWTexture2D;
+    } else if (context.TryNext("RWTexture2DArray")) {
+        *out = ResourceType::RWTexture2DArray;
     } else if (context.TryNext("Texture3D")) {
         *out = ResourceType::Texture3D;
     } else if (context.TryNext("RWTexture3D")) {

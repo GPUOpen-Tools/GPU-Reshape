@@ -141,12 +141,14 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
         for (uint32_t i = 0; i < response.entryCount; i++) {
             const AsioRemoteServerResolverDiscoveryRequest::Entry &entry = response.entries[i];
 
-            // Convert guid to string
+            // Convert guids to string
             std::string guid = entry.token.ToString();
+            std::string reservedGuid = entry.reservedToken.ToString();
 
             // Allocate info
             auto *info = view.Add<HostServerInfoMessage>(HostServerInfoMessage::AllocationInfo{
                 .guidLength = guid.length(),
+                .reservedGuidLength = reservedGuid.length(),
                 .processLength = std::strlen(entry.info.processName),
                 .applicationLength = std::strlen(entry.info.applicationName),
                 .apiLength = std::strlen(entry.info.apiName)
@@ -154,6 +156,7 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
 
             // Set data
             info->guid.Set(guid);
+            info->reservedGuid.Set(reservedGuid);
             info->process.Set(entry.info.processName);
             info->application.Set(entry.info.applicationName);
             info->api.Set(entry.info.apiName);
@@ -254,7 +257,10 @@ void RemoteClientBridge::Commit() {
     storage.ConsumeStreams(&streamCount, streamCache.data());
 
     // Push all streams
-    for (const MessageStream &stream: streamCache) {
+    for (uint32_t i = 0; i < streamCount; i++) {
+        const MessageStream &stream = streamCache[i];
+
+        // Setup protocol header
         MessageStreamHeaderProtocol protocol;
         protocol.schema = stream.GetSchema();
         protocol.versionID = stream.GetVersionID();

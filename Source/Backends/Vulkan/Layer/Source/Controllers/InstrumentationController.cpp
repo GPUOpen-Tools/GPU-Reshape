@@ -1,4 +1,4 @@
-// 
+//
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -233,6 +233,26 @@ void InstrumentationController::PropagateInstrumentationInfo(ShaderModuleState *
     );
 }
 
+void InstrumentationController::ActivateAndCommitFeatures(uint64_t featureBitSet, uint64_t previousFeatureBitSet) {
+    // Set the enabled feature bit set
+    SetDeviceCommandFeatureSetAndCommit(table, featureBitSet);
+    
+    // Feature events
+    for (size_t i = 0; i < table->features.size(); i++) {
+        uint64_t bit = 1ull << i;;
+
+        // Inform activation, state-less
+        if (featureBitSet & bit) {
+            table->features[i]->Activate(FeatureActivationStage::Commit);
+        }
+
+        // Inform feature deactivation
+        if (!(featureBitSet & bit) && (previousFeatureBitSet & bit)) {
+            table->features[i]->Deactivate();
+        }
+    }
+}
+
 bool InstrumentationController::FilterPipeline(PipelineState *state, const FilterEntry &filter) {
     // Test type
     if (filter.type != PipelineType::Count && filter.type != state->type) {
@@ -269,6 +289,10 @@ void InstrumentationController::Handle(const MessageStream *streams, uint32_t co
 void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstIterator &it) {
     switch (it.GetID()) {
         // Config
+        case PauseInstrumentationMessage::kID: {
+            dispatcher->SetPaused(it.Get<PauseInstrumentationMessage>()->paused);
+            break;
+        }
         case SetApplicationInstrumentationConfigMessage::kID: {
             auto *message = it.Get<SetApplicationInstrumentationConfigMessage>();
             synchronousRecording = message->synchronousRecording;
@@ -653,15 +677,15 @@ void InstrumentationController::CommitInstrumentation() {
     if (pendingResummarization) {
         featureBitSet = SummarizeFeatureBitSet();
 
-        // Set the enabled feature bit set
-        SetDeviceCommandFeatureSetAndCommit(table, featureBitSet);
-
         // Mark as summarized
         pendingResummarization = false;
     }
     
     // If no dirty objects, nothing to instrument
     if (immediateBatch.dirtyObjects.empty()) {
+        // Nothing to instrument, activate the features as "instrumented"
+        ActivateAndCommitFeatures(featureBitSet, previousFeatureBitSet);
+        previousFeatureBitSet = featureBitSet;
         return;
     }
 
@@ -684,7 +708,18 @@ void InstrumentationController::CommitInstrumentation() {
     batch->stampBegin = std::chrono::high_resolution_clock::now();
 
     // Summarize the needed feature set
+    batch->previousFeatureBitSet = previousFeatureBitSet;
     batch->featureBitSet = featureBitSet;
+
+    // Inform activation, state-less
+    for (size_t i = 0; i < table->features.size(); i++) {
+        if (batch->featureBitSet & (1ull << i)) {
+            table->features[i]->Activate(FeatureActivationStage::Instrumentation);
+        }
+    }
+
+    // Keep track of last bit set
+    previousFeatureBitSet = featureBitSet;
 
     // Task group
     // TODO: Tie lifetime of this task group to the controller
@@ -715,8 +750,22 @@ void InstrumentationController::CommitInstrumentation() {
     hasPendingBucket = false;
 }
 
+void InstrumentationController::CommitFeatureMessages() {
+    // Always commit the sguid host before,
+    // since this may be collected during instrumentation
+    table->sguidHost->Commit(table->bridge.GetUnsafe());
+    
+    // Commit all feature messages
+    for (const ComRef<IFeature>& feature : table->features) {
+        feature->CollectMessages(table->bridge->GetOutput());
+    }
+}
+
 void InstrumentationController::Commit() {
     uint32_t count = GetJobCount();
+
+    // Commit all collected feature messages
+    CommitFeatureMessages();
 
     // Serial
     std::lock_guard guard(mutex);
@@ -773,6 +822,11 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 
             // No features?
             if (!featureBitSet) {
+                continue;
+            }
+
+            // Raytracing is pass-through for now
+            if (dependentObject->type == PipelineType::Raytracing) {
                 continue;
             }
 
@@ -923,6 +977,11 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             }
         }
 
+        // Raytracing is pass-through for now
+        if (state->type == PipelineType::Raytracing) {
+            superFeatureBitSet = 0x0;
+        }
+
         // No features?
         if (!superFeatureBitSet) {
             // Set the hot swapped object to native
@@ -932,7 +991,11 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
         // Not of interest?
         if (isSkipped) {
-            destroy(job.shaderModuleInstrumentationKeys, allocators);
+            // May be empty
+            if (!state->shaderModules.empty()) {
+                destroy(job.shaderModuleInstrumentationKeys, allocators);
+            }
+            
             continue;
         }
 
@@ -983,7 +1046,10 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Commit all sguid changes
     auto bridge = registry->Get<IBridge>();
     table->sguidHost->Commit(bridge.GetUnsafe());
-    
+
+    // Activate the features
+    ActivateAndCommitFeatures(batch->featureBitSet, batch->previousFeatureBitSet);
+
     // Commit all pending entries
     for (Batch::CommitEntry entry : batch->commitEntries) {
         if (auto pipeline = entry.state->GetInstrument(entry.combinedHash)) {
@@ -1041,6 +1107,15 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
         // Release the batch, bucket destructed after this call
         compilationBatch = nullptr;
+
+        // Mark as done
+        compilationEvent.IncrementCounter();
+
+        // Recommit the immediate batch
+        // Previous commits may be held up since they're waiting on the current batch to complete,
+        // While we could have a separate thread to track all of this, it's better if it can be
+        // handled with the applications threading alone.
+        CommitInstrumentation();
     }
 
     // Release handles
@@ -1050,9 +1125,6 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Release batch
     destroy(batch, allocators);
-
-    // Mark as done
-    compilationEvent.IncrementCounter();
 }
 
 uint64_t InstrumentationController::SummarizeFeatureBitSet() {
@@ -1075,11 +1147,16 @@ uint64_t InstrumentationController::SummarizeFeatureBitSet() {
 
 void InstrumentationController::WaitForCompletion() {
     // Commit all pending instrumentation
+    uint64_t headCounter;
     {
         std::lock_guard guard(mutex);
         CommitInstrumentation();
+
+        // Only get head inside guard, otherwise there's a risk its incremented without any
+        // way to commit it in the future.
+        headCounter = compilationEvent.GetHead();
     }
 
     // Wait til head
-    compilationEvent.Wait(compilationEvent.GetHead());
+    compilationEvent.Wait(headCounter);
 }

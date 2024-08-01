@@ -117,3 +117,24 @@ bool IsDXBCNative(const void *byteCode, uint64_t byteLength) {
     // No DXIL data found, native
     return true;
 }
+
+static char PartAsHex(int32_t part) {
+    if (part < 10) {
+        return static_cast<char>('0' + part);
+    } else {
+        return static_cast<char>('a' + part - 10);
+    }
+}
+
+void DXBCShaderDigestToString(const DXILDigest& digest, char buffer[kDXBCShaderDigestStringLength]) {
+    static_assert(sizeof(digest.digest) * 2u == kDXBCShaderDigestStringLength - 1, "Unexpected digest size");
+    
+    // Print each 4-bit window
+    for (uint32_t i = 0; i < std::size(digest.digest); i++) {
+        buffer[i * 2 + 0] = PartAsHex(digest.digest[i] >> 0x4);
+        buffer[i * 2 + 1] = PartAsHex(digest.digest[i]  & 0xF);
+    }
+
+    // Null terminator
+    buffer[32] = '\0';
+}

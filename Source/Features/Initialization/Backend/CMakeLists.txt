@@ -32,8 +32,11 @@ Project_AddShaderSchema(Generated Schemas/Initialization.xml Include/Schemas/Fea
 # Create feature
 add_library(
     GRS.Features.Initialization.Backend SHARED
-    Source/Feature.cpp
-    Source/SRBMaskingShaderProgram.cpp
+    Source/TexelAddressingFeature.cpp
+    Source/ResourceAddressingFeature.cpp
+    Source/ResourceAddressing/SRBMaskingShaderProgram.cpp
+    Source/TexelAddressing/MaskBlitShaderProgram.cpp
+    Source/TexelAddressing/MaskCopyRangeShaderProgram.cpp
     Source/Plugin.cpp
 
     # Generated
@@ -51,6 +54,7 @@ target_link_libraries(
     GRS.Features.Initialization.Backend PUBLIC
     GRS.Libraries.Common
     GRS.Libraries.Backend
+    GRS.Libraries.Addressing
     GRS.Features.Descriptor.Backend
 )
 
@@ -65,6 +69,7 @@ add_custom_command(
 # Test files
 Project_AddBackendTest_Common(GeneratedTest Initialization)
 Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationSimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationStructuredTest.hlsl)
 Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SampledTest.hlsl)
 
 Project_AddTest(

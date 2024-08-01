@@ -72,6 +72,9 @@ namespace Studio.Views
 
                             // Finally, recreate the property setup with fresh metadata
                             PropertyGrid.ReloadCommand.Execute(null);
+                            
+                            // Expand all categories
+                            PropertyGrid.Categories.ForEach(c => c.IsExpanded = true);
                         });
                     
                     // Bind interactions
@@ -130,15 +133,15 @@ namespace Studio.Views
         /// <param name="x"></param>
         private async void OnWorkingDirectoryButton(RoutedEventArgs x)
         {
-            var dialog = new OpenFileDialog();
+            var dialog = new OpenFolderDialog();
 
-            string[]? result = await dialog.ShowAsync(this);
+            string? result = await dialog.ShowAsync(this);
             if (result == null)
             {
                 return;
             }
 
-            _VM.WorkingDirectoryPath = result[0];
+            _VM.WorkingDirectoryPath = result;
         }
 
         private LaunchViewModel _VM => (LaunchViewModel)DataContext!;

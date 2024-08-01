@@ -33,6 +33,7 @@
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
+#include <Backends/DX12/RenderPass.h>
 #include <Backends/DX12/Table.Gen.h>
 
 // Common
@@ -108,21 +109,48 @@ static void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandL
     }
 }
 
+static void ReconstructRenderPassState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState& state) {
+    BeginRenderPassForReconstruction(static_cast<ID3D12GraphicsCommandList4*>(commandList), &streamState->renderPass);
+}
+
 static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState &state) {
     if (state.reconstructionFlags & ReconstructionFlag::Pipeline) {
         ReconstructPipelineState(device, commandList, streamState, state);
     }
+
+    if (state.reconstructionFlags & ReconstructionFlag::RenderPass) {
+        ReconstructRenderPassState(device, commandList, streamState, state);
+    }
 }
 
 void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
+    // Early out if no commands
+    if (!buffer.Count()) {
+        return;
+    }
+
+    // Tracked state
     UserCommandState state;
 
-    // Is this a compute command list?
-    const bool isCompute = commandList->GetType() == D3D12_COMMAND_LIST_TYPE_COMPUTE;
+    // Always end the current render pass if any commands
+    if (streamState->renderPass.insideRenderPass) {
+        static_cast<ID3D12GraphicsCommandList4*>(commandList)->EndRenderPass();
+        state.reconstructionFlags |= ReconstructionFlag::RenderPass;
+    }
+
+    // Default clearing chunk size
+    static constexpr size_t kClearChunkSize = static_cast<size_t>(8e6);
+
+    // Shared clear chunk, allocated on demand
+    ShaderExportConstantAllocation sharedClearChunk;
     
     // Handle all commands
     for (const Command &command: buffer) {
         switch (static_cast<CommandType>(command.commandType)) {
+            default: {
+                ASSERT(false, "Invalid command for target");
+                break;
+            }
             case CommandType::SetShaderProgram: {
                 auto *cmd = command.As<SetShaderProgramCommand>();
 
@@ -163,7 +191,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
 
                 // Get offset
                 uint32_t dwordOffset = device->constantRemappingTable[cmd->id];
-                uint32_t dwordCount = 1u;
+                uint32_t length = cmd->commandSize - sizeof(SetDescriptorDataCommand);
 
                 // Shader Read -> Copy Dest
                 D3D12_RESOURCE_BARRIER barrier{};
@@ -174,10 +202,10 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 commandList->ResourceBarrier(1u, &barrier);
 
                 // Allocate staging data
-                ShaderExportConstantAllocation stagingAllocation = streamState->constantAllocator.Allocate(device->deviceAllocator, dwordCount * sizeof(uint32_t));
+                ShaderExportConstantAllocation stagingAllocation = streamState->constantAllocator.Allocate(device->deviceAllocator, length);
 
                 // Update data
-                std::memcpy(stagingAllocation.staging, &cmd->value, sizeof(uint32_t));
+                std::memcpy(stagingAllocation.staging, reinterpret_cast<const uint8_t*>(cmd) + sizeof(SetDescriptorDataCommand), length);
 
                 // Copy from staging
                 commandList->CopyBufferRegion(
@@ -185,7 +213,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                     dwordOffset * sizeof(uint32_t),
                     stagingAllocation.resource,
                     stagingAllocation.offset,
-                    dwordCount * sizeof(uint32_t)
+                    length
                 );
 
                 // Copy Dest -> Shader Read
@@ -249,6 +277,59 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 }
                 break;
             }
+            case CommandType::ClearBuffer: {
+                auto* cmd = command.As<ClearBufferCommand>();
+
+                // The reason we're not using typical clear commands is because
+                // copy queues don't support them. So, we instead copy from a zeroed
+                // resource. TODO[init]: Could add a non-copy queue path! But would
+                // pollute the descriptor heap, unless you swap them around.
+
+                // Allocate shared chunk if needed
+                if (!sharedClearChunk.resource) {
+                    sharedClearChunk = streamState->constantAllocator.Allocate(device->deviceAllocator, kClearChunkSize);
+                    std::memset(sharedClearChunk.staging, 0x0u, kClearChunkSize);
+                }
+
+                // Clearing to specific values isn't supported yet
+                // Would be trivial, just need to do it
+                ASSERT(cmd->value == 0x0, "Unsupported clear value");
+
+                // Number of writes
+                size_t chunkCount = (cmd->length + kClearChunkSize - 1) / kClearChunkSize;
+
+                // Get the data allocation
+                Allocation allocation = device->shaderDataHost->GetResourceAllocation(cmd->id);
+
+                // Write all chunks
+                for (size_t i = 0; i < chunkCount; i++) {
+                    size_t offset = kClearChunkSize * i;
+                    ASSERT(cmd->length > offset, "Invalid offset");
+                    
+                    size_t length = std::min(kClearChunkSize, cmd->length - offset);
+
+                    // Copy from chunk to resource
+                    commandList->CopyBufferRegion(
+                        allocation.resource,
+                        cmd->offset + offset,
+                        sharedClearChunk.resource,
+                        sharedClearChunk.offset,
+                        length
+                    );
+                }
+                break;
+            }
+            case CommandType::Discard: {
+                auto* cmd = command.As<DiscardCommand>();
+
+                // Get the resource state
+                ResourceState* resourceState = device->physicalResourceIdentifierMap.GetState(cmd->puid);
+                ASSERT(resourceState, "Invalid resource PUID");
+
+                // Discard the entire resource
+                commandList->DiscardResource(resourceState->object, nullptr);
+                break;
+            }
             case CommandType::Dispatch: {
                 auto* cmd = command.As<DispatchCommand>();
 
@@ -258,8 +339,9 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                     cmd->groupCountY,
                     cmd->groupCountZ
                 );
-
-                // Assumed barrier for simplicity
+                break;
+            }
+            case CommandType::UAVBarrier: {
                 D3D12_RESOURCE_BARRIER barrier{};
                 barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
                 commandList->ResourceBarrier(1u, &barrier);

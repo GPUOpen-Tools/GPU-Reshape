@@ -36,6 +36,8 @@ namespace Backend::IL {
         Bool,
         Int,
         FP,
+        Array,
+        Vector,
         Struct,
         Null,
         Unexposed

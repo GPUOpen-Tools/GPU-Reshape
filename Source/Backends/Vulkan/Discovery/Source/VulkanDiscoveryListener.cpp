@@ -446,7 +446,7 @@ bool VulkanDiscoveryListener::Stop() {
     return true;
 }
 
-void VulkanDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessInfo &info, DiscoveryBootstrappingEnvironment &env) {
+void VulkanDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessCreateInfo &info, DiscoveryBootstrappingEnvironment &env) {
     // Add search path and layer
     env.environmentKeys.emplace_back("VK_LAYER_PATH", GetCurrentExecutableDirectory().string());
     env.environmentKeys.emplace_back("VK_INSTANCE_LAYERS", VK_GPUOPEN_GPURESHAPE_LAYER_NAME);

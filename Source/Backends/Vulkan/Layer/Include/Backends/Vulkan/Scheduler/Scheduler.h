@@ -28,22 +28,24 @@
 
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
+#include <Backends/Vulkan/States/ExclusiveQueue.h>
 
 // Backend
 #include <Backend/Scheduler/IScheduler.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
+#include <Common/ComRef.h>
 
 // Std
 #include <vector>
 #include <mutex>
-#include <Backends/Vulkan/States/ExclusiveQueue.h>
 
 // Forward declarations
 struct DeviceDispatchTable;
 struct ShaderExportStreamState;
 struct QueueState;
+class DeviceAllocator;
 
 class Scheduler final : public IScheduler {
 public:
@@ -61,9 +63,17 @@ public:
     /// Invoke a synchronization point
     void SyncPoint();
 
+    /// Get the underlying semaphore
+    /// \param pid primitive id
+    /// \return native object
+    VkSemaphore GetPrimitiveSemaphore(SchedulerPrimitiveID pid);
+
     /// Overrides
     void WaitForPending() override;
-    void Schedule(Queue queue, const CommandBuffer &buffer) override;
+    SchedulerPrimitiveID CreatePrimitive() override;
+    void DestroyPrimitive(SchedulerPrimitiveID pid) override;
+    void MapTiles(Queue queue, ShaderDataID id, uint32_t count, const SchedulerTileMapping* mappings) override;
+    void Schedule(Queue queue, const CommandBuffer &buffer, const SchedulerPrimitiveEvent* event) override;
 
 private:
     /// Install a given queue
@@ -111,8 +121,23 @@ private:
     Submission PopSubmission(Queue queue);
 
 private:
+    struct PrimitiveEntry {
+        /// Underlying semaphore
+        VkSemaphore semaphore{VK_NULL_HANDLE};
+    };
+
+    /// All free primitive indices
+    Vector<uint32_t> freePrimitives;
+
+    /// All primitives, sparsely laid out
+    Vector<PrimitiveEntry> primitives;
+
+private:
     /// Parent device
     DeviceDispatchTable* table;
+
+    /// Device memory allocator
+    ComRef<DeviceAllocator> deviceAllocator;
 
     /// Shared lock
     std::mutex mutex;

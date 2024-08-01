@@ -34,7 +34,9 @@
     "States/PipelineLibraryState.h",
     "States/MemoryHeapState.h",
     "States/StateObjectState.h",
-    "States/QueryHeapState.h"
+    "States/QueryHeapState.h",
+    "States/DeviceFactoryState.h",
+    "States/SDKConfigurationState.h"
   ],
   "files": [
     "AgilitySDK/d3d12.h",
@@ -147,6 +149,7 @@
         "CheckFeatureSupport",
         "OpenSharedHandle",
         "OpenExistingHeapFromAddress",
+        "OpenExistingHeapFromAddress1",
         "OpenExistingHeapFromFileMapping"
       ]
     },
@@ -175,6 +178,7 @@
         "Signal",
         "Wait",
         "GetDevice",
+        "CopyTileMappings",
         "GetDesc"
       ]
     },
@@ -182,6 +186,7 @@
       "name": "CommandAllocator",
       "state": "CommandAllocatorState",
       "hooks": [
+        "Reset",
         "GetDevice"
       ]
     },
@@ -211,10 +216,15 @@
         "CopyBufferRegion",
         "CopyTextureRegion",
         "ResourceBarrier",
+        "Barrier",
+        "BeginRenderPass",
+        "EndRenderPass",
         "DrawInstanced",
         "DrawIndexedInstanced",
         "Dispatch",
         "ExecuteIndirect",
+        "CopyTiles",
+        "DispatchMesh",
         "GetDevice",
         "GetType"
       ],
@@ -222,15 +232,18 @@
         "DrawInstanced",
         "DrawIndexedInstanced",
         "Dispatch",
+        "DispatchMesh",
         "CopyBufferRegion",
         "CopyTextureRegion",
         "CopyResource",
+        "CopyTiles",
         "ResolveSubresource",
         "ResolveSubresourceRegion",
         "ClearDepthStencilView",
         "ClearRenderTargetView",
         "ClearUnorderedAccessViewUint",
         "ClearUnorderedAccessViewFloat",
+        "DiscardResource",
         "BeginRenderPass",
         "EndRenderPass",
         "OMSetRenderTargets"
@@ -263,6 +276,7 @@
       "state": "ResourceState",
       "hooks": [
         "Map",
+        "Unmap",
         "GetDevice",
         "SetName"
       ]
@@ -313,6 +327,21 @@
         "LoadComputePipeline",
         "LoadPipeline",
         "GetDevice"
+      ]
+    },
+    "ID3D12DeviceFactory": {
+      "name": "DeviceFactory",
+      "state": "DeviceFactoryState",
+      "hooks": [
+        "EnableExperimentalFeatures",
+        "CreateDevice"
+      ]
+    },
+    "ID3D12SDKConfiguration": {
+      "name": "SDKConfiguration",
+      "state": "SDKConfigurationState",
+      "hooks": [
+        "CreateDeviceFactory"
       ]
     }
   }

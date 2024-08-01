@@ -29,6 +29,9 @@
 #include <Backends/Vulkan/States/SwapchainState.h>
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Resource.h>
+#include <Backends/Vulkan/Translation.h>
+#include <Backends/Vulkan/Resource/ResourceInfo.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
@@ -80,13 +83,40 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSwapchainKHR(VkDevice device, const 
             imageState->object = images[i];
             imageState->table = table;
 
+            // Emulate creation info
+            imageState->createInfo = {};
+            imageState->createInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageState->createInfo.format = pCreateInfo->imageFormat;
+            imageState->createInfo.extent = VkExtent3D(pCreateInfo->imageExtent.width, pCreateInfo->imageExtent.height, 1u);
+            imageState->createInfo.mipLevels = 1u;
+            imageState->createInfo.arrayLayers = pCreateInfo->imageArrayLayers;
+            imageState->createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            imageState->createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+            imageState->createInfo.usage = pCreateInfo->imageUsage;
+            imageState->createInfo.sharingMode = pCreateInfo->imageSharingMode;
+            imageState->createInfo.queueFamilyIndexCount = pCreateInfo->queueFamilyIndexCount;
+            imageState->createInfo.pQueueFamilyIndices = pCreateInfo->pQueueFamilyIndices;
+
             // Create mapping template
-            imageState->virtualMappingTemplate.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-            imageState->virtualMappingTemplate.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-            imageState->virtualMappingTemplate.srb = ~0u;
+            imageState->virtualMappingTemplate.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+            imageState->virtualMappingTemplate.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+            imageState->virtualMappingTemplate.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->imageFormat));
+            imageState->virtualMappingTemplate.token.formatSize = GetFormatByteSize(pCreateInfo->imageFormat);
+            imageState->virtualMappingTemplate.token.width = pCreateInfo->imageExtent.width;
+            imageState->virtualMappingTemplate.token.height = pCreateInfo->imageExtent.height;
+            imageState->virtualMappingTemplate.token.depthOrSliceCount = pCreateInfo->imageArrayLayers;
+            imageState->virtualMappingTemplate.token.DefaultViewToRange();
 
             // Store lookup
             table->states_image.Add(imageState->object, imageState);
+
+            // Invoke proxies for all handles
+            for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+                proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+                    .resource = GetResourceInfoFor(imageState),
+                    .createFlags = ResourceCreateFlag::SwapchainTexture
+                });
+            }
         }
 
         // Keep internal track
@@ -121,8 +151,13 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroySwapchainKHR(VkDevice device, VkSwapcha
             continue;
         }
         
+        // Invoke proxies for all handles
+        for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+            proxyTable.destroyResource.TryInvoke(GetResourceInfoFor(imageState));
+        }
+        
         // Release the token
-        table->physicalResourceIdentifierMap.FreePUID(imageState->virtualMappingTemplate.puid);
+        table->physicalResourceIdentifierMap.FreePUID(imageState->virtualMappingTemplate.token.puid);
 
         // Remove the state
         table->states_image.Remove(imageState->object);

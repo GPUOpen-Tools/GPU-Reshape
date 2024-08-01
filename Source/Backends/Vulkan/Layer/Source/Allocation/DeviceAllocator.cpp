@@ -120,6 +120,37 @@ MirrorAllocation DeviceAllocator::AllocateMirror(const VkMemoryRequirements& req
     return allocation;
 }
 
+VmaAllocation DeviceAllocator::AllocateMemory(const VkMemoryRequirements& requirements) {
+    // Default to GPU memory
+    VmaAllocationCreateInfo createInfo{};
+    createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    // Try to create allocation
+    VmaAllocation allocation;
+    if (vmaAllocateMemory(
+        allocator,
+        &requirements,
+        &createInfo,
+        &allocation,
+        nullptr
+    ) != VK_SUCCESS) {
+        return nullptr;
+    }
+
+    // OK
+    return allocation;
+}
+
+VmaAllocationInfo DeviceAllocator::GetAllocationInfo(VmaAllocation allocation) {
+    VmaAllocationInfo info{};
+    vmaGetAllocationInfo(allocator, allocation, &info);
+    return info;
+}
+
+void DeviceAllocator::Free(VmaAllocation allocation) {
+    vmaFreeMemory(allocator, allocation);
+}
+
 void DeviceAllocator::Free(const Allocation& allocation) {
     vmaFreeMemory(allocator, allocation.allocation);
 }

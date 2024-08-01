@@ -28,6 +28,7 @@
 
 // Backend
 #include <Backend/IL/Format.h>
+#include <Backend/ShaderData/ShaderDataBufferFlags.h>
 
 // Std
 #include <cstdint>
@@ -39,6 +40,6 @@ struct ShaderDataBufferInfo {
     /// Format of each element
     Backend::IL::Format format{Backend::IL::Format::None};
 
-    /// Is this buffer visible from the host?
-    bool hostVisible{false};
+    /// All buffer flags
+    ShaderDataBufferFlagSet flagSet{};
 };

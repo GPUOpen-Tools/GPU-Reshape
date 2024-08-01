@@ -37,8 +37,8 @@ namespace Studio.Services
         public object? TargetViewModel { get; set; }
         
         /// <summary>
-        /// Root view model
+        /// All context view models
         /// </summary>
-        public IContextMenuItemViewModel ViewModel { get; }
+        public ObservableCollection<IContextViewModel> ViewModels { get; }
     }
 }

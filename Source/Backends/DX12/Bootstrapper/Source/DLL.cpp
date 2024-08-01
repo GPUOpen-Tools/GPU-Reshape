@@ -495,6 +495,7 @@ void BootstrapLayer(const char* invoker) {
     // Fetch function table
     if (LayerModule) {
         // Get hook points
+        LayerFunctionTable.next_D3D12GetInterfaceOriginal  = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(KernelXGetProcAddressOriginal(LayerModule, "HookD3D12GetInterface"));
         LayerFunctionTable.next_D3D12CreateDeviceOriginal  = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice"));
         LayerFunctionTable.next_CreateDXGIFactoryOriginal  = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory"));
         LayerFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1"));
@@ -638,8 +639,8 @@ bool IsServiceActive() {
     }
 
     // May explicitly disable service traps
-    if (char* tokenKey{nullptr}; _dupenv_s(&tokenKey, &size, Backend::kNoServiceTrapKey) == 0 && tokenKey) {
-        free(tokenKey);
+    if (char* key{nullptr}; _dupenv_s(&key, &size, Backend::kNoServiceTrapKey) == 0 && key) {
+        free(key);
         return true;
     }
 
@@ -765,9 +766,46 @@ struct _PROC_THREAD_ATTRIBUTE_LIST {
     _PROC_THREAD_ATTRIBUTE_LIST_ATTRIBUTE Attributes[1u];
 };
 
+bool IsBackendKeySet(const char* key) {
+    size_t size;
+    if (char* value{nullptr}; _dupenv_s(&value, &size, key) == 0 && value) {
+        free(value);
+        return true;
+    }
+
+    // Not set
+    return false;
+}
+
+bool ShouldAttachChildProcesses() {
+    // If the service trap is disabled, we're always capturing child processes
+    if (!IsBackendKeySet(Backend::kNoServiceTrapKey)) {
+        return true;
+    }
+    
+    // May explicitly disable service traps
+    if (IsBackendKeySet(Backend::kCaptureChildProcessesKey)) {
+        return true;
+    }
+
+    // No capturing!
+    return false;
+}
+
 bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
     // Do not bootstrap if the service isn't running
     if (!IsServiceActive()) {
+#if ENABLE_LOGGING
+        LogContext{} << "ShouldBootstrapProcess, process rejected due to inactive service\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+
+    // May be disabled user side
+    if (!ShouldAttachChildProcesses()) {
+#if ENABLE_LOGGING
+        LogContext{} << "ShouldBootstrapProcess, process rejected due to disabled child capturing\n";
+#endif // ENABLE_LOGGING
         return false;
     }
 
@@ -781,6 +819,9 @@ bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
             
             // Do not bootstrap AppContainer processes
             if (entry.Attribute == PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES) {
+#if ENABLE_LOGGING
+                LogContext{} << "ShouldBootstrapProcess, process rejected due to AppContainer usage\n";
+#endif // ENABLE_LOGGING
                 return false;
             }
 
@@ -794,6 +835,9 @@ bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
                     // - Microsoft sign checks will cause the image to be rejected
                     if ((policyPayloads[0] & PROCESS_CREATION_MITIGATION_POLICY_IMAGE_LOAD_NO_REMOTE_ALWAYS_ON) ||
                         (policyPayloads[0] & PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON)) {
+#if ENABLE_LOGGING
+                        LogContext{} << "ShouldBootstrapProcess, process rejected due to mitigation policy\n";
+#endif // ENABLE_LOGGING
                         return false;
                     }
                 }
@@ -1412,6 +1456,11 @@ bool IsIHVRegion(const void* address) {
     return IsModuleRegion(IHVAMDXC64ModuleInfo, address);
 }
 
+HRESULT WINAPI HookD3D12GetInterface(REFCLSID rclsid, REFIID riid, void** ppvDebug) {
+    WaitForDeferredInitialization();
+    return LayerFunctionTable.next_D3D12GetInterfaceOriginal(rclsid, riid, ppvDebug);
+}
+
 HRESULT WINAPI HookID3D12CreateDevice(
     _In_opt_ IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
@@ -1557,6 +1606,10 @@ void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
     ConditionallyBeginDetour(insideTransaction);
 
     // Attach against original address
+    DetourFunctionTable.next_D3D12GetInterfaceOriginal = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(KernelXGetProcAddressOriginal(handle, "D3D12GetInterface"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
+
+    // Attach against original address
     DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "D3D12CreateDevice"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
 
@@ -1617,6 +1670,12 @@ void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
 }
 
 void DetachInitialCreation() {
+    // Remove device
+    if (DetourFunctionTable.next_D3D12GetInterfaceOriginal) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
+        DetourFunctionTable.next_D3D12GetInterfaceOriginal = nullptr;
+    }
+    
     // Remove device
     if (DetourFunctionTable.next_D3D12CreateDeviceOriginal) {
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));

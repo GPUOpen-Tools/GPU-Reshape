@@ -137,6 +137,8 @@ BridgeInfo HostServerBridge::GetInfo() {
 }
 
 void HostServerBridge::Commit() {
+    MutexGuard guard(mutex);
+    
     // Endpoint must be in a good state
     if (!server->IsOpen()) {
         return;
@@ -151,7 +153,10 @@ void HostServerBridge::Commit() {
     storage.ConsumeStreams(&streamCount, streamCache.data());
 
     // Push all streams
-    for (const MessageStream &stream: streamCache) {
+    for (uint32_t i = 0; i < streamCount; i++) {
+        const MessageStream &stream = streamCache[i];
+
+        // Setup protocol header
         MessageStreamHeaderProtocol protocol;
         protocol.schema = stream.GetSchema();
         protocol.versionID = stream.GetVersionID();

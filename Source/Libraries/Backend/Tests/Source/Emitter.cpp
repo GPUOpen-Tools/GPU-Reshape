@@ -27,7 +27,7 @@
 #include <catch2/catch.hpp>
 
 // Backend
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
 TEST_CASE("Backend.IL.Emitter") {
     /*IL::Program program;

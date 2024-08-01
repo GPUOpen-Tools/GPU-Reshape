@@ -24,6 +24,8 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
+# Shared testing library
+add_subdirectory(Test/Unified)
 
 # Base set of libraries
 add_subdirectory(Libraries)

@@ -54,6 +54,12 @@ struct FeatureHook_Dispatch : TFeatureHook<Hooks::Dispatch> {
     }
 };
 
+struct FeatureHook_DispatchMesh : TFeatureHook<Hooks::DispatchMesh> {
+    void operator()(CommandListState *state, CommandContext *context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ) const {
+        hook.Invoke(context, threadGroupX, threadGroupY, threadGroupZ);
+    }
+};
+
 struct FeatureHook_CopyBufferRegion : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pDstBuffer, UINT64 DstOffset, ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes) const;
 };
@@ -90,6 +96,10 @@ struct FeatureHook_ResolveSubresourceRegion : TFeatureHook<Hooks::ResolveResourc
     void operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pDstResource, UINT DstSubresource, UINT DstX, UINT DstY, ID3D12Resource *pSrcResource, UINT SrcSubresource, D3D12_RECT *pSrcRect, DXGI_FORMAT Format, D3D12_RESOLVE_MODE ResolveMode) const;
 };
 
+struct FeatureHook_DiscardResource : TFeatureHook<Hooks::DiscardResource> {
+    void operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pResource, const D3D12_DISCARD_REGION* pRegion) const;
+};
+
 struct FeatureHook_BeginRenderPass : TFeatureHook<Hooks::BeginRenderPass> {
     void operator()(CommandListState *object, CommandContext *context, UINT NumRenderTargets, const D3D12_RENDER_PASS_RENDER_TARGET_DESC *pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC *pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags) const;
 };
@@ -100,4 +110,8 @@ struct FeatureHook_EndRenderPass : TFeatureHook<Hooks::EndRenderPass> {
 
 struct FeatureHook_OMSetRenderTargets : TFeatureHook<Hooks::BeginRenderPass> {
     void operator()(CommandListState *object, CommandContext *context, UINT NumRenderTargetDescriptors, const D3D12_CPU_DESCRIPTOR_HANDLE *pRenderTargetDescriptors, BOOL RTsSingleHandleToDescriptorRange, const D3D12_CPU_DESCRIPTOR_HANDLE *pDepthStencilDescriptor) const;
+};
+
+struct FeatureHook_CopyTiles : TFeatureHook<Hooks::CopyResource> {
+    void operator()(CommandListState *object, CommandContext *context, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags) const;
 };

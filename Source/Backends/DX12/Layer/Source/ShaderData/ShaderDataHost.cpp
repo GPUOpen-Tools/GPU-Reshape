@@ -34,7 +34,9 @@ ShaderDataHost::ShaderDataHost(DeviceState *device) :
     device(device),
     freeIndices(device->allocators.Tag(kAllocShaderData)),
     indices(device->allocators.Tag(kAllocShaderData)),
-    resources(device->allocators.Tag(kAllocShaderData)) {
+    resources(device->allocators.Tag(kAllocShaderData)),
+    freeMappingIndices(device->allocators.Tag(kAllocShaderData)),
+    mappings(device->allocators.Tag(kAllocShaderData)) {
 
 }
 
@@ -42,17 +44,36 @@ ShaderDataHost::~ShaderDataHost() {
     // Release resources
     for (const ResourceEntry& entry : resources) {
         if (entry.allocation.resource) {
-            entry.allocation.allocation->Release();
+            if (entry.allocation.allocation) {
+                entry.allocation.allocation->Release();
+            }
             entry.allocation.resource->Release();
         }
     }
 }
 
 bool ShaderDataHost::Install() {
+    // Query device options
+    if (FAILED(device->object->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options)))) {
+        return false;
+    }
+
+    // Query virtual address support
+    if (FAILED(device->object->CheckFeatureSupport(D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT, &virtualAddressOptions, sizeof(virtualAddressOptions)))) {
+        virtualAddressOptions.MaxGPUVirtualAddressBitsPerProcess  = UINT32_MAX;
+        virtualAddressOptions.MaxGPUVirtualAddressBitsPerResource = UINT32_MAX;
+    }
+
+    // Fill capability table
+    capabilityTable.bufferMaxElementCount = UINT64_MAX;
+
+    // OK
     return true;
 }
 
 ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -84,10 +105,22 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
 
     // Create allocation
     ResourceEntry &entry = resources.emplace_back();
-    entry.allocation = device->deviceAllocator->Allocate(desc, info.hostVisible ? AllocationResidency::HostVisible : AllocationResidency::Device);
     entry.info.id = rid;
     entry.info.type = ShaderDataType::Buffer;
     entry.info.buffer = info;
+
+    // If tiled, create the reserved resource immediately
+    if (info.flagSet & ShaderDataBufferFlag::Tiled) {
+        device->object->CreateReservedResource(
+            &desc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            nullptr,
+            __uuidof(ID3D12Resource*),
+            reinterpret_cast<void**>(&entry.allocation.resource)
+        );
+    } else {
+        entry.allocation = device->deviceAllocator->Allocate(desc, info.flagSet & ShaderDataBufferFlag::HostVisible ? AllocationResidency::HostVisible : AllocationResidency::Device);
+    }
 
 #ifndef NDEBUG
     entry.allocation.resource->SetName(L"ShaderDataHostBuffer");
@@ -98,6 +131,8 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
 }
 
 ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -125,6 +160,8 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
 }
 
 ShaderDataID ShaderDataHost::CreateDescriptorData(const ShaderDataDescriptorInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -152,6 +189,7 @@ ShaderDataID ShaderDataHost::CreateDescriptorData(const ShaderDataDescriptorInfo
 }
 
 void *ShaderDataHost::Map(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to map
@@ -161,7 +199,42 @@ void *ShaderDataHost::Map(ShaderDataID rid) {
     return device->deviceAllocator->Map(entry.allocation);
 }
 
+ShaderDataMappingID ShaderDataHost::CreateMapping(ShaderDataID data, uint64_t tileCount) {
+    std::lock_guard guard(mutex);
+    
+    // Allocate index
+    ShaderDataMappingID mid;
+    if (freeMappingIndices.empty()) {
+        mid = static_cast<uint32_t>(mappings.size());
+        mappings.emplace_back();
+    } else {
+        mid = freeMappingIndices.back();
+        freeMappingIndices.pop_back();
+    }
+
+    // Create allocation
+    MappingEntry& entry = mappings[mid];
+    entry.allocation = device->deviceAllocator->AllocateMemory(kShaderDataMappingTileWidth, kShaderDataMappingTileWidth * tileCount);
+
+    // OK
+    return mid;
+}
+
+void ShaderDataHost::DestroyMapping(ShaderDataMappingID mid) {
+    std::lock_guard guard(mutex);
+    
+    MappingEntry& entry = mappings[mid];
+
+    // Release the allocation
+    device->deviceAllocator->Free(entry.allocation);
+    entry.allocation = nullptr;
+
+    // Mark as free
+    freeMappingIndices.push_back(mid);
+}
+
 void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to flush
@@ -172,6 +245,7 @@ void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t le
 }
 
 Allocation ShaderDataHost::GetResourceAllocation(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to map
@@ -181,7 +255,14 @@ Allocation ShaderDataHost::GetResourceAllocation(ShaderDataID rid) {
     return entry.allocation;
 }
 
+D3D12MA::Allocation * ShaderDataHost::GetMappingAllocation(ShaderDataMappingID mid) {
+    std::lock_guard guard(mutex);
+    MappingEntry &entry = mappings[mid];
+    return entry.allocation;
+}
+
 void ShaderDataHost::Destroy(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to release
@@ -212,6 +293,8 @@ void ShaderDataHost::Destroy(ShaderDataID rid) {
 }
 
 void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
+    std::lock_guard guard(mutex);
+    
     if (out) {
         uint32_t offset = 0;
 
@@ -234,7 +317,12 @@ void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataT
 }
 
 void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescriptorHandle, uint32_t stride) {
+    std::lock_guard guard(mutex);
+    
     uint32_t offset = 0;
+
+    // Max number of addressable bytes (-3 for bits to bytes)
+    size_t maxVirtualAddressBytes = 1ull << (options.MaxGPUVirtualAddressBitsPerResource - 3u);
 
     for (uint32_t i = 0; i < resources.size(); i++) {
         const ResourceEntry &entry = resources[i];
@@ -255,9 +343,18 @@ void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescripto
                 view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
                 view.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
                 view.Buffer.FirstElement = 0;
-                view.Buffer.NumElements = static_cast<uint32_t>(entry.info.buffer.elementCount);
                 view.Buffer.StructureByteStride = 0;
 
+                // Limit number of elements by the actual number of addressable elements
+                size_t maxElements = maxVirtualAddressBytes / Backend::IL::GetSize(entry.info.buffer.format);
+                view.Buffer.NumElements = static_cast<uint32_t>(std::min(entry.info.buffer.elementCount, maxElements));
+
+                // Workaround for runtime bug that assumes 32 bit indexing
+                // This has since been fixed in later agility SDKs.
+                if (!device->sdk.isAgilitySDKOverride714) {
+                    view.Buffer.NumElements = std::min(view.Buffer.NumElements, UINT32_MAX / Backend::IL::GetSize(entry.info.buffer.format) - static_cast<uint32_t>(sizeof(uint64_t)));
+                }
+                
                 // Create descriptor
                 device->object->CreateUnorderedAccessView(
                     entry.allocation.resource, nullptr,
@@ -277,7 +374,13 @@ void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescripto
     }
 }
 
+ShaderDataCapabilityTable ShaderDataHost::GetCapabilityTable() {
+    return capabilityTable;
+}
+
 ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
+    std::lock_guard guard(mutex);
+    
     ConstantShaderDataBuffer out;
 
     // Total dword count
@@ -298,11 +401,18 @@ ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
         return {};
     }
 
+    // Minimum length of constant data
+    size_t length = sizeof(uint32_t) * dwordCount;
+
+    // Align length
+    const size_t alignSub1 = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1;
+    length = (length + alignSub1) & ~alignSub1;
+
     // Mapped description
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Alignment = 0;
-    desc.Width = std::max<uint32_t>(sizeof(uint32_t) * dwordCount, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    desc.Width = length;
     desc.Height = 1;
     desc.DepthOrArraySize = 1;
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
@@ -327,6 +437,8 @@ ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
 }
 
 ShaderConstantsRemappingTable ShaderDataHost::CreateConstantMappingTable() {
+    std::lock_guard guard(mutex);
+    
     ShaderConstantsRemappingTable out(indices.size());
 
     // Current offset

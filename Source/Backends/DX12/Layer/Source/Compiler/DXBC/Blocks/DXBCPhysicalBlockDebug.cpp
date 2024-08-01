@@ -35,6 +35,7 @@
 #include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/Compiler/DXBC/MSF/MSFParseContext.h>
 #include <Backends/DX12/Controllers/PDBController.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCUtils.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -47,6 +48,7 @@
 DXBCPhysicalBlockDebug::DXBCPhysicalBlockDebug(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table) :
     DXBCPhysicalBlockSection(allocators, program, table),
     pdbScanner(allocators),
+    pdbShaderSourceInfo(pdbScanner),
     pdbContainerContents(allocators) {
 
 }
@@ -79,11 +81,31 @@ bool DXBCPhysicalBlockDebug::Parse(const DXParseJob& job) {
         }
     }
 
+    // At this point fall back to the hash itself, try to see if any file matches it
+    if (DXBCPhysicalBlock* hashBlock = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::ShaderHash); !ildbBlock && hashBlock) {
+        auto hash = DXBCParseContext(hashBlock->ptr, hashBlock->length).Consume<DXILShaderHash>();
+
+        // Hexify it!
+        char hashStringBuffer[kDXBCShaderDigestStringLength];
+        DXBCShaderDigestToString(hash.digest, hashStringBuffer);
+
+        // Search for possible candidates
+        PDBCandidateList candidates(allocators);
+        job.pdbController->GetCandidateList(hashStringBuffer, candidates);
+
+        // Check all PDB candidates
+        for (const std::string_view& candidate : candidates) {
+            if ((ildbBlock = TryParsePDB(candidate))) {
+                break;
+            }
+        }
+    }
+
     // The ILDB physical block contains the canonical program and debug information.
     // Unfortunately basing the main program off the ILDB is more trouble than it's worth,
     // as stripping the debug data after recompilation is quite troublesome.
     if (ildbBlock) {
-        auto* dxilDebugModule = new(allocators, kAllocModuleDXILDebug) DXILDebugModule(allocators.Tag(kAllocModuleDXILDebug));
+        auto* dxilDebugModule = new(allocators, kAllocModuleDXILDebug) DXILDebugModule(allocators.Tag(kAllocModuleDXILDebug), pdbShaderSourceInfo);
 
         // Attempt to parse the module
         if (!dxilDebugModule->Parse(ildbBlock->ptr, ildbBlock->length)) {
@@ -147,6 +169,9 @@ DXBCPhysicalBlock * DXBCPhysicalBlockDebug::TryParsePDB(const std::string_view &
         return nullptr;
     }
 
+    // Parse optional source info
+    pdbShaderSourceInfo.Parse();
+    
     // Finally, fetch the embedded ILDB block
     return pdbScanner.GetPhysicalBlock(DXBCPhysicalBlockType::ILDB);
 }

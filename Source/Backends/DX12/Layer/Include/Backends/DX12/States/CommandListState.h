@@ -35,6 +35,7 @@
 
 // Common
 #include <Common/Allocators.h>
+#include <Common/Containers/SlotArray.h>
 
 // Forward declarations
 struct DeviceState;
@@ -53,9 +54,6 @@ struct __declspec(uuid("8270D898-4356-4503-8DEB-9CD73BB31B21")) CommandListState
     /// Current streaming state
     ShaderExportStreamState* streamState{nullptr};
 
-    /// Current descriptor state
-    DescriptorDataAppendAllocator* descriptorAllocator{nullptr};
-
     /// The actual list type
     D3D12_COMMAND_LIST_TYPE userType = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
@@ -64,6 +62,12 @@ struct __declspec(uuid("8270D898-4356-4503-8DEB-9CD73BB31B21")) CommandListState
 
     /// User context
     CommandContext userContext;
+
+    /// The allocator currently owning this command list
+    ID3D12CommandAllocator* owningAllocator{nullptr};
+
+    /// Allocator slot index
+    SlotId allocatorSlotId{kInvalidSlotId};
 
     /// Object
     ID3D12GraphicsCommandList* object{nullptr};

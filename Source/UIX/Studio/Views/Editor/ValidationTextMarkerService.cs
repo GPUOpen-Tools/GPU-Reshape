@@ -31,6 +31,7 @@ using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using Runtime.ViewModels.IL;
 using Studio.Extensions;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -59,7 +60,7 @@ namespace Studio.Views.Editor
                     element =>
                     {
                         // Set background
-                        element.TextRunProperties.BackgroundBrush = _validationBrush;
+                        element.TextRunProperties.BackgroundBrush = GetBrushForObject(marker.Object);
 
                         // Modify type face (todo...)
                         element.TextRunProperties.Typeface = new Typeface(
@@ -141,9 +142,34 @@ namespace Studio.Views.Editor
         }
 
         /// <summary>
-        /// Error brush
+        /// Get the brush for a given validation object
         /// </summary>
-        private Brush _validationBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? new SolidColorBrush(Colors.Red);
+        private Brush GetBrushForObject(ValidationObject? _object)
+        {
+            if (_object == null)
+            {
+                return _validationBrushError;
+            }
+            
+            switch (_object.Severity)
+            {
+                case ValidationSeverity.Info:
+                    return _validationBrushInfo;
+                case ValidationSeverity.Warning:
+                    return _validationBrushWarning;
+                case ValidationSeverity.Error:
+                    return _validationBrushError;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        /// <summary>
+        /// Brushes
+        /// </summary>
+        private Brush _validationBrushInfo = ResourceLocator.GetResource<SolidColorBrush>("InfoMediumForeground") ?? new SolidColorBrush(Colors.White);
+        private Brush _validationBrushWarning = ResourceLocator.GetResource<SolidColorBrush>("WarningBrush") ?? new SolidColorBrush(Colors.Yellow);
+        private Brush _validationBrushError = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? new SolidColorBrush(Colors.Red);
 
         /// <summary>
         /// All active segments

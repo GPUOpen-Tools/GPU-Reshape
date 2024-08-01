@@ -132,6 +132,13 @@ std::string GlobalUID::ToString() const {
 #endif
 }
 
+GlobalUID GlobalUID::FromPlatformGUID(const GUID &value) {
+    GlobalUID uid;
+    std::memcpy(&uid.uuid, &value, sizeof(value));
+    
+    return uid;
+}
+
 GUID GlobalUID::AsPlatformGUID() const {
     GUID guid;
     std::memcpy(&guid, uuid, sizeof(guid));

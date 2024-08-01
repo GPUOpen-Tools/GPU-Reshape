@@ -35,6 +35,9 @@ enum class ReconstructionFlag {
 
     /// Reconstruct previous push constant data
     RootConstant = BIT(1),
+
+    /// Reconstruct render pass data
+    RenderPass = BIT(2)
 };
 
 BIT_SET(ReconstructionFlag);

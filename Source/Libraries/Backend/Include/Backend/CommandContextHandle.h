@@ -29,8 +29,10 @@
 // Std
 #include <cstdint>
 
-/// User context handle
+/// User context handles
 using CommandContextHandle = uint64_t;
+using CommandQueueHandle = uint64_t;
 
-/// Invalid handle
+/// Invalid handles
 static constexpr CommandContextHandle kInvalidCommandContextHandle = ~0ull;
+static constexpr CommandQueueHandle kInvalidCommandQueueHandle = ~0ull;

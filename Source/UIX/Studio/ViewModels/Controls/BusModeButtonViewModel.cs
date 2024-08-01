@@ -28,8 +28,7 @@ using System;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Media;
-using Avalonia.Threading;
-using Discovery.CLR;
+using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Services;
@@ -71,7 +70,7 @@ namespace Studio.ViewModels.Controls
             Toggle = ReactiveCommand.Create(OnToggle);
 
             // Bind to current workspace
-            App.Locator.GetService<IWorkspaceService>()?
+            _workspaceService?
                 .WhenAnyValue(x => x.SelectedWorkspace)
                 .Subscribe(x =>
             {
@@ -139,12 +138,24 @@ namespace Studio.ViewModels.Controls
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+            
+            // Update selected workspace, if any
+            if (_workspaceService?.SelectedWorkspace is { Connection: { } connection })
+            {
+                var range = connection.GetSharedBus().Add<PauseInstrumentationMessage>();
+                range.paused = _currentService.Mode != BusMode.Immediate ? 1 : 0;
+            }
         }
 
         /// <summary>
         /// Current service model
         /// </summary>
         private IBusPropertyService? _currentService = null;
+
+        /// <summary>
+        /// Shared workspace service
+        /// </summary>
+        private IWorkspaceService? _workspaceService = App.Locator.GetService<IWorkspaceService>();
 
         /// <summary>
         /// Internal status color

@@ -52,9 +52,9 @@ namespace Studio.ViewModels.Contexts
         public bool IsVisible { get; set; }
 
         /// <summary>
-        /// Target view model of the context
+        /// Target view models of the context
         /// </summary>
-        public object? TargetViewModel { get; set; }
+        public object[]? TargetViewModels { get; set; }
     }
 
     public static class ContextMenuItemExtensions
@@ -76,6 +76,25 @@ namespace Studio.ViewModels.Contexts
             }
 
             return default;
+        }
+        
+        public static IContextMenuItemViewModel GetOrAddCategory(this IContextMenuItemViewModel self, string name)
+        {
+            foreach (IContextMenuItemViewModel contextMenuItemViewModel in self.Items)
+            {
+                if (contextMenuItemViewModel.Header == name)
+                {
+                    return contextMenuItemViewModel;
+                }
+            }
+
+            var item = new CategoryContextMenuItemViewModel()
+            {
+                Header = name
+            };
+            
+            self.Items.Add(item);
+            return item;
         }
     }
 }

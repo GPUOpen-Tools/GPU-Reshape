@@ -76,7 +76,9 @@ set(
     vkCmdCopyImage
     vkCmdBlitImage
     vkCmdCopyBufferToImage
+    vkCmdCopyBufferToImage2
     vkCmdCopyImageToBuffer
+    vkCmdCopyImageToBuffer2
     vkCmdUpdateBuffer
     vkCmdFillBuffer
     vkCmdClearColorImage
@@ -84,9 +86,14 @@ set(
     vkCmdClearAttachments
     vkCmdResolveImage
     vkCmdBeginRenderPass
+    vkCmdBeginRenderPass2
+    vkCmdBeginRenderPass2KHR
     vkCmdEndRenderPass
+    vkCmdBeginRendering
     vkCmdBeginRenderingKHR
+    vkCmdEndRendering
     vkCmdEndRenderingKHR
+    vkCmdDrawMeshTasksEXT
 )
 
 # White list
@@ -120,6 +127,9 @@ set(
     vkCmdSetEvent2
     vkCmdWaitEvents2
     vkCmdPipelineBarrier2
+    vkCmdDrawMeshTasksEXT
+    vkCmdDrawMeshTasksIndirectEXT
+    vkCmdDrawMeshTasksIndirectCountEXT
 )
 
 # Join lists
@@ -241,6 +251,7 @@ add_library(
     Layer/Source/Compiler/SpvSourceMap.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockAnnotation.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockCapability.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockExtensionImport.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockEntryPoint.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockDebugStringSource.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockFunction.cpp
@@ -255,6 +266,7 @@ add_library(
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
     Layer/Source/Resource/PhysicalResourceMappingTablePersistentVersion.cpp
     Layer/Source/Resource.cpp
+    Layer/Source/Memory.cpp
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp
     Layer/Source/Debug.cpp

@@ -33,7 +33,7 @@
 #include <Backend/IL/Source.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/Assert.h>
 
 // Std

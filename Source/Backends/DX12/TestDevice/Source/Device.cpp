@@ -241,6 +241,63 @@ BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format
     return BufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 }
 
+BufferID Device::CreateStructuredBuffer(ResourceType type, uint32_t elementSize, uint64_t size, const void *data, uint64_t dataSize) {
+    ResourceInfo &resource = resources.emplace_back();
+    resource.type = type;
+    resource.format = Backend::IL::Format::None;
+    resource.structuredSize = elementSize;
+
+    // Destination heap
+    D3D12_HEAP_PROPERTIES heapProperties{};
+    heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    // Description
+    D3D12_RESOURCE_DESC resourceDesc{};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+    resourceDesc.Width = size;
+    resourceDesc.Height = 1;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    // Create resource
+    REQUIRE(SUCCEEDED(device->CreateCommittedResource(
+        &heapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&resource.resource))));
+
+    // Any data to upload?
+    if (data && dataSize) {
+        UploadBuffer& uploadBuffer = CreateUploadBuffer(dataSize);
+
+        UINT8* mapped;
+
+        // Map range
+        D3D12_RANGE readRange{ 0, 0 };
+        REQUIRE(SUCCEEDED(uploadBuffer.resource->Map(0, &readRange, reinterpret_cast<void**>(&mapped))));
+
+        // Write data
+        memcpy(mapped, data, sizeof(dataSize));
+        uploadBuffer.resource->Unmap(0, nullptr);
+
+        // Enqueue command
+        UpdateCommand command;
+        command.copyBuffer.type = UpdateCommandType::CopyBuffer;
+        command.copyBuffer.source = uploadBuffer.resource.Get();
+        command.copyBuffer.dest = resource.resource.Get();
+        command.copyBuffer.dataSize = dataSize;
+        updateCommands.push_back(command);
+    }
+
+    return BufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
+}
+
 TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) {
     ResourceInfo &resource = resources.emplace_back();
     resource.type = type;
@@ -264,7 +321,7 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
     // Translate type
     switch (type) {
         default:
-        ASSERT(false, "Invalid resource type");
+            ASSERT(false, "Invalid resource type");
             break;
         case ResourceType::Texture1D:
         case ResourceType::RWTexture1D:
@@ -272,6 +329,8 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
             break;
         case ResourceType::Texture2D:
         case ResourceType::RWTexture2D:
+        case ResourceType::Texture2DArray:
+        case ResourceType::RWTexture2DArray:
             resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
             break;
         case ResourceType::Texture3D:
@@ -320,14 +379,18 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
             default:
                 ASSERT(false, "Invalid type");
             case ResourceType::TexelBuffer:
+            case ResourceType::StructuredBuffer:
             case ResourceType::Texture1D:
             case ResourceType::Texture2D:
+            case ResourceType::Texture2DArray:
             case ResourceType::Texture3D:
                 range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
                 break;
             case ResourceType::RWTexelBuffer:
+            case ResourceType::RWStructuredBuffer:
             case ResourceType::RWTexture1D:
             case ResourceType::RWTexture2D:
+            case ResourceType::RWTexture2DArray:
             case ResourceType::RWTexture3D:
                 range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
                 break;
@@ -403,6 +466,31 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 set.count++;
                 break;
             }
+            case ResourceType::StructuredBuffer: {
+                D3D12_SHADER_RESOURCE_VIEW_DESC desc{};
+                desc.Format = DXGI_FORMAT_UNKNOWN;
+                desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+                desc.Buffer.FirstElement = 0;
+                desc.Buffer.StructureByteStride = resource.structuredSize;
+                desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+                desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / resource.structuredSize);
+                desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
+                set.count++;
+                break;
+            }
+            case ResourceType::RWStructuredBuffer: {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
+                desc.Format = DXGI_FORMAT_UNKNOWN;
+                desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+                desc.Buffer.FirstElement = 0;
+                desc.Buffer.StructureByteStride = resource.structuredSize;
+                desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+                desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / resource.structuredSize);
+                device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
+                set.count++;
+                break;
+            }
             case ResourceType::Texture1D: {
                 D3D12_SHADER_RESOURCE_VIEW_DESC desc{};
                 desc.Format = resourceDesc.Format;
@@ -431,10 +519,30 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 set.count++;
                 break;
             }
+            case ResourceType::Texture2DArray: {
+                D3D12_SHADER_RESOURCE_VIEW_DESC desc{};
+                desc.Format = resourceDesc.Format;
+                desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                desc.Texture2DArray.MipLevels = 1;
+                desc.Texture2DArray.ArraySize = resourceDesc.DepthOrArraySize;
+                device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
+                set.count++;
+                break;
+            }
             case ResourceType::RWTexture2D: {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
                 desc.Format = resourceDesc.Format;
                 desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+                device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
+                set.count++;
+                break;
+            }
+            case ResourceType::RWTexture2DArray: {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
+                desc.Format = resourceDesc.Format;
+                desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.ArraySize = resourceDesc.DepthOrArraySize;
                 device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
                 set.count++;
                 break;
@@ -659,6 +767,15 @@ void Device::InitializeResources(CommandBufferID commandBuffer) {
     for (const UpdateCommand& cmd : updateCommands) {
         switch (cmd.type) {
             case UpdateCommandType::CopyBuffer: {
+                // Barrier
+                D3D12_RESOURCE_BARRIER barrier{};
+                barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+                barrier.Transition.pResource = cmd.copyBuffer.dest;
+                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
+                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+                info.commandList->ResourceBarrier(1u, &barrier);
+
                 // Copy data
                 info.commandList->CopyBufferRegion(
                     cmd.copyBuffer.dest,
@@ -669,10 +786,6 @@ void Device::InitializeResources(CommandBufferID commandBuffer) {
                 );
 
                 // Barrier
-                D3D12_RESOURCE_BARRIER barrier{};
-                barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-                barrier.Transition.pResource = cmd.copyBuffer.dest;
                 barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
                 barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
                 info.commandList->ResourceBarrier(1u, &barrier);
@@ -725,10 +838,14 @@ Device::HeapInfo &Device::GetHeapForType(ResourceType type) {
             return sharedResourceHeap;
         case ResourceType::TexelBuffer:
         case ResourceType::RWTexelBuffer:
+        case ResourceType::StructuredBuffer:
+        case ResourceType::RWStructuredBuffer:
         case ResourceType::Texture1D:
         case ResourceType::RWTexture1D:
         case ResourceType::Texture2D:
         case ResourceType::RWTexture2D:
+        case ResourceType::Texture2DArray:
+        case ResourceType::RWTexture2DArray:
         case ResourceType::Texture3D:
         case ResourceType::RWTexture3D:
         case ResourceType::CBuffer:

@@ -27,7 +27,7 @@
 project(GPU-Reshape)
 
 # Requirements
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.24)
 
 # Policies
 cmake_policy(SET CMP0135 NEW)
@@ -224,6 +224,8 @@ endfunction()
 # Add build support
 if (NOT THIN_X86_BUILD)
     add_subdirectory(Build)
+else()
+    include(Build/Files.cmake)
 endif()
 
 # Add external projects

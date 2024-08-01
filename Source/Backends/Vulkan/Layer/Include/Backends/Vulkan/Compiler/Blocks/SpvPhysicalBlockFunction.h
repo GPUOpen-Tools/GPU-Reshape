@@ -94,6 +94,46 @@ struct SpvPhysicalBlockFunction : public SpvPhysicalBlockSection {
     /// \param codeOffset code offset, must originate from same function
     /// \return traceback
     SpvCodeOffsetTraceback GetCodeOffsetTraceback(uint32_t codeOffset);
+    
+public:
+    /// Identifier type
+    enum class IdentifierType {
+        None,
+        CombinedImageSampler,
+        SampleTexture
+    };
+
+    /// Single identifier metadata
+    struct IdentifierMetadata {
+        /// Given type
+        IdentifierType type = IdentifierType::None;
+
+        /// Payload
+        union {
+            struct {
+                IL::ID type;
+                IL::ID image;
+                IL::ID sampler;
+            } combinedImageSampler;
+
+            struct {
+                IL::ID combinedType;
+                IL::ID combinedImageSampler;
+            } sampleImage;
+
+            struct {
+                const Backend::IL::StructType* type;
+                IL::ID optionalControlStructure;
+            } function;
+
+            struct {
+                uint32_t linearIndex;
+            } parameter;
+        };
+    };
+
+    /// All metadata
+    std::vector<IdentifierMetadata> identifierMetadata;
 
 private:
     /// Patch all loop continues
@@ -133,6 +173,20 @@ private:
     /// \param idMap identifier map to be used for the current scope
     void CreateDataLookups(const SpvJob& job, SpvStream& stream, SpvIdMap& idMap);
 
+    /// Compile the control structures needed for a function
+    /// \param job source job
+    /// \param idMap the shared identifier map for proxies
+    /// \param fn the function to be compiled
+    void CompileControlStructure(const SpvJob& job, const SpvIdMap& idMap, const IL::Function& fn);
+
+    /// Create the control structure for a function
+    /// \param job source job
+    /// \param stream the destination instruction stream
+    /// \param call the called instruction
+    /// \param function the current function (for traceback)
+    /// \return control structure id
+    IL::ID CreateControlStructure(const SpvJob& job, SpvStream& stream, const IL::CallInstruction *call, IL::ID function);
+
 private:
     /// Check if a given instruction is trivially copyable, including special instructions which
     /// may require recompilation.
@@ -148,37 +202,6 @@ private:
     /// \param instr sampling instruction
     /// \return image identifier
     IL::ID MigrateCombinedImageSampler(SpvStream &stream, SpvIdMap &idMap, IL::BasicBlock *bb, const IL::SampleTextureInstruction *instr);
-    
-private:
-    /// Identifier type
-    enum class IdentifierType {
-        None,
-        CombinedImageSampler,
-        SampleTexture
-    };
-
-    /// Single identifier metadata
-    struct IdentifierMetadata {
-        /// Given type
-        IdentifierType type = IdentifierType::None;
-
-        /// Payload
-        union {
-            struct {
-                IL::ID type;
-                IL::ID image;
-                IL::ID sampler;
-            } combinedImageSampler;
-
-            struct {
-                IL::ID combinedType;
-                IL::ID combinedImageSampler;
-            } sampleImage;
-        };
-    };
-
-    /// All metadata
-    std::vector<IdentifierMetadata> identifierMetadata;
 
 private:
     /// All traceback information
@@ -192,4 +215,8 @@ private:
 
     /// All continue blocks
     std::vector<LoopContinueBlock> loopContinueBlocks;
+
+private:
+    /// General operator allocator
+    LinearBlockAllocator<4096> operandAllocator;
 };

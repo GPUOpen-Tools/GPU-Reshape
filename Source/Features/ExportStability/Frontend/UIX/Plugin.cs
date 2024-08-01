@@ -27,7 +27,6 @@
 using System;
 using Avalonia;
 using DynamicData;
-using GRS.Features.ResourceBounds.UIX.Contexts;
 using GRS.Features.ResourceBounds.UIX.Workspace;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
@@ -58,11 +57,6 @@ namespace GRS.Features.ResourceBounds.UIX
         /// <returns></returns>
         public bool Install()
         {
-            // Add to context menus
-            AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel
-                .GetItem<IInstrumentContextViewModel>()?
-                .Items.Add(new ExportStabilityContextMenuItemViewModel());
-            
             // Get workspace service
             var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
             

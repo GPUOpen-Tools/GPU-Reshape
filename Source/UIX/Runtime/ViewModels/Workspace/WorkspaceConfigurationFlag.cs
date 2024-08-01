@@ -52,14 +52,19 @@ namespace Studio.ViewModels.Workspace
         RequiresSynchronousRecording = (1 << 2),
         
         /// <summary>
+        /// Supports texel addressing
+        /// </summary>
+        CanUseTexelAddressing = (1 << 3),
+        
+        /// <summary>
         /// All valid flags
         /// </summary>
-        All = (1 << 3) - 1,
+        All = (1 << 4) - 1,
         
         /// <summary>
         /// Binding only, negates the test
         /// </summary>
-        BindingNegation = (1 << 3)
+        BindingNegation = (1 << 4)
     }
 
     public static class WorkspaceConfigurationFlagBindings

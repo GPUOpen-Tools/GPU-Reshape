@@ -27,18 +27,20 @@
 #include <Backends/DX12/Compiler/DXIL/DXILDebugModule.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordStringView.h>
+#include <Backends/DX12/Compiler/DXBC/Blocks/DXBCPhysicalBlockShaderSourceInfo.h>
 
 // Common
 #include <Common/FileSystem.h>
 
-DXILDebugModule::DXILDebugModule(const Allocators &allocators)
+DXILDebugModule::DXILDebugModule(const Allocators &allocators, const DXBCPhysicalBlockShaderSourceInfo& shaderSourceInfo)
     : scan(allocators),
       sourceFragments(allocators),
       instructionMetadata(allocators),
       metadata(allocators),
       thinTypes(allocators),
       thinValues(allocators),
-      allocators(allocators) { }
+      allocators(allocators),
+      shaderSourceInfo(shaderSourceInfo) { }
 
 static std::string SanitizeCompilerPath(const std::string_view& view) {
     std::string path = SanitizePath(view);
@@ -146,6 +148,11 @@ bool DXILDebugModule::Parse(const void *byteCode, uint64_t byteLength) {
         }
     }
 
+    // Assume source info block over embedded sources
+    if (!shaderSourceInfo.sourceFiles.empty()) {
+        CreateFragmentsFromSourceBlock();
+    }
+
     // Do we need to resolve?
     if (isContentsUnresolved) {
         RemapLineScopes();
@@ -234,6 +241,7 @@ void DXILDebugModule::ParseTypes(LLVMBlock *block) {
 
 void DXILDebugModule::ParseModuleFunction(const LLVMRecord& record) {
     ThinValue& value = thinValues.emplace_back();
+    value.kind = ThinValueKind::Function;
 
     // Set type
     value.thinType = record.Op32(0);
@@ -296,14 +304,16 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
             case LLVMFunctionRecord::InstCall:
             case LLVMFunctionRecord::InstCall2: {
                 const ThinValue& called = thinValues.at(anchor - record.Op(3));
+                ASSERT(called.kind == ThinValueKind::Function, "Mismatched thin type");
 
+                // Ignore non-semantic instructions from cross-referencing
+                if (!called.bIsNonSemantic) {
+                    instructionMetadata.emplace_back();
+                }
+                
                 // Allocate return value if need be
                 if (!thinTypes[called.thinType].function.isVoidReturn) {
                     thinValues.emplace_back();
-                }
-
-                if (!called.bIsNonSemantic) {
-                    instructionMetadata.emplace_back();
                 }
                 break;
             }
@@ -440,6 +450,11 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, uint32_t anchor, cons
                 return;
             }
 
+            // If the source info block has any contents, ignore embedded
+            if (!shaderSourceInfo.sourceFiles.empty()) {
+                return;
+            }
+
             // A single file either indicates that there's a single file, or, that the contents are unresolved
             // f.x. line directives that need to be mapped
             isContentsUnresolved = (record.opCount == 1u);
@@ -468,7 +483,7 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
     LLVMRecordStringView contents(block->records[record.Op(1) - 1], 0);
 
     // Target fragment which may be derived
-    SourceFragment* fragment = FindOrCreateSourceFragment(filename);
+    SourceFragment* fragment = FindOrCreateSourceFragmentSanitized(filename);
 
     // Fragments are stored contiguously, just keep the uid
     uint32_t targetUID = fragment->uid;
@@ -560,7 +575,7 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
         }
 
         // Deduce length
-        size_t fragmentLength = lastSourceEnd - lastSourceOffset;
+        size_t fragmentLength = lastSourceEnd >= lastSourceOffset ? lastSourceEnd - lastSourceOffset : 0ull;
 
         // Copy contents
         size_t contentOffset = fragment->contents.length();
@@ -682,7 +697,31 @@ uint32_t DXILDebugModule::GetLinearFileUID(uint32_t scopeMdId) {
     return fileMd.file.linearFileUID;
 }
 
-DXILDebugModule::SourceFragment *DXILDebugModule::FindOrCreateSourceFragment(const LLVMRecordStringView &view) {
+void DXILDebugModule::CreateFragmentsFromSourceBlock() {
+    // Block contents should never need resolving 
+    isContentsUnresolved = false;
+
+    // Fill all files
+    for (const DXBCPhysicalBlockShaderSourceInfo::SourceFile& file : shaderSourceInfo.sourceFiles) {
+        SourceFragment* fragment = FindOrCreateSourceFragmentSanitized(file.filename);
+
+        // Block contents shouldn't require any preprocessing
+        // TODO: Consider backing storage, avoids needless copies
+        fragment->contents = file.contents;
+
+        // Initial line
+        fragment->lineOffsets.push_back(0);
+        
+        // Summarize remaining line endings
+        for (size_t i = 0; i < fragment->contents.size(); i++) {
+            if (fragment->contents[i] == '\n') {
+                fragment->lineOffsets.push_back(static_cast<uint32_t>(i + 1));
+            }
+        }
+    }
+}
+
+DXILDebugModule::SourceFragment *DXILDebugModule::FindOrCreateSourceFragmentSanitized(const LLVMRecordStringView &view) {
     // Copy to temporary string
     std::string filename;
     filename.resize(view.Length());
@@ -690,6 +729,14 @@ DXILDebugModule::SourceFragment *DXILDebugModule::FindOrCreateSourceFragment(con
 
     // Cleanup
     filename = SanitizeCompilerPath(filename);
+
+    // Check on filename
+    return FindOrCreateSourceFragment(filename);
+}
+
+DXILDebugModule::SourceFragment * DXILDebugModule::FindOrCreateSourceFragmentSanitized(const std::string_view &view) {
+    // Cleanup
+    std::string filename = SanitizeCompilerPath(view);
 
     // Check on filename
     return FindOrCreateSourceFragment(filename);

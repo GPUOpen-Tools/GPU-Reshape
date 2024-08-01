@@ -60,6 +60,11 @@ namespace std {
         return s;
     }
 
+    static inline std::string lowercase(std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+        return s;
+    }
+
     static inline std::string uppercase(std::string s) {
         std::transform(s.begin(), s.end(), s.begin(), ::toupper);
         return s;

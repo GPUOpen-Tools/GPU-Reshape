@@ -27,6 +27,7 @@
 using System;
 using DynamicData;
 using Runtime.ViewModels.Traits;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace

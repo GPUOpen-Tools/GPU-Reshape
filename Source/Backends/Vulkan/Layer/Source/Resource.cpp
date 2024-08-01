@@ -31,9 +31,13 @@
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/States/SamplerState.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
+#include <Backends/Vulkan/Resource/ResourceInfo.h>
+#include <Backends/Vulkan/Translation.h>
+#include <Backends/Vulkan/Memory.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
+
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -61,9 +65,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     state->createInfo = *pCreateInfo;
 
     // Create mapping template
-    state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
-    state->virtualMapping.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMapping.srb = ~0u;
+    state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+    state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+    state->virtualMapping.token.formatId = static_cast<uint32_t>(Backend::IL::Format::None);
+    state->virtualMapping.token.formatSize = 0;
+    state->virtualMapping.token.width = static_cast<uint32_t>(pCreateInfo->size);
+    state->virtualMapping.token.DefaultViewToRange();
 
     // Store lookup
     table->states_buffer.Add(*pBuffer, state);
@@ -71,6 +78,22 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     // Inform controller
     table->versioningController->CreateOrRecommitBuffer(state);
 
+    // Resource flags
+    ResourceCreateFlagSet flags = ResourceCreateFlag::None;
+
+    // Report sparse resources
+    if (pCreateInfo->flags & VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT) {
+        flags |= ResourceCreateFlag::Tiled;
+    }
+
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+        proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+            .resource = GetResourceInfoFor(state->virtualMapping, false),
+            .createFlags = flags
+        });
+    }
+    
     // OK
     return VK_SUCCESS;
 }
@@ -91,6 +114,20 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBufferView(VkDevice device, const Vk
 
     // Inherit mapping
     state->virtualMapping = state->parent->virtualMapping;
+    state->virtualMapping.token.viewFormatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
+    state->virtualMapping.token.viewFormatSize = GetFormatByteSize(pCreateInfo->format);
+
+    // Report view widths as that of the view format
+    state->virtualMapping.token.viewBaseWidth = static_cast<uint32_t>(pCreateInfo->offset / state->virtualMapping.token.viewFormatSize);
+
+    // Optional view range
+    uint32_t byteSizeMin1 = std::max(1u, state->virtualMapping.token.viewFormatSize);
+    if (pCreateInfo->range != VK_WHOLE_SIZE) {
+        state->virtualMapping.token.viewWidth = static_cast<uint32_t>(pCreateInfo->range / byteSizeMin1);
+    } else {
+        VkDeviceSize baseWidth = state->virtualMapping.token.width * state->virtualMapping.token.formatSize;
+        state->virtualMapping.token.viewWidth = state->virtualMapping.token.viewBaseWidth - static_cast<uint32_t>(baseWidth / byteSizeMin1);
+    }
 
     // Store lookup
     table->states_bufferView.Add(*pView, state);
@@ -124,16 +161,41 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
     state->table = table;
     state->createInfo = *pCreateInfo;
 
+    // Validation
+    ASSERT(pCreateInfo->extent.depth == 1u || pCreateInfo->arrayLayers == 1u, "Volumetric and sliced image");
+
     // Create mapping template
-    state->virtualMappingTemplate.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-    state->virtualMappingTemplate.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMappingTemplate.srb = ~0u;
+    state->virtualMappingTemplate.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+    state->virtualMappingTemplate.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+    state->virtualMappingTemplate.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
+    state->virtualMappingTemplate.token.formatSize = GetFormatByteSize(pCreateInfo->format);
+    state->virtualMappingTemplate.token.width = pCreateInfo->extent.width;
+    state->virtualMappingTemplate.token.height = pCreateInfo->extent.height;
+    state->virtualMappingTemplate.token.depthOrSliceCount = std::max(pCreateInfo->arrayLayers, pCreateInfo->extent.depth);
+    state->virtualMappingTemplate.token.mipCount = pCreateInfo->mipLevels;
+    state->virtualMappingTemplate.token.DefaultViewToRange();
 
     // Store lookup
     table->states_image.Add(*pImage, state);
 
     // Inform controller
     table->versioningController->CreateOrRecommitImage(state);
+
+    // Resource flags
+    ResourceCreateFlagSet flags = ResourceCreateFlag::None;
+
+    // Report sparse resources
+    if (pCreateInfo->flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) {
+        flags |= ResourceCreateFlag::Tiled;
+    }
+
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+        proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+            .resource = GetResourceInfoFor(state),
+            .createFlags = flags
+        });
+    }
 
     // OK
     return VK_SUCCESS;
@@ -153,8 +215,17 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImageView(VkDevice device, const VkI
     state->object = *pView;
     state->parent = table->states_image.Get(pCreateInfo->image);
 
+    // Expand the subresource for mappings
+    VkImageSubresourceRange expandedRange = ExpandImageSubresourceRange(state->parent, pCreateInfo->subresourceRange);
+
     // Inherit mapping
     state->virtualMapping = state->parent->virtualMappingTemplate;
+    state->virtualMapping.token.viewFormatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
+    state->virtualMapping.token.viewFormatSize = GetFormatByteSize(pCreateInfo->format);
+    state->virtualMapping.token.viewBaseMip = expandedRange.baseMipLevel;
+    state->virtualMapping.token.viewMipCount = expandedRange.levelCount;
+    state->virtualMapping.token.viewBaseSlice = expandedRange.baseArrayLayer;
+    state->virtualMapping.token.viewSliceCount = expandedRange.layerCount;
 
     // Store lookup
     table->states_imageView.Add(*pView, state);
@@ -178,9 +249,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSampler(VkDevice device, const VkSam
     state->table = table;
 
     // Create mapping template
-    state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
-    state->virtualMapping.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMapping.srb = ~0u;
+    state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
+    state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
 
     // Store lookup
     table->states_sampler.Add(*pSampler, state);
@@ -199,12 +269,22 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyBuffer(VkDevice device, VkBuffer buffer
 
     // Get state
     BufferState* state = table->states_buffer.Get(buffer);
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+        proxyTable.destroyResource.TryInvoke(GetResourceInfoFor(state->virtualMapping, false));
+    }
 
     // Free memory
     destroy(state->debugName, table->allocators);
     
     // Inform controller
     table->versioningController->DestroyBuffer(state);
+
+    // Has bound memory?
+    if (state->memoryTag.owner) {
+        FreeMemoryTag(state->memoryTag);
+    }
 
     // Remove the state
     table->states_buffer.Remove(buffer);
@@ -238,12 +318,22 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyImage(VkDevice device, VkImage image, c
 
     // Get state
     ImageState* state = table->states_image.Get(image);
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+        proxyTable.destroyResource.TryInvoke(GetResourceInfoFor(state));
+    }
 
     // Free memory
     destroy(state->debugName, table->allocators);
 
     // Inform controller
     table->versioningController->DestroyImage(state);
+
+    // Has bound memory?
+    if (state->memoryTag.owner) {
+        FreeMemoryTag(state->memoryTag);
+    }
 
     // Remove the state
     table->states_image.Remove(image);

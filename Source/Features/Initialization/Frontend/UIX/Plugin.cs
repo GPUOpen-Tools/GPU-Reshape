@@ -27,7 +27,6 @@
 using System;
 using Avalonia;
 using DynamicData;
-using GRS.Features.Initialization.UIX.Contexts;
 using GRS.Features.Initialization.UIX.Workspace;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
@@ -62,11 +61,6 @@ namespace GRS.Features.Initialization.UIX
             // Add data
             AvaloniaLocator.Current.GetService<ISettingsService>()?.EnsureDefault<Data>();
             
-            // Add to context menus
-            AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel
-                .GetItem<IInstrumentContextViewModel>()?
-                .Items.Add(new InitializationContextMenuItemViewModel());
-            
             // Get workspace service
             var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
             
@@ -78,7 +72,9 @@ namespace GRS.Features.Initialization.UIX
             {
                 Name = Resources.Workspace_Configuration_Initialization_Name,
                 Description = Resources.Workspace_Configuration_Initialization_Description,
-                Flags = WorkspaceConfigurationFlag.CanDetail | WorkspaceConfigurationFlag.RequiresSynchronousRecording,
+                Flags = WorkspaceConfigurationFlag.CanDetail |
+                        WorkspaceConfigurationFlag.RequiresSynchronousRecording |
+                        WorkspaceConfigurationFlag.CanUseTexelAddressing,
                 FeatureName = "Initialization"
             });
 

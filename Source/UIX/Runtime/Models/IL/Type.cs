@@ -111,7 +111,7 @@ namespace Studio.Models.IL
         /// <summary>
         /// Target pointee type
         /// </summary>
-        public Type Pointee;
+        public Type? Pointee;
 
         /// <summary>
         /// Address space of the pointer
@@ -129,7 +129,7 @@ namespace Studio.Models.IL
         /// <summary>
         /// Number of elements
         /// </summary>
-        public int Count;
+        public uint Count;
     }
     
     public class TextureType : Type

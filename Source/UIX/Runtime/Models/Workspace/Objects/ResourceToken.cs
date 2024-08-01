@@ -41,11 +41,6 @@ namespace Studio.Models.Workspace.Objects
         /// <summary>
         /// Resource type
         /// </summary>
-        public uint Type => (Token >> 22) & ((1 << 2) - 1);
-
-        /// <summary>
-        /// Sub-resource base
-        /// </summary>
-        public uint SRB => (Token >> 24) & ((1 << 8) - 1);
+        public uint Type => (Token >> 22) & ((1 << 5) - 1);
     }
 }

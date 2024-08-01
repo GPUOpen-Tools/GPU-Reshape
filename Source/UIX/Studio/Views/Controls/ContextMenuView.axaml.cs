@@ -26,12 +26,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.ExtendedToolkit.Extensions;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Metadata;
 using ReactiveUI;
+using Studio.Extensions;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 
@@ -42,9 +45,6 @@ namespace Studio.Views.Controls
         public ContextMenuView()
         {
             InitializeComponent();
-
-            // Set context
-            DataContext = App.Locator.GetService<IContextMenuService>()?.ViewModel;
         }
 
         static ContextMenuView()
@@ -85,30 +85,75 @@ namespace Studio.Views.Controls
                 control.ContextMenu.PlacementTarget = control;
 
                 // Get service
-                if (App.Locator.GetService<IContextMenuService>()?.ViewModel is { } contextMenuItemViewModel)
+                if (App.Locator.GetService<IContextMenuService>() is { } service)
                 {
+                    IEnumerable<object>? dataViewModelSource = null;
+
                     // Determine appropriate view model
-                    object? dataViewModel;
-                    if (control is ListBox listbox)
+                    if (FindParent<TreeViewItem>(e.Source as IControl) is {} treeViewItem)
                     {
-                        dataViewModel = listbox.SelectedItem;
+                        if (treeViewItem.TryFindParent<TreeView>() is { } parentTree)
+                        {
+                            dataViewModelSource = parentTree.SelectedItems.Cast<object>();
+                        }
                     }
-                    else
+                    else if (FindParent<ListBoxItem>(e.Source as IControl) is {} listBoxItem)
                     {
-                        dataViewModel = control.DataContext;
+                        if (listBoxItem.TryFindParent<ListBox>() is { } parentList)
+                        {
+                            dataViewModelSource = parentList.SelectedItems.Cast<object>();
+                        }
+                    }
+                    
+                    // If none found, just assume the immediate data context
+                    if (dataViewModelSource == null)
+                    {
+                        dataViewModelSource = control.DataContext.SingleEnumerable();
+                    }
+                    
+                    // Unwrap all view models
+                    object[]? dataViewModels = dataViewModelSource?.Select(dataViewModel =>
+                    {
+                        if (dataViewModel is ViewModels.Controls.IContainedViewModel containedViewModel)
+                        {
+                            return containedViewModel.ViewModel;
+                        }
+
+                        // No layering
+                        return dataViewModel;
+                    }).OfType<object>().ToArray();
+
+                    // Dynamically populated items
+                    List<IContextMenuItemViewModel> items = new();
+
+                    // Install all service models
+                    if (dataViewModels != null)
+                    {
+                        foreach (IContextViewModel serviceViewModel in service.ViewModels)
+                        {
+                            serviceViewModel.Install(items, dataViewModels);
+                        }
                     }
 
-                    // Expand contained models
-                    if (dataViewModel is ViewModels.Controls.IContainedViewModel containedViewModel)
+                    // If no services, just close it
+                    if (items.Count == 0)
                     {
-                        dataViewModel = containedViewModel.ViewModel;
+                        control.ContextMenu.Close();
+                        return;
+                    }
+                    
+                    // Setup all items
+                    foreach (IContextMenuItemViewModel contextMenuItemViewModel in items)
+                    {
+                        // Set on context menu
+                        contextMenuItemViewModel.TargetViewModels = dataViewModels;
+
+                        // Set on children
+                        SetViewModels(contextMenuItemViewModel.Items, dataViewModels);
                     }
 
-                    // Set on context menu
-                    contextMenuItemViewModel.TargetViewModel = dataViewModel;
-
-                    // Set on children
-                    SetViewModels(contextMenuItemViewModel.Items, dataViewModel);
+                    // Assign to control
+                    control.ContextMenu.Items = items;
                 }
 
                 // Cleanup
@@ -116,14 +161,29 @@ namespace Studio.Views.Controls
             }
         }
 
-        private static void SetViewModels(IEnumerable<ViewModels.Contexts.IContextMenuItemViewModel> items, object? viewModel)
+        private static void SetViewModels(IEnumerable<ViewModels.Contexts.IContextMenuItemViewModel> items, object[]? viewModels)
         {
             // Set on children
             foreach (var item in items)
             {
-                item.TargetViewModel = viewModel;
-                SetViewModels(item.Items, viewModel);
+                item.TargetViewModels = viewModels;
+                SetViewModels(item.Items, viewModels);
             }
+        }
+
+        private static T? FindParent<T>(IControl? control) where T : class
+        {
+            while (control != null)
+            {
+                if (control is T typed)
+                {
+                    return typed;
+                }
+
+                control = control.Parent;
+            }
+
+            return null;
         }
 
         /// <summary>

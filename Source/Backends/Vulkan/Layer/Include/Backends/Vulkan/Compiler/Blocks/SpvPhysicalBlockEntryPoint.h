@@ -28,6 +28,10 @@
 
 // Layer
 #include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockSection.h>
+#include <Backends/Vulkan/Compiler/Spv.h>
+
+// Common
+#include <Common/Containers/TrivialStackVector.h>
 
 /// Entry point physical block
 struct SpvPhysicalBlockEntryPoint : public SpvPhysicalBlockSection {
@@ -35,4 +39,73 @@ struct SpvPhysicalBlockEntryPoint : public SpvPhysicalBlockSection {
 
     /// Parse all instructions
     void Parse();
+
+    /// Compile all new instructions
+    void Compile();
+
+    /// Copy to a new block
+    /// \param remote the remote table
+    /// \param out destination capability
+    void CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockEntryPoint& out);
+
+public:
+    /// Add a shadewr interface value
+    /// \param id identifier to be added to entry point interfaces
+    void AddInterface(SpvId id) {
+        for (EntryPoint& entryPoint : entryPoints) {
+            entryPoint.interfaces.push_back(id);
+        }
+    }
+    
+    /// Add a shader interface value
+    /// \param storageClass variable storage class
+    /// \param id identifier to be added to entry point interfaces
+    void AddInterface(SpvStorageClass storageClass, SpvId id);
+
+private:
+    struct ExecutionMode {
+        /// Execution modes may use different opcodes
+        SpvOp opCode;
+        
+        /// Annotated execution mode
+        SpvExecutionMode executionMode;
+
+        /// Given payload for this execution mode
+        TrivialStackVector<uint32_t, 8> payload;
+    };
+    
+    struct EntryPoint {
+        /// Identifier of this entrypoint
+        SpvId id;
+        
+        /// Assigned execution model
+        SpvExecutionModel executionModel;
+
+        /// Entrypoint name
+        std::string name;
+
+        /// All interfaces
+        std::vector<SpvId> interfaces;
+
+        /// All execution modes
+        std::vector<ExecutionMode> executionModes;
+    };
+
+    /// Compile an entry point
+    /// \param entryPoint entry point to compile
+    void CompileEntryPoint(const EntryPoint& entryPoint);
+
+    /// Compile an execution mode, literal/id derived from opcode
+    /// \param entryPoint target entry point
+    /// \param executionMode the mode to compile
+    void CompileExecutionMode(SpvId entryPoint, ExecutionMode &executionMode);
+
+    /// Get an entry point
+    /// \param id id to search for 
+    /// \return nullptr if not found
+    EntryPoint* GetEntryPoint(SpvId id);
+
+private:
+    /// All entrypoints
+    std::vector<EntryPoint> entryPoints;
 };

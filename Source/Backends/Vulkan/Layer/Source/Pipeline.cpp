@@ -132,6 +132,43 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
     return VK_SUCCESS;
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice device, VkDeferredOperationKHR deferredOperation, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkRayTracingPipelineCreateInfoKHR* pCreateInfos, const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines) {
+    DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Delay writeout
+    auto pipelines = ALLOCA_ARRAY(VkPipeline, createInfoCount);
+
+    // Pass down callchain
+    VkResult result = table->next_vkCreateRayTracingPipelinesKHR(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pipelines);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Allocate states
+    for (uint32_t i = 0; i < createInfoCount; i++) {
+        auto state = new (table->allocators) RaytracingPipelineState;
+        state->type = PipelineType::Compute;
+        state->table = table;
+        state->object = pipelines[i];
+
+        // External user
+        state->AddUser();
+
+        // Add a reference to the layout
+        state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
+        state->layout->AddUser();
+
+        // Inform the controller
+        table->instrumentationController->CreatePipelineAndAdd(state);
+    }
+
+    // Writeout
+    std::memcpy(pPipelines, pipelines, sizeof(VkPipeline) * createInfoCount);
+
+    // OK
+    return VK_SUCCESS;
+}
+
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pipeline, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
@@ -159,9 +196,6 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
 }
 
 PipelineState::~PipelineState() {
-    // Remove state lookup
-    table->states_pipeline.RemoveState(this);
-
     // Type specific info
     switch (type) {
         default:
@@ -193,4 +227,10 @@ PipelineState::~PipelineState() {
 
     // Free the layout
     destroyRef(layout, table->allocators);
+}
+
+void PipelineState::ReleaseHost() {
+    // Remove state lookup
+    // Reference host has locked this
+    table->states_pipeline.RemoveStateNoLock(this);
 }

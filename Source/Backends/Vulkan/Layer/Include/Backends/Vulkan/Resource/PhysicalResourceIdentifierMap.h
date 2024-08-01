@@ -33,12 +33,15 @@
 #include <Common/Assert.h>
 
 // Std
+#include <mutex>
 #include <vector>
 
 struct PhysicalResourceIdentifierMap {
     /// Allocate a new PUID
     /// \return
     uint32_t AllocatePUID() {
+        std::lock_guard guard(mutex);
+        
         if (freePUIDs.empty()) {
             ASSERT(puidHead < IL::kResourceTokenPUIDInvalidStart, "Exceeded maximum resource count");
             return puidHead++;
@@ -52,10 +55,14 @@ struct PhysicalResourceIdentifierMap {
     /// Free a puid
     /// \param puid
     void FreePUID(uint32_t puid) {
+        std::lock_guard guard(mutex);
         freePUIDs.push_back(puid);
     }
 
 private:
+    /// Shared lock
+    std::mutex mutex;
+    
     /// Current head counter
     uint32_t puidHead{IL::kResourceTokenPUIDReservedCount};
 

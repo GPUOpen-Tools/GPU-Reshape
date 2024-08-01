@@ -26,6 +26,7 @@
 
 using System.ComponentModel;
 using DynamicData;
+using Studio.ViewModels.Data;
 using Studio.ViewModels.Setting;
 
 namespace Studio.Services
@@ -42,6 +43,8 @@ namespace Studio.Services
             // Standard settings
             ViewModel.Items.AddRange(new ISettingViewModel[]
             {
+                new StartupViewModel(),
+                new FeaturesSettingViewModel(),
                 new DiscoverySettingViewModel(),
                 new ApplicationListSettingViewModel()
             });

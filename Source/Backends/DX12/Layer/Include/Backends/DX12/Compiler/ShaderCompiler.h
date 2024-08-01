@@ -50,6 +50,7 @@ class ShaderCompilerDebug;
 class DXILSigner;
 class DXBCSigner;
 class DXBCConverter;
+class DXMSCompiler;
 
 struct ShaderJob {
     /// State to compile
@@ -85,7 +86,13 @@ public:
 
 protected:
     /// Compile a given job
-    void CompileShader(const ShaderJob &job);
+    /// \return success state
+    bool CompileShader(const ShaderJob &job);
+
+    /// Compile a new slim module
+    /// \param sourceModule the module to compile from
+    /// \return module with embedded debug data
+    IDXModule* CompileSlimModule(IDXModule* sourceModule);
 
     /// Worker entry
     void Worker(void *userData);
@@ -98,6 +105,9 @@ private:
 
     /// Debug device
     ComRef<ShaderCompilerDebug> debug;
+
+    /// Microsoft compiler
+    ComRef<DXMSCompiler> msCompiler;
 
     /// Signers
     ComRef<DXILSigner> dxilSigner;

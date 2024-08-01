@@ -91,6 +91,11 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
         }
     }
 
+    // Account for static samplers in the user bound
+    for (uint32_t i = 0; i < source.NumStaticSamplers; i++) {
+        userRegisterSpaceBound = std::max(userRegisterSpaceBound, source.pStaticSamplers[i].RegisterSpace + 1);
+    }
+
     // Prepare space
     RootRegisterBindingInfo bindingInfo;
     bindingInfo.space = userRegisterSpaceBound;
@@ -138,27 +143,16 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
 void WriteRootVisibilityMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, RootParameterVisibility visibility, uint32_t space, uint32_t offset, const RootSignatureUserMapping& value) {
     // TODO: This is a lot of indirections, perhaps a linear approach is more favorable?
 
-    // Get visibility class
+    // Get final user space
     RootSignatureVisibilityClass& visibilityClass = mapping->visibility[static_cast<uint32_t>(visibility)];
-
-    // Get user class
-    RootSignatureUserClass& userClass = visibilityClass.spaces[static_cast<uint32_t>(type)];
-
-    // Ensure user space length
-    if (userClass.spaces.size() <= space) {
-        userClass.spaces.resize(space + 1);
-    }
-
-    // Get user space
-    RootSignatureUserSpace& userSpace = userClass.spaces[space];
-
-    // Ensure mappings length
-    if (userSpace.mappings.size() <= offset) {
-        userSpace.mappings.resize(offset + 1);
-    }
+    RootSignatureUserClass&       userClass       = visibilityClass.spaces[static_cast<uint32_t>(type)];
+    RootSignatureUserSpace&       userSpace       = userClass.spaces[space];
 
     // Write mapping
     userSpace.mappings[offset] = value;
+
+    // Keep track of the bounds
+    userSpace.lastRegister = std::max(userSpace.lastRegister, offset);
 }
 
 void WriteRootMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, D3D12_SHADER_VISIBILITY visibility, uint32_t space, uint32_t offset, const RootSignatureUserMapping& value) {
@@ -282,7 +276,16 @@ template<typename T, typename U>
 static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount, const U* staticSamplers, uint32_t staticSamplerCount) {
     auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping;
 
+    // Sanity clear
+    std::memset(mapping->rootDWordOffsets, 0u, sizeof(mapping->rootDWordOffsets));
+
     // TODO: Could do a pre-pass
+
+    // The dword offset for immediate descriptor data
+    uint32_t rootDWordOffset = 0;
+
+    // Number of dwords per inline token metadata
+    constexpr uint32_t kTokenMetadataDWordCount = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
 
     // Create hash and mappings
     for (uint32_t i = 0; i < parameterCount; i++) {
@@ -290,6 +293,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
         // Hash common data
         CombineHash(mapping->signatureHash, parameter.ShaderVisibility);
+
+        // Set root offset
+        mapping->rootDWordOffsets[i] = rootDWordOffset;
 
         // Hash parameter data
         switch (parameter.ParameterType) {
@@ -335,6 +341,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                         // Create at space[base + idx]
                         RootSignatureUserMapping user;
                         user.rootParameter = i;
+                        user.dwordOffset = rootDWordOffset;
                         user.offset = descriptorOffset;
                         user.isUnbounded = true;
                         WriteRootMapping(mapping, classType, parameter.ShaderVisibility, range.RegisterSpace, range.BaseShaderRegister, user);
@@ -344,6 +351,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                             // Create at space[base + idx]
                             RootSignatureUserMapping user;
                             user.rootParameter = i;
+                            user.dwordOffset = rootDWordOffset;
                             user.offset = descriptorOffset + registerIdx;
                             WriteRootMapping(mapping, classType, parameter.ShaderVisibility, range.RegisterSpace, range.BaseShaderRegister + registerIdx, user);
                         }
@@ -353,6 +361,8 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                     descriptorOffset += range.NumDescriptors;
                 }
 
+                // Occupies one dword (indirection)
+                rootDWordOffset += 1u;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
@@ -363,8 +373,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
+                user.dwordOffset = rootDWordOffset;
                 user.offset = 0;
                 WriteRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.ShaderVisibility, parameter.Constants.RegisterSpace, parameter.Constants.ShaderRegister, user);
+                
+                // Occupies one dword (dummy)
+                rootDWordOffset += 1u;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV: {
@@ -375,8 +389,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
+                user.dwordOffset = rootDWordOffset;
                 user.offset = 0;
                 WriteRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
+
+                // Occupies entire metadata range, this is an inline root constant
+                rootDWordOffset += kTokenMetadataDWordCount;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_SRV: {
@@ -387,8 +405,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
+                user.dwordOffset = rootDWordOffset;
                 user.offset = 0;
                 WriteRootMapping(mapping, RootSignatureUserClassType::SRV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
+                
+                // Occupies entire metadata range, this is an inline root constant
+                rootDWordOffset += kTokenMetadataDWordCount;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
@@ -399,8 +421,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
+                user.dwordOffset = rootDWordOffset;
                 user.offset = 0;
                 WriteRootMapping(mapping, RootSignatureUserClassType::UAV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
+                
+                // Occupies entire metadata range, this is an inline root constant
+                rootDWordOffset += kTokenMetadataDWordCount;
                 break;
             }
         }
@@ -422,6 +448,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
         WriteRootMapping(mapping, RootSignatureUserClassType::Sampler, sampler.ShaderVisibility, sampler.RegisterSpace, sampler.ShaderRegister, user);
     }
 
+    // Set total number of dwords needed
+    mapping->rootDWordCount = rootDWordOffset;
+    
     // OK
     return mapping;
 }
@@ -499,9 +528,11 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     exportParameter.DescriptorTable.NumDescriptorRanges = 5u;
     exportParameter.DescriptorTable.pDescriptorRanges = ranges;
 
-    // Range version 1.1 assumes STATIC registers, explicitly say otherwise
+    // Range version 1.1 assumes STATIC registers and data (CBV), explicitly say otherwise
     if constexpr(std::is_same_v<T, D3D12_ROOT_SIGNATURE_DESC1>) {
+        // TODO: Generalize the register mappings, these magic constants are horrible
         ranges[0].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+        ranges[3].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
     }
 
     // Descriptor constant parameter
@@ -526,6 +557,16 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     // Create mappings
     *outMapping = CreateRootPhysicalMappings(state, parameters, parameterCount, source.pStaticSamplers, source.NumStaticSamplers);
 
+    // All deny flags
+    constexpr D3D12_ROOT_SIGNATURE_FLAGS denyFlags =
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+    
     // Versioned creation info
     D3D12_VERSIONED_ROOT_SIGNATURE_DESC versioned;
     versioned.Version = version;
@@ -535,10 +576,12 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
         versioned.Desc_1_1 = source;
         versioned.Desc_1_1.pParameters = parameters;
         versioned.Desc_1_1.NumParameters = parameterCount;
+        versioned.Desc_1_1.Flags &= ~denyFlags;
     } else {
         versioned.Desc_1_0 = source;
         versioned.Desc_1_0.pParameters = parameters;
         versioned.Desc_1_0.NumParameters = parameterCount;
+        versioned.Desc_1_0.Flags &= ~denyFlags;
     }
 
     // Create it

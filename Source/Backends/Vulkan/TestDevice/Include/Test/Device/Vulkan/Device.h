@@ -46,6 +46,7 @@ namespace Test::Vulkan {
         void Install(const DeviceInfo &info) override;
         QueueID GetQueue(QueueType type) override;
         BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) override;
+        BufferID CreateStructuredBuffer(ResourceType type, uint32_t elementSize, uint64_t size, const void *data, uint64_t dataSize) override;
         TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) override;
         SamplerID CreateSampler() override;
         ResourceLayoutID CreateResourceLayout(const ResourceType *types, uint32_t count, bool isLastUnbounded = false) override;
@@ -135,7 +136,8 @@ namespace Test::Vulkan {
                 VkBuffer buffer;
                 VkBufferView view;
                 VmaAllocation allocation;
-            } texelBuffer;
+                uint32_t structuredSize;
+            } buffer;
 
             struct {
                 ResourceType type;

@@ -69,5 +69,10 @@ namespace Studio.Models.IL
         /// Identifier lookup
         /// </summary>
         public Dictionary<uint, object> Lookup = new();
+
+        /// <summary>
+        /// Identifier lookup for symbolic values
+        /// </summary>
+        public Dictionary<uint, object> SymbolicLookup = new();
     }
 }

@@ -188,6 +188,7 @@ void ShaderExportStreamer::Enqueue(ShaderExportQueueState* queue, ShaderExportSt
     segment->fenceNextCommitId = fence->GetNextCommitID();
 
     // OK
+    std::lock_guard queueGuard(table->states_queue.GetLock());
     queue->liveSegments.push_back(segment);
 }
 
@@ -280,10 +281,18 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state) {
         bindState.deviceDescriptorOverwriteMask = 0x0;
     }
 
+    // Release all descriptors
+    for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
+        descriptorAllocator->Free(allocation.info);
+    }
+    
     // Clear push data
     state->persistentPushConstantData.resize(table->physicalDeviceProperties.limits.maxPushConstantsSize);
     std::fill(state->persistentPushConstantData.begin(), state->persistentPushConstantData.end(), 0u);
 
+    // Cleanup
+    state->segmentDescriptors.clear();
+    
     // OK
     state->pending = false;
 }
@@ -561,6 +570,9 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, Pipe
         case PipelineType::Compute:
             vkBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
             break;
+        case PipelineType::Raytracing:
+            vkBindPoint = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+            break;
     }
 
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
@@ -636,31 +648,9 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
         descriptorAllocator->Update(allocation.info, segment->allocation, segment->prmtPersistentVersion);
     }
 
-    // Cleanup data segments
-    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[i];
-
-        // Move descriptor data ownership to segment
-        segment->descriptorDataSegments.push_back(bindState.descriptorDataAllocator->ReleaseSegment());
-
-        // Release all push segment data
-        if (bindState.pushDescriptorAppendAllocator) {
-            segment->pushDescriptorSegments.push_back(bindState.pushDescriptorAppendAllocator->ReleaseSegment());
-        }
-    }
-
     // Add context handle
     ASSERT(state->commandContextHandle != kInvalidCommandContextHandle, "Unmapped command context handle");
     segment->commandContextHandles.push_back(state->commandContextHandle);
-
-    // Move ownership to the segment
-    segment->segmentDescriptors.insert(segment->segmentDescriptors.end(), state->segmentDescriptors.begin(), state->segmentDescriptors.end());
-
-    // Empty out
-    state->segmentDescriptors.clear();
-
-    // Data has been migrated
-    state->pending = false;
 }
 
 void ShaderExportStreamer::ProcessSegmentsNoQueueLock(ShaderExportQueueState* queue, TrivialStackVector<CommandContextHandle, 32u>& completedHandles) {
@@ -749,25 +739,7 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
         queueState->pools_fences.Push(segment->fence);
     }
 
-    // Release all descriptors
-    for (const ShaderExportSegmentDescriptorAllocation& allocation : segment->segmentDescriptors) {
-        descriptorAllocator->Free(allocation.info);
-    }
-
-    // Release all descriptor data
-    for (const DescriptorDataSegment& dataSegment : segment->descriptorDataSegments) {
-        ReleaseDescriptorDataSegment(dataSegment);
-    }
-
-    // Release all push entries
-    for (const PushDescriptorSegment& pushSegment : segment->pushDescriptorSegments) {
-        pushSegment.ReleaseEntries();
-    }
-
     // Cleanup
-    segment->segmentDescriptors.clear();
-    segment->pushDescriptorSegments.clear();
-    segment->descriptorDataSegments.clear();
     segment->commandContextHandles.clear();
 
     // Remove fence reference
@@ -855,9 +827,6 @@ VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueSt
     // Update all PRM data
     segment->prmtPersistentVersion = table->prmTable->GetPersistentVersion(segment->prePatchCommandBuffer, prmtState);
 
-    // Done
-    table->next_vkEndCommandBuffer(segment->prePatchCommandBuffer);
-
     // OK
     return segment->prePatchCommandBuffer;
 }
@@ -925,9 +894,6 @@ VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueS
             0, nullptr
     );
     
-    // Done
-    table->next_vkEndCommandBuffer(segment->postPatchCommandBuffer);
-
     // OK
     return segment->postPatchCommandBuffer;
 }

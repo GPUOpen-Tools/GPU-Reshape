@@ -30,6 +30,7 @@
 #include "Type.h"
 #include "ID.h"
 #include "CapabilityTable.h"
+#include "ResourceTokenMetadataField.h"
 
 // Common
 #include <Common/Containers/LinearBlockAllocator.h>
@@ -178,6 +179,26 @@ namespace Backend::IL {
         Container::const_iterator end() const { return types.end(); }
         Container::const_reverse_iterator rend() const { return types.rend(); }
 
+    public: /** Type helpers */
+        /// Get the inbuilt resource token type
+        const StructType* GetResourceToken() {
+            if (inbuilt.resourceToken) {
+                return inbuilt.resourceToken;
+            }
+
+            // Filled with dwords
+            const IntType *uint32 = FindTypeOrAdd(IntType{ .bitWidth = 32, .signedness = false });
+
+            // Create struct declaration, one dword per field
+            StructType decl;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceTokenMetadataField::Count); i++) {
+                decl.memberTypes.push_back(uint32);
+            }
+
+            // Create inbuilt
+            return inbuilt.resourceToken = FindTypeOrAdd(decl);
+        }
+
     private:
         /// Allocate a new type
         /// \tparam T the type cxx type
@@ -243,15 +264,18 @@ namespace Backend::IL {
             SortMap<SamplerType> samplerMap;
             SortMap<FunctionType> functionMap;
             SortMap<StructType> structMap;
-        };
+        } maps;
+
+        /// Inbuilt types
+        struct InbuiltTypes {
+            const StructType* resourceToken{nullptr};
+        } inbuilt;
 
         /// Declaration order
         Container types;
 
         /// Identifiers
         IdentifierMap& identifierMap;
-
-        TypeMaps maps;
 
         /// Id lookup
         std::vector<const Type*> idMap;

@@ -62,6 +62,11 @@ public:
     /// \return nullptr if not found
     const Backend::IL::Type* GetHandleType(DXILShaderResourceClass _class, uint32_t handleID);
 
+    /// Get the binding group that a handle type belongs to
+    /// \param type type to check
+    /// \return binding group
+    IL::ID GetTypeSymbolicBindingGroup(const Backend::IL::Type* type);
+
 public:
     /// Compile all records
     void CompileMetadata(struct LLVMBlock *block);
@@ -297,6 +302,26 @@ public:
     /// \return nullptr if not found
     const DXILMetadataHandleEntry* GetHandle(DXILShaderResourceClass _class, int64_t space, int64_t rangeLowerBound, int64_t rangeUpperBound);
 
+    /// Get the symbolic texture bindings, always valid
+    IL::ID GetSymbolicTextureBindings() const {
+        return symbolicTextureBindings;
+    }
+    
+    /// Get the symbolic sampler bindings, always valid
+    IL::ID GetSymbolicSamplerBindings() const {
+        return symbolicSamplerBindings;
+    }
+    
+    /// Get the symbolic buffer bindings, always valid
+    IL::ID GetSymbolicBufferBindings() const {
+        return symbolicBufferBindings;
+    }
+    
+    /// Get the symbolic buffer bindings, always valid
+    IL::ID GetSymbolicCBufferBindings() const {
+        return symbolicCBufferBindings;
+    }
+
 private:
     /// All handles
     Vector<MappedRegisterClass> registerClasses;
@@ -314,6 +339,16 @@ private:
     Vector<MetadataBlock> metadataBlocks;
 
 private:
+    /// Symbolic bindings
+    IL::ID symbolicTextureBindings = IL::InvalidID;
+    IL::ID symbolicSamplerBindings = IL::InvalidID;
+    IL::ID symbolicBufferBindings  = IL::InvalidID;
+    IL::ID symbolicCBufferBindings = IL::InvalidID;
+
+private:
+    /// Create all symbolic bindings
+    void CreateSymbolicBindings();
+    
     /// Find a register class, allocate if missing
     /// \param _class designated class
     /// \return register class
@@ -384,6 +419,8 @@ public:
         /// Internal shader flags
         DXILProgramShaderFlagSet internalShaderFlags{ 0 };
     } programMetadata;
+
+    IL::ID entryPointId{IL::InvalidID};
 
 private:
     /// Declaration blocks

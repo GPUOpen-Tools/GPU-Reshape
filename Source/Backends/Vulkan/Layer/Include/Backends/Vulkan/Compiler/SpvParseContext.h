@@ -75,6 +75,13 @@ struct SpvParseContext {
         return *(code + (instructionOffset++));
     }
 
+    /// Skip a set number of words
+    /// \param count number of words to skip
+    void Skip(uint32_t count = 1) {
+        ASSERT(instructionOffset + count <= Get()->GetWordCount(), "Reading beyond instruction bounds");
+        instructionOffset += count;
+    }
+
     /// Does the current instruction have any pending words?
     bool HasPendingWords() const {
         return instructionOffset < Get()->GetWordCount();

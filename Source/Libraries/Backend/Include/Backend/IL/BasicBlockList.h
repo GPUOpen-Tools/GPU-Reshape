@@ -41,6 +41,13 @@ namespace IL {
 
         }
 
+        /// Destructor
+        ~BasicBlockList() {
+            for (BasicBlock* block: basicBlocks) {
+                destroy(block, allocators);
+            }
+        }
+
         /// Allocate a new basic block
         /// \return allocated basic block
         BasicBlock* AllocBlock(ID bid) {

@@ -29,6 +29,7 @@
 #include <Backends/DX12/States/SwapChainState.h>
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/CommandQueueState.h>
+#include <Backends/DX12/Translation.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -65,6 +66,17 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
         bufferState->desc = bottomBuffer->GetDesc();
         bufferState->parent = state->device;
 
+        // Create mapping template
+        D3D12_RESOURCE_DESC desc = bottomBuffer->GetDesc();
+        bufferState->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+        bufferState->virtualMapping.token.puid = deviceTable.state->physicalResourceIdentifierMap.AllocatePUID(bufferState);
+        bufferState->virtualMapping.token.formatId = static_cast<uint32_t>(Translate(desc.Format));
+        bufferState->virtualMapping.token.formatSize = GetFormatByteSize(desc.Format);
+        bufferState->virtualMapping.token.width = static_cast<uint32_t>(desc.Width);
+        bufferState->virtualMapping.token.height = desc.Height;
+        bufferState->virtualMapping.token.depthOrSliceCount = desc.DepthOrArraySize;
+        bufferState->virtualMapping.token.DefaultViewToRange();
+
         // Add user
         state->device->AddRef();
 
@@ -73,6 +85,14 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 
         // Create detours
         state->buffers[i] = CreateDetour(state->allocators, bottomBuffer, bufferState);
+
+        // Invoke proxies for all handles
+        for (const FeatureHookTable &proxyTable: deviceTable.state->featureHookTables) {
+            proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+                .resource = GetResourceInfoFor(bufferState),
+                .createFlags = ResourceCreateFlag::SwapchainTexture
+            });
+        }
     }
 }
 
@@ -357,9 +377,6 @@ void HandlePresent(DeviceState* device, SwapChainState* swapchain) {
 
     // Commit stream
     device->bridge->GetOutput()->AddStream(stream);
-
-    // Add bridge sync
-    BridgeDeviceSyncPoint(device);
 }
 
 HRESULT WINAPI HookIDXGISwapChainPresent(IDXGISwapChain1* swapchain, UINT SyncInterval, UINT PresentFlags) {

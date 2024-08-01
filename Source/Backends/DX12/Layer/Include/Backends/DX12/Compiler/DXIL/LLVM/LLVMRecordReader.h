@@ -28,9 +28,14 @@
 
 // Layer
 #include "LLVMRecord.h"
+#include "LLVMRecordOffset.h"
 
 struct LLVMRecordReader {
     LLVMRecordReader(const LLVMRecord& record) : record(record) {
+        /* */
+    }
+    
+    LLVMRecordReader(const LLVMRecordOffset& record) : record(*record.record), offset(record.offset) {
         /* */
     }
 
@@ -68,6 +73,14 @@ struct LLVMRecordReader {
     /// Get remaining operands
     uint32_t Offset() const {
         return offset;
+    }
+
+    /// Get the record offset
+    LLVMRecordOffset GetRecordOffset() const {
+        return LLVMRecordOffset {
+            .record = &record,
+            .offset = offset
+        };
     }
 
     /// Underlying record

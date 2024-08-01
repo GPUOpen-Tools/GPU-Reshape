@@ -39,6 +39,13 @@ namespace IL {
 
         }
 
+        /// Destructor
+        ~FunctionList() {
+            for (Function* function: functions) {
+                destroy(function, allocators);
+            }
+        }
+
         /// Allocate a new function
         /// \return allocated function
         Function* AllocFunction(ID bid) {

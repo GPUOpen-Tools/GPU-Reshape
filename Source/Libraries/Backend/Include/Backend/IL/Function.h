@@ -30,12 +30,13 @@
 #include <vector>
 
 // Backend
-#include "BasicBlock.h"
-#include "IdentifierMap.h"
-#include "FunctionFlag.h"
-#include "BasicBlockList.h"
-#include "VariableList.h"
-#include "Type.h"
+#include <Backend/IL/BasicBlock.h>
+#include <Backend/IL/IdentifierMap.h>
+#include <Backend/IL/FunctionFlag.h>
+#include <Backend/IL/BasicBlockList.h>
+#include <Backend/IL/VariableList.h>
+#include <Backend/IL/Type.h>
+#include <Backend/IL/Analysis/AnalysisMap.h>
 
 // Std
 #include <list>
@@ -46,8 +47,7 @@ namespace IL {
         Function(const Allocators &allocators, IdentifierMap &map, ID id) :
             allocators(allocators), id(id), map(map),
             basicBlocks(allocators, map),
-            parameters(allocators, map),
-            variables(allocators, map) {
+            parameters(allocators, map) {
             /* */
         }
 
@@ -71,7 +71,6 @@ namespace IL {
             // Copy all lists
             basicBlocks.CopyTo(out->basicBlocks);
             parameters.CopyTo(out->parameters);
-            variables.CopyTo(out->variables);
         }
 
         /// Reindex all users
@@ -129,14 +128,9 @@ namespace IL {
             return parameters;
         }
 
-        /// Get the number of blocks
-        VariableList &GetVariables() {
-            return variables;
-        }
-
-        /// Get the number of blocks
-        const VariableList &GetVariables() const {
-            return variables;
+        /// Get the analysis map
+        AnalysisMap<IFunctionAnalysis> &GetAnalysisMap() {
+            return analysisMap;
         }
 
         /// Get the id of this function
@@ -192,8 +186,8 @@ namespace IL {
         /// All parameters
         VariableList parameters;
 
-        /// All function local variables
-        VariableList variables;
+        /// All analysis passes
+        AnalysisMap<IFunctionAnalysis> analysisMap;
 
         /// Function type
         const Backend::IL::FunctionType* functionType{nullptr};

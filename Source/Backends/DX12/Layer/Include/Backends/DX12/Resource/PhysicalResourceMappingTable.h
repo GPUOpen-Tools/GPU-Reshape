@@ -31,7 +31,7 @@
 #include <Backends/DX12/Allocation/MirrorAllocation.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/ComRef.h>
 
 // Std
@@ -89,6 +89,12 @@ public:
     /// \param offset given offset
     /// \return mapping
     VirtualResourceMapping GetMapping(uint32_t offset);
+
+    /// Get the mapping from an offset
+    /// \param offset given offset
+    /// \param state the destination state
+    /// \return mapping
+    VirtualResourceMapping GetMapping(uint32_t offset, ResourceState** state);
 
     /// Get the underlying resource
     /// \return

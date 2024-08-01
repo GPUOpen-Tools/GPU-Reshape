@@ -33,7 +33,7 @@
 #include "BasicBlockFlags.h"
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 
 // Std
 #include <vector>
@@ -201,6 +201,11 @@ namespace IL {
             /// Get the op code
             OpCode GetOpCode() const {
                 return Get()->opCode;
+            }
+
+            /// Get the ID
+            ID GetID() const {
+                return Get()->result;
             }
 
             /// Post increment
@@ -446,7 +451,8 @@ namespace IL {
             data(allocators.Tag("BasicBlock"_AllocTag)),
             relocationTable(allocators.Tag("BasicBlock"_AllocTag)),
             relocationAllocator(allocators) {
-
+            // Register the block
+            map.AddBasicBlock(this, id);
         }
 
         /// Allow move
@@ -458,6 +464,12 @@ namespace IL {
         /// No copy assignment
         BasicBlock& operator=(const BasicBlock& other) = delete;
         BasicBlock& operator=(BasicBlock&& other) = delete;
+
+        /// Destructor
+        ~BasicBlock() {
+            // Unregister the block
+            map.RemoveBasicBlock(id);
+        }
 
         /// Copy this basic block
         /// \param map the new identifier map
@@ -473,16 +485,30 @@ namespace IL {
             flags |= value;
         }
 
+        /// Add a new non-semantic flag to this block
+        /// \param value flag to be added
+        void AddNonSemanticFlag(BasicBlockFlagSet value) const {
+            ASSERT(value.value == (value.value & static_cast<uint64_t>(BasicBlockFlag::NonSemanticMask)), "Mutating semantic flag on immutable block");
+            flags |= value;
+        }
+
         /// Remove a flag from this block
         /// \param value flag to be removed
         void RemoveFlag(BasicBlockFlagSet value) {
             flags &= ~value;
         }
 
+        /// Remove a non-semantic flag from this block
+        /// \param value flag to be removed
+        void RemoveNonSemanticFlag(BasicBlockFlagSet value) const {
+            ASSERT(value.value == (value.value & static_cast<uint64_t>(BasicBlockFlag::NonSemanticMask)), "Mutating semantic flag on immutable block");
+            flags &= ~value;
+        }
+
         /// Check if this block has a flag
         /// \param value flag to be checked
         /// \return true if present
-        bool HasFlag(BasicBlockFlag value) {
+        bool HasFlag(BasicBlockFlag value) const {
             return flags & value;
         }
 
@@ -724,7 +750,9 @@ namespace IL {
 
         /// Set the source span
         void SetID(IL::ID value) {
+            map.RemoveBasicBlock(id);
             id = value;
+            map.AddBasicBlock(this, id);
         }
 
         /// Immortalize this basic block
@@ -965,7 +993,7 @@ namespace IL {
         RelocationAllocator relocationAllocator;
 
         /// Block flags
-        BasicBlockFlagSet flags{0};
+        mutable BasicBlockFlagSet flags{0};
 
         /// Dirty flag
         bool dirty{true};

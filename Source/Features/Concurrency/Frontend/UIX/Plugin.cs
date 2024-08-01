@@ -27,7 +27,6 @@
 using System;
 using Avalonia;
 using DynamicData;
-using GRS.Features.Concurrency.UIX.Contexts;
 using GRS.Features.Concurrency.UIX.Workspace;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
@@ -58,11 +57,6 @@ namespace GRS.Features.Concurrency.UIX
         /// <returns></returns>
         public bool Install()
         {
-            // Add to context menus
-            AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel
-                .GetItem<IInstrumentContextViewModel>()?
-                .Items.Add(new ConcurrencyContextMenuItemViewModel());
-            
             // Get workspace service
             var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
             
@@ -74,7 +68,8 @@ namespace GRS.Features.Concurrency.UIX
             {
                 Name = Resources.Workspace_Configuration_Concurrency_Name,
                 Description = Resources.Workspace_Configuration_Concurrency_Description,
-                Flags = WorkspaceConfigurationFlag.CanDetail,
+                Flags = WorkspaceConfigurationFlag.CanDetail | 
+                        WorkspaceConfigurationFlag.CanUseTexelAddressing,
                 FeatureName = "Concurrency"
             });
 

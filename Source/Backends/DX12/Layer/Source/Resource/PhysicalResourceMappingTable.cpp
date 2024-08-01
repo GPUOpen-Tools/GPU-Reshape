@@ -30,6 +30,10 @@
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
 
+/// Use mirror allocations, manually updates device mappings
+/// Otherwise let the driver handle the paging (faster with large PRMTs)
+#define USE_MIRROR 0
+
 PhysicalResourceMappingTable::PhysicalResourceMappingTable(const Allocators& allocators, const ComRef<DeviceAllocator> &allocator) : states(allocators), allocator(allocator) {
 
 }
@@ -56,7 +60,7 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Alignment = 0;
-    desc.Width = sizeof(uint32_t) * allocationCount;
+    desc.Width = sizeof(VirtualResourceMapping) * allocationCount;
     desc.Height = 1;
     desc.DepthOrArraySize = 1;
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
@@ -66,12 +70,19 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     desc.SampleDesc.Count = 1;
 
     // Create allocation
+#if USE_MIRROR
     allocation = allocator->AllocateMirror(desc);
+#else // USE_MIRROR
+    allocation = allocator->AllocateMirror(desc, AllocationResidency::Host);
+#endif // USE_MIRROR
 
 #ifndef NDEBUG
     allocation.device.resource->SetName(L"PRMTDevice");
     allocation.host.resource->SetName(L"PRMTHost");
 #endif // NDEBUG
+
+    // Number of dwords required per mapping
+    static constexpr uint32_t dwordCount = sizeof(VirtualResourceMapping) / sizeof(uint32_t);
     
     // Setup view
     view.Format = DXGI_FORMAT_R32_UINT;
@@ -79,7 +90,7 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     view.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     view.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     view.Buffer.FirstElement = 0;
-    view.Buffer.NumElements = count;
+    view.Buffer.NumElements = dwordCount * count;
     view.Buffer.StructureByteStride = 0;
 
     // Opaque host data
@@ -88,7 +99,7 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     // Map range
     D3D12_RANGE range;
     range.Begin = 0;
-    range.End = sizeof(uint32_t) * count;
+    range.End = sizeof(VirtualResourceMapping) * count;
     allocation.host.resource->Map(0, &range, &mappedOpaque);
 
     // Store host
@@ -97,9 +108,10 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     // Dummy initialize all VRMs
     for (uint32_t i = 0; i < count; i++) {
         virtualMappings[i] = VirtualResourceMapping{
-            .puid = IL::kResourceTokenPUIDInvalidUndefined,
-            .type = 0,
-            .srb = 0
+            ResourceToken {
+                .puid = IL::kResourceTokenPUIDInvalidUndefined,
+                .type = 0
+            }
         };
     }
 
@@ -115,6 +127,8 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
         return;
     }
 
+#if USE_MIRROR
+    
     // Generic shader read visibility
     D3D12_RESOURCE_STATES genericShaderRead = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
@@ -146,7 +160,7 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
     list->ResourceBarrier(2u, barriers);
 
     // Copy host data to device
-    list->CopyBufferRegion(allocation.device.resource, 0u, allocation.host.resource, 0, sizeof(uint32_t) * virtualMappingCount);
+    list->CopyBufferRegion(allocation.device.resource, 0u, allocation.host.resource, 0, sizeof(VirtualResourceMapping) * virtualMappingCount);
 
     // HOST: CopySource -> CopyDest
     hostBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
@@ -158,6 +172,17 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
     
     // Submit barriers
     list->ResourceBarrier(2u, barriers);
+#else // USE_MIRROR
+    // Unmap the written range
+    // i.e. "done writing to this, flush!"
+    D3D12_RANGE range;
+    range.Begin = 0;
+    range.End = sizeof(VirtualResourceMapping) * virtualMappingCount;
+    allocation.host.resource->Unmap(0, &range);
+
+    // Map contents
+    allocation.host.resource->Map(0, &range, reinterpret_cast<void**>(&virtualMappings));
+#endif // USE_MIRROR
 
     // OK
     isDirty = false;
@@ -167,7 +192,7 @@ void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, const VirtualRe
     std::lock_guard guard(mutex);
 
     // Validate type
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.type)) {
+    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.token.type)) {
         case Backend::IL::ResourceTokenType::Texture:
             ASSERT(
                 type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||
@@ -212,11 +237,18 @@ VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(uint32_t offset)
     return virtualMappings[offset];
 }
 
+VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(uint32_t offset, ResourceState **state) {
+    std::lock_guard guard(mutex);
+    ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
+    *state = states[offset];
+    return virtualMappings[offset];
+}
+
 void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *state, const VirtualResourceMapping &mapping) {
     std::lock_guard guard(mutex);
 
     // Validate type
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.type)) {
+    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.token.type)) {
         case Backend::IL::ResourceTokenType::Texture:
             ASSERT(
                 type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||

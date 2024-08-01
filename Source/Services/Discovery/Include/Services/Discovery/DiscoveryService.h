@@ -31,6 +31,7 @@
 #include <Common/Registry.h>
 
 // Discovery
+#include <Discovery/DiscoveryProcessCreateInfo.h>
 #include <Discovery/DiscoveryProcessInfo.h>
 
 // Std
@@ -86,10 +87,11 @@ public:
     bool UninstallConflictingInstances();
 
     /// Start a bootstrapped service against all discovery backends
-    /// \param info process information
+    /// \param createInfo process information
     /// \param environment ordered message stream environment fed to the application
+    /// \param info instantiated process info
     /// \return false if failed
-    bool StartBootstrappedProcess(const DiscoveryProcessInfo &info, const MessageStream& environment);
+    bool StartBootstrappedProcess(const DiscoveryProcessCreateInfo &createInfo, const MessageStream& environment, DiscoveryProcessInfo& info);
     
     /// Get the registry
     Registry* GetLocalRegistry() {

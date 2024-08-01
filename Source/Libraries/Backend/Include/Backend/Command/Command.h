@@ -100,9 +100,8 @@ struct SetEventDataCommand : public TCommand<SetEventDataCommand, CommandType::S
     uint32_t value;
 };
 
-struct SetDescriptorDataCommand : public TCommand<SetEventDataCommand, CommandType::SetDescriptorData> {
+struct SetDescriptorDataCommand : public TCommand<SetDescriptorDataCommand, CommandType::SetDescriptorData> {
     ShaderDataID id;
-    uint32_t value;
 };
 
 enum class StageBufferFlag {
@@ -118,8 +117,23 @@ struct StageBufferCommand : public TCommand<StageBufferCommand, CommandType::Sta
     StageBufferFlagSet flags;
 };
 
+struct ClearBufferCommand : public TCommand<ClearBufferCommand, CommandType::ClearBuffer> {
+    ShaderDataID id;
+    size_t offset;
+    size_t length;
+    uint32_t value;
+};
+
+struct DiscardCommand : public TCommand<DiscardCommand, CommandType::Discard> {
+    uint32_t puid;
+};
+
 struct DispatchCommand : public TCommand<DispatchCommand, CommandType::Dispatch> {
     uint32_t groupCountX;
     uint32_t groupCountY;
     uint32_t groupCountZ;
+};
+
+struct UAVBarrierCommand : public TCommand<UAVBarrierCommand, CommandType::UAVBarrier> {
+    
 };

@@ -69,16 +69,25 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatch |= (1ull << i);
         }
 
+        if (hookTable.dispatchMesh.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdDrawMeshTasksEXT[i] = hookTable.dispatchMesh;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawMeshTasksEXT |= (1ull << i);
+        }
+
         if (hookTable.copyResource.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyBuffer[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyImage[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyImageToBuffer[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyImageToBuffer2[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyBufferToImage[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyBufferToImage2[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdBlitImage[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImage |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer2 |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage2 |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage |= (1ull << i);
         }
         
@@ -99,6 +108,12 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         if (hookTable.beginRenderPass.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass[i] = hookTable.beginRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass2[i] = hookTable.beginRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass2 |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass2KHR[i] = hookTable.beginRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass2KHR |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdBeginRendering[i] = hookTable.beginRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRendering |= (1ull << i);
             table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderingKHR[i] = hookTable.beginRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderingKHR |= (1ull << i);
         }
@@ -106,6 +121,8 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         if (hookTable.endRenderPass.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdEndRenderPass[i] = hookTable.endRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdEndRendering[i] = hookTable.endRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRendering |= (1ull << i);
             table->commandBufferDispatchTable.featureHooks_vkCmdEndRenderingKHR[i] = hookTable.endRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR |= (1ull << i);
         }
@@ -121,7 +138,9 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBufferToImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBufferToImage2 = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage2 & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImageToBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImageToBuffer2 = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer2 & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBlitImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdUpdateBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdUpdateBuffer & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdFillBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdFillBuffer & featureSet;
@@ -130,9 +149,14 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdClearAttachments = table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearAttachments & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdResolveImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdResolveImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass2 = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass2 & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass2KHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass2KHR & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRendering = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRendering & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderingKHR & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdEndRendering = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRendering & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDrawMeshTasksEXT = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawMeshTasksEXT & featureSet;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool) {
@@ -217,10 +241,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     commandBuffer->context = {};
 
     // Cleanup user context
+    commandBuffer->userContext.buffer.Clear();
     commandBuffer->userContext.eventStack.Flush();
     commandBuffer->userContext.eventStack.SetRemapping(commandBuffer->table->eventRemappingTable);
     commandBuffer->userContext.buffer.Clear();
-    commandBuffer->userContext.handle = reinterpret_cast<CommandContextHandle>(commandBuffer);
+    commandBuffer->userContext.handle = reinterpret_cast<CommandContextHandle>(commandBuffer->object);
 
     // Set stream context handle
     commandBuffer->streamState->commandContextHandle = commandBuffer->userContext.handle;
@@ -426,6 +451,30 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatch(CommandBufferObject *commandBuffer
     commandBuffer->dispatchTable.next_vkCmdDispatch(commandBuffer->object, groupCountX, groupCountY, groupCountZ);
 }
 
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksEXT(CommandBufferObject* commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawMeshTasksEXT(commandBuffer->object, groupCountX, groupCountY, groupCountZ);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawMeshTasksIndirectEXT(commandBuffer->object, buffer, offset, drawCount, stride);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectCountEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawMeshTasksIndirectCountEXT(commandBuffer->object, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
+}
+
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchBase(CommandBufferObject *commandBuffer, uint32_t baseCountX, uint32_t baseCountY, uint32_t baseCountZ, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
     // Commit all pending compute
     CommitCompute(commandBuffer);
@@ -578,8 +627,8 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdWaitEvents2(CommandBufferObject* commandBuf
     }
 
     // Local barriers
-    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2, bufferBarrierCount);
-    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier2, imageBarrierCount);
+    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2,  imageBarrierCount);
+    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier2, bufferBarrierCount);
 
     // Copy dependencies
     auto* dependencies = ALLOCA_ARRAY(VkDependencyInfo, eventCount);
@@ -624,6 +673,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPipelineBarrier2(CommandBufferObject* comma
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {
+    // Commit all pending commands prior to ending
+    CommitCommands(commandBuffer);
+    
     // Reset the context
     commandBuffer->context = {};
 

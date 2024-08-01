@@ -36,7 +36,7 @@
 #include <cstdint>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 
 // Forward declarations
 struct LLVMBlockMetadata;

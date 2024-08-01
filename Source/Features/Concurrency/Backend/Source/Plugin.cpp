@@ -32,11 +32,20 @@
 
 // Backend
 #include <Backend/IFeatureHost.h>
+#include <Backend/StartupContainer.h>
+
+// Message
+#include <Message/MessageStreamCommon.h>
+
+// Schemas
+#include <Schemas/ConfigCommon.h>
 
 // Concurrency
-#include <Features/Concurrency/Feature.h>
+#include <Features/Concurrency/TexelAddressingFeature.h>
+#include <Features/Concurrency/ResourceAddressingFeature.h>
 
-static ComRef<ComponentTemplate<ConcurrencyFeature>> feature{nullptr};
+static ComRef<ComponentTemplate<TexelAddressingConcurrencyFeature>> texelAddressingFeature{nullptr};
+static ComRef<ComponentTemplate<ResourceAddressingConcurrencyFeature>> resourceAddressingFeature{nullptr};
 
 DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
     info->name = "Concurrency";
@@ -49,9 +58,20 @@ DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
         return false;
     }
 
+    // Get settings
+    auto startup = registry->Get<Backend::StartupContainer>();
+
+    // Is texel addressing enabled?
+    SetTexelAddressingMessage config = CollapseOrDefault<SetTexelAddressingMessage>(startup->GetView(), SetTexelAddressingMessage { .enabled = true });
+
     // Install the concurrency feature
-    feature = registry->New<ComponentTemplate<ConcurrencyFeature>>();
-    host->Register(feature);
+    if (config.enabled) {
+        texelAddressingFeature = registry->New<ComponentTemplate<TexelAddressingConcurrencyFeature>>();
+        host->Register(texelAddressingFeature);
+    } else {
+        resourceAddressingFeature = registry->New<ComponentTemplate<ResourceAddressingConcurrencyFeature>>();
+        host->Register(resourceAddressingFeature);
+    }
 
     // OK
     return true;
@@ -64,6 +84,11 @@ DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
     }
 
     // Uninstall the feature
-    host->Deregister(feature);
-    feature.Release();
+    if (texelAddressingFeature) {
+        host->Deregister(texelAddressingFeature);
+        texelAddressingFeature.Release();
+    } else {
+        host->Deregister(resourceAddressingFeature);
+        resourceAddressingFeature.Release();
+    }
 }

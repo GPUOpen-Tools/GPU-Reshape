@@ -34,6 +34,7 @@ using Bridge.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Services;
@@ -48,6 +49,16 @@ namespace GRS.Features.Loop.UIX.Workspace
         /// Feature name
         /// </summary>
         public string Name => "Loop";
+        
+        /// <summary>
+        /// Feature category
+        /// </summary>
+        public string Category => string.Empty;
+
+        /// <summary>
+        /// Feature flags
+        /// </summary>
+        public InstrumentationFlag Flags => InstrumentationFlag.None;
 
         /// <summary>
         /// Assigned workspace
@@ -155,6 +166,17 @@ namespace GRS.Features.Loop.UIX.Workspace
         }
 
         /// <summary>
+        /// Check if a target may be instrumented
+        /// </summary>
+        public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable)
+        {
+            return instrumentable
+                .GetWorkspaceCollection()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .HasFeature("Loop") ?? false;
+        }
+
+        /// <summary>
         /// Create an instrumentation property
         /// </summary>
         /// <param name="target"></param>
@@ -164,7 +186,7 @@ namespace GRS.Features.Loop.UIX.Workspace
         {
             // Find feature data
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Loop");
 

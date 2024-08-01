@@ -92,28 +92,32 @@ namespace Studio.ViewModels.Status
         public InstrumentationStatusViewModel()
         {
             // Connect to workspaces
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Workspaces .Connect()
-                .OnItemAdded(OnWorkspaceAdded)
-                .OnItemRemoved(OnWorkspaceRemoved)
-                .Subscribe();
-        }
-
-        /// <summary>
-        /// Invoked whena  workspace has been added
-        /// </summary>
-        /// <param name="workspaceViewModel"></param>
-        private void OnWorkspaceAdded(IWorkspaceViewModel workspaceViewModel)
-        {
-            workspaceViewModel.Connection?.Bridge?.Register(this);
+            AvaloniaLocator.Current.GetService<IWorkspaceService>()?
+                .WhenAnyValue(x => x.SelectedWorkspace)
+                .Subscribe(OnWorkspaceChanged);
         }
         
         /// <summary>
-        /// Invoked when a workspace has been removed
+        /// Invoked on workspace changes
         /// </summary>
-        /// <param name="workspaceViewModel"></param>
-        private void OnWorkspaceRemoved(IWorkspaceViewModel workspaceViewModel)
+        private void OnWorkspaceChanged(IWorkspaceViewModel? workspaceViewModel)
         {
-            workspaceViewModel.Connection?.Bridge?.Deregister(this);
+            // Remove last connection
+            _lastBridge?.Deregister(this);
+            _lastBridge = null;
+            
+            // Clean state
+            Stage         = InstrumentationStage.None;
+            GraphicsCount = 0;
+            ComputeCount  = 0;
+            JobCount      = 0;
+
+            // Register new one
+            if (workspaceViewModel?.Connection?.Bridge is { } bridge)
+            {
+                workspaceViewModel.Connection?.Bridge?.Register(this);
+                _lastBridge = bridge;
+            }
         }
 
         /// <summary>
@@ -165,6 +169,11 @@ namespace Studio.ViewModels.Status
         /// Internal stage
         /// </summary>
         private InstrumentationStage _stage = InstrumentationStage.None;
+
+        /// <summary>
+        /// The last connection we registered to
+        /// </summary>
+        private IBridge? _lastBridge;
 
         /// <summary>
         /// Internal graphics count

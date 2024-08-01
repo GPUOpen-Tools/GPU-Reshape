@@ -30,7 +30,7 @@
 #include <Backend/IShaderSGUIDHost.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 
 // Std
 #include <vector>

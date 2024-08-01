@@ -67,7 +67,7 @@ void SpvPhysicalBlockDebugStringSource::Parse() {
                 if (ctx.HasPendingWords()) {
                     auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
                     uint32_t length = (ctx->GetWordCount() - 4) * sizeof(uint32_t);
-                    while (!ptr[length - 1]) {
+                    while (length && !ptr[length - 1]) {
                         length--;
                     }
 
@@ -78,7 +78,7 @@ void SpvPhysicalBlockDebugStringSource::Parse() {
             case SpvOpSourceContinued: {
                 auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
                 uint32_t length = (ctx->GetWordCount() - 1) * sizeof(uint32_t);
-                while (!ptr[length - 1]) {
+                while (length && !ptr[length - 1]) {
                     length--;
                 }
 
@@ -88,7 +88,7 @@ void SpvPhysicalBlockDebugStringSource::Parse() {
             case SpvOpString: {
                 auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
                 uint32_t length = (ctx->GetWordCount() - 2) * sizeof(uint32_t);
-                while (!ptr[length - 1]) {
+                while (length && !ptr[length - 1]) {
                     length--;
                 }
 

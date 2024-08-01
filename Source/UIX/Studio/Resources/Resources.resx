@@ -37,7 +37,7 @@
         <value>Shader not compiled with debugging symbols, please ensure the shader is compiled with embedded debugging data.</value>
     </data>
     <data name="BusMode_Toggle_Tooltip" xml:space="preserve">
-        <value>Toggle the bus mode</value>
+        <value>Pause/resume all instrumentation</value>
     </data>
     <data name="Discovery_DropDown_Tooltip" xml:space="preserve">
         <value>Configure discoverability</value>
@@ -106,7 +106,7 @@
         <value>Basic configuration, includes</value>
     </data>
     <data name="Workspace_Configuration_All_Name" xml:space="preserve">
-        <value>All</value>
+        <value>All Standard</value>
     </data>
     <data name="Workspace_Configuration_All_Header" xml:space="preserve">
         <value>All configurations, includes</value>
@@ -142,5 +142,17 @@ Do you consent to this?</value>
     </data>
     <data name="Log_Report_Tooltip" xml:space="preserve">
         <value>Open attached report</value>
+    </data>
+    <data name="Launch_TexelAddressing" xml:space="preserve">
+        <value>Enables texel addressing, imposes large memory overhead</value>
+    </data>
+    <data name="Features_TexelAddressing_Info" xml:space="preserve">
+        <value>Texel Addressing enables tracking initialization / concurrency events on a per-texel level, greatly improving accuracy. This incurs a heavy memory and performance overhead, disable to track on a per-resource level.</value>
+    </data>
+    <data name="Launch_CaptureChildProcesses" xml:space="preserve">
+        <value>Hook into the entire process tree of an application, automatically creates process hierarchy</value>
+    </data>
+    <data name="Launch_AttachAllDevices" xml:space="preserve">
+        <value>Attach to all graphical devices the application creates, a workspace is automatically created per device</value>
     </data>
 </root>

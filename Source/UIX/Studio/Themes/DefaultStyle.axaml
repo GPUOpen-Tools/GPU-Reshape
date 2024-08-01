@@ -43,6 +43,7 @@
         <Color x:Key="IconPressedColor">#4A4D51</Color>
         <Color x:Key="InputBorderColor">#4E4E4E</Color>
         <Color x:Key="ThumbColor">#3E3E42</Color>
+        <Color x:Key="StatusForeground">#919191</Color>
 
         <!-- System colors -->
         <Color x:Key="SystemAccentColor">#3E424D</Color>
@@ -257,4 +258,6 @@
     <!-- Custom controls -->
     <StyleInclude Source="avares://GPUReshape/Themes/Hyperlink.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/CloseButton.axaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/StoryRadio.axaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/InlineSectionView.axaml" />
 </Styles>

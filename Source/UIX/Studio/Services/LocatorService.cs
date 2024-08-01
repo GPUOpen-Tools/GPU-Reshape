@@ -35,11 +35,13 @@ namespace Studio.Services
         {
             // Standard document types
             AddDerived(typeof(ViewModels.Documents.WelcomeDescriptor), typeof(ViewModels.Documents.WelcomeViewModel));
+            AddDerived(typeof(ViewModels.Documents.WhatsNewDescriptor), typeof(ViewModels.Documents.WhatsNewViewModel));
             AddDerived(typeof(ViewModels.Documents.WorkspaceOverviewDescriptor), typeof(ViewModels.Documents.WorkspaceOverviewViewModel));
             AddDerived(typeof(ViewModels.Documents.ShaderDescriptor), typeof(ViewModels.Documents.ShaderViewModel));
             
             // Setting types
             AddDerived(typeof(ViewModels.Setting.DiscoverySettingViewModel), typeof(Views.Setting.DiscoverySettingView));
+            AddDerived(typeof(ViewModels.Setting.FeaturesSettingViewModel), typeof(Views.Setting.FeaturesSettingView));
             AddDerived(typeof(ViewModels.Setting.ApplicationListSettingViewModel), typeof(Views.Setting.ApplicationListSettingView));
             AddDerived(typeof(ViewModels.Setting.ApplicationSettingViewModel), typeof(Views.Setting.ApplicationSettingView));
             AddDerived(typeof(ViewModels.Setting.PDBSettingViewModel), typeof(Views.Setting.PDBSettingView));

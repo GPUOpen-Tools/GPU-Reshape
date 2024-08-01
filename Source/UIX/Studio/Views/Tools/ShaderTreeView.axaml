@@ -71,7 +71,8 @@
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             BorderThickness="0"
             Tag="{Binding}"
-            Items="{Binding ShaderIdentifiers}" >
+            Items="{Binding ShaderIdentifiers}" 
+            SelectionMode="Multiple">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">

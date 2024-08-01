@@ -26,6 +26,9 @@
 
 #pragma once
 
+// Common
+#include <Common/Containers/ReferenceObject.h>
+
 // Std
 #include <map>
 #include <vector>
@@ -35,7 +38,7 @@
 ///  Additionally stores a unique identifier per state, as the key type may be recycled
 ///  at any moment.
 template<typename T, typename U>
-struct TrackedObject {
+struct TrackedObject : public ReferenceHost {
     struct LinearView {
         LinearView(std::mutex &mutex, std::vector<U*>& object) : mutex(mutex), object(object) {
             mutex.lock();
@@ -87,6 +90,12 @@ struct TrackedObject {
 
         // Assign the unique id
         state->uid = uidCounter++;
+
+        // Set the host
+        if constexpr (IsReferenceObject<U>) {
+            ASSERT(!state->referenceHost, "Reference host double assignment");
+            state->referenceHost = this;   
+        }
 
         // Append
         linear.push_back(state);
@@ -141,6 +150,11 @@ struct TrackedObject {
     /// Remove an object
     void RemoveState(U* state) {
         std::lock_guard<std::mutex> guard(mutex);
+        RemoveStateNoLock(state);
+    }
+
+    /// Remove an object
+    void RemoveStateNoLock(U* state) {
         const MapEntry& entry = uidMap.at(state->uid);
 
         // Relocate entry with back
@@ -159,6 +173,8 @@ struct TrackedObject {
     }
 
     U* GetFromUID(uint64_t uid, U* _default = nullptr) {
+        std::lock_guard guard(mutex);
+        
         auto it = uidMap.find(uid);
         if (it == uidMap.end()) {
             return _default;
@@ -168,7 +184,8 @@ struct TrackedObject {
     }
 
     /// Get the number of objects
-    size_t GetCount() const {
+    size_t GetCount() {
+        std::lock_guard guard(mutex);
         return linear.size();
     }
 
@@ -195,7 +212,4 @@ private:
 
     /// Linear traversal
     std::vector<U*> linear;
-
-    /// My data! The data!
-    std::mutex mutex;
 };

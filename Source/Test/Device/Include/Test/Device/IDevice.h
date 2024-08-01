@@ -69,6 +69,15 @@ namespace Test {
         /// \return resource identifier
         virtual BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) = 0;
 
+        /// Create a new structured buffer
+        /// \param type resource type
+        /// \param elementSize element byte size
+        /// \param size resource byte size
+        /// \param data initial data
+        /// \param dataSize byte size of the initial data
+        /// \return resource identifier
+        virtual BufferID CreateStructuredBuffer(ResourceType type, uint32_t elementSize, uint64_t size, const void *data, uint64_t dataSize) = 0;
+
         /// Create a new texture
         /// \param type resource type
         /// \param format texel format

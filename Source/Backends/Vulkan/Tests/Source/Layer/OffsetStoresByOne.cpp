@@ -46,7 +46,7 @@
 #include <Backend/IFeature.h>
 #include <Backend/IShaderFeature.h>
 #include <Backend/IL/Program.h>
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
 // VMA
 #include <VMA/vk_mem_alloc.h>

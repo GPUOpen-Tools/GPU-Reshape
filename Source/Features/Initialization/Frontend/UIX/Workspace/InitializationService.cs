@@ -36,6 +36,7 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
@@ -53,6 +54,16 @@ namespace GRS.Features.Initialization.UIX.Workspace
         /// Feature name
         /// </summary>
         public string Name => "Initialization";
+        
+        /// <summary>
+        /// Feature category
+        /// </summary>
+        public string Category => string.Empty;
+
+        /// <summary>
+        /// Feature flags
+        /// </summary>
+        public InstrumentationFlag Flags => InstrumentationFlag.Standard;
         
         /// <summary>
         /// Assigned workspace
@@ -111,21 +122,21 @@ namespace GRS.Features.Initialization.UIX.Workspace
             foreach (UninitializedResourceMessage message in view)
             {
                 // Add to latent set
-                if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
+                if (enqueued.TryGetValue(message.sguid, out uint enqueuedCount))
                 {
-                    enqueued[message.Key] = enqueuedCount + 1u;
+                    enqueued[message.sguid] = enqueuedCount + 1u;
                 }
                 else
                 {
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Uninitialized resource read",
+                        Content = GetFailureCodeString((InitializationFailureCode)message.failureCode),
                         Count = 1u
                     };
-                    
+
                     // Register with latent
-                    enqueued.Add(message.Key, 1u);
+                    enqueued.Add(message.sguid, 1u);
 
                     // Shader view model injection
                     validationObject.WhenAnyValue(x => x.Segment).WhereNotNull().Subscribe(x =>
@@ -146,7 +157,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     _shaderMappingService?.EnqueueMessage(validationObject, message.sguid);
 
                     // Insert lookup
-                    _reducedMessages.Add(message.Key, validationObject);
+                    _reducedMessages.Add(message.sguid, validationObject);
 
                     // Add to UI visible collection
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
@@ -164,10 +175,10 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     };
 
                     // Get detailed view model
-                    if (!_reducedDetails.TryGetValue(message.Key, out ResourceValidationDetailViewModel? detailViewModel))
+                    if (!_reducedDetails.TryGetValue(message.sguid, out ResourceValidationDetailViewModel? detailViewModel))
                     {
                         // Not found, find the object
-                        if (!_reducedMessages.TryGetValue(message.Key, out ValidationObject? validationObject))
+                        if (!_reducedMessages.TryGetValue(message.sguid, out ValidationObject? validationObject))
                         {
                             continue;
                         }
@@ -182,7 +193,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
                         });
                         
                         // Add lookup
-                        _reducedDetails.Add(message.Key, detailViewModel);
+                        _reducedDetails.Add(message.sguid, detailViewModel);
                     }
 
                     // Try to find resource
@@ -197,8 +208,12 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     // Get resource
                     ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
 
+                    // Read coordinate
+                    uint[] coordinate = detailChunk.coordinate;
+                    
                     // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance(_reducedMessages[message.Key].Content);
+                    string header = GetFailureCodeString((InitializationFailureCode)message.failureCode);
+                    resourceValidationObject.AddUniqueInstance($"{header} at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}, byteOffset:{detailChunk.byteOffset}");
                 }
             }
             
@@ -216,6 +231,31 @@ namespace GRS.Features.Initialization.UIX.Workspace
         }
 
         /// <summary>
+        /// Get the failure code string for a specific condition
+        /// </summary>
+        private static string GetFailureCodeString(InitializationFailureCode failureCode)
+        {
+            switch (failureCode)
+            {
+                default:
+                    return "Uninitialized resource read";
+                case InitializationFailureCode.MetadataRequiresHardwareClear:
+                    return "Read without required clear/discard";
+            }
+        }
+
+        /// <summary>
+        /// Check if a target may be instrumented
+        /// </summary>
+        public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable)
+        {
+            return instrumentable
+                .GetWorkspaceCollection()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .HasFeature("Initialization") ?? false;
+        }
+
+        /// <summary>
         /// Create an instrumentation property
         /// </summary>
         /// <param name="target"></param>
@@ -225,7 +265,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
         {
             // Get feature info on target
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Initialization");
 
@@ -238,7 +278,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
             // Initialization instrumentation is a fickle game, if this is not a virtual adapter, i.e. launch from, warn the user about it.
             // Ignore for replication, already done at that point.
             if (!replication &&
-                ((IInstrumentableObject)target).GetWorkspace()?.ConnectionViewModel is not IVirtualConnectionViewModel &&  
+                ((IInstrumentableObject)target).GetWorkspaceCollection()?.ConnectionViewModel is not IVirtualConnectionViewModel &&  
                 (_data != null && await _data.ConditionalWarning()))
             {
                 return null;

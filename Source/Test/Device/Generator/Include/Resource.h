@@ -33,10 +33,13 @@ enum class ResourceType {
     None,
     Buffer,
     RWBuffer,
+    StructuredBuffer,
+    RWStructuredBuffer,
     Texture1D,
     RWTexture1D,
     Texture2D,
     RWTexture2D,
+    RWTexture2DArray,
     Texture3D,
     RWTexture3D,
     SamplerState,
@@ -58,6 +61,9 @@ struct Resource {
 
     /// View and data format
     std::string_view format;
+
+    /// Structured buffer width (0 indicates not a structured buffer)
+    uint32_t structuredSize{0};
 
     /// Optional array size (0 indicates no array)
     uint32_t arraySize{0};

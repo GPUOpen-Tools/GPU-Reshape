@@ -36,6 +36,7 @@
 
 // Backend
 #include <Backend/CommandContextHandle.h>
+#include <Backend/CommandContext.h>
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
@@ -135,6 +136,14 @@ struct ShaderExportStreamState {
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
 };
 
+struct ShaderExportStreamSegmentUserContext {
+    /// Segment context
+    CommandContext commandContext;
+
+    /// Streaming state
+    ShaderExportStreamState* streamState{nullptr};
+};
+
 /// Single stream segment, i.e. submission
 struct ShaderExportStreamSegment {
     /// Allocation for this segment
@@ -150,17 +159,12 @@ struct ShaderExportStreamSegment {
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{0};
 
-    /// Combined segment descriptors, lifetime bound to this segment
-    std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
-
-    /// Combined descriptor data segments, lifetime bound to this segment
-    std::vector<DescriptorDataSegment> descriptorDataSegments;
-
-    /// All pending push segments
-    std::vector<PushDescriptorSegment> pushDescriptorSegments;
-
     /// Combined context handles
     std::vector<CommandContextHandle> commandContextHandles;
+
+    /// Optional contexts for user command buffers
+    ShaderExportStreamSegmentUserContext userPreContext;
+    ShaderExportStreamSegmentUserContext userPostContext;
 
     /// Persistent version for the PRM-Table
     PhysicalResourceMappingTablePersistentVersion* prmtPersistentVersion{nullptr};
