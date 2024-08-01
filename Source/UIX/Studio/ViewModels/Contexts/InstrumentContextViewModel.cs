@@ -86,9 +86,9 @@ namespace Studio.ViewModels.Contexts
             item.Items.Add(new SeparatorContextMenuItemViewModel());
             item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObjects, x => true));
             
-            // "None" instrumentation
+            // "Remove All" instrumentation
             item.Items.Add(new SeparatorContextMenuItemViewModel());
-            item.Items.Add(new InstrumentNoneContextViewModel());
+            item.Items.Add(new RemoveAllInstrumentContextViewModel());
 
             // OK
             itemViewModels.Add(item);

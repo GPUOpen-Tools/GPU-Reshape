@@ -37,7 +37,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class InstrumentNoneContextViewModel : ReactiveObject, IContextMenuItemViewModel
+    public class RemoveAllInstrumentContextViewModel : ReactiveObject, IContextMenuItemViewModel
     {
         /// <summary>
         /// Target view models of the context
@@ -55,7 +55,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Display header of this context model
         /// </summary>
-        public string Header { get; set; } = "None";
+        public string Header { get; set; } = "Remove All";
         
         /// <summary>
         /// All items within this context model
@@ -76,7 +76,7 @@ namespace Studio.ViewModels.Contexts
             set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
         }
 
-        public InstrumentNoneContextViewModel()
+        public RemoveAllInstrumentContextViewModel()
         {
             Command = ReactiveCommand.Create(OnInvoked);
         }

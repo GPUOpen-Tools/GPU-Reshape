@@ -95,7 +95,7 @@ namespace Studio.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Toggle the bus mode.
+        ///   Looks up a localized string similar to Pause/resume all instrumentation.
         /// </summary>
         public static string BusMode_Toggle_Tooltip {
             get {

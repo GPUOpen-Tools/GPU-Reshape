@@ -37,7 +37,7 @@
         <value>Shader not compiled with debugging symbols, please ensure the shader is compiled with embedded debugging data.</value>
     </data>
     <data name="BusMode_Toggle_Tooltip" xml:space="preserve">
-        <value>Toggle the bus mode</value>
+        <value>Pause/resume all instrumentation</value>
     </data>
     <data name="Discovery_DropDown_Tooltip" xml:space="preserve">
         <value>Configure discoverability</value>
