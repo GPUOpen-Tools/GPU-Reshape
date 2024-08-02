@@ -39,6 +39,8 @@ function(Project_AddDotNet NAME)
         VS_GLOBAL_Platforms "x64"
 		VS_GLOBAL_RuntimeIdentifier "win-x64"
 		VS_GLOBAL_SelfContained "true"
+		VS_GLOBAL_PublishSingleFile "true"
+		VS_GLOBAL_IncludeNativeLibrariesForSelfExtract "true"
 		VS_GLOBAL_AppendTargetFrameworkToOutputPath "false"
 		VS_GLOBAL_AppendRuntimeIdentifierToOutputPath "false"
         VS_GLOBAL_ROOTNAMESPACE ${NAME}
