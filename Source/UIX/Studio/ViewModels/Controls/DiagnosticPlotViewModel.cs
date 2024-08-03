@@ -248,7 +248,7 @@ namespace Studio.ViewModels.Controls
                 YAxes[0].MaxLimit = _presentIntervalValues.Max() * 1.25f;
                 
                 // Workaround for internal bug with re-rendering without layout invalidations
-                if (_stepFieldUpdateCounter++ % 100 == 0)
+                if (++_stepFieldUpdateCounter % 100 == 0)
                 {
                     // Reset steps
                     YAxes.ForEach(x => _stepCountField?.SetValue(x, 0));
