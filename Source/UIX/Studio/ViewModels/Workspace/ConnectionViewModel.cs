@@ -39,6 +39,7 @@ using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace;
+using Studio.Services;
 
 namespace Studio.ViewModels.Workspace
 {
@@ -92,9 +93,6 @@ namespace Studio.ViewModels.Workspace
             // Create subjects
             Connected = new Subject<Unit>();
             Refused = new Subject<Unit>();
-
-            // Create dispatcher local to the connection
-            _dispatcher = new Dispatcher(AvaloniaLocator.Current.GetService<IPlatformThreadingInterface>());
 
             // Create timer on main thread
             _timer = new DispatcherTimer(DispatcherPriority.Background)
@@ -240,11 +238,6 @@ namespace Studio.ViewModels.Workspace
                 _remote = null;
             }
         }
-
-        /// <summary>
-        /// Internal dispatcher
-        /// </summary>
-        private Dispatcher _dispatcher;
 
         /// <summary>
         /// Shared bus timer

@@ -48,7 +48,7 @@ namespace Studio.ValueConverters
             // Handle target
             if (targetType == typeof(IBrush))
             {
-                return ResourceLocator.GetResource<IBrush>("Stage" + value);
+                return ResourceLocator.GetBrush("Stage" + value);
             }
             else if (targetType == typeof(bool))
             {

@@ -57,7 +57,7 @@ namespace GRS.Features.Waterfall.UIX
         public bool Install()
         {
             // Get workspace service
-            var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
+            var workspaceService = ServiceRegistry.Get<IWorkspaceService>();
             
             // Add workspace extension
             workspaceService?.Extensions.Add(this);
@@ -66,7 +66,7 @@ namespace GRS.Features.Waterfall.UIX
             workspaceService?.GetConfiguration<IAllConfigurationViewModel>()?.IgnoredFeatures.Add("Waterfall");
             
             // Add derived types
-            if (AvaloniaLocator.Current.GetService<ILocatorService>() is { } locator)
+            if (ServiceRegistry.Get<ILocatorService>() is { } locator)
             {
                 locator.AddDerived(typeof(ScalarizationDetailViewModel), typeof(ScalarizationDetailView));
                 locator.AddDerived(typeof(DivergentResourceAddressingDetailViewModel), typeof(DivergentResourceAddressingDetailView));
@@ -82,7 +82,7 @@ namespace GRS.Features.Waterfall.UIX
         public void Uninstall()
         {
             // Remove workspace extension
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Extensions.Remove(this);
+            ServiceRegistry.Get<IWorkspaceService>()?.Extensions.Remove(this);
         }
 
         /// <summary>

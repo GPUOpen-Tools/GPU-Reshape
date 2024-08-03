@@ -125,7 +125,7 @@ Examples:
                     CanUserResizeColumns="True"
                     AutoGenerateColumns="False"
                     SelectedItem="{Binding SelectedApplication}"
-                    Items="{Binding ResolvedApplications}">
+                    ItemsSource="{Binding ResolvedApplications}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Process" Width="*" Binding="{Binding Process}" />
                         <DataGridTextColumn Header="Name" Width="*" Binding="{Binding Name}" />

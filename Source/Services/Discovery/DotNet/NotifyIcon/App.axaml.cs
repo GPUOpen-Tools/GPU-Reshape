@@ -37,14 +37,13 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using MsBox.Avalonia;
 using ReactiveUI;
 
 namespace Studio
 {
     public class App : Application
     {
-        public static IAvaloniaDependencyResolver Locator = AvaloniaLocator.Current;
-        
         /// <summary>
         /// Open GPUReshape command
         /// </summary>
@@ -66,10 +65,10 @@ namespace Studio
             // Try to install
             if (!_service.Install())
             {
-                MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
+                MessageBoxManager.GetMessageBoxStandard(
                     "GPU Reshape",
                     "Failed to initialize discovery service"
-                ).Show();
+                ).ShowAsync().Wait();
 
                 // Request shutdown
                 Stop();
@@ -144,10 +143,10 @@ namespace Studio
             // Try to uninstall and stop
             if (!_service.UninstallGlobal() || !_service.Stop())
             {
-                MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
+                MessageBoxManager.GetMessageBoxStandard(
                     "GPU Reshape",
                     "Failed to stop and uninstall instances"
-                ).Show();
+                ).ShowAsync().Wait();
                 
                 // Can't continue
                 return;

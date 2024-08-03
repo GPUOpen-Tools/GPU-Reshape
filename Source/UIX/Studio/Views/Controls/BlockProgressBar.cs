@@ -31,13 +31,14 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using ReactiveUI;
 using Studio.Models.Diagnostic;
 using Studio.ViewModels.Status;
 
 namespace Studio.Views.Controls
 {
-    public partial class BlockProgressBar : UserControl
+    public class BlockProgressBar : Control
     {
         /// <summary>
         /// View model
@@ -54,12 +55,7 @@ namespace Studio.Views.Controls
 
         public BlockProgressBar()
         {
-            InitializeComponent();
-        }
-
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
+            AffectsRender<BlockProgressBar>(BoundsProperty);
         }
 
         /// <summary>
@@ -79,6 +75,8 @@ namespace Studio.Views.Controls
         /// </summary>
         public override void Render(DrawingContext context)
         {
+            base.Render(context);
+            
             // Dimensions of each block
             double blockWidth = _size.Width / MaxBlockX - BlockPadding;
             double blockHeight = _size.Height / MaxBlockY - BlockPadding;
@@ -96,7 +94,7 @@ namespace Studio.Views.Controls
                 int y = i % MaxBlockY;
 
                 // Select pending brush
-                SolidColorBrush? pendingBlock = i < _brushes.Count ? _brushes[i] : _brushIncomplete;
+                IBrush? pendingBlock = i < _brushes.Count ? _brushes[i] : _brushIncomplete;
 
                 context.FillRectangle(isIncomplete ? pendingBlock : _brushCompleted, new Rect(
                     BlockPadding / 2.0 + x * (blockWidth + BlockPadding),
@@ -177,10 +175,10 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Default brushes
         /// </summary>
-        private SolidColorBrush? _brushIncomplete = ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushHigh");
-        private SolidColorBrush? _brushCompleted  = ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow");
-        private SolidColorBrush? _brushGraphics   = ResourceLocator.GetResource<SolidColorBrush>("InstrumentationStageGraphics");
-        private SolidColorBrush? _brushCompute    = ResourceLocator.GetResource<SolidColorBrush>("InstrumentationStageCompute");
+        private IBrush? _brushIncomplete = ResourceLocator.GetBrush("DockApplicationAccentBrushHigh");
+        private IBrush? _brushCompleted  = ResourceLocator.GetBrush("DockApplicationAccentBrushLow");
+        private IBrush? _brushGraphics   = ResourceLocator.GetBrush("InstrumentationStageGraphics");
+        private IBrush? _brushCompute    = ResourceLocator.GetBrush("InstrumentationStageCompute");
 
         /// <summary>
         /// Current number of jobs
@@ -195,7 +193,7 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Pending job distribution
         /// </summary>
-        private List<SolidColorBrush?> _brushes = new();
+        private List<IBrush?> _brushes = new();
         
         /// <summary>
         /// Random device

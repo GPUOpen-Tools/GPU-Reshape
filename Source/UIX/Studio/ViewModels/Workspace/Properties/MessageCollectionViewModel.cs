@@ -224,7 +224,7 @@ namespace Studio.ViewModels.Workspace.Properties
             }
 
             // Create document
-            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.OpenDocument(new ShaderDescriptor()
                 {

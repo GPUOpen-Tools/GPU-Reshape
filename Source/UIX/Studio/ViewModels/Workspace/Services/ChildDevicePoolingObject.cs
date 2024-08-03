@@ -71,7 +71,7 @@ namespace Studio.ViewModels.Workspace.Services
         private void OnHostConnected()
         {
             // Get provider
-            var provider = App.Locator.GetService<IWorkspaceService>();
+            var provider = ServiceRegistry.Get<IWorkspaceService>();
 
             // Create workspace
             var workspace = new WorkspaceViewModel()

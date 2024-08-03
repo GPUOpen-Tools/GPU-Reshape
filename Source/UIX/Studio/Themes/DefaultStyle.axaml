@@ -31,8 +31,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:idc="using:Dock.Avalonia.Controls"
         xmlns:controls="clr-namespace:Studio.Views.Controls"
-        xmlns:core="clr-namespace:Dock.Model.Core;assembly=Dock.Model"
-        xmlns:documents="clr-namespace:Studio.ViewModels.Documents;assembly=UIX.Studio.Runtime">
+        xmlns:core="clr-namespace:Dock.Model.Core;assembly=Dock.Model">
     <Styles.Resources>
         <!-- Custom dark style for GRS Studio -->
         
@@ -54,13 +53,13 @@
         <Color x:Key="SystemBaseHighColor">#D8D8D8</Color>
         
         <!-- Info colors -->
-        <Color x:Key="SuccessColor">#669653</Color>
-        <Color x:Key="WarningColor">#8F892E</Color>
-        <Color x:Key="ErrorColor">#8f2424</Color>
+        <Color x:Key="SuccessDefaultColor">#669653</Color>
+        <Color x:Key="WarningDefaultColor">#8F892E</Color>
+        <Color x:Key="ErrorDefaultColor">#8f2424</Color>
 
         <!-- Info brushes -->
-        <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ErrorColor}" />
-        <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningColor}" />
+        <SolidColorBrush x:Key="ErrorDefaultBrush" Color="{DynamicResource ErrorDefaultColor}" />
+        <SolidColorBrush x:Key="WarningDefaultBrush" Color="{DynamicResource WarningDefaultColor}" />
         <SolidColorBrush x:Key="ErrorHighlightBrush" Color="#A68F2424" />
         <SolidColorBrush x:Key="ErrorSelectedBrush" Color="#5C2020" />
         
@@ -125,33 +124,9 @@
     </Styles.Resources>
 
     <!-- Base style -->
-    <StyleInclude Source="avares://Avalonia.Themes.Default/DefaultTheme.xaml" />
-    <StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseDark.xaml" />
-    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Default.xaml" />
-    <StyleInclude Source="avares://Dock.Avalonia/Themes/DockDefaultTheme.axaml" />
-    <StyleInclude Source="avares://AvaloniaEdit/AvaloniaEdit.xaml" />
-
-    <!-- Property Grid -->
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Controls/EnumDropdown.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Controls/SearchTextBox.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Controls/SliderEditorBase.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/AlphabeticalLayout.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/CategorizedLayout.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/CategoryContainer.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/CategoryEditorContentPresenter.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/CategoryItemsLayout.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/ExtendedPropertyEditorTab.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/PropertyContainer.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/PropertyEditorContentPresenter.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/PropertyItemsLayout.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/PropertyNameTextBlock.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/TabbedLayout.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/TabbedLayoutItem.Base.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/TabbedLayoutItem.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Editor/DoubleEditor.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Editor/EditorResources.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Editor/TypeEditor.axaml" />
-    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/PropertyGrid.axaml" />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
+    <StyleInclude Source="avares://Dock.Avalonia/Themes/DockSimpleTheme.axaml" />
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Simple/AvaloniaEdit.xaml" />
 
     <!-- 
       Custom control style extension
@@ -187,6 +162,14 @@
         <Setter Property="BorderThickness" Value="0" />
     </Style>
 
+    <Style Selector="CheckBox">
+        <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderMidBrush}" />
+    </Style>
+
+    <Style Selector="Separator">
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
     <Style Selector="MenuItem /template/ ContentPresenter#PART_HeaderPresenter">
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -215,14 +198,18 @@
                         Padding="{TemplateBinding Padding}">
                     <ScrollViewer Classes="menuscroller">
                         <ItemsPresenter Name="PART_ItemsPresenter"
-                                        Items="{TemplateBinding Items}"
                                         ItemsPanel="{TemplateBinding ItemsPanel}"
-                                        ItemTemplate="{TemplateBinding ItemTemplate}"
-                                        KeyboardNavigation.TabNavigation="Continue" />
+                                        Margin="{DynamicResource MenuFlyoutScrollerMargin}"
+                                        KeyboardNavigation.TabNavigation="Continue"
+                                        Grid.IsSharedSizeScope="True" />
                     </ScrollViewer>
                 </Border>
             </ControlTemplate>
         </Setter>
+    </Style>
+    
+    <Style Selector="MenuItem Separator">
+        <Setter Property="Margin" Value="20 0 0 0"/>
     </Style>
 
     <Style Selector="idc|ToolControl">

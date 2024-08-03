@@ -103,7 +103,7 @@ namespace Studio.ViewModels.Tools
             Collapse = ReactiveCommand.Create(OnCollapse);
             
             // Bind selected workspace
-            App.Locator.GetService<IWorkspaceService>()?
+            ServiceRegistry.Get<IWorkspaceService>()?
                 .WhenAnyValue(x => x.SelectedShader)
                 .Subscribe(x =>
                 {

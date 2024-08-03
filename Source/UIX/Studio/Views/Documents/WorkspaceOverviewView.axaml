@@ -80,14 +80,14 @@
                 <ItemsControl
                     VerticalAlignment="Stretch"
                     HorizontalAlignment="Stretch"
-                    Items="{Binding Properties}">
+                    ItemsSource="{Binding Properties}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="properties:IPropertyViewModel">
                             <StackPanel Orientation="Vertical">
                                 <Separator 
                                     Background="{DynamicResource BorderColor}" 
                                     HorizontalAlignment="Stretch"
-                                    Height="2"/>
+                                    Height="2" Width="NaN"/>
                                 
                                 <controls:SectionView
                                     Title="{Binding Name, FallbackValue=[PropertyName]}"

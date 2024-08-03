@@ -25,16 +25,18 @@
 // 
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using AvaloniaEdit.Highlighting.Xshd;
 using AvaloniaEdit.TextMate;
-using AvaloniaEdit.Utils;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
@@ -72,7 +74,7 @@ namespace Studio.Views.Shader
 
             // Set the default grammar (just assume .hlsl)
             textMate.SetGrammar(registryOptions.GetScopeByLanguageId(registryOptions.GetLanguageByExtension(".hlsl").Id));
-
+            
             // Create background renderer
             _validationBackgroundRenderer = new ValidationBackgroundRenderer
             {
@@ -95,7 +97,7 @@ namespace Studio.Views.Shader
             Editor.TextArea.TextView.LineTransformers.Add(_validationTextMarkerService);
 
             // Add services
-            IServiceContainer services = Editor.Document.GetService<IServiceContainer>();
+            var services = AvaloniaEdit.Utils.ServiceExtensions.GetService<AvaloniaEdit.Utils.IServiceContainer>(Editor.Document);
             services?.AddService(typeof(ValidationTextMarkerService), _validationTextMarkerService);
 
             // Common styling

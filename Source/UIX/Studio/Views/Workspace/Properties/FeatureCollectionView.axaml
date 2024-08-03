@@ -38,7 +38,7 @@
     <Grid>
         <DataGrid 
             x:Name="FeatureDataGrid"
-            Items="{Binding Features}" 
+            ItemsSource="{Binding Features}" 
             IsReadOnly="True"
             VerticalAlignment="Stretch"
             HorizontalAlignment="Stretch">

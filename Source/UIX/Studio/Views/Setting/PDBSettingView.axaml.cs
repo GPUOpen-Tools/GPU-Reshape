@@ -29,6 +29,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using ReactiveUI;
+using Studio.Extensions;
 using Studio.ViewModels.Setting;
 
 namespace Studio.Views.Setting

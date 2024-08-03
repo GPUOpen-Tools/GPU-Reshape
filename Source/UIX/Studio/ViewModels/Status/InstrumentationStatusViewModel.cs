@@ -92,7 +92,7 @@ namespace Studio.ViewModels.Status
         public InstrumentationStatusViewModel()
         {
             // Connect to workspaces
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?
+            ServiceRegistry.Get<IWorkspaceService>()?
                 .WhenAnyValue(x => x.SelectedWorkspace)
                 .Subscribe(OnWorkspaceChanged);
         }

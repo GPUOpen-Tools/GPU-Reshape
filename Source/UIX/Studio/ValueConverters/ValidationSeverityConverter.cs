@@ -28,6 +28,7 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -54,11 +55,11 @@ namespace Studio.ValueConverters
             switch (_object.Severity)
             {
                 case ValidationSeverity.Info:
-                    return ResourceLocator.GetResource<SolidColorBrush>("InfoMediumForeground");
+                    return ResourceLocator.GetBrush("InfoMediumForeground");
                 case ValidationSeverity.Warning:
-                    return ResourceLocator.GetResource<SolidColorBrush>("WarningBrush");
+                    return ResourceLocator.GetBrush("WarningDefaultBrush");
                 case ValidationSeverity.Error:
-                    return ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush");
+                    return ResourceLocator.GetBrush("ErrorDefaultBrush");
                 default:
                     throw new ArgumentOutOfRangeException();
             }

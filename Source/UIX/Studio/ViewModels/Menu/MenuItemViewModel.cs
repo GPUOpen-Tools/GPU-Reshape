@@ -55,7 +55,7 @@ namespace Studio.ViewModels.Menu
         /// <summary>
         /// Icon for this item
         /// </summary>
-        public StreamGeometry? Icon => ResourceLocator.GetIcon(IconPath);
+        public StreamGeometry? Icon => !string.IsNullOrEmpty(IconPath) ? ResourceLocator.GetIcon(IconPath) : null;
 
         /// <summary>
         /// Path for the icon

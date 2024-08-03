@@ -29,6 +29,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Studio.Models.Workspace;
 using Studio.ViewModels;
 
@@ -75,14 +76,14 @@ namespace Studio.ValueConverters
         /// </summary>
         /// <param name="status">connection status</param>
         /// <returns>color brush</returns>
-        private SolidColorBrush ToColorBrush(ConnectionStatus status)
+        private IBrush ToColorBrush(ConnectionStatus status)
         {
-            var _default = new SolidColorBrush(Colors.Black);
+            var _default = new ImmutableSolidColorBrush(Colors.Black);
             
             switch (status)
             {
                 default:
-                    return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow") ?? _default;
+                    return ResourceLocator.GetBrush("DockApplicationAccentBrushLow") ?? _default;
                 case ConnectionStatus.ApplicationAlreadyConnected:
                 case ConnectionStatus.ResolveRejected:
                 case ConnectionStatus.ApplicationRejected:
@@ -90,13 +91,13 @@ namespace Studio.ValueConverters
                 case ConnectionStatus.QueryDuplicateKey:
                 case ConnectionStatus.QueryInvalidPort:
                 case ConnectionStatus.QueryInvalidPID:
-                    return ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? _default;
+                    return ResourceLocator.GetBrush("ErrorDefaultBrush") ?? _default;
                 case ConnectionStatus.DiscoveryNotActive:
-                    return ResourceLocator.GetResource<SolidColorBrush>("WarningBrush") ?? _default;
+                    return ResourceLocator.GetBrush("WarningDefaultBrush") ?? _default;
                 case ConnectionStatus.ResolveAccepted:
                 case ConnectionStatus.ApplicationAccepted:
                 case ConnectionStatus.EndpointConnected:
-                    return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushHigh") ?? _default;
+                    return ResourceLocator.GetBrush("DockApplicationAccentBrushHigh") ?? _default;
             }
         }
 

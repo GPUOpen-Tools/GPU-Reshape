@@ -121,7 +121,7 @@ namespace Studio.ViewModels.Workspace.Services
             // Changed?
             if (missedPulse != MissedPulse)
             {
-                var logger = App.Locator.GetService<ILoggingService>();
+                var logger = ServiceRegistry.Get<ILoggingService>();
                 
                 // Log event
                 if (missedPulse)

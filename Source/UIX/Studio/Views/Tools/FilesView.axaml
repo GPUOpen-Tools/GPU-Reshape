@@ -63,7 +63,7 @@
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             BorderThickness="0"
             Tag="{Binding}"
-            Items="{Binding Files}"
+            ItemsSource="{Binding Files}"
             AutoScrollToSelectedItem="False">
             <TreeView.Styles>
                 <Style Selector="TreeViewItem">
@@ -71,7 +71,7 @@
                 </Style>
             </TreeView.Styles>
             <TreeView.ItemTemplate>
-                <TreeDataTemplate ItemsSource="{Binding Items}">
+                <TreeDataTemplate ItemsSource="{Binding (cvm:IObservableTreeItem).Items}">
                     <controls:UniformViewHost ContextMenu="{StaticResource ReactiveContextMenu}" DataContext="{Binding $self.DataContext}"/>
                 </TreeDataTemplate>
             </TreeView.ItemTemplate>

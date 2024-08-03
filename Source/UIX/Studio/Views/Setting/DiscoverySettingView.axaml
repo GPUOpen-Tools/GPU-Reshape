@@ -41,7 +41,7 @@
             <Separator
                 Margin="60,0,0,0" 
                 Background="{StaticResource DockThemeBorderLowBrush}" 
-                HorizontalAlignment="Stretch" Height="1"/>
+                HorizontalAlignment="Stretch" Height="1" Width="NaN"/>
         </Grid>
         
         <Grid Margin="15,10,0,0" HorizontalAlignment="Stretch">
@@ -62,7 +62,7 @@
             <Separator
                 Margin="45,0,0,0" 
                 Background="{StaticResource DockThemeBorderLowBrush}" 
-                HorizontalAlignment="Stretch" Height="1"/>
+                HorizontalAlignment="Stretch" Height="1" Width="NaN"/>
         </Grid>
                 
         <Grid Margin="15,10,0,0">
@@ -78,7 +78,7 @@
                 <Separator
                     Margin="45,0,0,0" 
                     Background="{StaticResource DockThemeBorderLowBrush}" 
-                    HorizontalAlignment="Stretch" Height="1"/>
+                    HorizontalAlignment="Stretch" Height="1" Width="NaN"/>
             </Grid>
                 
             <StackPanel Orientation="Vertical" Margin="15,10,0,0">

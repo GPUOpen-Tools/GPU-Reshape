@@ -28,6 +28,7 @@ using System;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
+using Studio.Extensions;
 
 namespace Studio.Views.Controls
 {
@@ -70,8 +71,8 @@ namespace Studio.Views.Controls
             TextBox.Events().LostFocus.Subscribe(_ => SetEditFocus(false));
 
             // Bind close events
-            HitArea.Events().PointerEnter.Subscribe(x => CloseButton.IsVisible = CloseCommand != null);
-            HitArea.Events().PointerLeave.Subscribe(x => CloseButton.IsVisible = false);
+            HitArea.Events().PointerEntered.Subscribe(x => CloseButton.IsVisible = CloseCommand != null);
+            HitArea.Events().PointerExited.Subscribe(x => CloseButton.IsVisible = false);
             
             // Escape focus on enter key
             TextBox.Events().KeyUp.Subscribe(e =>

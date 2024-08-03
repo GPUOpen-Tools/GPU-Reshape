@@ -37,8 +37,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Avalonia" Version="0.10.22" />
-      <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.18" />
+      <PackageReference Include="Avalonia" Version="11.1.1" />
+      <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
     </ItemGroup>
 
     <ItemGroup>

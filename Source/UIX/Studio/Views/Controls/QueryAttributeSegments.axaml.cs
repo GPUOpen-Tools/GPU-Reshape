@@ -118,6 +118,6 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Tracked decorators
         /// </summary>
-        private Dictionary<QueryAttributeDecorator, IControl> _segmentControls = new();
+        private Dictionary<QueryAttributeDecorator, Control> _segmentControls = new();
     }
 }

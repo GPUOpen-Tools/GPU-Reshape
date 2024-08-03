@@ -29,6 +29,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Runtime.Models.Query;
 using Studio.Models.Workspace;
 using Studio.ViewModels;
@@ -76,19 +77,19 @@ namespace Studio.ValueConverters
         /// </summary>
         /// <param name="status">connection status</param>
         /// <returns>color brush</returns>
-        private SolidColorBrush ToColorBrush(QueryResult status)
+        private IBrush ToColorBrush(QueryResult status)
         {
-            var _default = new SolidColorBrush(Colors.Black);
+            var _default = new ImmutableSolidColorBrush(Colors.Black);
             
             switch (status)
             {
                 default:
-                    return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow") ?? _default;
+                    return ResourceLocator.GetBrush("DockApplicationAccentBrushLow") ?? _default;
                 case QueryResult.DuplicateKey:
                 case QueryResult.Invalid:
-                    return ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? _default;
+                    return ResourceLocator.GetBrush("ErrorDefaultBrush") ?? _default;
                 case QueryResult.OK:
-                    return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushHigh") ?? _default;
+                    return ResourceLocator.GetBrush("DockApplicationAccentBrushHigh") ?? _default;
             }
         }
 

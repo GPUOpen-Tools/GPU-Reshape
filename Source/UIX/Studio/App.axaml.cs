@@ -44,9 +44,6 @@ namespace Studio
 {
     public class App : Application
     {
-        // Default locator
-        public static IAvaloniaDependencyResolver Locator = AvaloniaLocator.Current;
-        
         /// <summary>
         /// Default dark style
         /// </summary>
@@ -91,46 +88,47 @@ namespace Studio
 
         private void InstallServicesAndLoadPlugins()
         {
-            AvaloniaLocator locator = AvaloniaLocator.CurrentMutable;
+            // Create shared registry
+            ServiceRegistry.Install<DefaultServiceRegistry>();
             
             // Attempt to find all plugins of relevance
             _pluginList = _pluginResolver.FindPlugins("uix", PluginResolveFlag.ContinueOnFailure);
             
             // Cold suspension service
-            locator.BindToSelf<ISuspensionService>(new SuspensionService(System.IO.Path.Combine("Intermediate", "Settings", "Suspension.json")));
+            ServiceRegistry.Add<ISuspensionService>(new SuspensionService(System.IO.Path.Combine("Intermediate", "Settings", "Suspension.json")));
             
             // Locator
-            locator.BindToSelf<ILocatorService>(new LocatorService());
+            ServiceRegistry.Add<ILocatorService>(new LocatorService());
             
             // Logging host
-            locator.BindToSelf<ILoggingService>(new LoggingService());
+            ServiceRegistry.Add<ILoggingService>(new LoggingService());
 
             // Hosts all menu objects
-            locator.BindToSelf<IWindowService>(new WindowService());
+            ServiceRegistry.Add<IWindowService>(new WindowService());
 
             // Hosts all live workspaces
-            locator.BindToSelf<IWorkspaceService>(new WorkspaceService());
+            ServiceRegistry.Add<IWorkspaceService>(new WorkspaceService());
             
             // Provides general network diagnostics
-            locator.BindToSelf(new NetworkDiagnosticService());
+            ServiceRegistry.Add(new NetworkDiagnosticService());
 
             // Initiates the host resolver if not already up and running
-            locator.BindToSelf<IHostResolverService>(new HostResolverService());
+            ServiceRegistry.Add<IHostResolverService>(new HostResolverService());
             
             // Local discoverability
-            locator.BindToSelf<IBackendDiscoveryService>(new BackendDiscoveryService());
+            ServiceRegistry.Add<IBackendDiscoveryService>(new BackendDiscoveryService());
 
             // Hosts all status objects
-            locator.BindToSelf<IStatusService>(new StatusService());
+            ServiceRegistry.Add<IStatusService>(new StatusService());
 
             // Hosts all context objects
-            locator.BindToSelf<IContextMenuService>(new ContextMenuService());
+            ServiceRegistry.Add<IContextMenuService>(new ContextMenuService());
 
             // Hosts all menu objects
-            locator.BindToSelf<IMenuService>(new MenuService());
+            ServiceRegistry.Add<IMenuService>(new MenuService());
 
             // Hosts all settings objects
-            locator.BindToSelf<ISettingsService>(new SettingsService());
+            ServiceRegistry.Add<ISettingsService>(new SettingsService());
         }
 
         private void InstallPlugins()

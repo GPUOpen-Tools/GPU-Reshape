@@ -43,7 +43,7 @@
         <StackPanel Orientation="Vertical">
             <ItemsControl
                 HorizontalAlignment="Stretch"
-                Items="{Binding Items}">
+                ItemsSource="{Binding Items}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="setting1:ISettingViewModel">
                         <controls:InlineSectionView

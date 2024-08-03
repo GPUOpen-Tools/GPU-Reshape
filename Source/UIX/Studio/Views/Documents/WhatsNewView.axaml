@@ -49,7 +49,7 @@
             HorizontalAlignment="Left"
             BorderThickness="0"
             Width="250">
-            <ItemsControl Items="{Binding Stories}" Height="250" Width="250">
+            <ItemsControl ItemsSource="{Binding Stories}" Height="250" Width="250">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:WhatsNewStoryViewModel">
                         <controls:StoryRadio
@@ -83,7 +83,7 @@
             <ContentPresenter.ContentTemplate>
                 <DataTemplate x:DataType="vm:WhatsNewViewModel">
                     <md:MarkdownScrollViewer
-                        Margin="300 15 0 0"
+                        Margin="300 20 0 0"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
                         UseResource="True"

@@ -81,7 +81,7 @@ namespace Studio.ViewModels.Controls
         public DiscoveryDropdownViewModel()
         {
             // Get service
-            _discoveryService = App.Locator.GetService<Services.IBackendDiscoveryService>()?.Service;
+            _discoveryService = ServiceRegistry.Get<Services.IBackendDiscoveryService>()?.Service;
             
             // Create commands
             ToggleInstance = ReactiveCommand.Create(OnToggleInstance);
@@ -170,13 +170,13 @@ namespace Studio.ViewModels.Controls
             // Bad service?
             if (_discoveryService == null)
             {
-                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("ErrorBrush"));
+                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("ErrorDefaultBrush"));
                 return;
             }
 
             // Set status
             bool isRunning = _discoveryService.IsRunning();
-            StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>( isRunning? "SuccessColor" : "WarningColor"));
+            StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>( isRunning? "SuccessDefaultColor" : "WarningDefaultColor"));
             InstanceLabel = isRunning ? "Stop discovery" : "Start discovery";
 
             // Set global status
@@ -215,6 +215,6 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Setting view model
         /// </summary>
-        private DiscoverySettingViewModel? _settingViewModel = AvaloniaLocator.Current.GetService<ISettingsService>()?.Get<DiscoverySettingViewModel>();
+        private DiscoverySettingViewModel? _settingViewModel = ServiceRegistry.Get<ISettingsService>()?.Get<DiscoverySettingViewModel>();
     }
 }

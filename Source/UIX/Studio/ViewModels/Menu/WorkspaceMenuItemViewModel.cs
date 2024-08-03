@@ -108,7 +108,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnLaunchApplication()
         {
-            App.Locator.GetService<IWindowService>()?.OpenFor(new LaunchViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenFor(new LaunchViewModel());
         }
 
         /// <summary>
@@ -116,7 +116,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnCreateConnection()
         {
-            App.Locator.GetService<IWindowService>()?.OpenFor(new ConnectViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenFor(new ConnectViewModel());
         }
 
         /// <summary>
@@ -124,7 +124,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnCloseAllConnections()
         {
-            App.Locator.GetService<IWorkspaceService>()?.Clear();
+            ServiceRegistry.Get<IWorkspaceService>()?.Clear();
         }
 
         /// <summary>

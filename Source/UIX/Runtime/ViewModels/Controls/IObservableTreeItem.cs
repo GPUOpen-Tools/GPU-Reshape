@@ -52,7 +52,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Foreground color of the item
         /// </summary>
-        public ISolidColorBrush? StatusColor { get; set; }
+        public IBrush? StatusColor { get; set; }
 
         /// <summary>
         /// All child items

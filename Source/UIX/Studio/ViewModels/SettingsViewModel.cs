@@ -66,7 +66,7 @@ namespace Studio.ViewModels
         public SettingsViewModel()
         {
             // Get service
-            var settingsService = App.Locator.GetService<ISettingsService>() ?? throw new InvalidOperationException();
+            var settingsService = ServiceRegistry.Get<ISettingsService>() ?? throw new InvalidOperationException();
 
             // Set root view model
             SettingViewModel = settingsService.ViewModel;

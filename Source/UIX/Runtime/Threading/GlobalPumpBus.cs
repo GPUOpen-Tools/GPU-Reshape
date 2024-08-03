@@ -88,13 +88,13 @@ namespace Runtime.Threading
             Debug.Assert(Dispatcher.UIThread.CheckAccess(), "Enqueued on foreign thread");
             
             // Dispose last timer
-            _disposable?.Dispose();
+            _timer?.Stop();
 
             // Start new timer
-            _disposable = _platformThreading.StartTimer(Priority, TimeSpan.Zero, Run);
+            _timer = new DispatcherTimer(TimeSpan.Zero, Priority, Run);
         }
 
-        private void Run()
+        private void Run(object? sender, EventArgs? args)
         {
             Action[] chunk;
             lock (this)
@@ -112,7 +112,7 @@ namespace Runtime.Threading
                 // If we're slacking, re-enqueue, otherwise stop it
                 if (_stepSlackCounter == 0)
                 {
-                    _disposable?.Dispose();
+                    _timer?.Stop();
                     _enqueued = false;
                 }
                 
@@ -137,7 +137,7 @@ namespace Runtime.Threading
         /// <summary>
         /// Timer disposable
         /// </summary>
-        private IDisposable? _disposable;
+        private DispatcherTimer? _timer;
 
         /// <summary>
         /// All actions
@@ -153,11 +153,5 @@ namespace Runtime.Threading
         /// Current slack counter
         /// </summary>
         private int _stepSlackCounter;
-        
-        /// <summary>
-        /// Underlying threading interface
-        /// </summary>
-        private IPlatformThreadingInterface _platformThreading = AvaloniaLocator.Current.GetService<IPlatformThreadingInterface>() 
-                                                                 ?? throw new Exception("Missing platform threading");
     }
 }

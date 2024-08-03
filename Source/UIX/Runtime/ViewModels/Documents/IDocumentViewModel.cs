@@ -44,6 +44,6 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Document icon color
         /// </summary>
-        public Color? IconForeground { get; }
+        public IBrush? IconForeground { get; }
     }
 }

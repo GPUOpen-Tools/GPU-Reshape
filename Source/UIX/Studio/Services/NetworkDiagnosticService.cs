@@ -75,7 +75,7 @@ namespace Studio.Services
             BridgeInfo info = new BridgeInfo();
             
             // Accumulate info
-            App.Locator.GetService<IWorkspaceService>()?.Workspaces.Items.ForEach(x =>
+            ServiceRegistry.Get<IWorkspaceService>()?.Workspaces.Items.ForEach(x =>
             {
                 BridgeInfo workspaceInfo = x.Connection?.Bridge?.GetInfo() ?? new BridgeInfo();
                 info.bytesWritten += workspaceInfo.bytesWritten;

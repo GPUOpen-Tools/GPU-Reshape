@@ -137,7 +137,7 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Invoked on any property change
         /// </summary>
-        protected override void OnPropertyChanged<T>(AvaloniaPropertyChangedEventArgs<T> change)
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             // Update selection classes
             if (change.Property.Name == nameof(IsSelected))

@@ -26,7 +26,6 @@
 
 using System;
 using Avalonia.Controls;
-using Avalonia.ExtendedToolkit.Controls.PropertyGrid.PropertyTypes;
 using Avalonia.Markup.Xaml;
 using ReactiveUI;
 using Studio.Extensions;
@@ -50,6 +49,7 @@ namespace Studio.Views.Tools
                     x.WhenAnyValue(y => y.SelectedPropertyConfigurations)
                         .Subscribe(y =>
                         {
+#if false
                             // Create new descriptor
                             PropertyGrid.SelectedObject = new Property.PropertyCollectionTypeDescriptor(y ?? Array.Empty<IPropertyViewModel>());
                             
@@ -61,6 +61,7 @@ namespace Studio.Views.Tools
                             
                             // Expand all categories
                             PropertyGrid.Categories.ForEach(c => c.IsExpanded = true);
+#endif
                         });
                 });
         }

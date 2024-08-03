@@ -30,6 +30,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Dock.Model.Core;
 using DynamicData.Binding;
 using ReactiveUI;
 using Studio.Extensions;

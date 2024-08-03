@@ -50,7 +50,7 @@
             Width="5"
             VerticalAlignment="Stretch"
             IsVisible="{Binding IsSelected}"
-            Background="{StaticResource WarningColor}"/>
+            Background="{StaticResource WarningDefaultColor}"/>
         <Button 
             x:Name="ValidationButton"
             Classes="Validation">
@@ -93,7 +93,7 @@
                             Margin="0"
                             BorderThickness="0"
                             SelectedItem="{Binding SelectedObject}"
-                            Items="{Binding Objects}">
+                            ItemsSource="{Binding Objects}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="objects:ValidationObject">
                                     <StackPanel Orientation="Horizontal">

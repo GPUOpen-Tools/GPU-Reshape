@@ -193,6 +193,6 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Shared logging view model
         /// </summary>
-        private ILoggingViewModel? _loggingViewModel = App.Locator.GetService<ILoggingService>()?.ViewModel;
+        private ILoggingViewModel? _loggingViewModel = ServiceRegistry.Get<ILoggingService>()?.ViewModel;
     }
 }

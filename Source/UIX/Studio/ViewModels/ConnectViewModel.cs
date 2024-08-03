@@ -264,7 +264,7 @@ namespace Studio.ViewModels
             }
 
             // Quick check that we're not already connected
-            if (App.Locator.GetService<Services.IWorkspaceService>() is { } service)
+            if (ServiceRegistry.Get<Services.IWorkspaceService>() is { } service)
             {
                 if (service.Workspaces.Items.Any(x => x.Connection?.Application?.Guid == SelectedApplication?.Guid))
                 {
@@ -382,7 +382,7 @@ namespace Studio.ViewModels
                 }
 
                 // Get provider
-                var provider = App.Locator.GetService<Services.IWorkspaceService>();
+                var provider = ServiceRegistry.Get<Services.IWorkspaceService>();
 
                 // Create workspace
                 var workspace = new ViewModels.Workspace.WorkspaceViewModel()
@@ -482,7 +482,7 @@ namespace Studio.ViewModels
             if (ConnectionQuery?.IPvX?.Trim() == "localhost")
             {
                 // Check discovery, even if the local host connects, it's limited to manual registrations
-                if (App.Locator.GetService<IBackendDiscoveryService>()?.Service is { } service && !service.IsRunning())
+                if (ServiceRegistry.Get<IBackendDiscoveryService>()?.Service is { } service && !service.IsRunning())
                 {
                     return ConnectionStatus.DiscoveryNotActive;
                 }

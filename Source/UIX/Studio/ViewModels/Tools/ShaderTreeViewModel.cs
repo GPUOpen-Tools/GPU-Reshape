@@ -104,7 +104,7 @@ namespace Studio.ViewModels.Tools
                 .Subscribe();
             
             // Bind selected workspace
-            App.Locator.GetService<IWorkspaceService>()?
+            ServiceRegistry.Get<IWorkspaceService>()?
                 .WhenAnyValue(x => x.SelectedWorkspace)
                 .Subscribe(x => WorkspaceViewModel = x);
         }
@@ -118,7 +118,7 @@ namespace Studio.ViewModels.Tools
             if (_workspaceViewModel == null)
                 return;
             
-            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.OpenDocument( new ShaderDescriptor()
                 {

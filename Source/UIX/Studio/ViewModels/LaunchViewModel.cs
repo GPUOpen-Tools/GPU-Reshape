@@ -294,7 +294,7 @@ namespace Studio.ViewModels
             _connectionViewModel.Connected.Subscribe(_ => OnRemoteConnected());
             
             // Bind configurations
-            App.Locator.GetService<IWorkspaceService>()?.Configurations.Connect()
+            ServiceRegistry.Get<IWorkspaceService>()?.Configurations.Connect()
                 .OnItemAdded(x => Configurations.Add(x))
                 .OnItemRemoved(x => Configurations.Remove(x))
                 .Subscribe();
@@ -321,7 +321,7 @@ namespace Studio.ViewModels
         private void CreateVirtualWorkspace()
         {
             // Must have service
-            if (App.Locator.GetService<IWorkspaceService>() is not { } service)
+            if (ServiceRegistry.Get<IWorkspaceService>() is not { } service)
             {
                 return;
             }
@@ -463,7 +463,7 @@ namespace Studio.ViewModels
         /// </summary>
         private async void OnStart()
         {
-            if (App.Locator.GetService<IBackendDiscoveryService>()?.Service is not { } service)
+            if (ServiceRegistry.Get<IBackendDiscoveryService>()?.Service is not { } service)
             {
                 return;
             }
@@ -570,7 +570,7 @@ namespace Studio.ViewModels
         private async void CreateProcessWorkspace()
         {
             // Get provider
-            var provider = App.Locator.GetService<IWorkspaceService>();
+            var provider = ServiceRegistry.Get<IWorkspaceService>();
 
             // Create process workspace
             var workspace = new ProcessWorkspaceViewModel(_pendingReservedToken)
@@ -665,7 +665,7 @@ namespace Studio.ViewModels
                 }
 
                 // Get provider
-                var provider = App.Locator.GetService<Services.IWorkspaceService>();
+                var provider = ServiceRegistry.Get<Services.IWorkspaceService>();
 
                 // Create workspace
                 var workspace = new ViewModels.Workspace.WorkspaceViewModel()

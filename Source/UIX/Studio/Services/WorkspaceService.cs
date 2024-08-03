@@ -110,7 +110,7 @@ namespace Studio.Services
             _workspaces.Add(workspaceViewModel);
             
             // Submit document
-            if (openDescriptor && App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (openDescriptor && ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.OpenDocument(new WorkspaceOverviewDescriptor()
                 {
@@ -201,7 +201,7 @@ namespace Studio.Services
         /// </summary>
         private void CloseDocumentsFor(IWorkspaceViewModel owner)
         {
-            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.CloseOwnedDocuments(owner.PropertyCollection);
             }

@@ -53,7 +53,7 @@ namespace Studio.Services
             // Detect conflicting instances
             if (Service.HasConflictingInstances())
             {
-                App.Locator.GetService<ILoggingService>()?.ViewModel.Events.Add(new LogEvent()
+                ServiceRegistry.Get<ILoggingService>()?.ViewModel.Events.Add(new LogEvent()
                 {
                     Severity = LogSeverity.Error,
                     Message = "Detected conflicting discovery services / instances, typically indicant of mixed GPU-Reshape installations, see Settings"

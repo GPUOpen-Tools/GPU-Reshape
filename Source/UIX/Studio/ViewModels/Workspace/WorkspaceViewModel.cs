@@ -97,7 +97,7 @@ namespace Studio.ViewModels.Workspace
             _connection?.Destruct();
             
             // Remove from service
-            App.Locator.GetService<IWorkspaceService>()?.Remove(this);
+            ServiceRegistry.Get<IWorkspaceService>()?.Remove(this);
         }
 
         /// <summary>

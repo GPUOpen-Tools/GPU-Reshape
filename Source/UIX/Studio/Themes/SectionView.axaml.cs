@@ -59,8 +59,8 @@ namespace Studio.Views.Controls
         {
             ExpandCommand = ReactiveCommand.Create(OnExpand);
         }
-
-        protected override void OnPropertyChanged<T>(AvaloniaPropertyChangedEventArgs<T> change)
+        
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             if (change.Property.Name == nameof(IsExpanded))
             {

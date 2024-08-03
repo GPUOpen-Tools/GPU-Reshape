@@ -49,8 +49,6 @@
                         <Style Selector="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Center"/>
                             <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="Foreground" Value="{TemplateBinding Foreground}"/>
-                            <Setter Property="FontSize" Value="{TemplateBinding FontSize}"/>
                         </Style>
                     </ContentPresenter.Styles>
                 </ContentPresenter>

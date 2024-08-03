@@ -57,7 +57,7 @@ namespace Studio.ViewModels.Status
 
         public LogStatusViewModel()
         {
-            ILoggingViewModel? logging = AvaloniaLocator.Current.GetService<ILoggingService>()?.ViewModel;
+            ILoggingViewModel? logging = ServiceRegistry.Get<ILoggingService>()?.ViewModel;
             
             // Connect to workspaces
             logging?.Events.Connect()

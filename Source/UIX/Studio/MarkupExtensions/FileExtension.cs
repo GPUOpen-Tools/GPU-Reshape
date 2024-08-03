@@ -47,11 +47,8 @@ namespace Studio.MarkupExtensions
         
         public override object ProvideValue(IServiceProvider serviceProvider)
         {
-            // Get asset provider
-            var assets = AvaloniaLocator.Current.GetService<IAssetLoader>() ?? throw new Exception("Expected asset loader");
-
             // Attempt to read the contents
-            using var reader = new StreamReader(assets.Open(new Uri("avares://GPUReshape/" + FileName)));
+            using var reader = new StreamReader(AssetLoader.Open(new Uri("avares://GPUReshape/" + FileName)));
             return reader.ReadToEnd();
         }
     }

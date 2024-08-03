@@ -25,42 +25,39 @@
 // 
 
 using System;
-using System.Reactive.Linq;
-using Dock.Model.Core;
-using Dock.Model.Core.Events;
+using System.Collections.Generic;
+using System.ComponentModel;
+using DynamicData;
+using Studio.ViewModels.Data;
+using Studio.ViewModels.Setting;
 
-namespace Studio.Extensions
+namespace Studio.Services
 {
-    public class FactoryEvents
+    public class DefaultServiceRegistry : IServiceRegistry
     {
         /// <summary>
-        /// Constructor
+        /// Add a new service
         /// </summary>
-        /// <param name="factory">source factor</param>
-        public FactoryEvents(IFactory factory)
+        /// <param name="type">associated interface type</param>
+        /// <param name="service">service object</param>
+        public void Add(Type type, object service)
         {
-            this._factory = factory;
+            _services.Add(type, service);
+        }
+
+        /// <summary>
+        /// Get a service object
+        /// </summary>
+        /// <param name="type">interface type to query</param>
+        /// <returns>null if not found</returns>
+        public object? Get(Type type)
+        {
+            return _services.GetValueOrDefault(type);
         }
         
         /// <summary>
-        /// Observable closed event
+        /// All installed services
         /// </summary>
-        public IObservable<IDockable?> DockableClosed => Observable.FromEvent<EventHandler<DockableClosedEventArgs>, IDockable?>(handler =>
-        {
-            return (s, e) => handler(e.Dockable);
-        }, handler => _factory.DockableClosed += handler, handler => _factory.DockableClosed -= handler);
-        
-        /// <summary>
-        /// Observable removed event
-        /// </summary>
-        public IObservable<IDockable?> DockableRemoved => Observable.FromEvent<EventHandler<DockableRemovedEventArgs>, IDockable?>(handler =>
-        {
-            return (s, e) => handler(e.Dockable);
-        }, handler => _factory.DockableRemoved += handler, handler => _factory.DockableRemoved -= handler);
-
-        /// <summary>
-        /// Internal factory
-        /// </summary>
-        private readonly IFactory _factory;
+        private Dictionary<Type, object> _services = new ();
     }
 }

@@ -30,6 +30,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using Studio.ViewModels.Shader;
@@ -115,7 +116,7 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Default validation brush
         /// </summary>
-        private Brush _validationBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? new SolidColorBrush(Colors.Red);
+        private IBrush _validationBrush = ResourceLocator.GetBrush("ErrorDefaultBrush") ?? new SolidColorBrush(Colors.Red);
 
         /// <summary>
         /// Underlying layer

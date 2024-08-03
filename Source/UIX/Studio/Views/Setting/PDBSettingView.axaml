@@ -58,7 +58,7 @@
         
         <Grid Margin="15,5,0,0">
             <ListBox
-                Items="{Binding SearchDirectories}"
+                ItemsSource="{Binding SearchDirectories}"
                 SelectedItem="{Binding SelectedItem}"
                 MinHeight="200">
                 <ListBox.ItemTemplate>

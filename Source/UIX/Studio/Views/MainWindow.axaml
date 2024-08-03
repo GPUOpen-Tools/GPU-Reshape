@@ -32,7 +32,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:id="using:Dock.Avalonia"
         xmlns:vm="using:Studio.ViewModels"
         xmlns:views="using:Studio.Views"
         mc:Ignorable="d"
@@ -48,7 +47,7 @@
         Title="GPU Reshape" 
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="PreferSystemChrome"
-        id:DockProperties.IsDragEnabled="True" id:DockProperties.IsDropEnabled="True">
+        DockProperties.IsDragEnabled="True" DockProperties.IsDropEnabled="True">
   <Design.DataContext>
     <vm:MainWindowViewModel />
   </Design.DataContext>

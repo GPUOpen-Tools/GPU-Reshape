@@ -94,15 +94,15 @@ namespace Studio.ViewModels.Controls
                         switch (y)
                         {
                             case BusMode.Immediate:
-                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("SuccessColor"));
+                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("SuccessDefaultColor"));
                                 StatusGeometry = ResourceLocator.GetIcon("Play");
                                 break;
                             case BusMode.RecordAndCommit:
-                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("WarningColor"));
+                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("WarningDefaultColor"));
                                 StatusGeometry = ResourceLocator.GetIcon("Pause");
                                 break;
                             case BusMode.Discard:
-                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("ErrorColor"));
+                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("ErrorDefaultColor"));
                                 StatusGeometry = ResourceLocator.GetIcon("Pause");
                                 break;
                             default:
@@ -155,7 +155,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Shared workspace service
         /// </summary>
-        private IWorkspaceService? _workspaceService = App.Locator.GetService<IWorkspaceService>();
+        private IWorkspaceService? _workspaceService = ServiceRegistry.Get<IWorkspaceService>();
 
         /// <summary>
         /// Internal status color

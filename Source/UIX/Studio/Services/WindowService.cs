@@ -82,6 +82,6 @@ namespace Studio.Services
         /// <summary>
         /// Locator service
         /// </summary>
-        private ILocatorService? _locator = App.Locator.GetService<ILocatorService>();
+        private ILocatorService? _locator = ServiceRegistry.Get<ILocatorService>();
     }
 }

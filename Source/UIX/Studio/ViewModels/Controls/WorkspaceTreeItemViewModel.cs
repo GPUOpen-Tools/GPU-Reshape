@@ -30,6 +30,7 @@ using System.Linq;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using DynamicData;
 using ReactiveUI;
 using Studio.Services;
@@ -63,7 +64,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Foreground color of the item
         /// </summary>
-        public ISolidColorBrush? StatusColor
+        public IBrush? StatusColor
         {
             get => _statusColor;
             set => this.RaiseAndSetIfChanged(ref _statusColor, value);
@@ -119,7 +120,7 @@ namespace Studio.ViewModels.Controls
                 return;
             }
             
-            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.OpenDocument(descriptorObject.Descriptor);
             }
@@ -144,7 +145,7 @@ namespace Studio.ViewModels.Controls
             // Bind connection status to color
             _propertyViewModel.GetService<IPulseService>()?
                 .WhenAnyValue(x => x.MissedPulse)
-                .Subscribe(x => StatusColor = x ? ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") : Brushes.White);
+                .Subscribe(x => StatusColor = x ? ResourceLocator.GetBrush("ErrorDefaultBrush") : Brushes.White);
 
             // TODO: Unsubscribe?
             _propertyViewModel.Properties.Connect()
@@ -198,7 +199,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Internal status color
         /// </summary>
-        private ISolidColorBrush? _statusColor = Brushes.White;
+        private IBrush? _statusColor = Brushes.White;
 
         /// <summary>
         /// Internal expansion state

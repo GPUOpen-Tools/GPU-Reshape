@@ -34,7 +34,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:cvm="clr-namespace:Studio.ViewModels.Controls;assembly=UIX.Studio.Runtime"
         xmlns:controls="clr-namespace:Studio.Views.Controls"
-        xmlns:propertyGrid="https://github.com/avalonia_extendedtoolkit"
         xmlns:viewModels="clr-namespace:Studio.ViewModels"
         xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
         xmlns:r="clr-namespace:Studio.Resources"
@@ -134,7 +133,7 @@
                         Height="25"
                         Margin="0 0 0 5"
                         SelectedItem="{Binding SelectedConfiguration}"
-                        Items="{Binding Configurations}">
+                        ItemsSource="{Binding Configurations}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type workspace:IWorkspaceConfigurationViewModel}">
                                 <TextBlock Text="{Binding Name}"/>
@@ -200,7 +199,7 @@
                             Margin="0 0 2.5 0"
                             ContextMenu="{StaticResource ReactiveContextMenu}"
                             Tag="{Binding}"
-                            Items="{Binding Workspaces}">
+                            ItemsSource="{Binding Workspaces}">
                             <TreeView.Styles>
                                 <Style Selector="TreeViewItem">
                                     <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}" />
@@ -214,17 +213,10 @@
                         </TreeView>
 
                         <Border Grid.Column="1" Margin="2.5 0 0  0" Background="{StaticResource DockApplicationAccentBrushLow}" Padding="5">
-                            <propertyGrid:PropertyGrid
+                            <controls:PropertyGrid
                                 x:Name="PropertyGrid"
                                 HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"
-                                PropertyDisplayMode="All"
-                                ShowAttachedProperties="True"
-                                ShowReadOnlyProperties="True">
-                                <propertyGrid:PropertyGrid.Layout>
-                                    <propertyGrid:CategorizedLayout />
-                                </propertyGrid:PropertyGrid.Layout>
-                            </propertyGrid:PropertyGrid>
+                                VerticalAlignment="Stretch"/>
                         </Border>
                     </Grid>
                     

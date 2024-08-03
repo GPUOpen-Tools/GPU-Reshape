@@ -11,11 +11,14 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AssemblyName>GPUReshape.NotifyIcon</AssemblyName>
 		<SelfContained>true</SelfContained>
-        <PublishSingleFile>true</PublishSingleFile>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
+        <PublishSingleFile>true</PublishSingleFile>
     </PropertyGroup>
     
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -40,10 +43,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Avalonia" Version="0.10.22" />
-      <PackageReference Include="Avalonia.Desktop" Version="0.10.18" />
-      <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.18" />
-      <PackageReference Include="MessageBox.Avalonia" Version="2.0.2" />
+      <PackageReference Include="Avalonia" Version="11.1.1" />
+      <PackageReference Include="Avalonia.Desktop" Version="11.1.1" />
+      <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
+      <PackageReference Include="Avalonia.Themes.Simple" Version="11.1.1" />
+      <PackageReference Include="MessageBox.Avalonia" Version="3.1.6" />
     </ItemGroup>
 
     <ItemGroup>

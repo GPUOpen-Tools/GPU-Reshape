@@ -63,7 +63,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Icon color
         /// </summary>
-        public Color? IconForeground
+        public IBrush? IconForeground
         {
             get => _iconForeground;
             set => this.RaiseAndSetIfChanged(ref _iconForeground, value);
@@ -104,7 +104,7 @@ namespace Studio.ViewModels.Documents
             Title = "What's New";
             
             // Try to open static index
-            Stream? stream = AvaloniaLocator.Current.GetService<IAssetLoader>()?.Open(new Uri("avares://GPUReshape/Resources/WhatsNew/Index.json"));
+            Stream? stream = AssetLoader.Open(new Uri("avares://GPUReshape/Resources/WhatsNew/Index.json"));
             if (stream == null)
             {
                 Studio.Logging.Error("Failed to open WhatsNew/index.json");
@@ -156,13 +156,13 @@ namespace Studio.ViewModels.Documents
         private void OnDontShowAgain()
         {
             // Do not open on next run
-            if (AvaloniaLocator.Current.GetService<ISettingsService>()?.Get<StartupViewModel>() is { } startup)
+            if (ServiceRegistry.Get<ISettingsService>()?.Get<StartupViewModel>() is { } startup)
             {
                 startup.ShowWhatsNew = false;
             }
             
             // Close open tabs
-            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.CloseOwnedDocuments(typeof(WhatsNewDescriptor));
             }
@@ -176,7 +176,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Internal icon color
         /// </summary>
-        private Color? _iconForeground = ResourceLocator.GetResource<Color>("SystemBaseHighColor");
+        private IBrush? _iconForeground = new SolidColorBrush(ResourceLocator.GetResource<Color>("SystemBaseHighColor"));
 
         /// <summary>
         /// Internal descriptor

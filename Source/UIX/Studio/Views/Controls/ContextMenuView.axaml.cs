@@ -29,7 +29,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.ExtendedToolkit.Extensions;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Metadata;
@@ -85,23 +84,23 @@ namespace Studio.Views.Controls
                 control.ContextMenu.PlacementTarget = control;
 
                 // Get service
-                if (App.Locator.GetService<IContextMenuService>() is { } service)
+                if (ServiceRegistry.Get<IContextMenuService>() is { } service)
                 {
                     IEnumerable<object>? dataViewModelSource = null;
 
                     // Determine appropriate view model
-                    if (FindParent<TreeViewItem>(e.Source as IControl) is {} treeViewItem)
+                    if (FindParent<TreeViewItem>(e.Source as Control) is {} treeViewItem)
                     {
-                        if (treeViewItem.TryFindParent<TreeView>() is { } parentTree)
+                        if (FindParent<TreeView>(treeViewItem) is {} parentTree)
                         {
                             dataViewModelSource = parentTree.SelectedItems.Cast<object>();
                         }
                     }
-                    else if (FindParent<ListBoxItem>(e.Source as IControl) is {} listBoxItem)
+                    else if (FindParent<ListBoxItem>(e.Source as Control) is {} listBoxItem)
                     {
-                        if (listBoxItem.TryFindParent<ListBox>() is { } parentList)
+                        if (FindParent<ListBox>(listBoxItem) is {} parentList)
                         {
-                            dataViewModelSource = parentList.SelectedItems.Cast<object>();
+                            dataViewModelSource = parentList.SelectedItems?.Cast<object>() ?? Enumerable.Empty<object>();
                         }
                     }
                     
@@ -153,7 +152,7 @@ namespace Studio.Views.Controls
                     }
 
                     // Assign to control
-                    control.ContextMenu.Items = items;
+                    control.ContextMenu.ItemsSource = items;
                 }
 
                 // Cleanup
@@ -171,7 +170,7 @@ namespace Studio.Views.Controls
             }
         }
 
-        private static T? FindParent<T>(IControl? control) where T : class
+        private static T? FindParent<T>(Control? control) where T : class
         {
             while (control != null)
             {
@@ -180,7 +179,7 @@ namespace Studio.Views.Controls
                     return typed;
                 }
 
-                control = control.Parent;
+                control = control.Parent as Control;
             }
 
             return null;

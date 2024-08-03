@@ -195,7 +195,7 @@ namespace Studio.ViewModels.Shader
         /// </summary>
         private void OnParentSelected()
         {
-            if (App.Locator.GetService<IWorkspaceService>() is { } service)
+            if (ServiceRegistry.Get<IWorkspaceService>() is { } service)
             {
                 // Create navigation vm
                 service.SelectedShader = new ShaderNavigationViewModel()

@@ -36,7 +36,6 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using AvaloniaEdit.TextMate;
-using AvaloniaEdit.Utils;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
@@ -95,7 +94,7 @@ namespace Studio.Views.Shader
             Editor.TextArea.TextView.LineTransformers.Add(_validationTextMarkerService);
 
             // Add services
-            IServiceContainer services = Editor.Document.GetService<IServiceContainer>();
+            var services = AvaloniaEdit.Utils.ServiceExtensions.GetService<AvaloniaEdit.Utils.IServiceContainer>(Editor.Document);
             services?.AddService(typeof(ValidationTextMarkerService), _validationTextMarkerService);
             
             // Common styling

@@ -65,7 +65,7 @@ namespace GRS.Features.Initialization.UIX
             }
             
             // Show window
-            var vm = await AvaloniaLocator.Current.GetService<IWindowService>()!.OpenFor<DialogViewModel>(new DialogViewModel()
+            var vm = await ServiceRegistry.Get<IWindowService>()!.OpenFor<DialogViewModel>(new DialogViewModel()
             {
                 Title = Resources.Initialization_Warning_Title,
                 Content = Resources.Initialization_Warning_Content,

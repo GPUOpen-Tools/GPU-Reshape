@@ -58,7 +58,7 @@
             <Separator
                 Margin="2,2,2,2"
                 Background="{StaticResource DockThemeBorderLowBrush}"
-                HorizontalAlignment="Stretch" Height="1" />
+                HorizontalAlignment="Stretch" Height="1" Width="NaN" />
 
             <Button Classes="Icon" Width="20" Height="22" Command="{Binding Clear}">
                 <PathIcon ToolTip.Tip="{x:Static r:Resources.MessageCollection_Clear_Tooltip}" Data="{StaticResource Close}" Width="12" />
@@ -72,7 +72,7 @@
         <DataGrid 
             x:Name="MessageDataGrid"
             Margin="20 0 0 0"
-            Items="{Binding FilteredValidationObjects}" 
+            ItemsSource="{Binding FilteredValidationObjects}" 
             IsReadOnly="True"
             Height="365"
             CanUserResizeColumns="True"

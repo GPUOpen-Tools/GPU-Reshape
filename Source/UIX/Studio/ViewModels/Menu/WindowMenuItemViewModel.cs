@@ -107,6 +107,6 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private bool _isEnabled = true;
 
-        private IWindowService? _windowService = App.Locator.GetService<IWindowService>();
+        private IWindowService? _windowService = ServiceRegistry.Get<IWindowService>();
     }
 }

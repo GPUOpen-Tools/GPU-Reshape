@@ -100,7 +100,7 @@ namespace Studio.ViewModels.Tools
             ClearAll = ReactiveCommand.Create(OnClearAll);
 
             // Get service
-            _workspaceService = App.Locator.GetService<Services.IWorkspaceService>() ?? throw new InvalidOperationException();
+            _workspaceService = ServiceRegistry.Get<Services.IWorkspaceService>() ?? throw new InvalidOperationException();
 
             // On workspaces updated
             _workspaceService.Workspaces.Connect()
@@ -160,7 +160,7 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         private void OnConnect()
         {
-            App.Locator.GetService<IWindowService>()?.OpenFor(new ConnectViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenFor(new ConnectViewModel());
         }
 
         /// <summary>

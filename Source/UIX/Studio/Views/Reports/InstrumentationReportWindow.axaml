@@ -85,7 +85,7 @@
                 </controls:SectionView>
                 <controls:SectionView DockPanel.Dock="Bottom" Title="Backend Diagnostic">
                     <Grid>
-                        <ListBox Items="{Binding Messages}" />
+                        <ListBox ItemsSource="{Binding Messages}" />
 
                         <StackPanel 
                             IsVisible="{Binding !Messages.Count}"

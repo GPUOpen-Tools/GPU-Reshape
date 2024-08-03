@@ -123,7 +123,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnWhatsNew()
         {
-            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.OpenDocument(new WhatsNewDescriptor());
             }
@@ -134,7 +134,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnAbout()
         {
-            App.Locator.GetService<IWindowService>()?.OpenFor(new AboutViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenFor(new AboutViewModel());
         }
 
         /// <summary>

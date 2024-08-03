@@ -26,11 +26,7 @@
 
 using System;
 using System.Reactive.Linq;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using DynamicData;
-using DynamicData.Binding;
 using ReactiveUI;
 using Studio.Extensions;
 using Studio.ViewModels.Workspace.Objects;

@@ -73,12 +73,12 @@ namespace Studio.ViewModels
         /// <summary>
         /// Menu view models
         /// </summary>
-        public ObservableCollection<IMenuItemViewModel>? Menu => AvaloniaLocator.Current.GetService<IMenuService>()?.ViewModel.Items;
+        public ObservableCollection<IMenuItemViewModel>? Menu => ServiceRegistry.Get<IMenuService>()?.ViewModel.Items;
 
         /// <summary>
         /// Status view models
         /// </summary>
-        public ObservableCollection<IStatusViewModel>? Status => AvaloniaLocator.Current.GetService<IStatusService>()?.ViewModels;
+        public ObservableCollection<IStatusViewModel>? Status => ServiceRegistry.Get<IStatusService>()?.ViewModels;
 
         /// <summary>
         /// Filtered lhs status
@@ -102,7 +102,7 @@ namespace Studio.ViewModels
         public MainWindowViewModel()
         {
             // Attach to window service
-            if (App.Locator.GetService<IWindowService>() is { } service)
+            if (ServiceRegistry.Get<IWindowService>() is { } service)
             {
                 service.LayoutViewModel = this;
             }
@@ -124,7 +124,7 @@ namespace Studio.ViewModels
                 }
 
                 // Show what's new unless disabled
-                if (AvaloniaLocator.Current.GetService<ISettingsService>()?.GetOrDefault<StartupViewModel>() is { ShowWhatsNew: true })
+                if (ServiceRegistry.Get<ISettingsService>()?.GetOrDefault<StartupViewModel>() is { ShowWhatsNew: true })
                 {
                     DocumentLayout?.OpenDocument(new WhatsNewDescriptor());
                 }
@@ -142,7 +142,7 @@ namespace Studio.ViewModels
             });
             
             // Bind workspace
-            if (App.Locator.GetService<IWorkspaceService>() is { } workspaceService)
+            if (ServiceRegistry.Get<IWorkspaceService>() is { } workspaceService)
             {
                 workspaceService.WhenAnyValue(x => x.SelectedWorkspace).Subscribe(x =>
                 {
@@ -165,7 +165,7 @@ namespace Studio.ViewModels
             }
 
             // Get valid discovery
-            if (App.Locator.GetService<IBackendDiscoveryService>() is { Service: { } } discovery)
+            if (ServiceRegistry.Get<IBackendDiscoveryService>() is { Service: { } } discovery)
             {
                 // In case this is not a global install, remove the hooks on exit
                 if (!discovery.Service.IsGloballyInstalled())

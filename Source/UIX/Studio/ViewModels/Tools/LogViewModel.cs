@@ -122,7 +122,7 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         public LogViewModel()
         {
-            LoggingViewModel = App.Locator.GetService<ILoggingService>()?.ViewModel;
+            LoggingViewModel = ServiceRegistry.Get<ILoggingService>()?.ViewModel;
 
             // Create commands
             Clear = ReactiveCommand.Create(OnClear);
@@ -210,7 +210,7 @@ namespace Studio.ViewModels.Tools
             }
             
             // Open from derived
-            if (App.Locator.GetService<IWindowService>() is { } service)
+            if (ServiceRegistry.Get<IWindowService>() is { } service)
             {
                 service.OpenFor(instance.ViewModel);
             }

@@ -72,7 +72,7 @@
                             IsVisible="{TemplateBinding Separator}"
                             Background="{StaticResource DockApplicationAccentBrushLow}"
                             VerticalAlignment="Top"
-                            HorizontalAlignment="Stretch" Height="1"/>
+                            HorizontalAlignment="Stretch" Height="1"  Width="NaN"/>
                     </StackPanel>
         
                     <StackPanel 

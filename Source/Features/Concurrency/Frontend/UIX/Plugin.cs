@@ -58,7 +58,7 @@ namespace GRS.Features.Concurrency.UIX
         public bool Install()
         {
             // Get workspace service
-            var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
+            var workspaceService = ServiceRegistry.Get<IWorkspaceService>();
             
             // Add workspace extension
             workspaceService?.Extensions.Add(this);
@@ -83,7 +83,7 @@ namespace GRS.Features.Concurrency.UIX
         public void Uninstall()
         {
             // Remove workspace extension
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Extensions.Remove(this);
+            ServiceRegistry.Get<IWorkspaceService>()?.Extensions.Remove(this);
         }
 
         /// <summary>

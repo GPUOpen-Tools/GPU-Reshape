@@ -129,7 +129,7 @@ namespace Studio.ViewModels.Setting
         public DiscoverySettingViewModel() : base("Discovery")
         {
             // Create service
-            _discoveryService = App.Locator.GetService<IBackendDiscoveryService>()?.Service;
+            _discoveryService = ServiceRegistry.Get<IBackendDiscoveryService>()?.Service;
             
             // Set status on failure
             if (_discoveryService != null)
@@ -163,7 +163,7 @@ namespace Studio.ViewModels.Setting
             }
             
             // Show window
-            var vm = await AvaloniaLocator.Current.GetService<IWindowService>()!.OpenFor<DialogViewModel>(new DialogViewModel()
+            var vm = await ServiceRegistry.Get<IWindowService>()!.OpenFor<DialogViewModel>(new DialogViewModel()
             {
                 Title = Resources.Resources.Discovery_Warning_Title,
                 Content = Resources.Resources.Discovery_Warning_Content,
@@ -194,7 +194,7 @@ namespace Studio.ViewModels.Setting
             // Try to uninstall
             if (!(_discoveryService?.UninstallConflictingInstances() ?? false))
             {
-                App.Locator.GetService<ILoggingService>()?.ViewModel.Events.Add(new LogEvent()
+                ServiceRegistry.Get<ILoggingService>()?.ViewModel.Events.Add(new LogEvent()
                 {
                     Severity = LogSeverity.Error,
                     Message = "Failed to uninstall conflicting discovery instances"

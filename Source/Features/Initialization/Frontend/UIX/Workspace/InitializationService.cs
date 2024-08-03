@@ -321,6 +321,6 @@ namespace GRS.Features.Initialization.UIX.Workspace
         /// <summary>
         /// Plugin data
         /// </summary>
-        private Data? _data = AvaloniaLocator.Current.GetService<ISettingsService>()?.Get<Data>();
+        private Data? _data = ServiceRegistry.Get<ISettingsService>()?.Get<Data>();
     }
 }

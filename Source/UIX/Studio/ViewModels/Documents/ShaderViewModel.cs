@@ -146,7 +146,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Icon color
         /// </summary>
-        public Color? IconForeground
+        public IBrush? IconForeground
         {
             get => _iconForeground;
             set => this.RaiseAndSetIfChanged(ref _iconForeground, value);
@@ -386,7 +386,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Internal icon color
         /// </summary>
-        private Color? _iconForeground = ResourceLocator.GetResource<Color>("ThemeForegroundColor");
+        private IBrush? _iconForeground = new SolidColorBrush(ResourceLocator.GetResource<Color>("SystemBaseHighColor"));
 
         /// <summary>
         /// Internal ready state

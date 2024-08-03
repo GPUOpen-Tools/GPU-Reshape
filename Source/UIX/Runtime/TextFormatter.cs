@@ -40,7 +40,8 @@ namespace Studio
         /// <returns></returns>
         public static Size GetWidth(string text, double fontSize)
         {
-            return new TextLayout(text, Typeface.Default, fontSize, null).Size;
+            var layout = new TextLayout(text, Typeface.Default, fontSize, null);
+            return new Size(layout.Width, layout.Height);
         }
     }
 }

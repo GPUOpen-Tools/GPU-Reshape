@@ -62,13 +62,13 @@
         <controls:WindowChrome Title="Settings" Separator="True"/>
 
         <!-- Categories -->
-        <Grid Margin="0,35,5,0" Width="200" HorizontalAlignment="Left" VerticalAlignment="Stretch">
+        <Grid Margin="0,36,5,0" Width="200" HorizontalAlignment="Left" VerticalAlignment="Stretch">
             <TreeView 
                 x:Name="SettingTree" 
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 SelectedItem="{Binding SelectedSettingItem}"
-                Items="{Binding TreeItemViewModel.Items}">
+                ItemsSource="{Binding TreeItemViewModel.Items}">
                 <TreeView.Styles>
                     <Style Selector="TreeViewItem">
                         <Setter Property="IsExpanded" Value="{Binding Path=(setting:SettingTreeItemViewModel).IsExpanded}"/>
@@ -83,7 +83,7 @@
         </Grid>
 
         <!-- View -->
-        <Grid Margin="210,45,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Grid Margin="210,46,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <controls:LocatorViewHost 
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 

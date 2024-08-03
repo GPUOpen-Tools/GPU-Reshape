@@ -55,6 +55,11 @@ namespace Studio.ViewModels
         /// Invoked on tooling expansion toggling
         /// </summary>
         public ICommand HideDockable { get; }
+        
+        /// <summary>
+        /// Invoked on tooling close
+        /// </summary>
+        public ICommand CloseDockable { get; }
 
         /// <summary>
         /// Constructor
@@ -65,6 +70,15 @@ namespace Studio.ViewModels
             
             // Create commands
             HideDockable = ReactiveCommand.Create<IDockable>(OnHideDockable);
+            CloseDockable = ReactiveCommand.Create<IDockable>(OnCloseDockable);
+        }
+
+        /// <summary>
+        /// Invoked on tooling closes
+        /// </summary>
+        private void OnCloseDockable(IDockable obj)
+        {
+            base.CloseDockable(obj);
         }
 
         /// <summary>
