@@ -24,12 +24,39 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-namespace Studio.Models.Workspace.Objects
+using ReactiveUI;
+using Studio.ViewModels.Workspace.Properties;
+
+namespace Studio.ViewModels.Workspace.Objects
 {
-    public enum ValidationSeverity
+    public class NoDetailViewModel : ReactiveObject, IValidationDetailViewModel
     {
-        Info,
-        Warning,
-        Error
+        /// <summary>
+        /// Workspace within this overview
+        /// </summary>
+        public IPropertyViewModel? PropertyCollection
+        {
+            get => _propertyCollection;
+            set => this.RaiseAndSetIfChanged(ref _propertyCollection, value);
+        }
+
+        /// <summary>
+        /// Underlying object
+        /// </summary>
+        public ShaderViewModel? Object
+        {
+            get => _object;
+            set => this.RaiseAndSetIfChanged(ref _object, value);
+        }
+        
+        /// <summary>
+        /// Internal object
+        /// </summary>
+        private ShaderViewModel? _object;
+
+        /// <summary>
+        /// Underlying view model
+        /// </summary>
+        private IPropertyViewModel? _propertyCollection;
     }
 }

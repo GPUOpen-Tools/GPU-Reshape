@@ -171,6 +171,17 @@ namespace Studio.Views.Shader
             {
                 return;
             }
+
+            // Check if there's any detailed info at all
+            if (!ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
+            {
+                vm.DetailViewModel = new NoDetailViewModel()
+                {
+                    Object = vm.Object,
+                    PropertyCollection = vm.PropertyCollection
+                };
+                return;
+            }
             
             // Ensure detailed collection has started
             ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);

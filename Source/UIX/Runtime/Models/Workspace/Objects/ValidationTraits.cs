@@ -26,10 +26,11 @@
 
 namespace Studio.Models.Workspace.Objects
 {
-    public enum ValidationSeverity
+    public static class ValidationTraits
     {
-        Info,
-        Warning,
-        Error
+        /// <summary>
+        /// Validation object will never produce detailed information
+        /// </summary>
+        public static IValidationTraits NoDetail = new ValidationNoDetailTrait();
     }
 }

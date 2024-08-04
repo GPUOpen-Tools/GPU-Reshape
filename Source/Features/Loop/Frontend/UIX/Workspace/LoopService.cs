@@ -36,6 +36,7 @@ using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Objects;
@@ -134,6 +135,7 @@ namespace GRS.Features.Loop.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
+                        Traits = ValidationTraits.NoDetail,
                         Content = $"Loop timeout",
                         Count = kv.Value
                     };

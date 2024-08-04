@@ -34,6 +34,7 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.IL;
 using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
@@ -124,6 +125,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
+                        Traits = _traits,
                         Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds",
                         Count = 1u
                     };
@@ -273,6 +275,17 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// All reduced resource messages
         /// </summary>
         private Dictionary<uint, ResourceValidationDetailViewModel> _reducedDetails = new();
+        
+        /// <summary>
+        /// Shared validation traits
+        /// </summary>
+        private ValidationInstructionExcludeTrait _traits = new ()
+        {
+            ExcludedOps = new OpCode[]
+            {
+                OpCode.StoreOutput
+            }
+        };
 
         /// <summary>
         /// Shader segment mapper

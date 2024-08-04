@@ -60,6 +60,7 @@ namespace Studio.Services
             
             // Object types
             AddDerived(typeof(ViewModels.Workspace.Objects.MissingDetailViewModel), typeof(Views.Workspace.Objects.MissingDetailView));
+            AddDerived(typeof(ViewModels.Workspace.Objects.NoDetailViewModel), typeof(Views.Workspace.Objects.NoDetailView));
             AddDerived(typeof(ViewModels.Workspace.Objects.ResourceValidationDetailViewModel), typeof(Views.Workspace.Objects.ResourceValidationDetailView));
         }
 

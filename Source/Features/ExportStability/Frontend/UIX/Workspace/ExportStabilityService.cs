@@ -35,6 +35,7 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.IL;
 using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
@@ -125,6 +126,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
+                        Traits = _traits,
                         Content = $"Exporting {(message.Flat.isNaN == 1 ? "NaN" : "Inf")}",
                         Count = 1u
                     };
@@ -269,6 +271,17 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// All reduced resource messages
         /// </summary>
         private Dictionary<uint, ResourceValidationDetailViewModel> _reducedDetails = new();
+        
+        /// <summary>
+        /// Shared validation traits
+        /// </summary>
+        private ValidationInstructionExcludeTrait _traits = new ()
+        {
+            ExcludedOps = new OpCode[]
+            {
+                OpCode.StoreOutput
+            }
+        };
 
         /// <summary>
         /// Segment mapping
