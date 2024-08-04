@@ -24,12 +24,22 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-namespace Studio.Models.Workspace.Objects
+using Avalonia.Controls;
+using ReactiveUI;
+
+namespace Studio.Views.Workspace.Objects
 {
-    public enum ValidationSeverity
+    public partial class NoDetailView : UserControl, IViewFor
     {
-        Info,
-        Warning,
-        Error
+        public object? ViewModel
+        {
+            get => DataContext;
+            set => DataContext = value;
+        }
+
+        public NoDetailView()
+        {
+            InitializeComponent();
+        }
     }
 }

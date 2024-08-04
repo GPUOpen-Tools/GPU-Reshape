@@ -26,10 +26,14 @@
 
 namespace Studio.Models.Workspace.Objects
 {
-    public enum ValidationSeverity
+    public interface IValidationTraits
     {
-        Info,
-        Warning,
-        Error
+        /// <summary>
+        /// Check if a validation object can produce detailed instrumentation data for a given location
+        /// </summary>
+        /// <param name="program">program to check in</param>
+        /// <param name="location">location within program</param>
+        /// <returns>true if detailed data</returns>
+        bool ProducesDetailDataFor(IL.Program program, ShaderLocation location);
     }
 }

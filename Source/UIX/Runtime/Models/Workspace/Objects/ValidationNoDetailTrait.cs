@@ -24,12 +24,21 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using Studio.Models.IL;
+
 namespace Studio.Models.Workspace.Objects
 {
-    public enum ValidationSeverity
+    public class ValidationNoDetailTrait : IValidationTraits
     {
-        Info,
-        Warning,
-        Error
+        /// <summary>
+        /// Check if a validation object can produce detailed instrumentation data for a given location
+        /// </summary>
+        /// <param name="program">program to check in</param>
+        /// <param name="location">location within program</param>
+        /// <returns>true if detailed data</returns>
+        public bool ProducesDetailDataFor(Program program, ShaderLocation location)
+        {
+            return false;
+        }
     }
 }

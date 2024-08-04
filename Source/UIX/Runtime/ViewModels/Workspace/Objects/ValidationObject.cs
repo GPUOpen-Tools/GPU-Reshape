@@ -76,6 +76,15 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Traits of this validation object, usually shared between the same types
+        /// </summary>
+        public IValidationTraits? Traits
+        {
+            get => _traits;
+            set => this.RaiseAndSetIfChanged(ref _traits, value);
+        }
+
+        /// <summary>
         /// General contents
         /// </summary>
         public string Content
@@ -130,6 +139,11 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Internal detail view model
         /// </summary>
         private IValidationDetailViewModel? _detailViewModel;
+
+        /// <summary>
+        /// Internal traits
+        /// </summary>
+        private IValidationTraits? _traits;
 
         /// <summary>
         /// Internal severity, assume error

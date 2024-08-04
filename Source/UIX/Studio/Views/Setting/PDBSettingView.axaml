@@ -42,7 +42,21 @@
              x:DataType="setting:PDBSettingViewModel" x:CompileBindings="True">
     <StackPanel Orientation="Vertical">
         <Grid>
-            <TextBlock Margin="15 0 0 0" Text="[Disclaimer: Placeholder UIX, to be polished]"/>
+            <StackPanel 
+                Margin="15 0 0 0" 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center">
+                <PathIcon
+                    Data="{StaticResource InfoHollow}" 
+                    Width="13" />
+
+                <TextBlock
+                    Margin="10 3.5 0 0"
+                    Foreground="{StaticResource InfoMediumForeground}"
+                    Height="20" 
+                    Text="An application restart is required to apply changes to PDB indexing"/>
+            </StackPanel>
             
             <Button
                 x:Name="AddButton"

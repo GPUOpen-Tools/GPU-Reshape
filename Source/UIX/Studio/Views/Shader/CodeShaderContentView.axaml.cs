@@ -46,6 +46,7 @@ using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Workspace.Properties;
 using Studio.Views.Editor;
 using TextMateSharp.Grammars;
 
@@ -199,10 +200,21 @@ namespace Studio.Views.Shader
             {
                 return;
             }
+
+            // Check if there's any detailed info at all
+            if (!ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
+            {
+                vm.DetailViewModel = new NoDetailViewModel()
+                {
+                    Object = vm.Object,
+                    PropertyCollection = vm.PropertyCollection
+                };
+                return;
+            }
             
             // Ensure detailed collection has started
             ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
-                
+            
             // Set selection
             vm.SelectedValidationObject = validationObject;
             

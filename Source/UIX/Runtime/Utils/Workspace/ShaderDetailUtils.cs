@@ -35,6 +35,30 @@ namespace Runtime.Utils.Workspace
     public static class ShaderDetailUtils
     {
         /// <summary>
+        /// Check if a validation object can produce detailed information
+        /// </summary>
+        /// <param name="validationObject">object to check</param>
+        /// <param name="shaderViewModel">shader to check against, object must belong to it</param>
+        /// <returns>true if can collect</returns>
+        public static bool CanDetailCollect(ValidationObject validationObject, ShaderViewModel shaderViewModel)
+        {
+            // If the program is not ready, cannot assume no
+            if (shaderViewModel.Program is not { } program)
+            {
+                return true;
+            }
+            
+            // If either no traits of segment yet, cannot assume no
+            if (validationObject is not { Traits: { } traits, Segment: { } segment })
+            {
+                return true;
+            }
+
+            // Check with traits
+            return traits.ProducesDetailDataFor(program, segment.Location);
+        }
+        
+        /// <summary>
         /// Begin detailed collection of shader data
         /// </summary>
         public static void BeginDetailedCollection(ShaderViewModel _object, IPropertyViewModel propertyCollection)

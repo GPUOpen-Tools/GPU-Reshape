@@ -229,6 +229,10 @@
       <AvaloniaResource Include="Resources\WhatsNew\Images\Discard.png" />
       <None Remove="Resources\WhatsNew\Images\Divergent.png" />
       <AvaloniaResource Include="Resources\WhatsNew\Images\Divergent.png" />
+      <Compile Update="Views\Workspace\Objects\NoDetailView.axaml.cs">
+        <DependentUpon>NoDetailView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
