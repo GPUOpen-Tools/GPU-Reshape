@@ -46,8 +46,9 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Icon="/Resources/Icons/Icon_Frame.ico"
         Title="About GPU Reshape"
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome">
+        SystemDecorations="BorderOnly">
     <Window.DataContext>
         <vm:AboutViewModel />
     </Window.DataContext>

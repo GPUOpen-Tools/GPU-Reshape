@@ -43,10 +43,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Avalonia" Version="11.1.1" />
-      <PackageReference Include="Avalonia.Desktop" Version="11.1.1" />
-      <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
-      <PackageReference Include="Avalonia.Themes.Simple" Version="11.1.1" />
+      <PackageReference Include="Avalonia" Version="11.2.999-cibuild0050935-alpha" />
+      <PackageReference Include="Avalonia.Desktop" Version="11.2.999-cibuild0050935-alpha" />
+      <PackageReference Include="Avalonia.ReactiveUI" Version="11.2.999-cibuild0050935-alpha" />
+      <PackageReference Include="Avalonia.Themes.Simple" Version="11.2.999-cibuild0050935-alpha" />
       <PackageReference Include="MessageBox.Avalonia" Version="3.1.6" />
     </ItemGroup>
 

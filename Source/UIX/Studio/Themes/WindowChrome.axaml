@@ -37,7 +37,8 @@
         <Grid Width="300" Height="500">
             <StackPanel Orientation="Vertical">
                 <local:WindowChrome Title="Poof" Separator="True"/>
-                <Button/>
+                
+                <Button Content="Test"/>
             </StackPanel>
         </Grid>
     </Design.PreviewWith>
@@ -47,11 +48,15 @@
         <Setter Property="VerticalAlignment" Value="Top" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Grid>
+                <Grid 
+                    x:Name="PART_DragGrid"
+                    Background="Transparent"
+                    IsHitTestVisible="True">
                     <StackPanel 
                         VerticalAlignment="Top"
                         Margin="0 7 0 5" 
-                        Orientation="Vertical">
+                        Orientation="Vertical"
+                        IsHitTestVisible="False">
                         <StackPanel 
                             Margin="12 0 5 0"
                             Orientation="Horizontal">
@@ -81,13 +86,58 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top">
                         <Button 
+                            Margin="0 0 2 0"
+                            Command="{TemplateBinding MinimizeCommand}"
+                            IsVisible="{TemplateBinding CanMinimize}"
+                            Classes="Window">
+                            <PathIcon
+                                Margin="0 1 0 0"
+                                Data="{StaticResource Minimize}" Width="12" />
+                        </Button>
+                        
+                        <Button 
+                            Margin="0 0 2 0"
+                            Command="{TemplateBinding MaximizeCommand}"
+                            IsVisible="{TemplateBinding CanMaximize}"
+                            Classes="Window">
+                            <PathIcon 
+                                Margin="0 1 0 0"
+                                Data="{TemplateBinding MaximizeIcon}" Width="12" />
+                        </Button>
+                        
+                        <Button 
                             Command="{TemplateBinding CloseCommand}"
                             Classes="Close">
-                            <PathIcon Data="{StaticResource Close}" Width="12" />
+                            <PathIcon 
+                                Margin="0 0 0 0"
+                                Data="{StaticResource Close}" Width="12" />
                         </Button>
                     </StackPanel>
                 </Grid>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <Style Selector="local|WindowChrome.System">
+        <Setter Property="Separator" Value="False" />
+        <Setter Property="CanMinimize" Value="True" />
+        <Setter Property="CanMaximize" Value="True" />
+        <Setter Property="Margin" Value="-5 -2 0 0" />
+    </Style>
+    
+    <Style Selector="local|WindowChrome.System Button.Close">
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Width" Value="45"/>
+        <Setter Property="Height" Value="32"/>
+    </Style>
+    
+    <Style Selector="local|WindowChrome.System Button.Close Path">
+        <Setter Property="Margin" Value="0 2 0 0"/>
+    </Style>
+    
+    <Style Selector="local|WindowChrome.System Button.Window">
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Width" Value="45"/>
+        <Setter Property="Height" Value="32"/>
     </Style>
 </Styles>

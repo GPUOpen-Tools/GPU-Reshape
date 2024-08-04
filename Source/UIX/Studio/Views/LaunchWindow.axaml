@@ -51,8 +51,9 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Icon="/Resources/Icons/Icon_Frame.ico"
         Title="Launch Application"
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
+        SystemDecorations="BorderOnly"
         x:DataType="viewModels:LaunchViewModel">
     <Window.Resources>
         <ResourceDictionary>

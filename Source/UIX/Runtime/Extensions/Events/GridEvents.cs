@@ -77,6 +77,14 @@ namespace Studio.Extensions
         }, handler => _grid.LostFocus += handler, handler => _grid.LostFocus -= handler);
         
         /// <summary>
+        /// Observable pointer pressed
+        /// </summary>
+        public IObservable<PointerPressedEventArgs> PointerPressed => Observable.FromEvent<EventHandler<PointerPressedEventArgs>, PointerPressedEventArgs>(handler =>
+        {
+            return (s, e) => handler(e);
+        }, handler => _grid.PointerPressed += handler, handler => _grid.PointerPressed -= handler);
+        
+        /// <summary>
         /// Observable pointer entered
         /// </summary>
         public IObservable<PointerEventArgs> PointerEntered => Observable.FromEvent<EventHandler<PointerEventArgs>, PointerEventArgs>(handler =>

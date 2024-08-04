@@ -50,8 +50,9 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Icon="/Resources/Icons/Icon_Frame.ico"
         Title="Create Pipeline Filter"
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome">
+        SystemDecorations="BorderOnly">
     <Window.Resources>
         <ResourceDictionary>
             <vc:QueryResultToProgressConverter x:Key="QueryResultToProgressConverter" />

@@ -121,6 +121,7 @@
         
         <!-- Button brushes -->
         <SolidColorBrush x:Key="CloseButtonColor">#9C1B25</SolidColorBrush>
+        <SolidColorBrush x:Key="WindowStateButtonColor">#717478</SolidColorBrush>
     </Styles.Resources>
 
     <!-- Base style -->
@@ -244,7 +245,7 @@
     
     <!-- Custom controls -->
     <StyleInclude Source="avares://GPUReshape/Themes/Hyperlink.axaml" />
-    <StyleInclude Source="avares://GPUReshape/Themes/CloseButton.axaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/WindowButton.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/StoryRadio.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/InlineSectionView.axaml" />
 </Styles>

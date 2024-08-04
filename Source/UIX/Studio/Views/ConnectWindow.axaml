@@ -47,8 +47,9 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Icon="/Resources/Icons/Icon_Frame.ico"
         Title="Create Workspace Connection"
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome">
+        SystemDecorations="BorderOnly">
     <Window.Resources>
         <ResourceDictionary>
             <vc:ConnectionStatusToProgressConverter x:Key="ConnectionStatusToProgressConverter" />
