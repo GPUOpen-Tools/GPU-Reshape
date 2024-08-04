@@ -53,7 +53,10 @@
                                 <DataGridTemplateColumn Width="*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock Margin="20 0 0 2.5" Text="{Binding Name}"/>
+                                            <TextBlock 
+                                                Margin="20 0 0 2.5" 
+                                                Text="{Binding Name}"
+                                                ToolTip.Tip="{Binding Description}"/>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -62,16 +65,31 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <theme:PropertyGridDataTemplate>
                                             <DataTemplate x:Key="{x:Type sys:Boolean}">
-                                                <CheckBox Margin="0 0 0 2.5" IsChecked="{Binding Value}"/>
+                                                <CheckBox
+                                                    Margin="0 0 0 2.5"
+                                                    IsChecked="{Binding Value}"
+                                                    ToolTip.Tip="{Binding Description}" />
                                             </DataTemplate>
                                             <DataTemplate x:Key="{x:Type sys:Int32}">
-                                                <NumericUpDown Margin="0 0 0 2.5" Height="25" Value="{Binding Value}" Padding="0"/>
+                                                <NumericUpDown
+                                                    Margin="0 0 0 2.5" Height="25"
+                                                    Value="{Binding Value}"
+                                                    Padding="0"
+                                                    ToolTip.Tip="{Binding Description}" />
                                             </DataTemplate>
                                             <DataTemplate x:Key="{x:Type sys:UInt32}">
-                                                <NumericUpDown Margin="0 0 0 2.5" Height="25" Value="{Binding Value}" Padding="0"/>
+                                                <NumericUpDown
+                                                    Margin="0 0 0 2.5" Height="25"
+                                                    Value="{Binding Value}"
+                                                    Padding="0"
+                                                    ToolTip.Tip="{Binding Description}" />
                                             </DataTemplate>
                                             <DataTemplate x:Key="{x:Type sys:Double}">
-                                                <NumericUpDown Margin="0 0 0 2.5" Height="25" Value="{Binding Value}" Padding="0"/>
+                                                <NumericUpDown
+                                                    Margin="0 0 0 2.5" Height="25"
+                                                    Value="{Binding Value}"
+                                                    Padding="0"
+                                                    ToolTip.Tip="{Binding Description}" />
                                             </DataTemplate>
                                         </theme:PropertyGridDataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>

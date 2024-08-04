@@ -144,6 +144,7 @@ namespace Studio.ViewModels.Controls
                 PropertyFieldViewModel property = new()
                 {
                     Name = propertyInfo.Name,
+                    Description = propertyInfo.GetCustomAttribute<DescriptionAttribute>()?.Description ?? string.Empty,
                     Value = propertyInfo.GetValue(data)!
                 };
 

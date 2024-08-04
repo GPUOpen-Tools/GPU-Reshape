@@ -40,6 +40,15 @@ namespace Studio.ViewModels.Controls
         }
 
         /// <summary>
+        /// Description of this field
+        /// </summary>
+        public string Description
+        {
+            get => _description;
+            set => this.RaiseAndSetIfChanged(ref _description, value);
+        }
+
+        /// <summary>
         /// Assigned value of this field
         /// </summary>
         public object Value
@@ -57,5 +66,10 @@ namespace Studio.ViewModels.Controls
         /// Internal name
         /// </summary>
         private string _name = string.Empty;
+
+        /// <summary>
+        /// Internal description
+        /// </summary>
+        private string _description = string.Empty;
     }
 }
