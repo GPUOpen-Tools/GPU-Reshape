@@ -2,12 +2,13 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace Studio.Views.Controls;
-
-public partial class PropertyGrid : UserControl
+namespace Studio.Views.Controls
 {
-    public PropertyGrid()
+    public partial class PropertyGrid : UserControl
     {
-        InitializeComponent();
+        public PropertyGrid()
+        {
+            InitializeComponent();
+        }
     }
 }

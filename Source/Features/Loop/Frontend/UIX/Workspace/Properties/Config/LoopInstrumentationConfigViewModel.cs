@@ -59,6 +59,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// If iteration limits are enabled, the maximum number of iterations
         /// </summary>
         [PropertyField]
+        [Category("Loop")]
         [Description("The maximum number of loop iterations in a shader")]
         public uint IterationLimit
         {
@@ -74,6 +75,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// The periodic interval for atomic checks
         /// </summary>
         [PropertyField]
+        [Category("Loop")]
         [Description("The periodic iteration interval at which (atomic) termination signals are checked")]
         public uint AtomicIterationInterval
         {

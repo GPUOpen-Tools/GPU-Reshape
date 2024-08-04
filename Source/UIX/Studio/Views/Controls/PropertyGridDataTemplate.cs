@@ -24,53 +24,45 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.ComponentModel;
-using Message.CLR;
-using ReactiveUI;
-using Studio.ViewModels.Traits;
+using System;
+using System.Collections.Generic;
+using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using Avalonia.Metadata;
+using Studio.ViewModels.Controls;
 
-namespace Studio.ViewModels.Workspace.Properties.Config
+namespace Studio.Views.Controls
 {
-    public class ApplicationInstrumentationConfigViewModel : BasePropertyViewModel, IBusObject
+    public class PropertyGridDataTemplate : IDataTemplate
     {
         /// <summary>
-        /// Enables shader compilation stalling before use
+        /// All templates
         /// </summary>
-        [PropertyField]
-        [Category("Instrumentation")]
-        [Description("Ensures all commands waits for the instrumented pipelines, large startup impact")]
-        public bool SynchronousRecording
+        [Content] 
+        public Dictionary<Type, IDataTemplate> Templates { get; } = new();
+
+        /// <summary>
+        /// Build a template from given data
+        /// Must be field
+        /// </summary>
+        public Control? Build(object? data)
         {
-            get => _synchronousRecording;
-            set
+            if (data is not PropertyFieldViewModel field)
             {
-                this.RaiseAndSetIfChanged(ref _synchronousRecording, value);
-                this.EnqueueBus();
+                return null;
             }
+
+            // Try to build from templates
+            return Templates.TryGetValue(field.Value.GetType(), out IDataTemplate? template) ? template.Build(data) : null;
         }
 
         /// <summary>
-        /// Constructor
+        /// Match given data
+        /// Must be field
         /// </summary>
-        public ApplicationInstrumentationConfigViewModel() : base("Instrumentation", PropertyVisibility.Configuration)
+        public bool Match(object? data)
         {
-            
+            return data is PropertyFieldViewModel;
         }
-
-        /// <summary>
-        /// Commit all state
-        /// </summary>
-        /// <param name="stream"></param>
-        public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
-        {
-            // Submit request
-            var request = stream.Add<SetApplicationInstrumentationConfigMessage>();
-            request.synchronousRecording = _synchronousRecording ? 1 : 0;
-        }
-
-        /// <summary>
-        /// Internal recording state
-        /// </summary>
-        private bool _synchronousRecording = false;
     }
 }

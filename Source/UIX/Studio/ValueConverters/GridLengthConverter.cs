@@ -24,53 +24,52 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.ComponentModel;
-using Message.CLR;
-using ReactiveUI;
-using Studio.ViewModels.Traits;
+using System;
+using System.Globalization;
+using Avalonia.Controls;
+using Avalonia.Data.Converters;
 
-namespace Studio.ViewModels.Workspace.Properties.Config
+namespace Studio.ValueConverters
 {
-    public class ApplicationInstrumentationConfigViewModel : BasePropertyViewModel, IBusObject
+    public class GridLengthConverter : IValueConverter
     {
         /// <summary>
-        /// Enables shader compilation stalling before use
+        /// Convert to grid length
         /// </summary>
-        [PropertyField]
-        [Category("Instrumentation")]
-        [Description("Ensures all commands waits for the instrumented pipelines, large startup impact")]
-        public bool SynchronousRecording
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            get => _synchronousRecording;
-            set
+            if (value is not double width)
             {
-                this.RaiseAndSetIfChanged(ref _synchronousRecording, value);
-                this.EnqueueBus();
+                return null;
+            }
+            
+            if (targetType == typeof(GridLength))
+            {
+                return new GridLength(width);
+            }
+            
+            if (targetType == typeof(DataGridLength))
+            {
+                return new DataGridLength(width);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Convert from grid length
+        /// </summary>
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            switch (value)
+            {
+                default:
+                    return 0.0;
+                case GridLength length:
+                    return length.Value;
+                case DataGridLength length:
+                    return length.Value;
             }
         }
-
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        public ApplicationInstrumentationConfigViewModel() : base("Instrumentation", PropertyVisibility.Configuration)
-        {
-            
-        }
-
-        /// <summary>
-        /// Commit all state
-        /// </summary>
-        /// <param name="stream"></param>
-        public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
-        {
-            // Submit request
-            var request = stream.Add<SetApplicationInstrumentationConfigMessage>();
-            request.synchronousRecording = _synchronousRecording ? 1 : 0;
-        }
-
-        /// <summary>
-        /// Internal recording state
-        /// </summary>
-        private bool _synchronousRecording = false;
     }
 }

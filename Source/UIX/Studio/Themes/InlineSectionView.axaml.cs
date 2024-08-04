@@ -63,6 +63,8 @@ namespace Studio.Views.Controls
         public InlineSectionView()
         {
             ExpandCommand = ReactiveCommand.Create(OnExpand);
+            LineBorderBrush = new SolidColorBrush(ResourceLocator.GetResource<Color>("InputBorderColor"));
+            UpdateIcon();
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -90,7 +92,6 @@ namespace Studio.Views.Controls
         private void UpdateIcon()
         {
             ExpansionIcon = IsExpanded ? ResourceLocator.GetIcon("ChevronUp")! : ResourceLocator.GetIcon("ChevronDown")!;
-            LineBorderBrush = new SolidColorBrush(ResourceLocator.GetResource<Color>("InputBorderColor")!);
         }
 
         /// <summary>

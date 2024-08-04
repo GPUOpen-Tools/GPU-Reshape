@@ -63,19 +63,7 @@ namespace Studio.Views
                     x.WhenAnyValue(y => y.SelectedPropertyConfigurations)
                         .Subscribe(y =>
                         {
-#if false
-                            // Create new descriptor
-                            PropertyGrid.SelectedObject = new PropertyCollectionTypeDescriptor(y ?? Array.Empty<IPropertyViewModel>());
-
-                            // Clear previous metadata, internally a type based cache is used, this is not appropriate
-                            MetadataRepository.Clear();
-
-                            // Finally, recreate the property setup with fresh metadata
-                            PropertyGrid.ReloadCommand.Execute(null);
-                            
-                            // Expand all categories
-                            PropertyGrid.Categories.ForEach(c => c.IsExpanded = true);
-#endif
+                            PropertyGrid.DataContext = new PropertyGridViewModel(y?.Promote<ReactiveObject>() ?? Array.Empty<ReactiveObject>());
                         });
                     
                     // Bind interactions

@@ -44,6 +44,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// Enables safe-guarding on potentially offending instructions
         /// </summary>
         [PropertyField]
+        [Category("Instrumentation")]
         [Description("Enables guarding of potentially faulting instructions, prevents crashes")]
         public bool SafeGuard
         {
@@ -59,6 +60,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// Enables detailed instrumentation
         /// </summary>
         [PropertyField]
+        [Category("Instrumentation")]
         [Description("Enables detailed instrumentation, exports more validation information")]
         public bool Detail
         {

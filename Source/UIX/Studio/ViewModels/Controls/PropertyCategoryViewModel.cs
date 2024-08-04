@@ -24,53 +24,30 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.ComponentModel;
-using Message.CLR;
+using System.Collections.ObjectModel;
 using ReactiveUI;
-using Studio.ViewModels.Traits;
 
-namespace Studio.ViewModels.Workspace.Properties.Config
+namespace Studio.ViewModels.Controls
 {
-    public class ApplicationInstrumentationConfigViewModel : BasePropertyViewModel, IBusObject
+    public class PropertyCategoryViewModel : ReactiveObject
     {
         /// <summary>
-        /// Enables shader compilation stalling before use
+        /// Name of this category
         /// </summary>
-        [PropertyField]
-        [Category("Instrumentation")]
-        [Description("Ensures all commands waits for the instrumented pipelines, large startup impact")]
-        public bool SynchronousRecording
+        public string Name
         {
-            get => _synchronousRecording;
-            set
-            {
-                this.RaiseAndSetIfChanged(ref _synchronousRecording, value);
-                this.EnqueueBus();
-            }
+            get => _name;
+            set => this.RaiseAndSetIfChanged(ref _name, value);
         }
 
         /// <summary>
-        /// Constructor
+        /// All properties in this category
         /// </summary>
-        public ApplicationInstrumentationConfigViewModel() : base("Instrumentation", PropertyVisibility.Configuration)
-        {
-            
-        }
+        public ObservableCollection<PropertyFieldViewModel> Properties { get; } = new();
 
         /// <summary>
-        /// Commit all state
+        /// Internal name
         /// </summary>
-        /// <param name="stream"></param>
-        public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
-        {
-            // Submit request
-            var request = stream.Add<SetApplicationInstrumentationConfigMessage>();
-            request.synchronousRecording = _synchronousRecording ? 1 : 0;
-        }
-
-        /// <summary>
-        /// Internal recording state
-        /// </summary>
-        private bool _synchronousRecording = false;
+        private string _name;
     }
 }

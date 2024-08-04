@@ -29,6 +29,7 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using ReactiveUI;
 using Studio.Extensions;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Tools;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -49,19 +50,7 @@ namespace Studio.Views.Tools
                     x.WhenAnyValue(y => y.SelectedPropertyConfigurations)
                         .Subscribe(y =>
                         {
-#if false
-                            // Create new descriptor
-                            PropertyGrid.SelectedObject = new Property.PropertyCollectionTypeDescriptor(y ?? Array.Empty<IPropertyViewModel>());
-                            
-                            // Clear previous metadata, internally a type based cache is used, this is not appropriate
-                            MetadataRepository.Clear();
-                            
-                            // Finally, recreate the property setup with fresh metadata
-                            PropertyGrid.ReloadCommand.Execute(null);
-                            
-                            // Expand all categories
-                            PropertyGrid.Categories.ForEach(c => c.IsExpanded = true);
-#endif
+                            PropertyGrid.DataContext = new PropertyGridViewModel(y?.Promote<ReactiveObject>() ?? Array.Empty<ReactiveObject>());
                         });
                 });
         }

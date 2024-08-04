@@ -2,7 +2,96 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Studio.Views.Controls.PropertyGrid">
-    Welcome to Avalonia!
+             xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
+             xmlns:theme="clr-namespace:Studio.Views.Controls"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
+             mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="350"
+             x:Class="Studio.Views.Controls.PropertyGrid"
+             x:DataType="controls:PropertyGridViewModel">
+    <UserControl.DataContext>
+        <controls:PropertyGridViewModel/>
+    </UserControl.DataContext>
+    
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <valueConverters:GridLengthConverter x:Key="GridLengthConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
+    <Grid Margin="5">
+        <!-- Categories -->
+        <ItemsControl ItemsSource="{Binding Categories}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="controls:PropertyCategoryViewModel">
+                    <!-- Section -->
+                    <theme:InlineSectionView Title="{Binding Name}" LineBorderBrush="Transparent">
+                        <DataGrid 
+                            ItemsSource="{Binding Properties}"
+                            HeadersVisibility="None"
+                            AutoGenerateColumns="False"
+                            BorderThickness="0">
+                            <DataGrid.Styles>
+                                <Style Selector="DataGridRow:nth-child(odd)">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                </Style>
+                                
+                                <Style Selector="DataGridRow:nth-child(even)">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                </Style>
+                                
+                                <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+                                    <Setter Property="Fill" Value="Transparent" />
+                                </Style>
+                                
+                                <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+                                    <Setter Property="Fill" Value="Transparent" />
+                                </Style>
+                            </DataGrid.Styles>
+                            
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Margin="20 0 0 2.5" Text="{Binding Name}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                    
+                                <DataGridTemplateColumn Width="85">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <theme:PropertyGridDataTemplate>
+                                            <DataTemplate x:Key="{x:Type sys:Boolean}">
+                                                <CheckBox Margin="0 0 0 2.5" IsChecked="{Binding Value}"/>
+                                            </DataTemplate>
+                                            <DataTemplate x:Key="{x:Type sys:Int32}">
+                                                <NumericUpDown Margin="0 0 0 2.5" Height="25" Value="{Binding Value}" Padding="0"/>
+                                            </DataTemplate>
+                                            <DataTemplate x:Key="{x:Type sys:UInt32}">
+                                                <NumericUpDown Margin="0 0 0 2.5" Height="25" Value="{Binding Value}" Padding="0"/>
+                                            </DataTemplate>
+                                            <DataTemplate x:Key="{x:Type sys:Double}">
+                                                <NumericUpDown Margin="0 0 0 2.5" Height="25" Value="{Binding Value}" Padding="0"/>
+                                            </DataTemplate>
+                                        </theme:PropertyGridDataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </theme:InlineSectionView>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        
+        <!-- Incomplete column splitter
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{Binding NameSectionWidth, Converter={StaticResource GridLengthConverter}, Mode=TwoWay}"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="{Binding ValueSectionWidth, Converter={StaticResource GridLengthConverter}, Mode=TwoWay}"/>
+            </Grid.ColumnDefinitions>
+            
+            <GridSplitter Grid.Column="1"/>
+        </Grid>-->
+    </Grid>
 </UserControl>
