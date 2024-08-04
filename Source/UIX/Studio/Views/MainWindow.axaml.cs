@@ -30,6 +30,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
+using ReactiveUI;
 
 namespace Studio.Views
 {
@@ -41,6 +42,47 @@ namespace Studio.Views
 #if DEBUG
             this.AttachDevTools();
 #endif
+            
+            // Bind state change
+            this.WhenAnyValue(x => x.WindowState).Subscribe(OnWindowStateChanged);
+        }
+
+        /// <summary>
+        /// Invoked on state changes
+        /// </summary>
+        private void OnWindowStateChanged(WindowState newState)
+        {
+            // Chrome-less windows may extend beyond the screen's working area in Avalonia 11.
+            // This has been fixed in nightly, however, latest seems to have an issue regarding
+            // visual lines and background colors. So, let's do a workaround for now.
+            if (newState != WindowState.Maximized)
+            {
+                return;
+            }
+
+            // Get screen and handle
+            if (Screens.ScreenFromWindow(this) is not { } screen || TryGetPlatformHandle() is not { } handle)
+            {
+                return;
+            }
+
+            // Is window outside of screen?
+            if (screen.WorkingArea.Height >= ClientSize.Height * screen.Scaling || (Position.X > 0 && Position.Y > 0))
+            {
+                return;
+            }
+
+            // Adjust window position to fit the working area
+            ClientSize = screen.WorkingArea.Size.ToSize(screen.Scaling);
+            Position = screen.WorkingArea.Position;
+
+            // Manually set the position and area
+            Platform.Win32.SetWindowPos(
+                handle.Handle, IntPtr.Zero,
+                screen.WorkingArea.X, screen.WorkingArea.Y,
+                screen.WorkingArea.Width, screen.WorkingArea.Height,
+                64
+            );
         }
 
         private void InitializeComponent()
