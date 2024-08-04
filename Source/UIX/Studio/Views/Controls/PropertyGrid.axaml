@@ -68,6 +68,7 @@
                                                 <CheckBox
                                                     Margin="0 0 0 2.5"
                                                     IsChecked="{Binding Value}"
+                                                    HorizontalAlignment="Right"
                                                     ToolTip.Tip="{Binding Description}" />
                                             </DataTemplate>
                                             <DataTemplate x:Key="{x:Type sys:Int32}">
