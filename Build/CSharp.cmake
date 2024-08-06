@@ -38,8 +38,6 @@ function(Project_AddDotNet NAME)
 		DOTNET_TARGET_FRAMEWORK "net8.0"
         VS_GLOBAL_Platforms "x64"
 		VS_GLOBAL_RuntimeIdentifier "win-x64"
-		VS_GLOBAL_SelfContained "true"
-		VS_GLOBAL_IncludeNativeLibrariesForSelfExtract "true"
 		VS_GLOBAL_AppendTargetFrameworkToOutputPath "false"
 		VS_GLOBAL_AppendRuntimeIdentifierToOutputPath "false"
         VS_GLOBAL_ROOTNAMESPACE ${NAME}
@@ -117,7 +115,6 @@ function(Project_AddDotNetEx)
 		DOTNET_TARGET_FRAMEWORK "net8.0"
         VS_GLOBAL_Platforms "x64"
 		VS_GLOBAL_RuntimeIdentifier "win-x64"
-		VS_GLOBAL_SelfContained "true"
 		VS_GLOBAL_AppendTargetFrameworkToOutputPath "false"
 		VS_GLOBAL_AppendRuntimeIdentifierToOutputPath "false"
         VS_GLOBAL_ROOTNAMESPACE "${ARGS_NAME}"

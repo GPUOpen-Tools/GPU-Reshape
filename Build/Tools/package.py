@@ -27,6 +27,7 @@
 import os
 import sys
 import shutil
+import subprocess
 
 # Paths
 root_dir     = os.path.join("../", "../")
@@ -47,27 +48,28 @@ ignore_list = [
     "vulkan-1.dll"
 ]
 
+publish_projects = [
+    # "Source/UIX/Studio/Studio.csproj",
+    # "Source/Services/Discovery/DotNet/NotifyIcon/NotifyIcon.csproj"
+]
+
 # All required files
 require_list = [
     # <The> GPU Reshape
     "GPUReshape.exe",
     
-    # Dependencies
+    # Executable dependencies
     "GPUReshape.NotifyIcon.exe",
-    "GRS.Backends.DX12.Service.exe",
-    "GRS.Backends.DX12.Service.RelFunTBL.exe",
-    "GRS.Services.HostResolver.Standalone.exe",
-    "GRS.Services.Discovery.Cleanup.exe",
-    "XamlColorSchemeGenerator.exe",
+    "GRS.Backends.DX12.Service.exe",             # Handles project detouring for D3D12 objects
+    "GRS.Backends.DX12.Service.RelFunTBL.exe",   # Relative function table generator for x86
+    "GRS.Services.HostResolver.Standalone.exe",  # Host resolver tool for discovery
+    "GRS.Services.Discovery.Cleanup.exe",        # General cleanup tool for discovery
+    "XamlColorSchemeGenerator.exe",              # UIX dependency
 ]
 
 # All required folders
 require_folders = [
-    "Plugins",
-    "runtimes/win",
-    "runtimes/win-x64",
-    "runtimes/win-arm64",
-    "runtimes/win7-x64"
+    "Plugins"
 ]
 
 # All extra folders
@@ -155,3 +157,15 @@ for package in packages:
         # Copy all contents
         sys.stdout.write(f"\tPackaging {folder[0]}\n")
         shutil.copytree(src_folder_dir, pck_folder_dir)
+        
+    # Package all relevant projects
+    for project in publish_projects:
+        subprocess.run([
+            "dotnet",
+            "publish",
+            os.path.join(root_dir, project),
+            "-c", package.split('/')[-1],
+            "-o", pck_dir,
+            "--self-contained",
+            "-r", "win-x64"
+        ])
