@@ -32,17 +32,24 @@
 
 // Std
 #include <atomic>
+#ifndef __cplusplus_cli
 #include <mutex>
+#endif // __cplusplus_cli
 
 // Forward declarations
 struct ReferenceObject;
 
 /// Host state for a reference object
-struct ReferenceHost {    
+#ifndef __cplusplus_cli
+struct ReferenceHost {
     /// Shared mutex
     /// Any operation that may result in a new user must be guarded by this
     std::mutex mutex;
 };
+#else // __cplusplus_cli
+/// CoreRT threading workaround
+struct ReferenceHost;
+#endif // __cplusplus_cli
 
 /// A reference counted object
 struct ReferenceObject {
@@ -86,6 +93,14 @@ private:
     std::atomic<uint32_t> users{0};
 };
 
+namespace Detail {
+    /// Lock the owning reference host
+    void LockReferenceHost(ReferenceHost* host);
+
+    /// Unlock the owning reference host
+    void UnlockReferenceHost(ReferenceHost* host);
+}
+
 template<typename T>
 inline void destroyRef(T* object, const Allocators& allocators) {
     if (!object->ReleaseUserNoDestruct()) {
@@ -94,16 +109,18 @@ inline void destroyRef(T* object, const Allocators& allocators) {
     
     // If there's a host, synchronize it
     if (ReferenceHost* host = object->referenceHost) {
-        std::lock_guard guard(host->mutex);
+        Detail::LockReferenceHost(host);
 
         // With the host acquired, ensure no user has been added
         // If so, the object remains alive
         if (object->GetUsers()) {
+            Detail::UnlockReferenceHost(host);
             return;
         }
 
         // Inform the host of the release
         object->ReleaseHost();
+        Detail::UnlockReferenceHost(host);
     }
 
     destroy(object, allocators);

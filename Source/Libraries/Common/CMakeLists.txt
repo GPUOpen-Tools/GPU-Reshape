@@ -45,6 +45,7 @@ add_library(
     Source/Dispatcher/EventCounter.cpp
     Source/Dispatcher/Event.cpp
     Source/Dispatcher/DispatcherJobPool.cpp
+    Source/Containers/ReferenceObject.cpp
 
     # For IDE's
     Include/Common/TemplateEngine.h
