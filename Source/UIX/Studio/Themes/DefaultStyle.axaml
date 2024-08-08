@@ -55,11 +55,13 @@
         <!-- Info colors -->
         <Color x:Key="SuccessDefaultColor">#669653</Color>
         <Color x:Key="WarningDefaultColor">#8F892E</Color>
+        <Color x:Key="WarningLowColor">#656020</Color>
         <Color x:Key="ErrorDefaultColor">#8f2424</Color>
 
         <!-- Info brushes -->
         <SolidColorBrush x:Key="ErrorDefaultBrush" Color="{DynamicResource ErrorDefaultColor}" />
         <SolidColorBrush x:Key="WarningDefaultBrush" Color="{DynamicResource WarningDefaultColor}" />
+        <SolidColorBrush x:Key="WarningLowBrush" Color="{DynamicResource WarningLowColor}" />
         <SolidColorBrush x:Key="ErrorHighlightBrush" Color="#A68F2424" />
         <SolidColorBrush x:Key="ErrorSelectedBrush" Color="#5C2020" />
         
