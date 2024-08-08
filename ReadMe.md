@@ -17,17 +17,21 @@ GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Adv
   <a href="Documentation/Motivation.md">Motivation</a> -
   <a href="Documentation/UIX.md">UIX</a>
 </p>
+<p align="center">
+  Main is releases only, for the latest changes see the <a href="https://github.com/GPUOpen-Tools/GPU-Reshape/tree/development">development branch</a>.
+</p>
 
 ---
 
 Current feature scope provides instrumentation on operations which are either undefined behaviour, or typically indicative of user fault such as:
 
+- **AMD|Waterfall** </br> Validation of AMD address scalarization / waterfalling, and detection of missing NonUniformResourceIndex on descriptor indexing.
 - **Resource Bounds** </br> Validation of resource read / write coordinates against its bounds.
 - **Export Stability** </br> Numeric stability validation of floating point exports (UAV writes, render targets, vertex exports), e.g. NaN / Inf.
 - **Descriptor Validation** </br> Validation of descriptors, potentially dynamically indexed. This includes undefined, mismatched (compile-time to runtime), out of bounds descriptor indexing, and missing table bindings.
-- **Concurrency Validation** </br> Validation of resource concurrency, i.e. single-producer or multiple-consumer, between queues and events.
-- **Resource Initialization** </br> Validation of resource initialization, ensures any read was preceded by a write.
-- **Infinite Loops** </br> Detection of infinite loops. _Experimental_.
+- **Concurrency Validation** </br> Validation of resource concurrency, i.e. single-producer or multiple-consumer, between queues and events, now on a per-texel/byte level.
+- **Resource Initialization** </br> Validation of resource initialization, ensures any read was preceded by a write, now on a per-texel/byte level.
+- **Infinite Loops** </br> Detection and guarding of infinite loops.
 
 The future feature scope includes profiling and debugging functionality, such as branch hot spots, live breakpoints, and assertions. 
 For the full planned feature set, see [Features](Documentation/Features.md).
@@ -94,10 +98,7 @@ Microsoft
 
 ## Known Issues
 
-- Raytracing and mesh shaders are currently pass-through, no instrumentation is done on them.
-- Initialization feature false positives. Resources can be initialized in a myriad of ways, this will be improved with time.
-- Loop feature not catching all timeouts. The loop feature is currently experimental, and relies on non-standard guarantees.
-- Application launches, not attaching, will only connect to the first device, which may not necessarily be the intended device.
+- Raytracing shaders are currently pass-through, no instrumentation is done on them. This is scheduled for the next release.
 
 ## Credit
 
