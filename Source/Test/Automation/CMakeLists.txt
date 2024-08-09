@@ -37,9 +37,11 @@ add_library(
     Source/Pass/ScreenshotPass.cpp
     Source/Pass/SequencePass.cpp
     Source/Pass/StandardInstrumentationPass.cpp
+    Source/Pass/WaitForPipelinesPass.cpp
     Source/Pass/WaitForScreenshotPass.cpp
     Source/Pass/WaitPass.cpp
     Source/Data/ApplicationData.cpp
+    Source/Data/HistoryData.cpp
     Source/Win32/Window.cpp
     Source/TestContainer.cpp
     Source/Parser.cpp

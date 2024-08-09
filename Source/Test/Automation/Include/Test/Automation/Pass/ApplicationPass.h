@@ -33,6 +33,9 @@
 // Common
 #include <Common/ComRef.h>
 
+// Std
+#include <vector>
+
 // Forward declarations
 class DiscoveryService;
 
@@ -50,13 +53,26 @@ public:
 
 private:
     /// Run as an executable
-    bool RunExecutable();
+    bool RunExecutable(const std::string& identifier);
 
     /// Run as a steam application
-    bool RunSteam();
+    bool RunSteam(const std::string& identifier);
 
     /// Terminate the application
     void TerminateApplication(uint32_t processID);
+
+private:
+    /// Filter entry data
+    struct FilterEntry {
+        std::string identifier;
+        std::string processName;
+    };
+
+    /// Filter all paths
+    void FilterPaths(std::vector<FilterEntry>& identifiers);
+
+    /// Filter all executables
+    void FilterExecutables(std::vector<FilterEntry>& identifiers);
 
 private:
     /// Test sub-pass

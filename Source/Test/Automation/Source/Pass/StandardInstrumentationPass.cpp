@@ -76,7 +76,7 @@ bool StandardInstrumentPass::Run() {
         }
 
         // Wait a little
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
     // Report findings

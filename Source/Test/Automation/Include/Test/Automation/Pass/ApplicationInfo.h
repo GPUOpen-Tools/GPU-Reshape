@@ -51,4 +51,7 @@ struct ApplicationInfo {
 
     /// All command line arguments passed to the application
     std::string arguments;
+
+    /// Optional, working directory
+    std::string workingDirectory;
 };

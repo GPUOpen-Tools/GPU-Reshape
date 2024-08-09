@@ -1,0 +1,13 @@
+{
+	"Applications":
+	[
+		{
+			"Path": "%TEST_SUITE%\\Engines\\UnrealEngine5\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+			"Arguments": "GRS",
+			"Passes": [
+				{ "Type": "Wait", "Duration": 60000 },
+				{ "Type": "WaitForPipelines" }
+			]
+		}
+	]
+}

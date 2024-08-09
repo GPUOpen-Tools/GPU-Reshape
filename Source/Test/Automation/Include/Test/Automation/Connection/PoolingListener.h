@@ -66,7 +66,7 @@ public:
 private:
     struct TaskBucket {
         /// All pending tasks in this bucket
-        SlotArray<MessageTask*> tasks;
+        SlotArray<MessageTask*, &MessageTask::id> tasks;
     };
 
     /// Commit all pending tasks for a schema

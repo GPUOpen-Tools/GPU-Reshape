@@ -93,6 +93,24 @@ public:
         return processID;
     }
 
+public:
+    /// Add a new message
+    /// \return message data, invalidated on successive messages and commits
+    template<typename T>
+    T* Add() {
+        return view.Add<T>();
+    }
+    
+    /// Add a new message and commit immediately
+    template<typename T>
+    void AddAndCommit() {
+        Add<T>();
+        Commit();
+    }
+
+    /// Commit all messages
+    void Commit();
+
 private:
     /// Create a connection
     /// \param processName target process name
@@ -107,9 +125,6 @@ private:
 
     /// Pool all target features
     bool PoolFeatures();
-
-    /// Commit all messages
-    void Commit();
 
 private:
     /// Remote bridge

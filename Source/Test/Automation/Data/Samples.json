@@ -1,0 +1,22 @@
+{
+	"Applications":
+	[
+		{
+			"PathFilter": "%TEST_SUITE%\\Samples\\AMD\\FFX3\\bin\\FFX_*.exe",
+			"Passes": [{ "Type": "WaitForPipelines" }]
+		},
+		{
+			"PathFilter": "%TEST_SUITE%\\Samples\\AMD\\GLTFSample\\bin\\*.exe",
+			"Passes": [{ "Type": "WaitForPipelines" }]
+		},
+		{
+			"Path": "%TEST_SUITE%\\Samples\\DeferredTexturing\\BindlessDeferred\\x64\\Debug\\BindlessDeferred.exe",
+			"WorkingDirectory": "%TEST_SUITE%\\Samples\\DeferredTexturing\\BindlessDeferred",
+			"Passes": [{ "Type": "WaitForPipelines" }]
+		},
+		{
+			"Path": "%TEST_SUITE%\\Samples\\Microsoft\\DirectX-Graphics-Samples\\MiniEngine\\Build\\x64\\Debug\\Output\\ModelViewer\\ModelViewer.exe",
+			"Passes": [{ "Type": "WaitForPipelines" }]
+		}
+	]
+}

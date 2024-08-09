@@ -37,6 +37,7 @@
 #include <Test/Automation/Pass/StandardInstrumentPass.h>
 #include <Test/Automation/TestContainer.h>
 #include <Test/Automation/Diagnostic/Diagnostic.h>
+#include <Test/Automation/Pass/WaitForPipelinesPass.h>
 
 // System
 #if _WIN32
@@ -107,6 +108,7 @@ bool Parser::ParseApplication(const nlohmann::json &json, ComRef<ITestPass>& out
     info.enabled = json.value("Enabled", true);
     info.requiresDiscovery = json.value("Discovery", false);
     info.arguments = json.value("Arguments", "");
+    info.workingDirectory = ExpandPath(json.value("WorkingDirectory", "")).string();
 
     // Determine type
     if (json.contains("Path")) {
@@ -120,6 +122,13 @@ bool Parser::ParseApplication(const nlohmann::json &json, ComRef<ITestPass>& out
         info.type = ApplicationLaunchType::Steam;
         info.identifier = json["SteamID"].get<std::string>();
         info.processName = json.value("Process", "NoName");
+    } else if (json.contains("PathFilter")) {
+        std::filesystem::path filter = ExpandPath(json["PathFilter"].get<std::string>());
+
+        // Assume executable
+        info.type = ApplicationLaunchType::ExecutableFilter;
+        info.identifier = filter.string();
+        info.processName = filter.filename().string();
     } else {
         Log(registry, "Unknown environment");
         return false;
@@ -161,6 +170,8 @@ bool Parser::ParsePass(const nlohmann::json& json, ComRef<ITestPass>& out) {
     // Parse based on type
     if (type == "WaitForScreenshot") {
         return ParseWaitForScreenshot(json, out);
+    } else if (type == "WaitForPipelines") {
+        return ParseWaitForPipelines(json, out);
     } else if (type == "Key") {
         return ParseKey(json, out);
     } else if (type == "Wait") {
@@ -192,6 +203,11 @@ bool Parser::ParseWaitForScreenshot(const nlohmann::json &json, ComRef<ITestPass
         ExpandPath(json["Path"].get<std::string>()).string(),
         threshold
     );
+    return true;
+}
+
+bool Parser::ParseWaitForPipelines(const nlohmann::json &json, ComRef<ITestPass> &out) {
+    out = registry->New<WaitForPipelinesPass>();
     return true;
 }
 

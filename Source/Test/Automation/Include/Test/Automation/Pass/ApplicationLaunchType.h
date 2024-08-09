@@ -33,6 +33,10 @@ enum class ApplicationLaunchType {
     /// Expecting a file path as identifier
     Executable,
 
+    /// Application is a standard executable
+    /// Expecting a file path filter as identifier
+    ExecutableFilter,
+
     /// Application is a steam-app
     /// Expecting a steam-id as identifier
     Steam

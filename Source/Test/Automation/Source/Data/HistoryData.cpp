@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,15 +24,52 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+// Test
+#include <Test/Automation/Data/HistoryData.h>
 
-// Automation
-#include <Test/Automation/Pass/ITestPass.h>
+// Common
+#include <Common/FileSystem.h>
 
-class StandardInstrumentPass : public ITestPass {
-public:
-    COMPONENT(StandardInstrumentPass);
+// Std
+#include <fstream>
 
-    /// Overrides
-    bool Run() override;
-};
+void HistoryData::Restore() {
+    std::filesystem::path path = GetIntermediatePath("Tests") / "History.blob";
+
+    // Try to open history
+    std::ifstream stream(path, std::ios_base::binary);
+    if (!stream.good()) {
+        return;
+    }
+
+    // Read number of tags
+    uint64_t count;
+    stream.read(reinterpret_cast<char*>(&count), sizeof(count));
+
+    // Read all tags
+    for (uint64_t i = 0; i < count; i++) {
+        uint64_t tag;
+        stream.read(reinterpret_cast<char*>(&tag), sizeof(tag));
+
+        completedTags.insert(tag);
+    }
+}
+
+void HistoryData::Flush() {
+    std::filesystem::path path = GetIntermediatePath("Tests") / "History.blob";
+    
+    // Try to open history
+    std::ofstream stream(path, std::ios_base::binary);
+    if (!stream.good()) {
+        return;
+    }
+
+    // Write number of tags
+    uint64_t count = completedTags.size();
+    stream.write(reinterpret_cast<const char*>(&count), sizeof(count));
+
+    // Write all tags
+    for (uint64_t tag : completedTags) {
+        stream.write(reinterpret_cast<const char*>(&tag), sizeof(tag));
+    }
+}

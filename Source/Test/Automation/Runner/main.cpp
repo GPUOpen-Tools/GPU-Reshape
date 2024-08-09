@@ -28,6 +28,7 @@
 #include <Test/Automation/Parser.h>
 #include <Test/Automation/TestContainer.h>
 #include <Test/Automation/Data/TestData.h>
+#include <Test/Automation/Data/HistoryData.h>
 
 // Common
 #include <Common/Registry.h>
@@ -85,6 +86,10 @@ int main(int argc, char *const argv[]) {
     // Set test data
     ComRef data = registry.AddNew<TestData>();
     data->applicationFilter = filter;
+
+    // Set history data
+    ComRef history = registry.AddNew<HistoryData>();
+    history->Restore();
 
     // Create container
     ComRef container = registry.New<TestContainer>();

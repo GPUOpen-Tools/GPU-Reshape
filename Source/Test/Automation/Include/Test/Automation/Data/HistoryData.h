@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,13 +26,42 @@
 
 #pragma once
 
-// Automation
-#include <Test/Automation/Pass/ITestPass.h>
+// Common
+#include <Common/IComponent.h>
 
-class StandardInstrumentPass : public ITestPass {
+// Std
+#include <set>
+
+class HistoryData : public TComponent<HistoryData> {
 public:
-    COMPONENT(StandardInstrumentPass);
+    COMPONENT(HistoryData);
 
-    /// Overrides
-    bool Run() override;
+    /// Restore all history
+    void Restore();
+
+    /// Flush current history
+    void Flush();
+
+    /// Mark a tag as completed
+    void Complete(uint64_t tag) {
+        completedTags.insert(tag);
+        Flush();
+    }
+
+    /// Check if a tag is completed
+    bool IsCompleted(uint64_t tag) const {
+        return completedTags.contains(tag);
+    }
+
+    /// Check if a tag is completed, or add it
+    /// \return true if tag was already completed
+    bool IsCompletedOrAdd(uint64_t tag) {
+        bool completed = IsCompleted(tag);
+        Complete(tag);
+        return completed;
+    }
+
+private:
+    /// All opaque tags that have been completed
+    std::set<uint64_t> completedTags;
 };

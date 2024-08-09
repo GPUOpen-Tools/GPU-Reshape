@@ -29,9 +29,9 @@
 // Automation
 #include <Test/Automation/Pass/ITestPass.h>
 
-class StandardInstrumentPass : public ITestPass {
+class WaitForPipelinesPass : public ITestPass {
 public:
-    COMPONENT(StandardInstrumentPass);
+    COMPONENT(WaitForPipelinesPass);
 
     /// Overrides
     bool Run() override;

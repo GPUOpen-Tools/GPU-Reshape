@@ -1,0 +1,109 @@
+{
+	"Applications":
+	[
+		{
+			"SteamID": "1024380",
+			"Process": "SecondExtinction_F.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1716740",
+			"Process": "Starfield.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "780310",
+			"Process": "riftbreaker_win_release.exe",
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1182900",
+			"Process": "APlagueTaleRequiem_x64.exe",
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1265780",
+			"Process": "ToM-Win64-Shipping.exe",
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1016800",
+			"Process": "ChernobylGame-Win64-Shipping.exe",
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "548570",
+			"Process": "RAGE2.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1408610",
+			"Process": "CotWTheAngler_Steam.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1680880",
+			"Process": "FORSPOKEN.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1408610",
+			"Process": "Deathloop.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "534380",
+			"Process": "DyingLightGame_x64_rwdi.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "2215430",
+			"Process": "GhostOfTsushima.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "2420110",
+			"Process": "HorizonForbiddenWest.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1265780",
+			"Process": "ToM-Win64-Shipping.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1895880",
+			"Process": "RiftApart.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1361210",
+			"Process": "Darktide.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1086940",
+			"Process": "fix-me",
+			"Discovery": true
+		},
+		{
+			"SteamID": "529340",
+			"Process": "victoria3.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1056960",
+			"Process": "Youngblood_x64vk.exe",
+			"Discovery": true
+		},
+		{
+			"SteamID": "392160",
+			"Process": "X4.exe",
+			"Discovery": true
+		}
+	]
+}
