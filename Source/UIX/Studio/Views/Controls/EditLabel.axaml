@@ -65,9 +65,9 @@
             CommandParameter="{Binding}"
             VerticalAlignment="Center"
             HorizontalAlignment="Right"
-            Classes="Icon"
+            Classes="Close"
             IsVisible="False"
-            Width="20"
+            Width="22"
             Height="22">
             <PathIcon Data="{StaticResource Close}" Width="10" />
         </Button>

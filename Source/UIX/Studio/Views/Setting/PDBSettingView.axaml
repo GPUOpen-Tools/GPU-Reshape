@@ -42,6 +42,8 @@
              x:DataType="setting:PDBSettingViewModel" x:CompileBindings="True">
     <StackPanel Orientation="Vertical">
         <Grid>
+            <TextBlock Margin="15 0 0 0" Text="Configure the PDB indexing directories"/>
+
             <Button
                 x:Name="AddButton"
                 ToolTip.Tip="{x:Static r:Resources.PDBSetting_Add_Tooltip}"
@@ -50,7 +52,7 @@
                 Classes="Icon"
                 Width="20"
                 Height="22">
-                <PathIcon Data="{StaticResource Add}" Width="15" />
+                <PathIcon Data="{StaticResource AddFolder}" Width="15" />
             </Button>
         </Grid>
         
@@ -70,7 +72,13 @@
             </ListBox>
         </Grid>
         
-        <Grid Margin="15,15,0,0">
+        <TextBlock
+            Margin="15 5 0 0"
+            Foreground="{StaticResource InfoMediumForeground}"
+            Height="20"
+            Text="Directories are indexed on application startup, large file trees may incur overhead" />
+        
+        <Grid Margin="15,5,0,0">
             <CheckBox 
                 IsChecked="{Binding SearchInSubFolders}"
                 Content="Search sub-directories"/>

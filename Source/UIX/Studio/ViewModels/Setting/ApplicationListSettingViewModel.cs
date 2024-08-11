@@ -27,6 +27,8 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
+using Avalonia.Controls;
+using DynamicData;
 using Message.CLR;
 using Newtonsoft.Json;
 using ReactiveUI;
@@ -79,6 +81,21 @@ namespace Studio.ViewModels.Setting
         
         public ApplicationListSettingViewModel()
         {
+            if (Design.IsDesignMode)
+            {
+                Items.AddRange(new []
+                {
+                    new ApplicationSettingViewModel()
+                    {
+                        ApplicationName = "Design Application A"
+                    },
+                    new ApplicationSettingViewModel()
+                    {
+                        ApplicationName = "Design Application B"
+                    }
+                });
+            }
+            
             // Create commands
             Add = ReactiveCommand.Create(OnAdd);
             Close = ReactiveCommand.Create<ISettingViewModel>(OnClose);
