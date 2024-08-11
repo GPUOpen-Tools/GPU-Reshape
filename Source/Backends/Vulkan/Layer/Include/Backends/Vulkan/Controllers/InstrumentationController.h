@@ -201,6 +201,9 @@ private:
         uint64_t previousFeatureBitSet{0};
         uint64_t featureBitSet{0};
 
+        /// Current version id
+        uint64_t versionID{0};
+
         /// Compiler diagnostics
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
         PipelineCompilerDiagnostic pipelineCompilerDiagnostic;
@@ -255,6 +258,9 @@ private:
 
     /// Pending compilation bucket?
     bool hasPendingBucket{false};
+
+    /// Current version id
+    uint64_t versionID{0};
 
 private:
     /// The previous feature set during summarization

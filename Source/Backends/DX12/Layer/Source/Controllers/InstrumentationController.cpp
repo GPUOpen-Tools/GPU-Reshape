@@ -305,6 +305,10 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             D3D12GPUOpenProcessInfo.isDXBCConversionEnabled = it.Get<SetApplicationILConversionMessage>()->enabled;
             break;
         }
+        case InstrumentationVersionMessage::kID: {
+            versionID = it.Get<InstrumentationVersionMessage>()->version;
+            break;
+        }
 
         // Virtualization
         case SetVirtualFeatureRedirectMessage::kID: {
@@ -713,6 +717,7 @@ void InstrumentationController::CommitInstrumentation() {
     // Copy batch
     auto *batch = new(registry->GetAllocators(), kAllocInstrumentation) Batch(immediateBatch);
     batch->stampBegin = std::chrono::high_resolution_clock::now();
+    batch->versionID = versionID;
 
     // Summarize the needed feature set
     batch->previousFeatureBitSet = previousFeatureBitSet;
@@ -1039,6 +1044,9 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Sync scope
     {
         std::lock_guard guard(mutex);
+
+        // Commit view
+        MessageStreamView view(commitStream);
         
         // Diagnostic
 #if LOG_INSTRUMENTATION
@@ -1069,7 +1077,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
         }
 
         // Create final diagnostics message
-        auto message = MessageStreamView(commitStream).Add<InstrumentationDiagnosticMessage>(InstrumentationDiagnosticMessage::AllocationInfo {
+        auto message = view.Add<InstrumentationDiagnosticMessage>(InstrumentationDiagnosticMessage::AllocationInfo {
             .messagesByteSize = diagnosticStream.GetByteSize()
         });
 
@@ -1083,6 +1091,9 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
         message->millisecondsPipelines = msPipelines;
         message->millisecondsTotal = msTotal;
 #endif // LOG_INSTRUMENTATION
+
+        // Commit instrumentation version
+        view.Add<InstrumentationVersionMessage>()->version = batch->versionID;
 
         // Release the batch, bucket destructed after this call
         compilationBatch = nullptr;
