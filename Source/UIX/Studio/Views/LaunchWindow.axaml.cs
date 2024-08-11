@@ -108,7 +108,7 @@ namespace Studio.Views
             var dialog = new OpenFileDialog();
 
             string[]? result = await dialog.ShowAsync(this);
-            if (result == null)
+            if (result == null || result.Length == 0)
             {
                 return;
             }
