@@ -26,6 +26,7 @@
 
 using DynamicData;
 using Message.CLR;
+using Runtime.ViewModels.Workspace.Properties.Bus;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 
@@ -42,6 +43,11 @@ namespace Runtime.ViewModels.Workspace.Properties
         /// All outstanding requests
         /// </summary>
         public ISourceList<IBusObject> Objects { get; }
+        
+        /// <summary>
+        /// All version controllers
+        /// </summary>
+        public ISourceList<IBusVersionController> VersionControllers { get; }
 
         /// <summary>
         /// Enqueue a bus object, enqueuing guaranteed to be unique
@@ -58,5 +64,24 @@ namespace Runtime.ViewModels.Workspace.Properties
         /// Commit all enqueued bus objects
         /// </summary>
         public void CommitRedirect(OrderedMessageView<ReadWriteMessageStream> stream, bool flush);
+    }
+    
+    public static class BusPropertyServiceExtensions
+    {
+        /// <summary>
+        /// Get a version controller if present
+        /// </summary>
+        public static T? GetVersionController<T>(this IBusPropertyService self) where T : class, IBusVersionController
+        {
+            foreach (IBusVersionController controller in self.VersionControllers.Items)
+            {
+                if (controller is T typed)
+                {
+                    return typed;
+                }
+            }
+
+            return null;
+        }
     }
 }

@@ -43,6 +43,7 @@ using ReactiveUI;
 using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Shader;
 using Studio.Extensions;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
@@ -213,7 +214,7 @@ namespace Studio.Views.Shader
             }
             
             // Ensure detailed collection has started
-            ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
+            InstrumentationVersion version = ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
             
             // Set selection
             vm.SelectedValidationObject = validationObject;
@@ -224,7 +225,8 @@ namespace Studio.Views.Shader
                 vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
                     Object = vm.Object,
-                    PropertyCollection = vm.PropertyCollection
+                    PropertyCollection = vm.PropertyCollection,
+                    Version = version
                 };
             }).DisposeWithClear(_detailDisposable);
         }

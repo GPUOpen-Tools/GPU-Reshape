@@ -46,6 +46,14 @@ namespace Studio.ViewModels.Traits
     public static class BusObjectExtensions
     {
         /// <summary>
+        /// Get the busd service of a property
+        /// </summary>
+        public static IBusPropertyService? GetBusService(this IPropertyViewModel self)
+        {
+            return self.GetWorkspaceCollection()?.GetService<IBusPropertyService>();
+        }
+        
+        /// <summary>
         /// Enqueue a bus object from a given property view model
         /// </summary>
         /// <param name="self"></param>

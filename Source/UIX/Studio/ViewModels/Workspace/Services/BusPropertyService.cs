@@ -30,6 +30,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
+using Runtime.ViewModels.Workspace.Properties.Bus;
 using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Services
@@ -60,6 +61,34 @@ namespace Studio.ViewModels.Workspace.Services
         public ISourceList<IBusObject> Objects { get; } = new SourceList<IBusObject>();
 
         /// <summary>
+        /// All version controllers
+        /// </summary>
+        public ISourceList<IBusVersionController> VersionControllers { get; } = new SourceList<IBusVersionController>();
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public BusPropertyService()
+        {
+            // Bind connection
+            this.WhenAnyValue(x => x.ConnectionViewModel).Subscribe(_ => CreateVersionControllers());
+        }
+
+        /// <summary>
+        /// Create all controllers
+        /// </summary>
+        private void CreateVersionControllers()
+        {
+            VersionControllers.Clear();
+            
+            // Default controllers
+            VersionControllers.Add(new InstrumentationBusVersionController()
+            {
+                ConnectionViewModel = ConnectionViewModel
+            });
+        }
+
+        /// <summary>
         /// Enqueue a given unique object
         /// </summary>
         /// <param name="busObject"></param>
@@ -80,7 +109,9 @@ namespace Studio.ViewModels.Workspace.Services
             // Immediate?
             if (Mode == BusMode.Immediate && ConnectionViewModel != null)
             {
-                busObject.Commit(ConnectionViewModel.GetSharedBus());
+                var stream = ConnectionViewModel.GetSharedBus();
+                CommitVersionControllers(stream);
+                busObject.Commit(stream);
                 return;
             }
             
@@ -104,11 +135,25 @@ namespace Studio.ViewModels.Workspace.Services
         }
 
         /// <summary>
+        /// Destruct all items
+        /// </summary>
+        public void Destruct()
+        {
+            foreach (IBusVersionController controller in VersionControllers.Items)
+            {
+                controller.Destruct();
+            }
+        }
+
+        /// <summary>
         /// Commit all outstanding objects to a given stream
         /// </summary>
         /// <param name="stream"></param>
         public void CommitRedirect(OrderedMessageView<ReadWriteMessageStream> stream, bool flush)
         {
+            // Update all versions
+            CommitVersionControllers(stream);
+            
             // Commit all objects
             foreach (IBusObject objectsItem in Objects.Items)
             {
@@ -120,6 +165,17 @@ namespace Studio.ViewModels.Workspace.Services
             {
                 Objects.Clear();
                 _lookup.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Commit all versions
+        /// </summary>
+        private void CommitVersionControllers(OrderedMessageView<ReadWriteMessageStream> stream)
+        {
+            foreach (IBusVersionController controller in VersionControllers.Items)
+            {
+                controller.Commit(stream);
             }
         }
 
