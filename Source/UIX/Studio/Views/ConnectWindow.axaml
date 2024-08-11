@@ -90,18 +90,18 @@ Valid attributes:
                                 </TextBlock>
                                 <Grid Margin="25 0 0 0" ColumnDefinitions="35,*">
                                     <TextBlock TextWrapping="Wrap" Grid.Column="0">
-ip
-port
-app 
-pid 
-api 
+ip   <LineBreak />
+port <LineBreak />
+app  <LineBreak />
+pid  <LineBreak />
+api  <LineBreak />
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" Grid.Column="1">
-- Endpoint hostname or ipv4/6 string
-- Endpoint host resolver port, leave default if unknown
-- Application name filter
-- Application process id
-- Application backend API filter
+- Endpoint hostname or ipv4/6 string                    <LineBreak />
+- Endpoint host resolver port, leave default if unknown <LineBreak />
+- Application name filter                               <LineBreak />
+- Application process id                                <LineBreak />
+- Application backend API filter                        <LineBreak />
                                     </TextBlock>
                                 </Grid>
                                 
