@@ -48,18 +48,18 @@
 
 bool DXMSCompiler::Install() {
     // Get path of the layer
-    std::filesystem::path modulePath = GetBaseModuleDirectory();
+    std::filesystem::path modulePath = GetBaseModuleDirectory() / "Dependencies" / "DXC";
 
     // Load dxil
     //   ! No non-system/runtime dependents in dxil.dll, verified with dumpbin
-    dxilModule = LoadLibrary((modulePath / "dxil.dll").string().c_str());
+    dxilModule = LoadLibrary((modulePath / "GRS.dxil.dll").string().c_str());
     if (!dxilModule) {
         return false;
     }
 
     // Load dxcompiler
     //   ! No non-system/runtime dependents in dxcompiler.dll, verified with dumpbin
-    dxCompilerModule = LoadLibrary((modulePath / "dxcompiler.dll").string().c_str());
+    dxCompilerModule = LoadLibrary((modulePath / "GRS.dxcompiler.dll").string().c_str());
     if (!dxCompilerModule) {
         return false;
     }

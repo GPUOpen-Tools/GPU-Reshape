@@ -204,11 +204,15 @@ endforeach()
 
 # Configure file for multi-configurators
 function(ConfigureOutput FILE OUT)
+    get_filename_component(Directory "${OUT}" DIRECTORY)
+
     if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
         foreach(Config ${CMAKE_CONFIGURATION_TYPES})
+            file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${Config}/${Directory})
             configure_file(${FILE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${Config}/${OUT} COPYONLY)
         endforeach()
     else()
+        file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${Directory})
         configure_file(${FILE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${OUT} COPYONLY)
     endif()
 endfunction()
