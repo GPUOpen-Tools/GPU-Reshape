@@ -246,7 +246,7 @@ namespace Studio.Views.Controls
             // Set new margin
             view.Margin = new Thickness(
                 0,
-                top - 1,
+                top,
                 0,
                 0
             );
