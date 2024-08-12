@@ -65,8 +65,8 @@
                     <Image Source="/Resources/Icons/Icon_NoFrame.png" VerticalAlignment="Top" Width="70" />
 
                     <StackPanel Orientation="Vertical" Margin="15,5,0,0">
-                        <TextBlock Margin="0" FontSize="15" FontWeight="Bold" Text="GPU Reshape v0.9 BETA" />
-                        <TextBlock Margin="0,5,0,0" Text="Beta release, subject to change." />
+                        <TextBlock Margin="0" FontSize="15" FontWeight="Bold" Text="GPU Reshape v0.9 BETA2" />
+                        <TextBlock Margin="0,5,0,0" Text="Beta2 release, subject to change." />
 
                         <TextBlock Margin="0,25,0,0" Text="Copyright © 2024 Advanced Micro Devices, Inc.," />
                         <TextBlock Margin="0,0,0,0"  Text="Fatalist Development AB (Avalanche Studio Group)," />
