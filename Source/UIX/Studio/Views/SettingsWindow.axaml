@@ -42,7 +42,7 @@
         xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
         mc:Ignorable="d"
         d:DesignWidth="750" d:DesignHeight="450"
-        Width="800" Height="450"
+        Width="800" Height="465"
         UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
         WindowState="Normal" WindowStartupLocation="CenterScreen"
         TransparencyLevelHint="None"

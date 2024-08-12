@@ -24,6 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
@@ -68,7 +69,24 @@ namespace Studio.ViewModels.Setting
 
             return default;
         }
-        
+
+        /// <summary>
+        /// Get an item from this context settings item which matches a predicate
+        /// </summary>
+        /// <returns>null if not found</returns>
+        public static T? GetFirstItem<T>(this ISettingViewModel self, Func<T, bool> predicate) where T : ISettingViewModel
+        {
+            foreach (ISettingViewModel settingItemViewModel in self.Items)
+            {
+                if (settingItemViewModel is T typed && predicate(typed))
+                {
+                    return typed;
+                }
+            }
+
+            return default;
+        }
+
         /// <summary>
         /// Get an enumerable on settings of type
         /// </summary>

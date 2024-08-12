@@ -24,34 +24,56 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using DynamicData;
-using Studio.ViewModels.Contexts;
+using System.Collections.Generic;
 
-namespace Studio.Services
+namespace Studio.ViewModels.Controls
 {
-    public class ContextMenuService : IContextMenuService
+    public class ObjectDictionary<KEY, VALUE> 
+        where KEY : class 
+        where VALUE : class
     {
         /// <summary>
-        /// Target view model
+        /// Add a new bidirectional pair
         /// </summary>
-        public object? TargetViewModel { get; set; }
+        public void Add(KEY key, VALUE value)
+        {
+            Forward.Add(key, value);
+            Backward.Add(value, key);
+        }
 
         /// <summary>
-        /// All contexts
+        /// Remove a bidirectional pair
         /// </summary>
-        public ObservableCollection<IContextViewModel> ViewModels { get; } = new();
-
-        public ContextMenuService()
+        public void Remove(KEY key, VALUE value)
         {
-            // Standard contexts
-            ViewModels.AddRange(new IContextViewModel[]
-            {
-                new InstrumentContextViewModel(),
-                new InstrumentPipelineFilterContextViewModel(),
-                new SettingsContextViewModel(),
-                new CloseContextViewModel()
-            });
+            Forward.Remove(key);
+            Backward.Remove(value);
         }
+
+        /// <summary>
+        /// Get the forward value
+        /// </summary>
+        public VALUE Get(KEY key)
+        {
+            return Forward[key];
+        }
+
+        /// <summary>
+        /// Get the backward value
+        /// </summary>
+        public KEY Get(VALUE key)
+        {
+            return Backward[key];
+        }
+        
+        /// <summary>
+        /// All forward items
+        /// </summary>
+        public Dictionary<KEY, VALUE> Forward { get; } = new();
+        
+        /// <summary>
+        /// All backward items
+        /// </summary>
+        public Dictionary<VALUE, KEY> Backward { get; } = new();
     }
 }

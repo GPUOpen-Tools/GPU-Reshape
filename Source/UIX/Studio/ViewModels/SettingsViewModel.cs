@@ -25,20 +25,10 @@
 // 
 
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Reactive.Linq;
-using System.Windows.Input;
-using Avalonia;
-using Avalonia.Threading;
-using Bridge.CLR;
-using Discovery.CLR;
-using DynamicData;
-using Message.CLR;
 using ReactiveUI;
 using Studio.Services;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Setting;
-using Studio.ViewModels.Tools;
 
 namespace Studio.ViewModels
 {
@@ -53,6 +43,15 @@ namespace Studio.ViewModels
         /// The root tree-wise item view model
         /// </summary>
         public SettingTreeItemViewModel TreeItemViewModel { get; }
+
+        /// <summary>
+        /// Currently selected setting
+        /// </summary>
+        public ISettingViewModel? SelectedSettingViewModel
+        {
+            get => SelectedSettingItem == null ? null : _dictionary.Get(SelectedSettingItem);
+            set => SelectedSettingItem = value != null ? _dictionary.Get(value) : null;
+        }
 
         /// <summary>
         /// Currently selected setting
@@ -74,6 +73,7 @@ namespace Studio.ViewModels
             // Create tree item
             TreeItemViewModel = new SettingTreeItemViewModel()
             {
+                Dictionary = _dictionary,
                 Setting = SettingViewModel
             };
 
@@ -85,5 +85,10 @@ namespace Studio.ViewModels
         /// Internal selected setting
         /// </summary>
         private SettingTreeItemViewModel? _selectedSettingItem;
+
+        /// <summary>
+        /// Association between view models and tree items
+        /// </summary>
+        private ObjectDictionary<ISettingViewModel, SettingTreeItemViewModel> _dictionary = new();
     }
 }
