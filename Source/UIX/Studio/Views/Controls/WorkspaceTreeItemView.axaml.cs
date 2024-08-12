@@ -59,6 +59,13 @@ namespace Studio.Views.Controls
                             itemViewModel.RaisePropertyChanged(nameof(itemViewModel.ViewModel));
                         });
                     }
+                    
+                    // Bind signals
+                    this.Events().DoubleTapped.Subscribe(x =>
+                    {
+                        x.Handled = true;
+                        itemViewModel.OpenDocument.Execute(null);
+                    });
                 });
         }
 
