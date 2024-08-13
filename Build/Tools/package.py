@@ -40,11 +40,15 @@ ignore_list = [
     # Mostly unit testing, build time tooling
     ".exe",
     
+    # All configuration json, handled through required files
+    ".json",
+    
     # Build time tooling dependencies
     "libclang.dll",
     
     # Test dependencies
-    "VK_GPUOpen_Test_UserDataLayer.json",
+    "GRS.Libraries.Message.Benchmark.DotNet.dll",
+    "GRS.Backends.Vulkan.Tests.UserDataLayer.dll",
     "vulkan-1.dll"
 ]
 
@@ -59,17 +63,25 @@ require_list = [
     "GPUReshape.exe",
     
     # Executable dependencies
-    "GPUReshape.NotifyIcon.exe",
+    "GPUReshape.NotifyIcon.exe",                 # Task bar notification icon
     "GRS.Backends.DX12.Service.exe",             # Handles project detouring for D3D12 objects
     "GRS.Backends.DX12.Service.RelFunTBL.exe",   # Relative function table generator for x86
     "GRS.Services.HostResolver.Standalone.exe",  # Host resolver tool for discovery
     "GRS.Services.Discovery.Cleanup.exe",        # General cleanup tool for discovery
     "XamlColorSchemeGenerator.exe",              # UIX dependency
+    
+    # UIX runtime dependency json
+    "GPUReshape.deps.json",
+    "GPUReshape.runtimeconfig.json",
+    "GPUReshape.NotifyIcon.deps.json",
+    "GPUReshape.NotifyIcon.runtimeconfig.json",
+    "VK_LAYER_GPUOPEN_GRS.json"
 ]
 
 # All required folders
 require_folders = [
-    "Plugins"
+    "Plugins",
+    "Dependencies"
 ]
 
 # All extra folders
