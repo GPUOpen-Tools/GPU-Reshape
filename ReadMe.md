@@ -61,40 +61,8 @@ This toolset aims to serve as a **framework** for instrumentation, acting as a m
 
 ## Testing Suite
 
-A list of applications GPU Reshape is tested against for stability and validity.
-
-Games
-- **Call of the Wild: The Angler** (Avalanche, DX12)
-- **Second Extinction** (Avalanche, Vulkan)
-- **Rage 2** (Avalanche / id Software, Vulkan)
-- **Chernobylite** (The Farm 51, DX12)
-- **Dying Light 2** (Techland, DX12)
-- **The Lord of the Rings: Gollum** (Daedalic Entertainment, DX12)
-- **A Plague Tale: Requiem** (Asobo Studio, DX12)
-- **Ratchet & Clank: Rift Apart** (Insomniac Games / Nixxes Software, DX12)
-- **Forspoken** (Square Enix, DX12)
-- **The Riftbreaker** (EXOR Studios, DX12)
-- **Starfield** (Bethesda Game Studios, DX12)
-- **Cyberpunk 2077** (CD PROJEKT RED, DX12)
-
-Engines
-- **Unreal Engine 4** (Epic Games, DX12, Vulkan)
-- **Unreal Engine 5** (Epic Games, DX12, Vulkan)
-
-AMD
-- **FidelityFX-SDK** (DX12, Vulkan)
-- **FSR2** (DX12, Vulkan)
-- **GLTFSample** (DX12, Vulkan)
-- **ParallelSort** (DX12, Vulkan)
-- **SPDSample** (DX12, Vulkan)
-- **SSSRSample** (DX12, Vulkan)
-- **TressFX** (DX12, Vulkan)
-
-Khronos
-- **Vulkan-Samples** (Vulkan, *certain extensions pending support, e.g. descriptor buffers*)
-
-Microsoft
-- **MiniEngine ModelViewer** (DX12)
+GPU Reshape is routinely tested against a standard testbed, including AAA games, IHV/ISV samples/benchmarks, and user
+submitted applications. For a full list, please see the [Testing Suite](Documentation/TestingSuite.md).
 
 ## Known Issues
 
