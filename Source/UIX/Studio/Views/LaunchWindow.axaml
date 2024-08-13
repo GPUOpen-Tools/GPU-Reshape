@@ -244,8 +244,15 @@
 
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                 <Button
+                    IsEnabled="{Binding ValidApplicationPath}"
+                    Command="{Binding Settings}"
+                    ToolTip.Tip="Open settings for the application name">
+                    Settings
+                </Button>
+                
+                <Button
                     Classes="Primary"
-                    HorizontalAlignment="Right"
+                    Margin="2 0 0 0"
                     IsEnabled="{Binding CanLaunch}"
                     Command="{Binding Start}">
                     Start Process

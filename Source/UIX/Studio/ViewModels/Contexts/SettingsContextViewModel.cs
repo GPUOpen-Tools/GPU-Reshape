@@ -30,6 +30,7 @@ using ReactiveUI;
 using Runtime.ViewModels.Traits;
 using Studio.Extensions;
 using Studio.Services;
+using Studio.Utils.Workspace;
 using Studio.ViewModels.Setting;
 
 namespace Studio.ViewModels.Contexts
@@ -67,45 +68,7 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         private void OnInvoked(IWorkspaceAdapter[] adapters)
         {
-            SettingsViewModel settings = new();
-
-            // Must have list
-            if (settings.SettingViewModel.GetItem<ApplicationListSettingViewModel>() is not { } listSettings)
-            {
-                Studio.Logging.Error("Failed to find application setting list");
-                return;
-            }
-
-            // Create for each adapter
-            foreach (IWorkspaceAdapter adapter in adapters)
-            {
-                // Validate the connection
-                if (adapter.GetWorkspace().Connection?.Application is not { } application)
-                {
-                    continue;
-                }
-
-                // Try to find existing application with matching process
-                var appSettings = listSettings.GetFirstItem<ApplicationSettingViewModel>(x => x.ApplicationName == application.Process);
-                if (appSettings == null)
-                {
-                    // None found, create a new one
-                    appSettings = new ApplicationSettingViewModel()
-                    {
-                        ApplicationName = application.Process
-                    };
-                    
-                    // Add to apps
-                    listSettings.Items.Add(appSettings);
-                }
-
-                // Select this one
-                // If multiple adapters, just selects last
-                settings.SelectedSettingViewModel = appSettings;
-            }
-
-            // Open window
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(settings);
+            SettingsUtils.OpenWorkspaceSettingsFor(adapters);
         }
     }
 }

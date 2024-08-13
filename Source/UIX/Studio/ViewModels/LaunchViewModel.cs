@@ -44,6 +44,7 @@ using Studio.Models.Environment;
 using Studio.Models.Workspace;
 using Studio.Services;
 using Studio.Services.Suspension;
+using Studio.Utils.Workspace;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
@@ -58,6 +59,11 @@ namespace Studio.ViewModels
         /// Connect to selected application
         /// </summary>
         public ICommand Start { get; }
+        
+        /// <summary>
+        /// Open application settings
+        /// </summary>
+        public ICommand Settings { get; }
 
         /// <summary>
         /// Current connection string
@@ -266,6 +272,15 @@ namespace Studio.ViewModels
             get => _canLaunch;
             set => this.RaiseAndSetIfChanged(ref _canLaunch, value);
         }
+
+        /// <summary>
+        /// Is the application name valid?
+        /// </summary>
+        public bool ValidApplicationPath
+        {
+            get => _validApplicationPath;
+            set => this.RaiseAndSetIfChanged(ref _validApplicationPath, value);
+        }
         
         /// <summary>
         /// Constructor
@@ -274,6 +289,7 @@ namespace Studio.ViewModels
         {
             // Create commands
             Start = ReactiveCommand.Create(OnStart);
+            Settings = ReactiveCommand.Create(OnSettings);
 
             // Create interactions
             AcceptLaunch = new();
@@ -286,6 +302,12 @@ namespace Studio.ViewModels
                     // Filter by configurations
                     SelectedPropertyConfigurations = x.Properties.Items.Where(p => p.Visibility == PropertyVisibility.Configuration);
                 });
+
+            // Bind to application path
+            this.WhenAnyValue(x => x.ApplicationPath).Subscribe(x =>
+            {
+                ValidApplicationPath = File.Exists(x);
+            });
 
             // Create the initial workspace
             CreateVirtualWorkspace();
@@ -525,6 +547,17 @@ namespace Studio.ViewModels
             
             // Update status
             ConnectionStatus = ConnectionStatus.Connecting;
+        }
+
+        /// <summary>
+        /// Invoked on settings
+        /// </summary>
+        private void OnSettings()
+        {
+            SettingsUtils.OpenWorkspaceSettingsFor(new[]
+            {
+                Path.GetFileName(_applicationPath)
+            });
         }
 
         /// <summary>
@@ -818,6 +851,11 @@ namespace Studio.ViewModels
         /// Internal launch state
         /// </summary>
         private bool _canLaunch = true;
+
+        /// <summary>
+        /// Internal valid path state
+        /// </summary>
+        private bool _validApplicationPath = true;
         
         /// <summary>
         /// Internal virtual mappings
