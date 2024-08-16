@@ -1456,9 +1456,19 @@ bool IsIHVRegion(const void* address) {
     return IsModuleRegion(IHVAMDXC64ModuleInfo, address);
 }
 
+template<typename T>
+T SafeLayerFunction(T layer, T detour) {
+    // The layer may fail to load for a number of reasons, one of such is safe-guarding / anti-cheat systems
+    // In case that happens, keep thing stable, just use the detour function table as the layer one, i.e. pass-through
+    return layer ? layer : detour;
+}
+
 HRESULT WINAPI HookD3D12GetInterface(REFCLSID rclsid, REFIID riid, void** ppvDebug) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_D3D12GetInterfaceOriginal(rclsid, riid, ppvDebug);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_D3D12GetInterfaceOriginal, DetourFunctionTable.next_D3D12GetInterfaceOriginal);
+    return next(rclsid, riid, ppvDebug);
 }
 
 HRESULT WINAPI HookID3D12CreateDevice(
@@ -1472,16 +1482,19 @@ HRESULT WINAPI HookID3D12CreateDevice(
     // Hold for deferred initialization, must happen before IHV region checks due to foreign modules
     WaitForDeferredInitialization();
 
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_D3D12CreateDeviceOriginal, DetourFunctionTable.next_D3D12CreateDeviceOriginal);
+
     // If this is not an IHV region, just pass down the call-chain
     if (!IsIHVRegion(callee)) {
-        return LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, riid, ppDevice);
+        return next(pAdapter, minimumFeatureLevel, riid, ppDevice);
     }
 
     // Native device
     ID3D12Device* device{nullptr};
 
     // Create device with special vendor IID, this device is not wrapped
-    if (HRESULT hr = LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, kIIDD3D12DeviceVendor, reinterpret_cast<void**>(&device)); FAILED(hr)) {
+    if (HRESULT hr = next(pAdapter, minimumFeatureLevel, kIIDD3D12DeviceVendor, reinterpret_cast<void**>(&device)); FAILED(hr)) {
         return hr;
     }
 
@@ -1502,7 +1515,10 @@ HRESULT HookD3D11On12CreateDevice(
     D3D_FEATURE_LEVEL *pChosenFeatureLevel
     ) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_D3D11On12CreateDeviceOriginal(
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_D3D11On12CreateDeviceOriginal, DetourFunctionTable.next_D3D11On12CreateDeviceOriginal);
+    return next(
         pDevice,
         Flags,
         pFeatureLevels,
@@ -1518,47 +1534,74 @@ HRESULT HookD3D11On12CreateDevice(
 
 HRESULT HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_EnableExperimentalFeatures(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_EnableExperimentalFeatures, DetourFunctionTable.next_EnableExperimentalFeatures);
+    return next(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
 }
 
 AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSCreateDevice(context, creationParams, extensionParams, returnedParams);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSCreateDevice, DetourFunctionTable.next_AMDAGSCreateDevice);
+    return next(context, creationParams, extensionParams, returnedParams);
 }
 
 AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSDestroyDevice(context, device, deviceReferences);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSDestroyDevice, DetourFunctionTable.next_AMDAGSDestroyDevice);
+    return next(context, device, deviceReferences);
 }
 
 AGSReturnCode HookAMDAGSPushMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSPushMarker(context, commandList, data);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSPushMarker, DetourFunctionTable.next_AMDAGSPushMarker);
+    return next(context, commandList, data);
 }
 
 AGSReturnCode HookAMDAGSPopMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSPopMarker(context, commandList);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSPopMarker, DetourFunctionTable.next_AMDAGSPopMarker);
+    return next(context, commandList);
 }
 
 AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSSetMarker(context, commandList, data);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSSetMarker, DetourFunctionTable.next_AMDAGSSetMarker);
+    return next(context, commandList, data);
 }
 
 HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_CreateDXGIFactoryOriginal(riid, ppFactory);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactoryOriginal, DetourFunctionTable.next_CreateDXGIFactoryOriginal);
+    return next(riid, ppFactory);
 }
 
 HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_CreateDXGIFactory1Original(riid, ppFactory);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactory1Original, DetourFunctionTable.next_CreateDXGIFactory1Original);
+    return next(riid, ppFactory);
 }
 
 HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_CreateDXGIFactory2Original(flags, riid, ppFactory);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactory2Original, DetourFunctionTable.next_CreateDXGIFactory2Original);
+    return next(flags, riid, ppFactory);
 }
 
 void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
