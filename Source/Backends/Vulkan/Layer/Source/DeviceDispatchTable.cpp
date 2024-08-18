@@ -127,6 +127,7 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(getDeviceProcAddr(object, "vkDestroySwapchainKHR"));
     next_vkGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(getDeviceProcAddr(object, "vkGetSwapchainImagesKHR"));
     next_vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(getDeviceProcAddr(object, "vkSetDebugUtilsObjectNameEXT"));
+    next_vkDebugMarkerSetObjectNameEXT = reinterpret_cast<PFN_vkDebugMarkerSetObjectNameEXT>(getDeviceProcAddr(object, "vkDebugMarkerSetObjectNameEXT"));
     next_vkQueueBindSparse = reinterpret_cast<PFN_vkQueueBindSparse>(getDeviceProcAddr(object, "vkQueueBindSparse"));
     next_vkCreateSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(getDeviceProcAddr(object, "vkCreateSemaphore"));
     next_vkDestroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(getDeviceProcAddr(object, "vkDestroySemaphore"));
@@ -291,6 +292,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkSetDebugUtilsObjectNameEXT"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkSetDebugUtilsObjectNameEXT);
+
+    if (!std::strcmp(name, "vkDebugMarkerSetObjectNameEXT"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDebugMarkerSetObjectNameEXT);
 
     if (!std::strcmp(name, "vkCreateBufferView"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateBufferView);
