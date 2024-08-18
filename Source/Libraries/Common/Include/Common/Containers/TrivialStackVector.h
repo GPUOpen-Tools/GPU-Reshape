@@ -47,6 +47,11 @@ struct TrivialStackVector {
         std::memcpy(data, other.Data(), sizeof(T) * size);
     }
 
+    /// Initialize from size
+    TrivialStackVector(uint64_t size) : TrivialStackVector() {
+        Resize(size);
+    }
+
     /// Move from other
     TrivialStackVector(TrivialStackVector&& other) noexcept : size(other.size), fallback(other.fallback) {
         if (other.data != other.stack) {

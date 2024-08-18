@@ -187,10 +187,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
     CommandPoolState *poolState = table->states_commandPool.Get(pAllocateInfo->commandPool);
 
     // Returned vulkan handles
-    auto *vkCommandBuffers = ALLOCA_ARRAY(VkCommandBuffer, pAllocateInfo->commandBufferCount);
+    TrivialStackVector<VkCommandBuffer, 64> vkCommandBuffers(pAllocateInfo->commandBufferCount);
 
     // Pass down callchain
-    VkResult result = table->next_vkAllocateCommandBuffers(device, pAllocateInfo, vkCommandBuffers);
+    VkResult result = table->next_vkAllocateCommandBuffers(device, pAllocateInfo, vkCommandBuffers.Data());
     if (result != VK_SUCCESS) {
         return result;
     }
@@ -306,7 +306,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetCommandPool(VkDevice device, VkComman
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdExecuteCommands(CommandBufferObject *commandBuffer, uint32_t commandBufferCount, const CommandBufferObject **pCommandBuffers) {
-    auto* unwrapped = ALLOCA_ARRAY(VkCommandBuffer, commandBufferCount);
+    TrivialStackVector<VkCommandBuffer, 64> unwrapped(commandBufferCount);
 
     // Unwrap
     for (uint32_t i = 0; i < commandBufferCount; i++) {
@@ -314,7 +314,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdExecuteCommands(CommandBufferObject *comman
     }
 
     // Pass down callchain
-    commandBuffer->dispatchTable.next_vkCmdExecuteCommands(commandBuffer->object, commandBufferCount, unwrapped);
+    commandBuffer->dispatchTable.next_vkCmdExecuteCommands(commandBuffer->object, commandBufferCount, unwrapped.Data());
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) {
@@ -572,44 +572,44 @@ void CopyAndMigrateMemoryBarrier(DeviceDispatchTable *table, T* dest, const T* s
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdWaitEvents(CommandBufferObject* commandBuffer, uint32_t eventCount, const VkEvent *pEvents, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier *pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier *pImageMemoryBarriers) {
     // Migrate images
-    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier, imageMemoryBarrierCount);
-    CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers, pImageMemoryBarriers, imageMemoryBarrierCount);
+    TrivialStackVector<VkImageMemoryBarrier, 64> imageMemoryBarriers(imageMemoryBarrierCount);
+    CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers.Data(), pImageMemoryBarriers, imageMemoryBarrierCount);
 
     // Migrate buffers
-    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier, bufferMemoryBarrierCount);
-    CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers, pBufferMemoryBarriers, bufferMemoryBarrierCount);
+    TrivialStackVector<VkBufferMemoryBarrier, 64> bufferMemoryBarriers(bufferMemoryBarrierCount);
+    CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers.Data(), pBufferMemoryBarriers, bufferMemoryBarrierCount);
 
     // Pass down callchain
-    commandBuffer->dispatchTable.next_vkCmdWaitEvents(commandBuffer->object, eventCount, pEvents, srcStageMask, dstStageMask, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, bufferMemoryBarriers, imageMemoryBarrierCount, imageMemoryBarriers);
+    commandBuffer->dispatchTable.next_vkCmdWaitEvents(commandBuffer->object, eventCount, pEvents, srcStageMask, dstStageMask, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, bufferMemoryBarriers.Data(), imageMemoryBarrierCount, imageMemoryBarriers.Data());
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPipelineBarrier(CommandBufferObject* commandBuffer, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags, uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier *pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier *pImageMemoryBarriers) {
     // Migrate images
-    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier, imageMemoryBarrierCount);
-    CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers, pImageMemoryBarriers, imageMemoryBarrierCount);
+    TrivialStackVector<VkImageMemoryBarrier, 64> imageMemoryBarriers(imageMemoryBarrierCount);
+    CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers.Data(), pImageMemoryBarriers, imageMemoryBarrierCount);
 
     // Migrate buffers
-    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier, bufferMemoryBarrierCount);
-    CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers, pBufferMemoryBarriers, bufferMemoryBarrierCount);
+    TrivialStackVector<VkBufferMemoryBarrier, 64> bufferMemoryBarriers(bufferMemoryBarrierCount);
+    CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers.Data(), pBufferMemoryBarriers, bufferMemoryBarrierCount);
 
     // Pass down callchain
-    commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(commandBuffer->object, srcStageMask, dstStageMask, dependencyFlags, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, bufferMemoryBarriers, imageMemoryBarrierCount, imageMemoryBarriers);
+    commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(commandBuffer->object, srcStageMask, dstStageMask, dependencyFlags, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, bufferMemoryBarriers.Data(), imageMemoryBarrierCount, imageMemoryBarriers.Data());
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdSetEvent2(CommandBufferObject* commandBuffer, VkEvent event, const VkDependencyInfo *pDependencyInfo) {
     VkDependencyInfo dependencyInfo = *pDependencyInfo;
 
     // Migrate images
-    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2, dependencyInfo.imageMemoryBarrierCount);
-    CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers, dependencyInfo.pImageMemoryBarriers, dependencyInfo.imageMemoryBarrierCount);
+    TrivialStackVector<VkImageMemoryBarrier2, 64> imageMemoryBarriers(dependencyInfo.imageMemoryBarrierCount);
+    CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers.Data(), dependencyInfo.pImageMemoryBarriers, dependencyInfo.imageMemoryBarrierCount);
 
     // Migrate buffers
-    auto* bufferMemoryBarriers  = ALLOCA_ARRAY(VkBufferMemoryBarrier2, dependencyInfo.bufferMemoryBarrierCount);
-    CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers, dependencyInfo.pBufferMemoryBarriers, dependencyInfo.bufferMemoryBarrierCount);
+    TrivialStackVector<VkBufferMemoryBarrier2, 64> bufferMemoryBarriers(dependencyInfo.bufferMemoryBarrierCount);
+    CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers.Data(), dependencyInfo.pBufferMemoryBarriers, dependencyInfo.bufferMemoryBarrierCount);
 
     // Set new barriers
-    dependencyInfo.pImageMemoryBarriers = imageMemoryBarriers;
-    dependencyInfo.pBufferMemoryBarriers = bufferMemoryBarriers;
+    dependencyInfo.pImageMemoryBarriers = imageMemoryBarriers.Data();
+    dependencyInfo.pBufferMemoryBarriers = bufferMemoryBarriers.Data();
 
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdSetEvent2(commandBuffer->object, event, &dependencyInfo);
@@ -627,46 +627,50 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdWaitEvents2(CommandBufferObject* commandBuf
     }
 
     // Local barriers
-    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2,  imageBarrierCount);
-    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier2, bufferBarrierCount);
+    TrivialStackVector<VkImageMemoryBarrier2, 64> imageMemoryBarriers(imageBarrierCount);
+    TrivialStackVector<VkBufferMemoryBarrier2, 64> bufferMemoryBarriers(bufferBarrierCount);
+
+    // Current offsets
+    uint64_t imageMemoryBarrierOffset = 0;
+    uint64_t bufferMemoryBarrierOffset = 0;
 
     // Copy dependencies
-    auto* dependencies = ALLOCA_ARRAY(VkDependencyInfo, eventCount);
-    std::memcpy(dependencies, pDependencyInfos, sizeof(VkDependencyInfo) * eventCount);
+    TrivialStackVector<VkDependencyInfo, 64> dependencies(eventCount);
+    std::memcpy(dependencies.Data(), pDependencyInfos, sizeof(VkDependencyInfo) * eventCount);
 
     // Rewrite all dependencies
     for (uint32_t i = 0; i < eventCount; i++) {
         // Copy barriers
-        CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers, dependencies[i].pImageMemoryBarriers, dependencies[i].imageMemoryBarrierCount);
-        CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers, dependencies[i].pBufferMemoryBarriers, dependencies[i].bufferMemoryBarrierCount);
+        CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers.Data() + imageMemoryBarrierOffset, dependencies[i].pImageMemoryBarriers, dependencies[i].imageMemoryBarrierCount);
+        CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers.Data() + bufferMemoryBarrierOffset, dependencies[i].pBufferMemoryBarriers, dependencies[i].bufferMemoryBarrierCount);
 
         // Set new barriers
-        dependencies[i].pImageMemoryBarriers = imageMemoryBarriers;
-        dependencies[i].pBufferMemoryBarriers = bufferMemoryBarriers;
+        dependencies[i].pImageMemoryBarriers = imageMemoryBarriers.Data() + imageMemoryBarrierOffset;
+        dependencies[i].pBufferMemoryBarriers = bufferMemoryBarriers.Data()  + bufferMemoryBarrierOffset;
 
         // Offset barriers
-        imageMemoryBarriers += dependencies[i].imageMemoryBarrierCount;
-        bufferMemoryBarriers += dependencies[i].bufferMemoryBarrierCount;
+        imageMemoryBarrierOffset += dependencies[i].imageMemoryBarrierCount;
+        bufferMemoryBarrierOffset += dependencies[i].bufferMemoryBarrierCount;
     }
 
     // Pass down callchain
-    commandBuffer->dispatchTable.next_vkCmdWaitEvents2(commandBuffer->object, eventCount, pEvents, dependencies);
+    commandBuffer->dispatchTable.next_vkCmdWaitEvents2(commandBuffer->object, eventCount, pEvents, dependencies.Data());
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPipelineBarrier2(CommandBufferObject* commandBuffer, const VkDependencyInfo *pDependencyInfo) {
     VkDependencyInfo dependencyInfo = *pDependencyInfo;
 
     // Migrate images
-    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2, dependencyInfo.imageMemoryBarrierCount);
-    CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers, dependencyInfo.pImageMemoryBarriers, dependencyInfo.imageMemoryBarrierCount);
+    TrivialStackVector<VkImageMemoryBarrier2, 64> imageMemoryBarriers(dependencyInfo.imageMemoryBarrierCount);
+    CopyAndMigrateMemoryBarrier(commandBuffer->table, imageMemoryBarriers.Data(), dependencyInfo.pImageMemoryBarriers, dependencyInfo.imageMemoryBarrierCount);
 
     // Migrate buffers
-    auto* bufferMemoryBarriers  = ALLOCA_ARRAY(VkBufferMemoryBarrier2, dependencyInfo.bufferMemoryBarrierCount);
-    CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers, dependencyInfo.pBufferMemoryBarriers, dependencyInfo.bufferMemoryBarrierCount);
+    TrivialStackVector<VkBufferMemoryBarrier2, 64> bufferMemoryBarriers(dependencyInfo.bufferMemoryBarrierCount);
+    CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers.Data(), dependencyInfo.pBufferMemoryBarriers, dependencyInfo.bufferMemoryBarrierCount);
 
     // Set new barriers
-    dependencyInfo.pImageMemoryBarriers = imageMemoryBarriers;
-    dependencyInfo.pBufferMemoryBarriers = bufferMemoryBarriers;
+    dependencyInfo.pImageMemoryBarriers = imageMemoryBarriers.Data();
+    dependencyInfo.pBufferMemoryBarriers = bufferMemoryBarriers.Data();
 
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdPipelineBarrier2(commandBuffer->object, &dependencyInfo);
@@ -695,7 +699,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkFreeCommandBuffers(VkDevice device, VkCommandP
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
     // Unwrapped states
-    auto vkCommandBuffers = ALLOCA_ARRAY(VkCommandBuffer, commandBufferCount);
+    TrivialStackVector<VkCommandBuffer, 64> vkCommandBuffers(commandBufferCount);
 
     // Unwrap and release wrappers
     for (uint32_t i = 0; i < commandBufferCount; i++) {
@@ -723,7 +727,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkFreeCommandBuffers(VkDevice device, VkCommandP
     }
 
     // Pass down callchain
-    table->next_vkFreeCommandBuffers(device, commandPool, commandBufferCount, vkCommandBuffers);
+    table->next_vkFreeCommandBuffers(device, commandPool, commandBufferCount, vkCommandBuffers.Data());
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyCommandPool(VkDevice device, VkCommandPool commandPool, const VkAllocationCallbacks *pAllocator) {
