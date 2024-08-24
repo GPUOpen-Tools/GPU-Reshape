@@ -292,6 +292,8 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 break;
             }
 
+            // TODO[spec]: Derive actual specialization during instrumentation
+            case SpvOpSpecConstantTrue: 
             case SpvOpConstantTrue: {
                 const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
 
@@ -302,6 +304,8 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 break;
             }
 
+            // TODO[spec]: Derive actual specialization during instrumentation
+            case SpvOpSpecConstantFalse: 
             case SpvOpConstantFalse: {
                 const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
 
@@ -343,6 +347,8 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 break;
             }
 
+            // TODO[spec]: Derive actual specialization during instrumentation
+            case SpvOpSpecConstant:
             case SpvOpConstant: {
                 const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
 
@@ -392,6 +398,8 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 break;
             }
 
+            // TODO[spec]: Derive actual specialization during instrumentation
+            case SpvOpSpecConstantComposite:
             case SpvOpConstantComposite: {
                 const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
 
