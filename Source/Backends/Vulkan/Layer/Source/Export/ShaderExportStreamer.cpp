@@ -911,6 +911,15 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
     for (uint32_t i = 0; i < count; i++) {
         uint32_t slot = start + i;
 
+        // With graphics pipeline libraries null sets are allowed
+        if (!sets[i]) {
+            ShaderExportDescriptorState setState;
+            setState.set = nullptr;
+            setState.compatabilityHash = 0;
+            bindState.persistentDescriptorState[slot] = setState;
+            continue;
+        }
+
         // Get the state
         DescriptorSetState* persistentState = table->states_descriptorSet.Get(sets[i]);
 
