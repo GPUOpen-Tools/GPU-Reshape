@@ -5,6 +5,9 @@
 // Layer
 #include <Backends/Vulkan/DeepCopyObjects.Gen.h>
 
+// Vulkan
+#include <vulkan/vulkan_screen.h>
+
 // Std
 #include <cstring>
 

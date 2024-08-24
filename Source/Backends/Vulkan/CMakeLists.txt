@@ -35,10 +35,14 @@ add_executable(
     Generator/Source/DeepCopyObjects.cpp
     Generator/Source/DeepCopy.cpp
     Generator/Source/Spv.cpp
+    Generator/Source/Filter.cpp
 )
 
 # IDE source discovery
 SetSourceDiscovery(GRS.Backends.Vulkan.Generator CXX Generator)
+
+# Include directories
+target_include_directories(GRS.Backends.Vulkan.Generator PRIVATE Generator/Include)
 
 # Local links
 target_link_libraries(GRS.Backends.Vulkan.Generator PUBLIC GRS.Libraries.Common)

@@ -26,6 +26,9 @@
 
 #pragma once
 
+// Generator
+#include "Filter.h"
+
 // Std
 #include <set>
 
@@ -41,6 +44,9 @@
 struct GeneratorInfo {
     /// Specification registry node
     tinyxml2::XMLElement* registry{nullptr};
+
+    /// Filtered extension info
+    FilterInfo filter;
 
     /// Optional spirv json
     nlohmann::json spvJson{};
@@ -86,3 +92,5 @@ namespace Generators {
     /// \return success
     bool Spv(const GeneratorInfo& info, TemplateEngine& templateEngine);
 }
+
+

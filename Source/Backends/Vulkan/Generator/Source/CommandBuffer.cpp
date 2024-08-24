@@ -125,7 +125,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Skip if not interesting
-        if (!isHookCandidate) {
+        if (!isHookCandidate || info.filter.excludedObjects.contains(name)) {
             continue;
         }
 

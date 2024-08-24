@@ -131,6 +131,12 @@ int main(int argc, char *const argv[]) {
         return 1;
     }
 
+    // Try to filter
+    if (!FilterRegistry(generatorInfo.registry, generatorInfo.filter)) {
+        std::cerr << "Failed to filter registry" << std::endl;
+        return 1;
+    }
+
     // Try to open the template
     TemplateEngine templateEngine;
     if (!templateEngine.Load(ftemplate.c_str())) {

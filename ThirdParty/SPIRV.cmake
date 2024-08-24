@@ -29,7 +29,7 @@
 ExternalProject_Add(
     SPIRVHeaders
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Headers
-    GIT_TAG sdk-1.2.198.0
+    GIT_TAG sdk-1.3.261
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SPIRVHeaders
     USES_TERMINAL_INSTALL 0
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
@@ -45,7 +45,7 @@ ExternalProject_Add(
 ExternalProject_Add(
     SPIRVTools
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Tools
-    GIT_TAG sdk-1.2.198.0
+    GIT_TAG sdk-1.3.261
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SPIRVTools
     USES_TERMINAL_INSTALL 0
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
