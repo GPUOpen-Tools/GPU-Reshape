@@ -87,7 +87,7 @@ static VkResult CreateReconstructionRenderPass(DeviceDispatchTable *table, const
     
     // Try to create
     if constexpr(std::is_same_v<VkRenderPassCreateInfo2, T>) {
-        return table->next_vkCreateRenderPass2(table->object, &info, nullptr, out);
+        return GetFirstKHR(table->next_vkCreateRenderPass2, table->next_vkCreateRenderPass2KHR)(table->object, &info, nullptr, out);
     } else {
         return table->next_vkCreateRenderPass(table->object, &info, nullptr, out);
     }
