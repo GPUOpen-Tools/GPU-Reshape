@@ -1107,8 +1107,8 @@ void InstrumentationController::CommitOpaquePipelines(DispatcherBucket* bucket, 
     for (size_t dirtyIndex = 0; dirtyIndex < count; dirtyIndex++) {
         PipelineState *state = pipelineStates[dirtyIndex];
 
-        // Was this job skipped?
-        bool passed = false;
+        // Was this job successful?
+        bool passed = true;
 
         // If a library, create a pipeline per unique dependency
         if (state->isLibrary) {
@@ -1120,7 +1120,9 @@ void InstrumentationController::CommitOpaquePipelines(DispatcherBucket* bucket, 
                 
                 // Get the instrumentation keys from the dependent object, since it's the
                 // one that actually wants the modules
-                passed = CommitPipeline(batch, state, dependentObject, jobs);
+                if (!CommitPipeline(batch, state, dependentObject, jobs)) {
+                    passed = false;
+                }
             }
         } else {
             // Get the instrumentation keys from the state itself
