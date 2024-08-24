@@ -169,6 +169,15 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Compiling {0} pipeline libraries....
+        /// </summary>
+        public static string Instrumentation_Stage_PipelineLibraries {
+            get {
+                return ResourceManager.GetString("Instrumentation_Stage_PipelineLibraries", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Compiling {0} pipelines....
         /// </summary>
         public static string Instrumentation_Stage_Pipelines {

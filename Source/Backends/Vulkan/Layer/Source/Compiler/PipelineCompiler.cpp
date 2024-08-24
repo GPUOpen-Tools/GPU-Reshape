@@ -36,6 +36,11 @@
 #include <Common/Dispatcher/Dispatcher.h>
 #include <Common/Registry.h>
 
+// The maximum number per batch
+//  Each compilation job is of varying time, so split up the batches across workers to ensure that they're spread out
+//  to whatever workers first take them
+constexpr uint32_t kMaxBatchSize = 64;
+
 PipelineCompiler::PipelineCompiler(DeviceDispatchTable *table) : table(table) {
 
 }
@@ -84,11 +89,6 @@ void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, PipelineCompil
     if (jobs.empty()) {
         return;
     }
-
-    // The maximum number per batch
-    //  Each compilation job is of varying time, so split up the batches across workers to ensure that they're spread out
-    //  to whatever workers first take them
-    constexpr uint32_t kMaxBatchSize = 64;
 
     // The maximum number of jobs per worker
     const uint32_t maxJobsPerWorker = static_cast<uint32_t>(jobs.size() / dispatcher->WorkerCount());
@@ -142,49 +142,120 @@ void PipelineCompiler::WorkerCompute(void *data) {
     destroy(job, allocators);
 }
 
-void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
-    // Allocate creation info
-    auto createInfos = ALLOCA_ARRAY(VkGraphicsPipelineCreateInfo, batch.count);
-
-    // Get the number of stages
-    uint32_t stageCount = 0;
-    for (uint32_t i = 0; i < batch.count; i++) {
-        PipelineJob &job = batch.jobs[i];
-        stageCount += static_cast<uint32_t>(job.state->shaderModules.size());
+bool PipelineCompiler::SetShaderModuleObject(VkPipelineShaderStageCreateInfo &createInfo, ShaderModuleState *state, const ShaderModuleInstrumentationKey &key) {
+    // If there's an instrumentation key, a module must have been created
+    if (key) {
+        createInfo.pNext = nullptr;
+        createInfo.module = state->GetInstrument(key);
+        return createInfo.module != nullptr;
     }
 
-    // Allocate stage infos
-    auto stageInfos = ALLOCA_ARRAY(VkPipelineShaderStageCreateInfo, stageCount);
+    // If there's a default object, use that
+    if (state->object) {
+        createInfo.pNext = nullptr;
+        createInfo.module = state->object;
+        return true;
+    }
+
+    // Otherwise, try to check for an inlined creation structure
+    if (FindStructureTypeSafe<VkShaderModuleCreateInfo>(&createInfo, VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)) {
+        createInfo.module = nullptr;
+        return true;
+    }
+
+    // Unknown state
+    return false;
+}
+
+void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
+    // Allocate creation info
+    VkGraphicsPipelineCreateInfo createInfos[kMaxBatchSize];
+
+    // Optional, deep copies
+    VkGraphicsPipelineCreateInfoDeepCopy deepCopies[kMaxBatchSize];
+
+    // Intermediate counts
+    uint32_t stageCount = 0;
+    uint32_t libraryStateCount = 0;
+    
+    // Get the number of stages 
+    for (uint32_t i = 0; i < batch.count; i++) {
+        PipelineJob &job = batch.jobs[i];
+        stageCount += static_cast<uint32_t>(job.state->ownedShaderModules.size());
+        
+        if (job.state->pipelineLibraries.size()) {
+            libraryStateCount += static_cast<uint32_t>(job.state->pipelineLibraries.size());
+        }
+    }
+
+    // Allocate intermediate data
+    auto stageInfos         = ALLOCA_ARRAY(VkPipelineShaderStageCreateInfo, stageCount);
+    auto libraryStates      = ALLOCA_ARRAY(VkPipeline                     , libraryStateCount);
 
     // Populate all creation infos
     for (uint32_t i = 0; i < batch.count; i++) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
+        // Current creation info
+        VkGraphicsPipelineCreateInfo& createInfo = createInfos[i];
+
         // Diagnostic scope
         DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
+
+        // Any extension mutation requires a deep copy
+        bool requiresMutableExtensions = false;
+
+        // Pipeline libraries are fed through extensions
+        if (job.state->pipelineLibraries.size()) {
+            requiresMutableExtensions = true;
+        }
 
         // Copy the deep creation info
         //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
         ASSERT(state->type == PipelineType::Graphics, "Unexpected pipeline type");
-        createInfos[i] = static_cast<GraphicsPipelineState *>(state)->createInfoDeepCopy.createInfo;
+        if (requiresMutableExtensions) {
+            VkGraphicsPipelineCreateInfoDeepCopy& deepCopy = deepCopies[i];
+            deepCopy.DeepCopy(allocators, static_cast<GraphicsPipelineState *>(state)->createInfoDeepCopy.createInfo);
+            createInfo = deepCopy.createInfo;
+        } else {
+            createInfo = static_cast<GraphicsPipelineState *>(state)->createInfoDeepCopy.createInfo;
+        }
+
+        // Copy all libraries
+        if (job.state->pipelineLibraries.size()) {
+            auto* libraryCreateInfo = FindStructureTypeMutableUnsafe<VkPipelineLibraryCreateInfoKHR, VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR>(&createInfo);
+            libraryCreateInfo->pLibraries = libraryStates;
+
+            // Fill pipelines
+            for (uint32_t libraryIndex = 0; libraryIndex < libraryCreateInfo->libraryCount; libraryIndex++) {
+                PipelineState *libraryState = state->pipelineLibraries[libraryIndex];
+                libraryStates[libraryIndex] = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+                
+                // Validate
+                if (!libraryStates[libraryIndex]) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                }
+            }
+
+            // Next!
+            libraryStates += job.state->pipelineLibraries.size();
+        }
 
         // Set new instrumented stages
-        for (uint32_t shaderIndex = 0; shaderIndex < state->shaderModules.size(); shaderIndex++) {
-            ShaderModuleState *shaderState = state->shaderModules[shaderIndex];
+        for (uint32_t shaderIndex = 0; shaderIndex < state->ownedShaderModules.size(); shaderIndex++) {
+            ShaderModuleState *shaderState = state->ownedShaderModules[shaderIndex];
+            std::memcpy(&stageInfos[shaderIndex], &createInfo.pStages[shaderIndex], sizeof(VkPipelineShaderStageCreateInfo));
 
-            std::memcpy(&stageInfos[shaderIndex], &createInfos[i].pStages[shaderIndex], sizeof(VkPipelineShaderStageCreateInfo));
-            stageInfos[shaderIndex].module = shaderState->GetInstrument(job.shaderModuleInstrumentationKeys[shaderIndex]);
-
-            // Validate
-            if (!stageInfos[shaderIndex].module) {
+            // Try to set shader object
+            if (!SetShaderModuleObject(stageInfos[shaderIndex], shaderState, job.shaderModuleInstrumentationKeys[shaderIndex])) {
                 scope.Add(DiagnosticType::PipelineMissingShaderKey);
             }
         }
 
         // Set new stage info
-        createInfos[i].pStages = stageInfos;
-        stageInfos += state->shaderModules.size();
+        createInfo.pStages = stageInfos;
+        stageInfos += state->ownedShaderModules.size();
     }
 
     // Created pipelines
@@ -231,6 +302,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     // Free bit sets
     for (uint32_t i = 0; i < batch.count; i++) {
         destroy(batch.jobs[i].shaderModuleInstrumentationKeys, allocators);
+        destroy(batch.jobs[i].pipelineLibraryInstrumentationKeys, allocators);
     }
 
     // Free job
@@ -239,30 +311,87 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 
 void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     // Allocate creation info
-    auto createInfos = ALLOCA_ARRAY(VkComputePipelineCreateInfo, batch.count);
+    VkComputePipelineCreateInfo createInfos[kMaxBatchSize];
 
+    // Optional, all deep copies
+    VkComputePipelineCreateInfoDeepCopy deepCopies[kMaxBatchSize];
+
+    // Intermediate counts
+    uint32_t libraryStateCount = 0;
+    
+    // Get the number of stages 
+    for (uint32_t i = 0; i < batch.count; i++) {
+        PipelineJob &job = batch.jobs[i];
+        
+        if (job.state->pipelineLibraries.size()) {
+            libraryStateCount += static_cast<uint32_t>(job.state->pipelineLibraries.size());
+        }
+    }
+    
+    // Allocate intermediate data
+    auto libraryStates = ALLOCA_ARRAY(VkPipeline, libraryStateCount);
+    
     // Populate all creation infos
     for (uint32_t i = 0; i < batch.count; i++) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
+        // Creation info
+        VkComputePipelineCreateInfo& createInfo = createInfos[i];
+        
         // Diagnostic scope
         DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
+
+        // Any extension mutation requires a deep copy
+        bool requiresMutableExtensions = false;
+        
+        // Pipeline libraries are fed through extensions
+        if (job.state->pipelineLibraries.size()) {
+            requiresMutableExtensions = true;
+        }
 
         // Copy the deep creation info
         //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
         ASSERT(state->type == PipelineType::Compute, "Unexpected pipeline type");
-        createInfos[i] = static_cast<ComputePipelineState *>(state)->createInfoDeepCopy.createInfo;
+        if (requiresMutableExtensions) {
+            VkComputePipelineCreateInfoDeepCopy& deepCopy = deepCopies[i];
+            deepCopy.DeepCopy(allocators, static_cast<ComputePipelineState *>(state)->createInfoDeepCopy.createInfo);
+            createInfo = deepCopy.createInfo;
+        } else {
+            createInfo = static_cast<ComputePipelineState *>(state)->createInfoDeepCopy.createInfo;
+        }
+
+        // Copy all libraries
+        if (job.state->pipelineLibraries.size()) {
+            auto* libraryCreateInfo = FindStructureTypeMutableUnsafe<VkPipelineLibraryCreateInfoKHR, VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR>(&createInfo);
+            libraryCreateInfo->pLibraries = libraryStates;
+
+            // Fill pipelines
+            for (uint32_t libraryIndex = 0; libraryIndex < libraryCreateInfo->libraryCount; libraryIndex++) {
+                PipelineState *libraryState = state->pipelineLibraries[libraryIndex];
+                libraryStates[libraryIndex] = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+                
+                // Validate
+                if (!libraryStates[libraryIndex]) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                }
+            }
+
+            // Next!
+            libraryStates += job.state->pipelineLibraries.size();
+        }
 
         // Get the shader
-        ASSERT(state->shaderModules.size() == 1, "Compute pipeline expected one shader module");
-        ShaderModuleState *shaderState = state->shaderModules[0];
+        ASSERT(state->ownedShaderModules.size() == 1, "Compute pipeline expected one shader module");
+        ShaderModuleState *shaderState = state->ownedShaderModules[0];
 
         // Assign instrumented version
-        createInfos[i].stage.module = shaderState->GetInstrument(job.shaderModuleInstrumentationKeys[0]);
+        if (!SetShaderModuleObject(createInfo.stage, shaderState, job.shaderModuleInstrumentationKeys[0])) {
+            scope.Add(DiagnosticType::PipelineMissingShaderKey);
+        }
 
         // Validate
-        if (!createInfos[i].stage.module) {
+        if (!createInfo.stage.module) {
             ASSERT(false, "Invalid module");
             scope.Add(DiagnosticType::PipelineMissingShaderKey);
         }
@@ -298,6 +427,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     // Free bit sets
     for (uint32_t i = 0; i < batch.count; i++) {
         destroy(batch.jobs[i].shaderModuleInstrumentationKeys, allocators);
+        destroy(batch.jobs[i].pipelineLibraryInstrumentationKeys, allocators);
     }
 
     // Free job

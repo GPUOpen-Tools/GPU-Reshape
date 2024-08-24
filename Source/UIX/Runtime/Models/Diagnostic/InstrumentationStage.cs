@@ -30,6 +30,7 @@ namespace Studio.Models.Diagnostic
     {
         None,
         Shaders,
+        PipelineLibrary,
         Pipeline
     }
 }

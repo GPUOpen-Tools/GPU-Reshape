@@ -165,6 +165,7 @@ struct DeviceDispatchTable {
     TrackedObject<VkDeviceMemory, DeviceMemoryState>                         states_deviceMemory;
 
     /// Dependency objects
+    DependentObject<PipelineState, PipelineState> dependencies_pipelineLibraries;
     DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;
 
     /// Physical identifier map

@@ -42,6 +42,10 @@ struct ShaderModuleInstrumentationKey {
         return AsTuple() < key.AsTuple();
     }
 
+    operator bool() const {
+        return combinedHash != 0ull;
+    }
+
     /// Number of pipeline layout user bound descriptor sets
     uint32_t pipelineLayoutUserSlots{0};
 

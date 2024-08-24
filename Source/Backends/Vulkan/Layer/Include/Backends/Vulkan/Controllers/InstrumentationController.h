@@ -34,10 +34,12 @@
 #include <Backends/Vulkan/Compiler/Diagnostic/ShaderCompilerDiagnostic.h>
 #include <Backends/Vulkan/Compiler/Diagnostic/PipelineCompilerDiagnostic.h>
 #include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticType.h>
+#include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 
 // Common
 #include <Common/Dispatcher/EventCounter.h>
 #include <Common/Dispatcher/RelaxedAtomic.h>
+#include <Common/Containers/Vector.h>
 #include <Common/ComRef.h>
 
 // Bridge
@@ -110,7 +112,9 @@ public:
 
 protected:
     void CommitShaders(DispatcherBucket* bucket, void *data);
+    void CommitPipelineLibraries(DispatcherBucket* bucket, void *data);
     void CommitPipelines(DispatcherBucket* bucket, void *data);
+    void CommitOpaquePipelines(DispatcherBucket* bucket, PipelineState** pipelineStates, uint32_t count, InstrumentationStage stage, void *data);
     void CommitTable(DispatcherBucket* bucket, void *data);
     void CommitFeatureMessages();
 
@@ -206,6 +210,7 @@ private:
 
         /// Compiler diagnostics
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
+        PipelineCompilerDiagnostic pipelineLibrariesCompilerDiagnostic;
         PipelineCompilerDiagnostic pipelineCompilerDiagnostic;
 
         /// All diagnostic messages
@@ -222,6 +227,7 @@ private:
         /// Dirty objects
         std::set<ReferenceObject*> dirtyObjects;
         std::vector<ShaderModuleState*> dirtyShaderModules;
+        std::vector<PipelineState*> dirtyPipelineLibraries;
         std::vector<PipelineState*> dirtyPipelines;
 
         /// Current stage
@@ -234,6 +240,14 @@ private:
         DispatcherBucket* bucket{nullptr};
     };
 
+    /// Commit a pipeline for instrumentation
+    /// \param batch parent batch
+    /// \param state state being compiled
+    /// \param dependentObject dependent state for the expected instrumentation keys
+    /// \param jobs destination job queue
+    /// \return success state
+    bool CommitPipeline(Batch* batch, PipelineState* state, PipelineState* dependentObject, Vector<PipelineJob>& jobs);
+    
     /// Dirty states
     Batch immediateBatch;
 

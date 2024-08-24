@@ -97,9 +97,13 @@ struct TrackedObject : public ReferenceHost {
             state->referenceHost = this;   
         }
 
+        // Object association is optional
+        if (object) {
+            map[object] = state;
+        }
+        
         // Append
         linear.push_back(state);
-        map[object] = state;
         uidMap[state->uid] = entry;
         return state;
     }
