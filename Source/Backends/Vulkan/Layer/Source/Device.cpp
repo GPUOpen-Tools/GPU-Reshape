@@ -215,6 +215,27 @@ static void EnableFeatureSet(T* features) {
     features->sparseResidencyBuffer = true;
 }
 
+static Backend::VendorType GetVendor(uint32_t vendorID) {
+    // Assume from vendor id
+    switch (vendorID) {
+        default: {
+            return Backend::VendorType::Unknown;
+        }
+        case 0x1002:
+        case 0x1022: {
+            return Backend::VendorType::AMD;
+        }
+        case 0x10DE: {
+            return Backend::VendorType::Nvidia;
+        }
+        case 0x163C:
+        case 0x8086:
+        case 0x8087: {
+            return Backend::VendorType::Intel;
+        }
+    }
+}
+
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     auto chainInfo = static_cast<VkLayerDeviceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
@@ -261,6 +282,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Get the device features
     table->parent->next_vkGetPhysicalDeviceFeatures2(physicalDevice, &table->physicalDeviceFeatures);
+
+    // Try to get the vendor
+    table->vendor = GetVendor(table->physicalDeviceProperties.vendorID);
 
     // Create a deep copy
     table->createInfo.DeepCopy(table->allocators, *pCreateInfo);

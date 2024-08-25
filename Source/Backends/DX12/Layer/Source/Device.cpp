@@ -163,6 +163,34 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceState* stat
     return info;
 }
 
+static Backend::VendorType GetVendor(IDXGIAdapter* adapter) {
+    DXGI_ADAPTER_DESC desc;
+
+    // If failed, just ignore it
+    if (FAILED(adapter->GetDesc(&desc))) {
+        return Backend::VendorType::Unknown;
+    }
+
+    // Assume from vendor id
+    switch (desc.VendorId) {
+        default: {
+            return Backend::VendorType::Unknown;
+        }
+        case 0x1002:
+        case 0x1022: {
+            return Backend::VendorType::AMD;
+        }
+        case 0x10DE: {
+            return Backend::VendorType::Nvidia;
+        }
+        case 0x163C:
+        case 0x8086:
+        case 0x8087: {
+            return Backend::VendorType::Intel;
+        }
+    }
+}
+
 static void DeviceSyncPoint(DeviceState *device) {
     // Commit bridge data
     BridgeDeviceSyncPoint(device, nullptr);
@@ -241,6 +269,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
             factory->Release();
         }
 
+        // Try to get the vendor
+        state->vendor = GetVendor(dxgiAdapter);
+        
         // Set stride bounds
         state->cpuHeapTable.SetStrideBound(state->object);
         state->gpuHeapTable.SetStrideBound(state->object);

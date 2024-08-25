@@ -41,6 +41,7 @@
 // Backend
 #include <Backend/Environment.h>
 #include <Backend/EventDataStack.h>
+#include <Backend/Device/VendorType.h>
 
 // Bridge
 #include <Bridge/Log/LogBuffer.h>
@@ -96,6 +97,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Unique identifier
     uint32_t uid{UINT32_MAX};
+
+    /// Vendor of this device
+    Backend::VendorType vendor;
     
     /// Shared allocators
     Allocators allocators;

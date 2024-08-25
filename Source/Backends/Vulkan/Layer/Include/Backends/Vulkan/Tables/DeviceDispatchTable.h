@@ -49,6 +49,7 @@
 
 // Backend
 #include <Backend/EventDataStack.h>
+#include <Backend/Device/VendorType.h>
 
 // Std
 #include <mutex>
@@ -139,6 +140,9 @@ struct DeviceDispatchTable {
 
     /// Shared registry
     Registry registry;
+
+    /// Vendor of this device
+    Backend::VendorType vendor;
 
     /// Message bridge
     ComRef<IBridge> bridge;
