@@ -989,7 +989,11 @@ bool InstrumentationController::CommitPipeline(Batch* batch, PipelineState* stat
 
         // Get instrumentation key
         uint64_t libraryKey = dependentObject->libraryInstrumentationKeys[dependentObject->GetDependentIndex(pipelineLibrary)];
-        ASSERT(libraryKey, "Invalid library key");
+
+        // If either object is expecting features, there must be a valid key
+        if (pipelineLibrary->instrumentationInfo.featureBitSet || dependentObject->instrumentationInfo.featureBitSet) {
+            ASSERT(libraryKey, "Invalid library key");
+        }
         
         // Summarize the super feature bit set (shader -> pipeline)
         superFeatureBitSet |= (libraryKey != 0);
@@ -1013,7 +1017,11 @@ bool InstrumentationController::CommitPipeline(Batch* batch, PipelineState* stat
 
         // Get the instrumentation key
         const ShaderModuleInstrumentationKey& instrumentationKey = dependentObject->referencedInstrumentationKeys[dependentObject->GetDependentIndex(shaderState)];
-        ASSERT(instrumentationKey.physicalMapping, "Invalid instrumentation key");
+
+        // If either object is expecting features, there must be a valid key
+        if (shaderState->instrumentationInfo.featureBitSet || dependentObject->instrumentationInfo.featureBitSet) {
+            ASSERT(instrumentationKey, "Invalid instrumentation key");
+        }
 
         // Summarize the super feature bit set (shader -> pipeline)
         superFeatureBitSet |= instrumentationKey.featureBitSet;
