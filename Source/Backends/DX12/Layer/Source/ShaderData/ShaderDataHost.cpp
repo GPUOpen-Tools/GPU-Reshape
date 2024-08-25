@@ -350,9 +350,9 @@ void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescripto
                 size_t maxElements = maxVirtualAddressBytes / Backend::IL::GetSize(entry.info.buffer.format);
                 view.Buffer.NumElements = static_cast<uint32_t>(std::min(entry.info.buffer.elementCount, maxElements));
 
-                // Workaround for runtime bug that assumes 32 bit indexing
-                // This has since been fixed in later agility SDKs.
-                if (!device->sdk.isAgilitySDKOverride714) {
+                // Workaround for runtime bug that assumes 32 bit indexing, this has since been fixed in later agility SDKs.
+                // Platform specific workaround for large UAVs (vaddr > 32 bits), seems like a bug?
+                if (!device->sdk.isAgilitySDKOverride714 || device->vendor == Backend::VendorType::Nvidia) {
                     view.Buffer.NumElements = std::min(view.Buffer.NumElements, UINT32_MAX / Backend::IL::GetSize(entry.info.buffer.format) - static_cast<uint32_t>(sizeof(uint64_t)));
                 }
                 
