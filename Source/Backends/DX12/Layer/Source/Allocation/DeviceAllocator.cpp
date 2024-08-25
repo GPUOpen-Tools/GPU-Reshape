@@ -128,6 +128,7 @@ D3D12MA::Allocation* DeviceAllocator::AllocateMemory(uint32_t alignment, uint64_
     // Default to GPU memory
     D3D12MA::ALLOCATION_DESC desc{};
     desc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+    desc.ExtraHeapFlags = D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
 
     // Setup allocation info
     // Align the size to the expected alignment
