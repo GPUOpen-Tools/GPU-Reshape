@@ -33,6 +33,7 @@
 // Backend
 #include <Backend/IFeatureHost.h>
 #include <Backend/StartupContainer.h>
+#include <Backend/ShaderData/IShaderDataHost.h>
 
 // Message
 #include <Message/MessageStreamCommon.h>
@@ -44,8 +45,27 @@
 #include <Features/Concurrency/TexelAddressingFeature.h>
 #include <Features/Concurrency/ResourceAddressingFeature.h>
 
-static ComRef<ComponentTemplate<TexelAddressingConcurrencyFeature>> texelAddressingFeature{nullptr};
-static ComRef<ComponentTemplate<ResourceAddressingConcurrencyFeature>> resourceAddressingFeature{nullptr};
+class ConcurrencyComponentTemplate final : public IComponentTemplate {
+public:
+    ComRef<> Instantiate(Registry* registry) {
+        // Get components
+        auto startup = registry->Get<Backend::StartupContainer>();
+        auto dataHost = registry->Get<IShaderDataHost>();
+
+        // Is texel addressing enabled?
+        SetTexelAddressingMessage config = CollapseOrDefault<SetTexelAddressingMessage>(startup->GetView(), SetTexelAddressingMessage { .enabled = true });
+
+        // Create feature
+        // Check that tiled resources is supported at all
+        if (config.enabled && dataHost->GetCapabilityTable().supportsTiledResources) {
+            return registry->New<TexelAddressingConcurrencyFeature>();
+        } else {
+            return registry->New<ResourceAddressingConcurrencyFeature>();
+        }
+    }
+};
+
+static ComRef<ConcurrencyComponentTemplate> feature{nullptr};
 
 DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
     info->name = "Concurrency";
@@ -58,20 +78,9 @@ DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
         return false;
     }
 
-    // Get settings
-    auto startup = registry->Get<Backend::StartupContainer>();
-
-    // Is texel addressing enabled?
-    SetTexelAddressingMessage config = CollapseOrDefault<SetTexelAddressingMessage>(startup->GetView(), SetTexelAddressingMessage { .enabled = true });
-
     // Install the concurrency feature
-    if (config.enabled) {
-        texelAddressingFeature = registry->New<ComponentTemplate<TexelAddressingConcurrencyFeature>>();
-        host->Register(texelAddressingFeature);
-    } else {
-        resourceAddressingFeature = registry->New<ComponentTemplate<ResourceAddressingConcurrencyFeature>>();
-        host->Register(resourceAddressingFeature);
-    }
+    feature = registry->New<ConcurrencyComponentTemplate>();
+    host->Register(feature);
 
     // OK
     return true;
@@ -84,11 +93,6 @@ DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
     }
 
     // Uninstall the feature
-    if (texelAddressingFeature) {
-        host->Deregister(texelAddressingFeature);
-        texelAddressingFeature.Release();
-    } else {
-        host->Deregister(resourceAddressingFeature);
-        resourceAddressingFeature.Release();
-    }
+    host->Deregister(feature);
+    feature.Release();
 }

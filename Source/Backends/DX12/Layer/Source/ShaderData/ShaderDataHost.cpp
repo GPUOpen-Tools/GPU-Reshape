@@ -65,6 +65,7 @@ bool ShaderDataHost::Install() {
     }
 
     // Fill capability table
+    capabilityTable.supportsTiledResources = (options.TiledResourcesTier != D3D12_TILED_RESOURCES_TIER_NOT_SUPPORTED);
     capabilityTable.bufferMaxElementCount = UINT64_MAX;
 
     // OK

@@ -30,6 +30,9 @@
 #include <cstdint>
 
 struct ShaderDataCapabilityTable {
+    /// Are tiled resources supported?
+    bool supportsTiledResources{false};
+    
     /// The max number of elements in a buffer
     uint64_t bufferMaxElementCount{0ull};
 };
