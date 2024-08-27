@@ -37,6 +37,7 @@
 #include <Common/Allocators.h>
 #include <Common/ComRef.h>
 #include <Common/Registry.h>
+#include <Common/Library.h>
 
 // Bridge
 #include <Bridge/Log/LogBuffer.h>
@@ -104,6 +105,13 @@ struct InstanceDispatchTable {
     /// Creation info
     VkApplicationInfoDeepCopy applicationInfo;
 
+    /// Creation extensions
+    std::vector<const char*> enabledLayers;
+    std::vector<const char*> enabledExtensions;
+
+    /// All supported extensions
+    std::vector<VkExtensionProperties> supportedExtensions;
+
     /// Callbacks
     PFN_vkGetInstanceProcAddr                    next_vkGetInstanceProcAddr;
     PFN_vkDestroyInstance                        next_vkDestroyInstance;
@@ -114,6 +122,9 @@ struct InstanceDispatchTable {
     PFN_vkEnumerateDeviceLayerProperties         next_vkEnumerateDeviceLayerProperties;
     PFN_vkEnumerateDeviceExtensionProperties     next_vkEnumerateDeviceExtensionProperties;
     PFN_vkGetPhysicalDeviceQueueFamilyProperties next_vkGetPhysicalDeviceQueueFamilyProperties;
+
+    /// Handle to the platform library
+    Library libraryHandle;
 
 private:
     /// Lookup

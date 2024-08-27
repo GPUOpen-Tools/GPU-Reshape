@@ -105,7 +105,7 @@ int main(int argc, char *const argv[]) {
 
     // Install all libraries
     for (Library& lib : libraries) {
-        auto* install = lib.GetFn<PluginInstall>("Install");
+        auto* install = lib.GetProcAddr<PluginInstall>("Install");
         if (!install) {
             std::cerr << "Library has no install proc: '" << lib.Path() << "'" << std::endl;
             return 1;
@@ -427,7 +427,7 @@ int main(int argc, char *const argv[]) {
 
     // Uninstall all libraries
     for (Library& lib : libraries) {
-        auto* uninstall = lib.GetFn<PluginInstall>("Uninstall");
+        auto* uninstall = lib.GetProcAddr<PluginInstall>("Uninstall");
         if (!uninstall) {
             std::cerr << "Library has no uninstall proc: '" << lib.Path() << "'" << std::endl;
             return 1;

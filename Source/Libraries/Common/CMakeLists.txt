@@ -40,6 +40,7 @@ add_library(
     Source/FileSystem.cpp
     Source/CrashHandler.cpp
     Source/GlobalUID.cpp
+    Source/Library.cpp
     Source/Dispatcher/ConditionVariable.cpp
     Source/Dispatcher/Mutex.cpp
     Source/Dispatcher/EventCounter.cpp

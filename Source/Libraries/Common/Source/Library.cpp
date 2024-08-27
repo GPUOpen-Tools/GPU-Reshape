@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,49 +24,31 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+#include <Common/Library.h>
 
-// Std
-#include <string>
+// Platform
+#ifdef _WIN32
+#   include <Windows.h>
+#else
+#   error Not implemented
+#endif
 
-/// Simple library loading
-struct Library {
-    /// Load a library
-    /// \param path path of the library
-    /// \return success state
-    bool Load(const std::string& path);
+// Implementation
+#ifdef WIN32
+bool Library::Load(const std::string &path) {
+    sourcePath = path + ".dll";
+    handle = LoadLibrary(sourcePath.c_str());
+    return handle != nullptr;
+}
 
-    /// Free a library
-    void Free();
+void Library::Free() {
+    FreeLibrary(static_cast<HINSTANCE>(handle));
+    handle = nullptr;
+}
 
-    /// Get a library function
-    /// \tparam T function type
-    /// \param name name of the function
-    /// \return nullptr if not found
-    template<typename T>
-    T GetProcAddr(const char* name) const {
-        return reinterpret_cast<T>(GetProcAddr(name));
-    }
-
-    /// Get a library function
-    /// \param name name of the function
-    /// \return nullptr if not found
-    void* GetProcAddr(const char* name) const;
-
-    /// Get the path of this library
-    /// \return
-    const std::string& Path() const {
-        return sourcePath;
-    }
-
-    /// Is this library in a good state
-    bool IsGood() const {
-        return handle != nullptr;
-    }
-
-private:
-    std::string sourcePath;
-
-    /// Platform specific handle
-    void* handle{nullptr};
-};
+void* Library::GetProcAddr(const char *name) const {
+    return GetProcAddress(static_cast<HINSTANCE>(handle), name);
+}
+#else // WIN32
+#   error Not implemented
+#endif // WIN32
