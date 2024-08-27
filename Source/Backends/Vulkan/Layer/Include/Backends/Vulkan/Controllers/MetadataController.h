@@ -69,6 +69,7 @@ public:
 protected:
     /// Message handlers
     void OnMessage(const struct GetPipelineNameMessage& message);
+    void OnMessage(const struct GetShaderNameMessage& message);
     void OnMessage(const struct GetShaderCodeMessage& message);
     void OnMessage(const struct GetShaderILMessage& message);
     void OnMessage(const struct GetShaderBlockGraphMessage& message);

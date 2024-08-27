@@ -90,6 +90,10 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetPipelineNameMessage>());
                     break;
                 }
+                case GetShaderNameMessage::kID: {
+                    OnMessage(*it.Get<GetShaderNameMessage>());
+                    break;
+                }
                 case GetShaderCodeMessage::kID: {
                     OnMessage(*it.Get<GetShaderCodeMessage>());
                     break;
@@ -149,6 +153,26 @@ void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
             file->type = 2;
             break;
     }
+}
+
+void MetadataController::OnMessage(const GetShaderNameMessage &message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderUID);
+
+    // Determine name
+    const char* name = shader->debugName ? shader->debugName : "";
+
+    // Language is always SPIRV
+    const char* language = "SPIRV";
+
+    // Push response
+    auto&& file = view.Add<ShaderNameMessage>(ShaderNameMessage::AllocationInfo { .languageLength = std::strlen(language), .nameLength = std::strlen(name) });
+    file->shaderUID = message.shaderUID;
+    file->name.Set(name);
+    file->language.Set(language);
+    file->found = (shader->debugName != nullptr);
 }
 
 void MetadataController::OnMessage(const GetShaderCodeMessage& message) {

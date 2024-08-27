@@ -27,6 +27,7 @@
 #include <Backends/Vulkan/Debug.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/States/PipelineState.h>
+#include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/States/BufferState.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
@@ -45,6 +46,17 @@ VkResult Hook_vkDebugMarkerSetObjectNameEXT(VkDevice device, const VkDebugMarker
         }
         case VK_OBJECT_TYPE_PIPELINE: {
             PipelineState* state = table->states_pipeline.Get(reinterpret_cast<VkPipeline>(pNameInfo->object));
+
+            // Get length
+            size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+
+            // Copy string
+            state->debugName = new (table->allocators) char[length];
+            strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+            break;
+        }
+        case VK_OBJECT_TYPE_SHADER_MODULE: {
+            ShaderModuleState* state = table->states_shaderModule.Get(reinterpret_cast<VkShaderModule>(pNameInfo->object));
 
             // Get length
             size_t length = std::strlen(pNameInfo->pObjectName) + 1;
@@ -108,6 +120,17 @@ VkResult Hook_vkSetDebugUtilsObjectNameEXT(VkDevice device, const VkDebugUtilsOb
         }
         case VK_OBJECT_TYPE_PIPELINE: {
             PipelineState* state = table->states_pipeline.Get(reinterpret_cast<VkPipeline>(pNameInfo->objectHandle));
+
+            // Get length
+            size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+
+            // Copy string
+            state->debugName = new (table->allocators) char[length];
+            strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+            break;
+        }
+        case VK_OBJECT_TYPE_SHADER_MODULE: {
+            ShaderModuleState* state = table->states_shaderModule.Get(reinterpret_cast<VkShaderModule>(pNameInfo->objectHandle));
 
             // Get length
             size_t length = std::strlen(pNameInfo->pObjectName) + 1;

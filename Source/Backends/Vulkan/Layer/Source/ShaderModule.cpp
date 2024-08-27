@@ -90,6 +90,11 @@ ShaderModuleState::~ShaderModuleState() {
         destroy(spirvModule, table->allocators);
     }
 
+    // Release debug name
+    if (debugName) {
+        destroy(debugName, table->allocators);
+    }
+
     // If there's any dangling dependencies, someone forgot to add a reference
     ASSERT(table->dependencies_shaderModulesPipelines.Count(this) == 0, "Dangling pipeline references");
 }

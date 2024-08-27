@@ -34,6 +34,10 @@
         <field name="column" type="uint32"/>
     </struct>
 
+    <message name="GetShaderName">
+        <field name="shaderUID" type="uint64"/>
+    </message>
+
     <message name="GetShaderCode">
         <field name="shaderUID" type="uint64"/>
         <field name="poolCode" type="bool"/>
@@ -45,6 +49,13 @@
 
     <message name="GetShaderBlockGraph">
         <field name="shaderUID" type="uint64"/>
+    </message>
+
+    <message name="ShaderName">
+        <field name="shaderUID" type="uint64"/>
+        <field name="language"  type="string"/>
+        <field name="found"     type="bool"/>
+        <field name="name"      type="string"/>
     </message>
 
     <message name="ShaderCode">

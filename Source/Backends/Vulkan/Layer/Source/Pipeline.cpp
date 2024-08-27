@@ -313,6 +313,11 @@ PipelineState::~PipelineState() {
     if (layout) {
         destroyRef(layout, table->allocators);
     }
+
+    // Release debug name
+    if (debugName) {
+        destroy(debugName, table->allocators);
+    }
 }
 
 void PipelineState::ReleaseHost() {

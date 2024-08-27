@@ -146,6 +146,9 @@ struct ShaderModuleState : public ReferenceObject {
     /// TODO: How do we manage lifetimes here?
     std::map<ShaderModuleInstrumentationKey, VkShaderModule> instrumentObjects;
 
+    /// Optional debug name
+    char* debugName{nullptr};
+
     /// Module specific lock
     std::mutex mutex;
 
