@@ -223,6 +223,12 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             createInfo = static_cast<GraphicsPipelineState *>(state)->createInfoDeepCopy.createInfo;
         }
 
+        // Exclude irrelevant flags
+        createInfo.flags &= ~(
+            VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT |
+            VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
+        );
+
         // All keys must be present for pipeline compilation
         bool anyMissingKeys = false;
 
@@ -376,6 +382,12 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         } else {
             createInfo = static_cast<ComputePipelineState *>(state)->createInfoDeepCopy.createInfo;
         }
+
+        // Exclude irrelevant flags
+        createInfo.flags &= ~(
+            VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT |
+            VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
+        );
 
         // All keys must be present for pipeline compilation
         bool anyMissingKeys = false;
