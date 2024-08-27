@@ -169,7 +169,8 @@ bool PipelineCompiler::SetShaderModuleObject(VkPipelineShaderStageCreateInfo &cr
 
 void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     // Allocate creation info
-    VkGraphicsPipelineCreateInfo createInfos[kMaxBatchSize];
+    TrivialStackVector<VkGraphicsPipelineCreateInfo, kMaxBatchSize> createInfos;
+    TrivialStackVector<uint32_t,                     kMaxBatchSize> jobIndices;
 
     // Optional, deep copies
     VkGraphicsPipelineCreateInfoDeepCopy deepCopies[kMaxBatchSize];
@@ -198,7 +199,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         PipelineState *state = job.state;
 
         // Current creation info
-        VkGraphicsPipelineCreateInfo& createInfo = createInfos[i];
+        VkGraphicsPipelineCreateInfo createInfo;
 
         // Diagnostic scope
         DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
@@ -222,6 +223,9 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             createInfo = static_cast<GraphicsPipelineState *>(state)->createInfoDeepCopy.createInfo;
         }
 
+        // All keys must be present for pipeline compilation
+        bool anyMissingKeys = false;
+
         // Copy all libraries
         if (job.state->pipelineLibraries.size()) {
             auto* libraryCreateInfo = FindStructureTypeMutableUnsafe<VkPipelineLibraryCreateInfoKHR, VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR>(&createInfo);
@@ -235,6 +239,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
                 // Validate
                 if (!libraryStates[libraryIndex]) {
                     scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                    anyMissingKeys = true;
                 }
             }
 
@@ -250,12 +255,22 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             // Try to set shader object
             if (!SetShaderModuleObject(stageInfos[shaderIndex], shaderState, job.shaderModuleInstrumentationKeys[shaderIndex])) {
                 scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                anyMissingKeys = true;
             }
+        }
+
+        // If any keys were missing, the entire pipeline has failed
+        if (anyMissingKeys) {
+            continue;
         }
 
         // Set new stage info
         createInfo.pStages = stageInfos;
         stageInfos += state->ownedShaderModules.size();
+
+        // OK
+        createInfos.Add(createInfo);
+        jobIndices.Add(i);
     }
 
     // Created pipelines
@@ -263,7 +278,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 
     // Batched?
 #if PIPELINE_COMPILER_NO_BATCH
-    for (uint32_t i = 0; i < batch.count; i++) {
+    for (uint32_t i = 0; i <  static_cast<uint32_t>(createInfos.Size()); i++) {
         VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, 1u, &createInfos[i], nullptr, &pipelines[i]);
         if (result != VK_SUCCESS) {
             ++batch.diagnostic->failedJobs;
@@ -275,7 +290,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     }
 #else
     // TODO: Pipeline cache?
-    VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);
+    VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, static_cast<uint32_t>(createInfos.Size()), createInfos.Data(), nullptr, pipelines);
     if (result != VK_SUCCESS) {
         // Add diagnostics for all failed pipelines
         for (uint32_t i = 0; i < batch.count; i++) {
@@ -291,15 +306,15 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 #endif
 
     // Set final objects
-    for (uint32_t i = 0; i < batch.count; i++) {
-        PipelineJob &job = batch.jobs[i];
+    for (uint32_t i = 0; i < static_cast<uint32_t>(createInfos.Size()); i++) {
+        PipelineJob &job = batch.jobs[jobIndices[i]];
         PipelineState *state = job.state;
 
         // Set the instrument for the given hash
         state->AddInstrument(job.combinedHash, pipelines[i]);
     }
 
-    // Free bit sets
+    // Free keys
     for (uint32_t i = 0; i < batch.count; i++) {
         destroy(batch.jobs[i].shaderModuleInstrumentationKeys, allocators);
         destroy(batch.jobs[i].pipelineLibraryInstrumentationKeys, allocators);
@@ -311,7 +326,8 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 
 void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     // Allocate creation info
-    VkComputePipelineCreateInfo createInfos[kMaxBatchSize];
+    TrivialStackVector<VkComputePipelineCreateInfo, kMaxBatchSize> createInfos;
+    TrivialStackVector<uint32_t,                    kMaxBatchSize> jobIndices;
 
     // Optional, all deep copies
     VkComputePipelineCreateInfoDeepCopy deepCopies[kMaxBatchSize];
@@ -337,7 +353,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         PipelineState *state = job.state;
 
         // Creation info
-        VkComputePipelineCreateInfo& createInfo = createInfos[i];
+        VkComputePipelineCreateInfo createInfo;
         
         // Diagnostic scope
         DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
@@ -361,6 +377,9 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
             createInfo = static_cast<ComputePipelineState *>(state)->createInfoDeepCopy.createInfo;
         }
 
+        // All keys must be present for pipeline compilation
+        bool anyMissingKeys = false;
+
         // Copy all libraries
         if (job.state->pipelineLibraries.size()) {
             auto* libraryCreateInfo = FindStructureTypeMutableUnsafe<VkPipelineLibraryCreateInfoKHR, VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR>(&createInfo);
@@ -374,6 +393,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
                 // Validate
                 if (!libraryStates[libraryIndex]) {
                     scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                    anyMissingKeys = true;
                 }
             }
 
@@ -392,16 +412,25 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
 
         // Validate
         if (!createInfo.stage.module) {
-            ASSERT(false, "Invalid module");
             scope.Add(DiagnosticType::PipelineMissingShaderKey);
+            anyMissingKeys = true;
         }
+
+        // If any keys were missing, the entire pipeline has failed
+        if (anyMissingKeys) {
+            continue;
+        }
+
+        // OK
+        createInfos.Add(createInfo);
+        jobIndices.Add(i);
     }
 
     // Created pipelines
     auto pipelines = ALLOCA_ARRAY(VkPipeline, batch.count);
 
     // TODO: Pipeline cache?
-    VkResult result = batch.table->next_vkCreateComputePipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);
+    VkResult result = batch.table->next_vkCreateComputePipelines(batch.table->object, nullptr, static_cast<uint32_t>(createInfos.Size()), createInfos.Data(), nullptr, pipelines);
     if (result != VK_SUCCESS) {
         // Add diagnostics for all failed pipelines
         for (uint32_t i = 0; i < batch.count; i++) {
@@ -416,11 +445,11 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     batch.diagnostic->passedJobs += batch.count;
 
     // Set final objects
-    for (uint32_t i = 0; i < batch.count; i++) {
-        PipelineJob &job = batch.jobs[i];
+    for (uint32_t i = 0; i < static_cast<uint32_t>(createInfos.Size()); i++) {
+        PipelineJob &job = batch.jobs[jobIndices[i]];
         PipelineState *state = job.state;
 
-        // Set the instrument for the given feature set
+        // Set the instrument for the given hash
         state->AddInstrument(job.combinedHash, pipelines[i]);
     }
 
