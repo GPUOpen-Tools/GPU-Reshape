@@ -40,6 +40,7 @@
 #include <Backend/IL/Emitters/Emitter.h>
 #include <Backend/IL/Emitters/ExtendedEmitter.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
+#include <Backend/IL/InstructionValueCommon.h>
 
 namespace Backend::IL {
     template<typename E = Emitter<>>
@@ -302,6 +303,13 @@ namespace Backend::IL {
                 if (out.z != zero) out.z = emitter.BitCast(out.z, uint32);
                 if (out.mip != zero) out.mip = emitter.BitCast(out.mip, uint32);
                 if (out.offset != zero) out.offset = emitter.BitCast(out.offset, uint32);
+            } else {
+                // Otherwise, do a safety cast
+                if (out.x != zero) out.x = IL::BitCastToUnsigned(emitter, out.x);
+                if (out.y != zero) out.y = IL::BitCastToUnsigned(emitter, out.y);
+                if (out.z != zero) out.z = IL::BitCastToUnsigned(emitter, out.z);
+                if (out.mip != zero) out.mip = IL::BitCastToUnsigned(emitter, out.mip);
+                if (out.offset != zero) out.offset = IL::BitCastToUnsigned(emitter, out.offset);
             }
 
             // Get the base memory offset for the resource, points to the header

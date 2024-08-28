@@ -34,6 +34,7 @@
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
+#include <Backend/IL/InstructionValueCommon.h>
 
 // Generated schema
 #include <Schemas/Features/ResourceBounds.h>
@@ -179,7 +180,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 case IL::OpCode::StoreBuffer: {
                     auto _instr = instr->As<IL::StoreBufferInstruction>();
                     msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
-                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                     msg.detail.coordinate[1] = zero;
                     msg.detail.coordinate[2] = zero;
                     break;
@@ -187,7 +188,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 case IL::OpCode::LoadBuffer: {
                     auto _instr = instr->As<IL::LoadBufferInstruction>();
                     msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
-                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                     msg.detail.coordinate[1] = zero;
                     msg.detail.coordinate[2] = zero;
                     break;
@@ -195,7 +196,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 case IL::OpCode::StoreBufferRaw: {
                     auto _instr = instr->As<IL::StoreBufferRawInstruction>();
                     msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
-                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                     msg.detail.coordinate[1] = zero;
                     msg.detail.coordinate[2] = zero;
                     break;
@@ -203,7 +204,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 case IL::OpCode::LoadBufferRaw: {
                     auto _instr = instr->As<IL::LoadBufferRawInstruction>();
                     msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
-                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                     msg.detail.coordinate[1] = zero;
                     msg.detail.coordinate[2] = zero;
                     break;
@@ -216,11 +217,11 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     if (const Backend::IL::Type* indexType = program.GetTypeMap().GetType(_instr->index); indexType->Is<Backend::IL::VectorType>()) {
                         const uint32_t dimension = indexType->As<Backend::IL::VectorType>()->dimension;
 
-                        msg.detail.coordinate[0] = oob.Extract(_instr->index, program.GetConstants().UInt(0)->id);
-                        msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, program.GetConstants().UInt(1)->id) : zero;
-                        msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, program.GetConstants().UInt(2)->id) : zero;
+                        msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(0)->id));
+                        msg.detail.coordinate[1] = dimension > 1 ? Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(1)->id)) : zero;
+                        msg.detail.coordinate[2] = dimension > 2 ? Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(2)->id)) : zero;
                     } else {
-                        msg.detail.coordinate[0] = _instr->index;
+                        msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                         msg.detail.coordinate[1] = zero;
                         msg.detail.coordinate[2] = zero;
                     }
@@ -234,11 +235,11 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     if (const Backend::IL::Type* indexType = program.GetTypeMap().GetType(_instr->index); indexType->Is<Backend::IL::VectorType>()) {
                         const uint32_t dimension = indexType->As<Backend::IL::VectorType>()->dimension;
 
-                        msg.detail.coordinate[0] = oob.Extract(_instr->index, program.GetConstants().UInt(0)->id);
-                        msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, program.GetConstants().UInt(1)->id) : zero;
-                        msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, program.GetConstants().UInt(2)->id) : zero;
+                        msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(0)->id));
+                        msg.detail.coordinate[1] = dimension > 1 ? Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(1)->id)) : zero;
+                        msg.detail.coordinate[2] = dimension > 2 ? Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(2)->id)) : zero;
                     } else {
-                        msg.detail.coordinate[0] = _instr->index;
+                        msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                         msg.detail.coordinate[1] = zero;
                         msg.detail.coordinate[2] = zero;
                     }
