@@ -124,10 +124,7 @@ namespace Studio.ViewModels.Workspace.Properties
             // Append messages on UI thread
             Dispatcher.UIThread.InvokeAsync(() =>
             {
-                foreach (LogEvent instance in events)
-                {
-                    _loggingViewModel?.Events.Add(instance);
-                }
+                _loggingViewModel?.Events.AddRange(events);
             });
         }
 
