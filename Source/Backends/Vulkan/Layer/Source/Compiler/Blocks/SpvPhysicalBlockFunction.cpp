@@ -34,6 +34,7 @@
 #include <Backend/IL/InstructionCommon.h>
 #include <Backend/IL/Emitters/Emitter.h>
 #include <Backend/IL/ID.h>
+#include <Backend/IL/BasicBlockCommon.h>
 
 // Common
 #include <Common/Alloca.h>
@@ -108,7 +109,7 @@ void SpvPhysicalBlockFunction::Parse() {
             ParseFunctionBody(function, ctx);
 
             // Perform post patching
-            PostPatchLoopContinue(function);
+            PostPatchLoops(function);
         }
 
         // Must be body
@@ -537,10 +538,10 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
                 // Loop?
                 if (instr.controlFlow._continue != IL::InvalidID) {
-                    LoopContinueBlock loopContinueBlock;
+                    LoopBlock loopContinueBlock;
                     loopContinueBlock.instruction = ref;
-                    loopContinueBlock.block = instr.controlFlow._continue;
-                    loopContinueBlocks.push_back(loopContinueBlock);
+                    loopContinueBlock.controlFlow = instr.controlFlow;
+                    loopBlocks.push_back(loopContinueBlock);
                 }
                 break;
             }
@@ -577,10 +578,10 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
                 // Loop?
                 if (instr.controlFlow._continue != IL::InvalidID) {
-                    LoopContinueBlock loopContinueBlock;
+                    LoopBlock loopContinueBlock;
                     loopContinueBlock.instruction = ref;
-                    loopContinueBlock.block = instr.controlFlow._continue;
-                    loopContinueBlocks.push_back(loopContinueBlock);
+                    loopContinueBlock.controlFlow = instr.controlFlow;
+                    loopBlocks.push_back(loopContinueBlock);
                 }
                 break;
             }
@@ -2941,16 +2942,18 @@ void SpvPhysicalBlockFunction::PostPatchLoopSelectionMerge(const IL::OpaqueInstr
     }
 }
 
-void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
+void SpvPhysicalBlockFunction::PostPatchLoops(IL::Function* fn) {
     // Structured control flow puts a strict set of requirements on branching, which
     // unfortunately complicates instrumentation a little, as features can easily
-    // split blocks and violate the spec. So, we split continue blocks in two pieces.
+    // split blocks and violate the spec.
+    
+    // We split continue blocks in two pieces.
     // First is the "proxy" block that contains the actual instructions, which may be
     // safely instrumented, and then the edge. Keeping the final edge as a no-instrument
     // ensures that the user doesn't accidentally introduce new edges to the loop header,
     // of which there must be one from a continue block.
     // 
-    // So.
+    // So
     //   A ---v
     //   B -> Continue
     //   C ---^
@@ -2960,8 +2963,8 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
     //   B -> Continue(NI) -> Proxy -> Edge(NI)
     //   C ---^
 
-    for (const LoopContinueBlock& block : loopContinueBlocks) {
-        IL::BasicBlock* continueBlock = program.GetIdentifierMap().GetBasicBlock(block.block);
+    for (const LoopBlock& block : loopBlocks) {
+        IL::BasicBlock* continueBlock = program.GetIdentifierMap().GetBasicBlock(block.controlFlow._continue);
 
         // Additional blocks (see above)
         IL::BasicBlock* proxyBlock = fn->GetBasicBlocks().AllocBlock();
@@ -2984,8 +2987,74 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
         IL::Emitter<>(program, *proxyBlock).Branch(edgeBlock);
     }
 
+    // We rewrite loop headers to relax basic block rules. Splitting loop headers
+    // is a dangerous game, since the effective back-edges must branch to the loop header.
+    // To work around this, we move all non-phi instructions to the loop body, and keep the
+    // phi's in the header, but with a non-conditional branch. The loop body becomes responsible
+    // for the conditional break.
+    //
+    // So
+    //   A -> Body
+    //    \-> Exit
+    //
+    // Becomes
+    //   A-pre(NI) -> A-post -> Body
+    //                       \- Exit
+
+    for (const LoopBlock& loop : loopBlocks) {
+        IL::BasicBlock* headerBlock = loop.instruction.basicBlock;
+
+        // Additional blocks (see above)
+        IL::BasicBlock* postBlock = fn->GetBasicBlocks().AllocBlock();
+
+        // Never instrument the actual header (see above)
+        headerBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
+
+        // Move all contents from the source header block to the post block
+        // Do not let the split modify any incoming phi nor loop header instructions, we already took care of that
+        headerBlock->Split(postBlock, Backend::IL::FirstNonPhi(headerBlock), BasicBlockSplitFlag::RedirectBranchUsers);
+
+        // Actual header maintains the control flow and branches directly to the body
+        IL::Emitter<>(program, *headerBlock).Branch(postBlock, IL::ControlFlow {
+            .merge = fn->GetBasicBlocks().GetBlock(loop.controlFlow.merge), 
+            ._continue = fn->GetBasicBlocks().GetBlock(loop.controlFlow._continue)
+        });
+
+        // Patch the actual breaking condition
+        IL::Instruction *terminator = postBlock->GetTerminator().GetMutable();
+        switch (terminator->opCode) {
+            default: {
+                ASSERT(false, "Unexpecter terminator in loop body");
+                break;
+            }
+            case IL::OpCode::Branch: {
+                auto branch = terminator->As<IL::BranchInstruction>();
+
+                // Non-conditional branches don't have any control flow in the body
+                branch->controlFlow = IL::BranchControlFlow { };
+                break;
+            }
+            case IL::OpCode::BranchConditional: {
+                auto branchConditional = terminator->As<IL::BranchConditionalInstruction>();
+
+                // Get the actual body block
+                IL::ID bodyBlockID = loop.controlFlow.merge == branchConditional->fail ? branchConditional->pass : branchConditional->fail;
+                
+                // It's basically a selection merge now, instead of a loop merge
+                // Loop breaks are just selection constructs that merge to the body block
+                branchConditional->controlFlow = IL::BranchControlFlow {
+                    .merge = bodyBlockID
+                };
+                break;
+            }
+        }
+
+        // Mark instruction as dirty
+        terminator->source = terminator->source.Modify();
+    }
+
     // Empty out
-    loopContinueBlocks.clear();
+    loopBlocks.clear();
 }
 
 void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {

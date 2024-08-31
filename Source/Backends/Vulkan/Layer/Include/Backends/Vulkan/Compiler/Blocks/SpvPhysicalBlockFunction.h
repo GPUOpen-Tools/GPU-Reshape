@@ -34,6 +34,7 @@
 #include <Backend/IL/Source.h>
 #include <Backend/IL/Program.h>
 #include <Backend/IL/TypeCommon.h>
+#include <Backend/IL/ControlFlow.h>
 
 // Std
 #include <set>
@@ -138,7 +139,7 @@ public:
 private:
     /// Patch all loop continues
     /// \param fn function
-    void PostPatchLoopContinue(IL::Function* fn);
+    void PostPatchLoops(IL::Function* fn);
 
     /// Post patch a loop user instruction
     /// \param instruction user instruction
@@ -208,13 +209,13 @@ private:
     std::unordered_map<uint32_t, SpvCodeOffsetTraceback> sourceTraceback;
 
 private:
-    struct LoopContinueBlock {
+    struct LoopBlock {
         IL::InstructionRef<> instruction;
-        IL::ID block;
+        IL::BranchControlFlow controlFlow;
     };
 
-    /// All continue blocks
-    std::vector<LoopContinueBlock> loopContinueBlocks;
+    /// All loop blocks
+    std::vector<LoopBlock> loopBlocks;
 
 private:
     /// General operator allocator

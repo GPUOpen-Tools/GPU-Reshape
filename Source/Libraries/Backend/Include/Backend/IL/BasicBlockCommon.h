@@ -71,4 +71,11 @@ namespace Backend::IL {
 
         return it;
     }
+
+    /// Find the first non phi instruction
+    /// \param block given block
+    /// \return first non phi, may be end
+    inline BasicBlock::Iterator FirstNonPhi(BasicBlock* block) {
+        return FirstNonPhi(block, block->begin());
+    }
 }
