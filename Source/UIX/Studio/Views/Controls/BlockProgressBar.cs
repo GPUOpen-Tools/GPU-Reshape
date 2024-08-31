@@ -122,7 +122,7 @@ namespace Studio.Views.Controls
                 _brushes.Clear();
                 
                 // Re-distribute the colors
-                if (ViewModel.Stage == InstrumentationStage.Pipeline)
+                if (ViewModel.Stage != InstrumentationStage.Shaders)
                 {
                     Distribute();
                 }

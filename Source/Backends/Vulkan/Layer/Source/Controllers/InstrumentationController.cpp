@@ -97,6 +97,7 @@ uint32_t InstrumentationController::GetJobCount() {
         case InstrumentationStage::Shaders:
             return static_cast<uint32_t>(compilationBatch->shaderCompilerDiagnostic.GetRemainingJobs());
         case InstrumentationStage::Pipelines:
+        case InstrumentationStage::PipelineLibraries:
             return static_cast<uint32_t>(compilationBatch->pipelineCompilerDiagnostic.GetRemainingJobs());
     }
 }

@@ -210,7 +210,6 @@ private:
 
         /// Compiler diagnostics
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
-        PipelineCompilerDiagnostic pipelineLibrariesCompilerDiagnostic;
         PipelineCompilerDiagnostic pipelineCompilerDiagnostic;
 
         /// All diagnostic messages
