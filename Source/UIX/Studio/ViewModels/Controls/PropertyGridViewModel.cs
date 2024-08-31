@@ -149,9 +149,16 @@ namespace Studio.ViewModels.Controls
                 };
 
                 // Bind from property VM -> data
-                property.WhenAnyValue(x => x.Value).Subscribe(x =>
+                property.WhenAnyValue(x => x.Value).WhereNotNull().Subscribe(x =>
                 {
-                    propertyInfo.SetValue(data, Convert.ChangeType(x, propertyInfo.PropertyType));
+                    try
+                    {
+                        propertyInfo.SetValue(data, Convert.ChangeType(x, propertyInfo.PropertyType));
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore failed casts
+                    }
                 });
                 
                 // Keep track of it
