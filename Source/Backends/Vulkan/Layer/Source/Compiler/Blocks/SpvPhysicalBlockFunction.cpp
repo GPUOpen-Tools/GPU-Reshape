@@ -1478,7 +1478,7 @@ IL::ID SpvPhysicalBlockFunction::MigrateCombinedImageSampler(SpvStream &stream, 
     IL::ID combinedType = IL::InvalidID;
 
     // Has source?
-    if (instr->source.IsValid()) {
+    if (instr->source.HasNonSymbolicCodeOffset()) {
         const SpvInstruction* spvInstr = stream.GetInstruction(instr->source);
 
         // Get metadata
@@ -1666,7 +1666,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                     uint32_t& mask = spv[offset++];
 
                     // Reset existing mask if not templated
-                    if (!instr->source.IsValid()) {
+                    if (!instr->source.HasNonSymbolicCodeOffset()) {
                         mask = 0x0;
                     }
 
@@ -2998,7 +2998,7 @@ void SpvPhysicalBlockFunction::PostPatchLoops(IL::Function* fn) {
     //    \-> Exit
     //
     // Becomes
-    //   A-pre(NI) -> A-post -> Body
+    //   A-pre -> A-post -> Body
     //                       \- Exit
 
     for (const LoopBlock& loop : loopBlocks) {
@@ -3007,15 +3007,13 @@ void SpvPhysicalBlockFunction::PostPatchLoops(IL::Function* fn) {
         // Additional blocks (see above)
         IL::BasicBlock* postBlock = fn->GetBasicBlocks().AllocBlock();
 
-        // Never instrument the actual header (see above)
-        headerBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
-
         // Move all contents from the source header block to the post block
         // Do not let the split modify any incoming phi nor loop header instructions, we already took care of that
         headerBlock->Split(postBlock, Backend::IL::FirstNonPhi(headerBlock), BasicBlockSplitFlag::RedirectBranchUsers);
 
         // Actual header maintains the control flow and branches directly to the body
-        IL::Emitter<>(program, *headerBlock).Branch(postBlock, IL::ControlFlow {
+        // Maintain the instruction source
+        IL::Emitter<>(program, *headerBlock, loop.instruction->source.Symbolize()).Branch(postBlock, IL::ControlFlow {
             .merge = fn->GetBasicBlocks().GetBlock(loop.controlFlow.merge), 
             ._continue = fn->GetBasicBlocks().GetBlock(loop.controlFlow._continue)
         });

@@ -100,7 +100,7 @@ struct SpvParseContext {
 
     /// Get the templating source for the current offset
     IL::Source Source() const {
-        return IL::Source::Code(static_cast<uint32_t>(code - source.programBegin));
+        return IL::Source::User(static_cast<uint32_t>(code - source.programBegin));
     }
 
     /// Get the block source for the current offset

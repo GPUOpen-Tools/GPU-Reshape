@@ -205,7 +205,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::AddInstruction instr{};
                         instr.opCode = IL::OpCode::Add;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -215,7 +215,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::SubInstruction instr{};
                         instr.opCode = IL::OpCode::Sub;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -225,7 +225,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::MulInstruction instr{};
                         instr.opCode = IL::OpCode::Mul;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -236,7 +236,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::DivInstruction instr{};
                         instr.opCode = IL::OpCode::Div;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -247,7 +247,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::RemInstruction instr{};
                         instr.opCode = IL::OpCode::Rem;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -257,7 +257,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::BitShiftLeftInstruction instr{};
                         instr.opCode = IL::OpCode::BitShiftLeft;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.value = lhs;
                         instr.shift = rhs;
                         basicBlock->Append(instr);
@@ -268,7 +268,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::BitShiftRightInstruction instr{};
                         instr.opCode = IL::OpCode::BitShiftRight;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.value = lhs;
                         instr.shift = rhs;
                         basicBlock->Append(instr);
@@ -278,7 +278,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::AndInstruction instr{};
                         instr.opCode = IL::OpCode::And;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -288,7 +288,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::OrInstruction instr{};
                         instr.opCode = IL::OpCode::Or;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -298,7 +298,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::BitXOrInstruction instr{};
                         instr.opCode = IL::OpCode::BitXOr;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -325,7 +325,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::TruncInstruction instr{};
                         instr.opCode = IL::OpCode::Trunc;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.value = value;
                         basicBlock->Append(instr);
                         break;
@@ -340,7 +340,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::UnexposedInstruction instr{};
                         instr.opCode = IL::OpCode::Unexposed;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.backendOpCode = record.id;
                         instr.symbol = "LLVMCastOp";
                         instr.traits.foldableWithImmediates = true;
@@ -353,7 +353,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::FloatToIntInstruction instr{};
                         instr.opCode = IL::OpCode::FloatToInt;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.value = value;
                         basicBlock->Append(instr);
                         break;
@@ -364,7 +364,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::IntToFloatInstruction instr{};
                         instr.opCode = IL::OpCode::IntToFloat;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.value = value;
                         basicBlock->Append(instr);
                         break;
@@ -374,7 +374,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::BitCastInstruction instr{};
                         instr.opCode = IL::OpCode::BitCast;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.value = value;
                         basicBlock->Append(instr);
                         break;
@@ -406,7 +406,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::InsertInstruction instr{};
                 instr.opCode = IL::OpCode::Insert;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.composite = compositeValue;
                 instr.value = indexValue;
                 basicBlock->Append(instr);
@@ -429,7 +429,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 auto *instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(1u));
                 instr->opCode = IL::OpCode::Extract;
                 instr->result = result;
-                instr->source = IL::Source::Code(recordIdx);
+                instr->source = IL::Source::User(recordIdx);
                 instr->composite = compositeValue;
                 instr->chains.count = 1u;
                 instr->chains[0].index = program.GetConstants().UInt(indexValue)->id;
@@ -465,7 +465,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 auto *instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(1u));
                 instr->opCode = IL::OpCode::Extract;
                 instr->result = result;
-                instr->source = IL::Source::Code(recordIdx);
+                instr->source = IL::Source::User(recordIdx);
                 instr->composite = compositeValue;
                 instr->chains.count = 1u;
                 instr->chains[0].index = program.GetConstants().UInt(index)->id;
@@ -512,7 +512,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 auto *instr = instructionStack.Alloc<IL::AddressChainInstruction>(IL::AddressChainInstruction::GetSize(addressCount));
                 instr->opCode = IL::OpCode::AddressChain;
                 instr->result = result;
-                instr->source = IL::Source::Code(recordIdx);
+                instr->source = IL::Source::User(recordIdx);
                 instr->composite = compositeId;
                 instr->chains.count = addressCount;
 
@@ -585,7 +585,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::SelectInstruction instr{};
                 instr.opCode = IL::OpCode::Select;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.condition = condition;
                 instr.pass = pass;
                 instr.fail = fail;
@@ -602,7 +602,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.backendOpCode = record.id;
                 instr.symbol = "LLVMShuffle";
                 instr.traits.foldableWithImmediates = true;
@@ -635,7 +635,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::UnexposedInstruction instr{};
                         instr.opCode = IL::OpCode::Unexposed;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.backendOpCode = record.id;
                         instr.symbol = "LLVMCmpOp";
                         instr.traits.foldableWithImmediates = true;
@@ -650,7 +650,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::NotEqualInstruction instr{};
                         instr.opCode = IL::OpCode::NotEqual;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -664,7 +664,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::EqualInstruction instr{};
                         instr.opCode = IL::OpCode::Equal;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -679,7 +679,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::GreaterThanInstruction instr{};
                         instr.opCode = IL::OpCode::GreaterThan;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -694,7 +694,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::LessThanInstruction instr{};
                         instr.opCode = IL::OpCode::LessThan;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -709,7 +709,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::GreaterThanEqualInstruction instr{};
                         instr.opCode = IL::OpCode::GreaterThanEqual;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -724,7 +724,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         IL::LessThanEqualInstruction instr{};
                         instr.opCode = IL::OpCode::LessThanEqual;
                         instr.result = result;
-                        instr.source = IL::Source::Code(recordIdx);
+                        instr.source = IL::Source::User(recordIdx);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -755,7 +755,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.backendOpCode = record.id;
                 instr.symbol = "AtomicRW";
                 basicBlock->Append(instr);
@@ -775,7 +775,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.backendOpCode = record.id;
                 instr.symbol = "AtomicCmpXchg";
                 basicBlock->Append(instr);
@@ -789,7 +789,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::ReturnInstruction instr{};
                 instr.opCode = IL::OpCode::Return;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
 
                 // Mapping
                 if (reader.Any()) {
@@ -816,7 +816,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     IL::BranchConditionalInstruction instr{};
                     instr.opCode = IL::OpCode::BranchConditional;
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.pass = pass;
                     instr.fail = blockMapping[reader.ConsumeOp()]->GetID();
                     instr.cond = reader.GetMappedRelative(anchor);
@@ -825,7 +825,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     IL::BranchInstruction instr{};
                     instr.opCode = IL::OpCode::Branch;
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.branch = pass;
                     basicBlock->Append(instr);
                 }
@@ -855,7 +855,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 auto *instr = instructionStack.Alloc<IL::SwitchInstruction>(IL::SwitchInstruction::GetSize(caseCount));
                 instr->opCode = IL::OpCode::Switch;
                 instr->result = IL::InvalidID;
-                instr->source = IL::Source::Code(recordIdx);
+                instr->source = IL::Source::User(recordIdx);
                 instr->value = value;
                 instr->_default = _default;
                 instr->controlFlow = {};
@@ -885,7 +885,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.backendOpCode = record.id;
                 instr.symbol = "Unreachable";
                 basicBlock->Append(instr);
@@ -914,7 +914,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 auto *instr = instructionStack.Alloc<IL::PhiInstruction>(IL::PhiInstruction::GetSize(valueCount));
                 instr->opCode = IL::OpCode::Phi;
                 instr->result = result;
-                instr->source = IL::Source::Code(recordIdx);
+                instr->source = IL::Source::User(recordIdx);
                 instr->values.count = valueCount;
 
                 // Fill cases
@@ -958,7 +958,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::AllocaInstruction instr{};
                 instr.opCode = IL::OpCode::Alloca;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 basicBlock->Append(instr);
                 break;
             }
@@ -980,7 +980,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::LoadInstruction instr{};
                 instr.opCode = IL::OpCode::Load;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.address = address;
                 basicBlock->Append(instr);
                 break;
@@ -991,7 +991,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::StoreInstruction instr{};
                 instr.opCode = IL::OpCode::Store;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.address = reader.GetMappedRelativeValue(anchor);
 
                 instr.value = reader.GetMappedRelative(anchor);
@@ -1003,7 +1003,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 IL::StoreInstruction instr{};
                 instr.opCode = IL::OpCode::Store;
                 instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
+                instr.source = IL::Source::User(recordIdx);
                 instr.address = reader.GetMappedRelativeValue(anchor);
 
                 // Type
@@ -1078,7 +1078,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     // Unknown, emit as unexposed
                     unexposed.opCode = IL::OpCode::Unexposed;
                     unexposed.result = result;
-                    unexposed.source = IL::Source::Code(recordIdx);
+                    unexposed.source = IL::Source::User(recordIdx);
                     unexposed.backendOpCode = record.id;
                     unexposed.symbol = table.symbol.GetValueAllocation(called);
                     basicBlock->Append(unexposed);
@@ -1501,7 +1501,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             auto *chain = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(2u));
             chain->opCode = IL::OpCode::AddressChain;
             chain->result = chainAddr;
-            chain->source = IL::Source::Symbolic(recordIdx);
+            chain->source = IL::Source::SymbolicInstruction(recordIdx);
             chain->composite = bindingGroup;
             chain->chains.count = 2;
             chain->chains[0].index = program.GetConstants().UInt(0)->id;
@@ -1518,7 +1518,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::LoadInstruction load{};
             load.opCode = IL::OpCode::Load;
             load.result = result;
-            load.source = IL::Source::Code(recordIdx);
+            load.source = IL::Source::User(recordIdx);
             load.address = chainAddr;
             basicBlock->Append(load);
 
@@ -1587,7 +1587,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::UnexposedInstruction instr{};
             instr.opCode = IL::OpCode::Unexposed;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.symbol = "dx.op.createHandleFromBinding";
             basicBlock->Append(instr);
             return true;
@@ -1614,7 +1614,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::StoreOutputInstruction instr{};
             instr.opCode = IL::OpCode::StoreOutput;
             instr.result = IL::InvalidID;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.index = outputID;
             instr.row = row;
             instr.column = column;
@@ -1646,7 +1646,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::StoreVertexOutputInstruction instr{};
             instr.opCode = IL::OpCode::StoreVertexOutput;
             instr.result = IL::InvalidID;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.index = outputID;
             instr.row = row;
             instr.column = column;
@@ -1679,7 +1679,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::StorePrimitiveOutputInstruction instr{};
             instr.opCode = IL::OpCode::StorePrimitiveOutput;
             instr.result = IL::InvalidID;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.index = outputID;
             instr.row = row;
             instr.column = column;
@@ -1709,7 +1709,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::LoadBufferInstruction instr{};
             instr.opCode = IL::OpCode::LoadBuffer;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.buffer = resource;
             instr.index = coordinate;
             instr.offset = offset;
@@ -1721,7 +1721,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::StoreBufferInstruction instr{};
             instr.opCode = IL::OpCode::StoreBuffer;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
 
             // Depends on semantic information, resolve it later
             unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
@@ -1756,7 +1756,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::LoadBufferRawInstruction instr{};
             instr.opCode = IL::OpCode::LoadBufferRaw;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.buffer = resource;
             instr.index = coordinate;
             instr.offset = offset;
@@ -1770,7 +1770,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::StoreBufferRawInstruction instr{};
             instr.opCode = IL::OpCode::StoreBufferRaw;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             
             // Depends on semantic information, resolve it later
             unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
@@ -1785,7 +1785,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::LoadTextureInstruction instr{};
             instr.opCode = IL::OpCode::LoadTexture;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             
             // Depends on semantic information, resolve it later
             unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
@@ -1818,7 +1818,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::SampleTextureInstruction instr{};
             instr.opCode = IL::OpCode::SampleTexture;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             
             // Depends on semantic information, resolve it later
             unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
@@ -1854,7 +1854,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::StoreTextureInstruction instr{};
             instr.opCode = IL::OpCode::StoreTexture;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             
             // Depends on semantic information, resolve it later
             unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
@@ -1882,7 +1882,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                     IL::IsNaNInstruction instr{};
                     instr.opCode = IL::OpCode::IsNaN;
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     basicBlock->Append(instr);
                     return true;
@@ -1892,7 +1892,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                     IL::IsInfInstruction instr{};
                     instr.opCode = IL::OpCode::IsInf;
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     basicBlock->Append(instr);
                     return true;
@@ -1904,7 +1904,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::WaveReadFirstInstruction instr{};
             instr.opCode = IL::OpCode::WaveReadFirst;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.value = reader.GetMappedRelative(anchor);
             basicBlock->Append(instr);
             return true;
@@ -1914,7 +1914,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::WaveAnyTrueInstruction instr{};
             instr.opCode = IL::OpCode::WaveAnyTrue;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.value = reader.GetMappedRelative(anchor);
             basicBlock->Append(instr);
             return true;
@@ -1924,7 +1924,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::WaveAllTrueInstruction instr{};
             instr.opCode = IL::OpCode::WaveAllTrue;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.value = reader.GetMappedRelative(anchor);
             basicBlock->Append(instr);
             return true;
@@ -1934,7 +1934,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::WaveBallotInstruction instr{};
             instr.opCode = IL::OpCode::WaveBallot;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.value = reader.GetMappedRelative(anchor);
             basicBlock->Append(instr);
             return true;
@@ -1944,7 +1944,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::WaveReadInstruction instr{};
             instr.opCode = IL::OpCode::WaveRead;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.value = reader.GetMappedRelative(anchor);
             instr.lane = reader.GetMappedRelative(anchor);
             basicBlock->Append(instr);
@@ -1955,7 +1955,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::WaveAllEqualInstruction instr{};
             instr.opCode = IL::OpCode::WaveAllEqual;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.value = reader.GetMappedRelative(anchor);
             basicBlock->Append(instr);
             return true;
@@ -1973,7 +1973,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 0: {
                     IL::WaveBitAndInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WaveBitAnd;
                     basicBlock->Append(instr);
@@ -1982,7 +1982,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 1: {
                     IL::WaveBitOrInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WaveBitOr;
                     basicBlock->Append(instr);
@@ -1991,7 +1991,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 2: {
                     IL::WaveBitXOrInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WaveBitXOr;
                     basicBlock->Append(instr);
@@ -2005,7 +2005,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::WaveCountBitsInstruction instr{};
             instr.opCode = IL::OpCode::WaveCountBits;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.value = reader.GetMappedRelative(anchor);
             basicBlock->Append(instr);
             return true;
@@ -2023,7 +2023,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 0: {
                     IL::WaveSumInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WaveSum;
                     basicBlock->Append(instr);
@@ -2032,7 +2032,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 1: {
                     IL::WaveProductInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WaveProduct;
                     basicBlock->Append(instr);
@@ -2041,7 +2041,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 2: {
                     IL::WaveMinInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WaveMin;
                     basicBlock->Append(instr);
@@ -2050,7 +2050,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 3: {
                     IL::WaveMaxInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WaveMax;
                     basicBlock->Append(instr);
@@ -2064,7 +2064,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::WavePrefixCountBitsInstruction instr{};
             instr.opCode = IL::OpCode::WavePrefixCountBits;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.value = reader.GetMappedRelative(anchor);
             basicBlock->Append(instr);
             return true;
@@ -2082,7 +2082,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 0: {
                     IL::WavePrefixSumInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WavePrefixSum;
                     basicBlock->Append(instr);
@@ -2091,7 +2091,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 case 1: {
                     IL::WavePrefixProductInstruction instr{};
                     instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
+                    instr.source = IL::Source::User(recordIdx);
                     instr.value = value;
                     instr.opCode = IL::OpCode::WavePrefixProduct;
                     basicBlock->Append(instr);
@@ -2140,7 +2140,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::UnexposedInstruction instr{};
             instr.opCode = IL::OpCode::Unexposed;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.backendOpCode = 0x0;
             instr.symbol = "AnnotateHandle";
             basicBlock->Append(instr);
@@ -2160,7 +2160,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             IL::UnexposedInstruction instr{};
             instr.opCode = IL::OpCode::Unexposed;
             instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
+            instr.source = IL::Source::User(recordIdx);
             instr.backendOpCode = 0x0;
             instr.symbol = "CreateHandleFromHeap";
             basicBlock->Append(instr);
@@ -3014,12 +3014,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
             LLVMRecord record;
 
             // If symbolic, nothing to do
-            if (instr->source.symbolic) {
+            if (instr->source.symbolicInstruction) {
                 continue;
             }
 
             // If it's valid, copy record
-            if (instr->source.IsValid()) {
+            if (instr->source.HasNonSymbolicCodeOffset()) {
                 // Set relocation index
                 functionBlock.recordRelocation[instr->source.codeOffset - 1u] = static_cast<uint32_t>(block->records.size()) - 1u;
 
@@ -4914,7 +4914,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     }
 
                     // Optional, source record
-                    const LLVMRecord* sourceRecord = _instr->source.IsValid() ? &source[_instr->source.codeOffset] : nullptr;
+                    const LLVMRecord* sourceRecord = _instr->source.HasNonSymbolicCodeOffset() ? &source[_instr->source.codeOffset] : nullptr;
 
                     // Get original opcode, if possible
                     DXILOpcodes sourceOpcode{};

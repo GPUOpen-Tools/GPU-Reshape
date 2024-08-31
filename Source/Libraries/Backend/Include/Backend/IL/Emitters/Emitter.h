@@ -115,6 +115,14 @@ namespace IL {
         }
 
         /// Constructor
+        Emitter(Program &program, BasicBlock &basicBlock, const Source& src, const Opaque &ref = {}) {
+            SetProgram(&program);
+            SetBasicBlock(&basicBlock);
+            SetSource(src);
+            SetInsertionPoint(ref);
+        }
+
+        /// Constructor
         Emitter(Program &program, const Opaque &ref = {}) {
             SetProgram(&program);
             SetBasicBlock(ref.basicBlock);
@@ -139,6 +147,11 @@ namespace IL {
             insertionPoint = ref;
         }
 
+        /// Set the source
+        void SetSource(const Source &src) {
+            source = src;
+        }
+
         /// Get the insertion point
         Opaque GetInsertionPoint() {
             return insertionPoint;
@@ -156,7 +169,7 @@ namespace IL {
         BasicBlock::TypedIterator <LiteralInstruction> Integral(uint8_t bitWidth, int64_t value, bool signedness) {
             LiteralInstruction instr{};
             instr.opCode = OpCode::Literal;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.type = LiteralType::Int;
             instr.signedness = signedness;
@@ -238,7 +251,7 @@ namespace IL {
         BasicBlock::TypedIterator <LiteralInstruction> FP(uint8_t bitWidth, double value) {
             LiteralInstruction instr{};
             instr.opCode = OpCode::Literal;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.type = LiteralType::FP;
             instr.signedness = true;
@@ -255,7 +268,7 @@ namespace IL {
 
             LoadInstruction instr{};
             instr.opCode = OpCode::Load;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.address = address;
             instr.result = map->AllocID();
             return Op(instr);
@@ -270,7 +283,7 @@ namespace IL {
 
             StoreInstruction instr{};
             instr.opCode = OpCode::Store;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = InvalidID;
             instr.address = address;
             instr.value = value;
@@ -287,7 +300,7 @@ namespace IL {
 
             StoreBufferInstruction instr{};
             instr.opCode = OpCode::StoreBuffer;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.buffer = buffer;
             instr.index = index;
             instr.value = value;
@@ -305,7 +318,7 @@ namespace IL {
 
             LoadBufferInstruction instr{};
             instr.opCode = OpCode::LoadBuffer;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.buffer = buffer;
             instr.index = index;
             instr.offset = InvalidID;
@@ -321,7 +334,7 @@ namespace IL {
 
             ResourceSizeInstruction instr{};
             instr.opCode = OpCode::ResourceSize;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.resource = resource;
             instr.result = map->AllocID();
             return Op(instr);
@@ -335,7 +348,7 @@ namespace IL {
 
             ResourceTokenInstruction instr{};
             instr.opCode = OpCode::ResourceToken;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.resource = resource;
             instr.result = map->AllocID();
             return Op(instr);
@@ -350,7 +363,7 @@ namespace IL {
 
             BitCastInstruction instr{};
             instr.opCode = OpCode::BitCast;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr, type);
@@ -364,7 +377,7 @@ namespace IL {
 
             IntToFloatInstruction instr{};
             instr.opCode = OpCode::IntToFloat;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr, type);
@@ -387,7 +400,7 @@ namespace IL {
 
             FloatToIntInstruction instr{};
             instr.opCode = OpCode::FloatToInt;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr, type);
@@ -426,7 +439,7 @@ namespace IL {
 
             auto instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(sizeof...(IX)));
             instr->opCode = OpCode::AddressChain;
-            instr->source = Source::Invalid();
+            instr->source = source;
             instr->result = map->AllocID();
             instr->composite = composite;
             instr->chains.count = sizeof...(IX);
@@ -450,7 +463,7 @@ namespace IL {
 
             auto instr = ALLOCA_SIZE(IL::ConstructInstruction, IL::ConstructInstruction::GetSize(sizeof...(VX)));
             instr->opCode = OpCode::Construct;
-            instr->source = Source::Invalid();
+            instr->source = source;
             instr->result = map->AllocID();
             instr->values.count = sizeof...(VX);
 
@@ -475,7 +488,7 @@ namespace IL {
 
             auto instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(sizeof...(IX)));
             instr->opCode = OpCode::Extract;
-            instr->source = Source::Invalid();
+            instr->source = source;
             instr->result = map->AllocID();
             instr->composite = composite;
             instr->chains.count = sizeof...(IX);
@@ -497,7 +510,7 @@ namespace IL {
 
             InsertInstruction instr{};
             instr.opCode = OpCode::Insert;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.composite = composite;
             instr.value = value;
@@ -513,7 +526,7 @@ namespace IL {
 
             SelectInstruction instr{};
             instr.opCode = OpCode::Select;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.condition = condition;
             instr.pass = pass;
@@ -530,7 +543,7 @@ namespace IL {
 
             RemInstruction instr{};
             instr.opCode = OpCode::Rem;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -546,7 +559,7 @@ namespace IL {
 
             AddInstruction instr{};
             instr.opCode = OpCode::Add;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -562,7 +575,7 @@ namespace IL {
 
             SubInstruction instr{};
             instr.opCode = OpCode::Sub;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -578,7 +591,7 @@ namespace IL {
 
             DivInstruction instr{};
             instr.opCode = OpCode::Div;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -594,7 +607,7 @@ namespace IL {
 
             MulInstruction instr{};
             instr.opCode = OpCode::Mul;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -610,7 +623,7 @@ namespace IL {
 
             EqualInstruction instr{};
             instr.opCode = OpCode::Equal;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -626,7 +639,7 @@ namespace IL {
 
             NotEqualInstruction instr{};
             instr.opCode = OpCode::NotEqual;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -642,7 +655,7 @@ namespace IL {
 
             GreaterThanInstruction instr{};
             instr.opCode = OpCode::GreaterThan;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -658,7 +671,7 @@ namespace IL {
 
             GreaterThanEqualInstruction instr{};
             instr.opCode = OpCode::GreaterThanEqual;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -674,7 +687,7 @@ namespace IL {
 
             LessThanInstruction instr{};
             instr.opCode = OpCode::LessThan;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -690,7 +703,7 @@ namespace IL {
 
             LessThanEqualInstruction instr{};
             instr.opCode = OpCode::LessThanEqual;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -705,7 +718,7 @@ namespace IL {
 
             IsInfInstruction instr{};
             instr.opCode = OpCode::IsInf;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
@@ -719,7 +732,7 @@ namespace IL {
 
             IsNaNInstruction instr{};
             instr.opCode = OpCode::IsNaN;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
@@ -731,7 +744,7 @@ namespace IL {
         BasicBlock::TypedIterator <KernelValueInstruction> KernelValue(Backend::IL::KernelValue value) {
             KernelValueInstruction instr{};
             instr.opCode = OpCode::KernelValue;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
@@ -745,7 +758,7 @@ namespace IL {
         BasicBlock::TypedIterator <ExtendedInstruction> Extended(Backend::IL::ExtendedOp op, IX... ix) {
             auto instr = ALLOCA_SIZE(IL::ExtendedInstruction, IL::ExtendedInstruction::GetSize(sizeof...(IX)));
             instr->opCode = OpCode::Extended;
-            instr->source = Source::Invalid();
+            instr->source = source;
             instr->result = map->AllocID();
             instr->extendedOp = op;
             instr->operands.count = sizeof...(IX);
@@ -770,7 +783,7 @@ namespace IL {
 
             BitOrInstruction instr{};
             instr.opCode = OpCode::BitOr;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -786,7 +799,7 @@ namespace IL {
 
             BitAndInstruction instr{};
             instr.opCode = OpCode::BitAnd;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -802,7 +815,7 @@ namespace IL {
 
             OrInstruction instr{};
             instr.opCode = OpCode::Or;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -818,7 +831,7 @@ namespace IL {
 
             AndInstruction instr{};
             instr.opCode = OpCode::And;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
@@ -833,7 +846,7 @@ namespace IL {
 
             NotInstruction instr{};
             instr.opCode = OpCode::Not;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
@@ -848,7 +861,7 @@ namespace IL {
 
             AllInstruction instr{};
             instr.opCode = OpCode::All;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
@@ -863,7 +876,7 @@ namespace IL {
 
             AnyInstruction instr{};
             instr.opCode = OpCode::Any;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
@@ -878,7 +891,7 @@ namespace IL {
 
             BitShiftLeftInstruction instr{};
             instr.opCode = OpCode::BitShiftLeft;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             instr.shift = shift;
@@ -894,7 +907,7 @@ namespace IL {
 
             BitShiftRightInstruction instr{};
             instr.opCode = OpCode::BitShiftRight;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             instr.shift = shift;
@@ -909,7 +922,7 @@ namespace IL {
 
             BranchInstruction instr{};
             instr.opCode = OpCode::Branch;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = IL::InvalidID;
             instr.branch = branch->GetID();
             instr.controlFlow = controlFlow;
@@ -928,7 +941,7 @@ namespace IL {
 
             BranchConditionalInstruction instr{};
             instr.opCode = OpCode::BranchConditional;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = IL::InvalidID;
             instr.cond = cond;
             instr.pass = pass->GetID();
@@ -943,7 +956,7 @@ namespace IL {
         BasicBlock::TypedIterator <ReturnInstruction> Return(ID value = IL::InvalidID) {
             ReturnInstruction instr{};
             instr.opCode = OpCode::Return;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = IL::InvalidID;
             instr.value = value;
             return Op(instr);
@@ -972,7 +985,7 @@ namespace IL {
 
             auto instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(2u));
             instr->opCode = OpCode::Phi;
-            instr->source = Source::Invalid();
+            instr->source = source;
             instr->result = result;
             instr->values.count = 2u;
             instr->values[0].branch = first->GetID();
@@ -992,7 +1005,7 @@ namespace IL {
         BasicBlock::TypedIterator <PhiInstruction> Phi(IL::ID result, uint32_t count, PhiValue* values) {
             auto instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(count));
             instr->opCode = OpCode::Phi;
-            instr->source = Source::Invalid();
+            instr->source = source;
             instr->result = result;
             instr->values.count = count;
 
@@ -1015,7 +1028,7 @@ namespace IL {
 
             AtomicOrInstruction instr{};
             instr.opCode = OpCode::AtomicOr;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.address = address;
             instr.value = value;
@@ -1031,7 +1044,7 @@ namespace IL {
 
             AtomicXOrInstruction instr{};
             instr.opCode = OpCode::AtomicXOr;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.address = address;
             instr.value = value;
@@ -1047,7 +1060,7 @@ namespace IL {
 
             AtomicAndInstruction instr{};
             instr.opCode = OpCode::AtomicAnd;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.address = address;
             instr.value = value;
@@ -1063,7 +1076,7 @@ namespace IL {
 
             AtomicAddInstruction instr{};
             instr.opCode = OpCode::AtomicAdd;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.address = address;
             instr.value = value;
@@ -1079,7 +1092,7 @@ namespace IL {
 
             AtomicMinInstruction instr{};
             instr.opCode = OpCode::AtomicMin;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.address = address;
             instr.value = value;
@@ -1095,7 +1108,7 @@ namespace IL {
 
             AtomicMaxInstruction instr{};
             instr.opCode = OpCode::AtomicMax;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.address = address;
             instr.value = value;
@@ -1110,7 +1123,7 @@ namespace IL {
             
             WaveAllEqualInstruction instr{};
             instr.opCode = OpCode::WaveAllEqual;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
@@ -1125,7 +1138,7 @@ namespace IL {
 
             AtomicExchangeInstruction instr{};
             instr.opCode = OpCode::AtomicExchange;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.address = address;
             instr.value = value;
@@ -1142,7 +1155,7 @@ namespace IL {
 
             AtomicCompareExchangeInstruction instr{};
             instr.opCode = OpCode::AtomicCompareExchange;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
             instr.address = address;
             instr.comparator = comparator;
@@ -1159,7 +1172,7 @@ namespace IL {
 
             auto instr = ALLOCA_SIZE(IL::ExportInstruction, IL::ExportInstruction::GetSize(1u));
             instr->opCode = OpCode::Export;
-            instr->source = Source::Invalid();
+            instr->source = source;
             instr->result = map->AllocID();
             instr->exportID = exportID;
             instr->values.count = 1u;
@@ -1180,7 +1193,7 @@ namespace IL {
             // Alloca on count
             auto instr = ALLOCA_SIZE(IL::ExportInstruction, IL::ExportInstruction::GetSize(dwordCount));
             instr->opCode = OpCode::Export;
-            instr->source = Source::Invalid();
+            instr->source = source;
             instr->result = map->AllocID();
             instr->exportID = exportID;
             instr->values.count = dwordCount;
@@ -1196,7 +1209,7 @@ namespace IL {
         BasicBlock::TypedIterator <AllocaInstruction> Alloca(const Backend::IL::Type* type) {
             AllocaInstruction instr{};
             instr.opCode = OpCode::Alloca;
-            instr.source = Source::Invalid();
+            instr.source = source;
             instr.result = map->AllocID();
 
             return Op(instr, program->GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
@@ -1256,6 +1269,9 @@ namespace IL {
     private:
         /// Current insertion point
         Opaque insertionPoint{};
+
+        /// Source used for instructions
+        Source source = Source::Invalid();
 
         /// Current program
         Program *program{nullptr};

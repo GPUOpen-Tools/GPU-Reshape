@@ -118,7 +118,7 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlo
     mapping.instructionIndex = traceback.instructionIndex;
     
     // Find the source map
-    if (const SpvSourceMap* sourceMap = GetSourceMap(program.GetShaderGUID()); sourceMap && ptr->source.IsValid()) {
+    if (const SpvSourceMap* sourceMap = GetSourceMap(program.GetShaderGUID()); sourceMap && ptr->source.HasAnyCodeOffset()) {
         // Try to get the association
         if (SpvSourceAssociation sourceAssociation = sourceMap->GetSourceAssociation(ptr->source.codeOffset)) {
             mapping.fileUID = sourceAssociation.fileUID;

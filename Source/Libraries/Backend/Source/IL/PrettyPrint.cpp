@@ -710,11 +710,11 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
         }
     }
 
-    if (instr->source.IsValid()) {
+    if (instr->source.HasAnyCodeOffset()) {
         line << " [" << instr->source.codeOffset << "]";
     }
 
-    if (instr->source.symbolic) {
+    if (instr->source.symbolicInstruction) {
         line << " [sym]";
     }
 

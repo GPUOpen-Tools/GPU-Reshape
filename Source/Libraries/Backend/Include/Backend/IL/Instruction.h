@@ -92,7 +92,7 @@ namespace IL {
         bool IsUserInstruction() const {
             // Symbolic instructions may not be part of the original code, however,
             // they contribute to the abstracted structure.
-            return source.IsValid() || source.symbolic;
+            return source.HasAnyCodeOffset() || source.symbolicInstruction;
         }
 
         OpCode opCode;
