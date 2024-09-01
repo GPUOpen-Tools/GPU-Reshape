@@ -57,16 +57,4 @@ struct SpvPhysicalBlockDebugStringSource : public SpvPhysicalBlockSection {
     /// \param remote the remote table
     /// \param out destination debug string source
     void CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockDebugStringSource& out);
-
-    /// Get the linear file index
-    /// \param id string identifier
-    uint32_t GetFileIndex(SpvId id) {
-        return sourceMap.GetFileIndex(id, debugMap.Get(id, SpvOpString));
-    }
-    
-    /// SPIRV debug map
-    SpvDebugMap debugMap;
-
-    /// SPIRV source map
-    SpvSourceMap sourceMap;
 };

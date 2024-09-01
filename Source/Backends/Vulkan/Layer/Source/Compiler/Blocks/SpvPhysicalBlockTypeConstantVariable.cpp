@@ -456,6 +456,16 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 }
                 break;
             }
+
+            case SpvOpExtInst: {
+                uint32_t set = ctx.Peek();
+
+                // Parse debug metadata
+                if (table.shaderDebug.IsDebug100(set)) {
+                    table.shaderDebug.ParseDebug100Instruction(ctx);
+                }
+                break;
+            }
         }
 
         // Next anchor

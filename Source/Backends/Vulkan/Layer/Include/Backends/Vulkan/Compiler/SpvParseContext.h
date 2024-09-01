@@ -68,6 +68,14 @@ struct SpvParseContext {
         ReadOperands();
     }
 
+    /// Peek the next word within the instruction bounds
+    /// \param peekOffset offset to apply, must be in bounds
+    /// \return the peeked word
+    uint32_t Peek(uint32_t peekOffset = 0) {
+        ASSERT(instructionOffset + peekOffset < Get()->GetWordCount(), "Reading beyond instruction bounds");
+        return *(code + instructionOffset + peekOffset);
+    }
+
     /// Read the next word within the instruction bounds
     /// \return the consumed word
     uint32_t operator++(int) {

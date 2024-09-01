@@ -52,11 +52,19 @@ void SpvPhysicalBlockExtensionImport::Parse() {
     }
 }
 
-IL::ID SpvPhysicalBlockExtensionImport::Add(ShortHashString name) {
+IL::ID SpvPhysicalBlockExtensionImport::Get(ShortHashString name) {
     for (const InstructionSet& set : sets) {
         if (set.name.hash == name.hash) {
             return set.id;
         }
+    }
+    
+    return IL::InvalidID;
+}
+
+IL::ID SpvPhysicalBlockExtensionImport::GetOrAdd(ShortHashString name) {
+    if (IL::ID id = Get(name); id != IL::InvalidID) {
+        return id;
     }
 
     // Keep track of it

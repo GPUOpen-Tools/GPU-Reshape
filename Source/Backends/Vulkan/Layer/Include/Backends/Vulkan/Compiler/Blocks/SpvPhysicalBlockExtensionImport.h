@@ -48,10 +48,15 @@ struct SpvPhysicalBlockExtensionImport : public SpvPhysicalBlockSection {
     /// Parse all instructions
     void Parse();
 
-    /// Add new capability
+    /// Get an existing instruction set or invalid
     /// \param name target name
     /// \return instruction set id
-    IL::ID Add(ShortHashString name);
+    IL::ID Get(ShortHashString name);
+
+    /// Get or add a new instruction set
+    /// \param name target name
+    /// \return instruction set id
+    IL::ID GetOrAdd(ShortHashString name);
 
     /// Copy to a new block
     /// \param remote the remote table

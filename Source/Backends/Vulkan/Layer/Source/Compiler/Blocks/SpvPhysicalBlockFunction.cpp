@@ -186,7 +186,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
         // Create source association
         if (sourceAssociation) {
-            table.debugStringSource.sourceMap.AddSourceAssociation(source.codeOffset, sourceAssociation);
+            table.shaderDebug.sourceMap.AddSourceAssociation(source.codeOffset, sourceAssociation);
         }
 
         // Handle instruction
@@ -203,7 +203,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpLine: {
-                sourceAssociation.fileUID = table.debugStringSource.GetFileIndex(ctx++);
+                sourceAssociation.fileUID = table.shaderDebug.GetFileIndex(ctx++);
                 sourceAssociation.line = (ctx++) - 1;
                 sourceAssociation.column = (ctx++) - 1;
 
@@ -1211,6 +1211,12 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpExtInst: {
+                // If debug100, parse the source association
+                if (table.shaderDebug.IsDebug100(ctx.Peek())) {
+                    table.shaderDebug.ParseDebug100FunctionInstruction(ctx, sourceAssociation);
+                    break;
+                }
+                
                 // Emit as unexposed
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
@@ -2188,7 +2194,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
                 // Get or add the instruction set
                 static ShortHashString glsl450Name("GLSL.std.450");
-                SpvId setId = table.extensionImport.Add(glsl450Name);
+                SpvId setId = table.extensionImport.GetOrAdd(glsl450Name);
 
                 // Create instruction
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpExtInst, 5 + static_cast<uint32_t>(operands.Size()), extended->source);

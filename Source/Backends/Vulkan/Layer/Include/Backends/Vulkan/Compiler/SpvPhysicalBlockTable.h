@@ -38,6 +38,7 @@
 #include "Utils/SpvUtilShaderPRMT.h"
 #include "Utils/SpvUtilShaderDescriptorConstantData.h"
 #include "Utils/SpvUtilShaderConstantData.h"
+#include "Utils/SpvUtilShaderDebug.h"
 
 // Common
 #include <Common/Containers/LinearBlockAllocator.h>
@@ -89,6 +90,7 @@ struct SpvPhysicalBlockTable {
     SpvUtilShaderPRMT shaderPRMT;
     SpvUtilShaderDescriptorConstantData shaderDescriptorConstantData;
     SpvUtilShaderConstantData shaderConstantData;
+    SpvUtilShaderDebug shaderDebug;
 
     /// Shared allocator
     LinearBlockAllocator<1024> recordAllocator;

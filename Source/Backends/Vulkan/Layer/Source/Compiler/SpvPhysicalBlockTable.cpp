@@ -39,7 +39,8 @@ SpvPhysicalBlockTable::SpvPhysicalBlockTable(const Allocators &allocators, IL::P
     shaderExport(allocators, program, *this),
     shaderPRMT(allocators, program, *this),
     shaderDescriptorConstantData(allocators, program, *this),
-    shaderConstantData(allocators, program, *this) {
+    shaderConstantData(allocators, program, *this),
+    shaderDebug(allocators, program, *this) {
     /* */
 }
 
@@ -49,13 +50,24 @@ bool SpvPhysicalBlockTable::Parse(const uint32_t *code, uint32_t count) {
         return false;
     }
 
-    // Parse all blocks
+    // Parse extensions before any utilities
     extensionImport.Parse();
+
+    // Setup utilities
+    shaderDebug.Parse();
+
+    // Parse all blocks
     entryPoint.Parse();
     capability.Parse();
     annotation.Parse();
     debugStringSource.Parse();
     typeConstantVariable.Parse();
+
+    // Compile debug data
+    // Function parsing depends on this
+    shaderDebug.FinalizeSource();
+
+    // Finally, parse the functions
     function.Parse();
 
     // OK
@@ -120,4 +132,5 @@ void SpvPhysicalBlockTable::CopyTo(SpvPhysicalBlockTable &out) {
     shaderDescriptorConstantData.CopyTo(out, out.shaderDescriptorConstantData);
     shaderConstantData.CopyTo(out, out.shaderConstantData);
     shaderPRMT.CopyTo(out, out.shaderPRMT);
+    shaderDebug.CopyTo(out, out.shaderDebug);
 }

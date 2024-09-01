@@ -48,7 +48,8 @@ struct SpvSourceMap {
     /// \param language the source language
     /// \param version the version of the source language
     /// \param filename the filename of the section
-    void AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view& filename);
+    /// \return the file uid
+    uint32_t AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view& filename);
 
     /// Add a source fragment to a physical source
     /// \param id the spv identifier, must have an associated physical source

@@ -119,5 +119,5 @@ const SpvSourceMap *SpvModule::GetSourceMap() const {
         return nullptr;
     }
 
-    return &physicalBlockTable->debugStringSource.sourceMap;
+    return &physicalBlockTable->shaderDebug.sourceMap;
 }
