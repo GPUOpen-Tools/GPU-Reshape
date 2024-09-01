@@ -18,9 +18,10 @@ struct CommandBufferDispatchTable
     void Populate(VkDevice device, PFN_vkGetDeviceProcAddr getProcAddr);
 
     /// Get the hook address for a given name
+    /// \param table the optional table for compatibility tests
     /// \param name the name to hook
     /// \return the hooked address, may be nullptr
-    static PFN_vkVoidFunction GetHookAddress(const char* name);
+    static PFN_vkVoidFunction GetHookAddress(CommandBufferDispatchTable* table, const char* name);
 
     // All command buffer callbacks
 $COMMANDBUFFER_CALLBACKS

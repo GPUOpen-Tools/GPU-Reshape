@@ -136,7 +136,7 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     commandBufferDispatchTable.Populate(object, getDeviceProcAddr);
 }
 
-PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
+PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(DeviceDispatchTable* table, const char *name) {
     if (!std::strcmp(name, "vkCreateDevice"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateDevice);
 
@@ -348,7 +348,7 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindImageMemory2KHR);
 
     // Check command hooks
-    if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(name)) {
+    if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(table ? &table->commandBufferDispatchTable : nullptr, name)) {
         return hook;
     }
 

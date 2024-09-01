@@ -118,9 +118,10 @@ struct DeviceDispatchTable {
     void Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr, PFN_vkGetDeviceProcAddr getDeviceProcAddr);
 
     /// Get the hook address for a given name
+    /// \param table the optional table for compatibility tests
     /// \param name the name to hook
     /// \return the hooked address, may be nullptr
-    static PFN_vkVoidFunction GetHookAddress(const char *name);
+    static PFN_vkVoidFunction GetHookAddress(DeviceDispatchTable* table, const char *name);
 
     /// Deep copy of creation info
     VkDeviceCreateInfoDeepCopy createInfo;

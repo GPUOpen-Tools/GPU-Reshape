@@ -149,8 +149,11 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Add get hook address, must be done after white listing
-        gethookaddress << "\tif (!std::strcmp(\"" << name << "\", name))\n";
-        gethookaddress << "\t\treturn reinterpret_cast<PFN_vkVoidFunction>(" << namePrefix << name << ");\n";
+        gethookaddress << "\tif (!std::strcmp(\"" << name << "\", name)) {\n";
+        gethookaddress << "\t\tif (!table || table->next_" << name << ") {\n";
+        gethookaddress << "\t\t\treturn reinterpret_cast<PFN_vkVoidFunction>(" << namePrefix << name << ");\n";
+        gethookaddress << "\t\t}\n";
+        gethookaddress << "\t}\n\n";
 
         // If whitelisted and not hooked, don't generate anything
         if (!isHooked && isWhitelisted) {
