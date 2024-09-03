@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Media;
@@ -72,7 +73,7 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// All child items
         /// </summary>
-        public ObservableCollection<IObservableTreeItem> Files { get; } = new();
+        public ObservableCollectionExtended<IObservableTreeItem> Files { get; } = new();
         
         /// <summary>
         /// Connect to new workspace
@@ -155,14 +156,11 @@ namespace Studio.ViewModels.Tools
         {
             _lastFileComposite.Clear();
 
-            // Subscribe to future pools
-            ShaderViewModel?.Shader?.FileViewModels.ToObservableChangeSet()
-                .OnItemAdded(_ => OnShaderFilePooling())
-                .Subscribe()
+            // Subscribe to pooling
+            ShaderViewModel?.Shader?.WhenAnyValue(x => x.FileViewModels)
+                .SelectMany(items => items.ToObservableChangeSet())
+                .Subscribe(_ => OnShaderFilePooling())
                 .DisposeWith(_lastFileComposite);
-            
-            // Initial pooling
-            OnShaderFilePooling();
         }
 
         /// <summary>
@@ -170,7 +168,8 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         private void OnShaderFilePooling()
         {
-            Files.Clear();
+            // Filter outside the main collection, avoids needless observer events
+            List<IObservableTreeItem> files = new();
 
             // TODO: Feed message through localization
             
@@ -208,7 +207,14 @@ namespace Studio.ViewModels.Tools
             // Collapse all children, root is detached in nature
             foreach (FileNode child in root.Children)
             {
-                CollapseNode(child, Files);
+                CollapseNode(child, files);
+            }
+
+            // Replace file collection
+            using (Files.SuspendNotifications())
+            {
+                Files.Clear();
+                Files.AddRange(files);
             }
             
             // Events
@@ -231,7 +237,7 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         /// <param name="node">target node</param>
         /// <param name="collection">collection to append to</param>
-        private void CollapseNode(FileNode node, ObservableCollection<IObservableTreeItem> collection)
+        private void CollapseNode(FileNode node, IList<IObservableTreeItem> collection)
         {
             // Leaf node?
             if (node.File != null)

@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
 using Studio.Models.Workspace.Objects;
@@ -93,7 +94,7 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// File view models
         /// </summary>
-        public ObservableCollection<ShaderFileViewModel> FileViewModels { get; } = new();
+        public ObservableCollectionExtended<ShaderFileViewModel> FileViewModels { get; } = new();
 
         /// <summary>
         /// Add a new validation object to this shader
