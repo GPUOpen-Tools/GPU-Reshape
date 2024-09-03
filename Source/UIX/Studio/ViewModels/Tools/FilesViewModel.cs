@@ -161,6 +161,9 @@ namespace Studio.ViewModels.Tools
                 .SelectMany(items => items.ToObservableChangeSet())
                 .Subscribe(_ => OnShaderFilePooling())
                 .DisposeWith(_lastFileComposite);
+
+            // Initial pooling
+            OnShaderFilePooling();
         }
 
         /// <summary>
@@ -178,6 +181,7 @@ namespace Studio.ViewModels.Tools
             {
                 IsHelpVisible = true;
                 HelpMessage = "No shader selected";
+                Files.Clear();
                 return;
             }
 
@@ -186,6 +190,7 @@ namespace Studio.ViewModels.Tools
             {
                 IsHelpVisible = true;
                 HelpMessage = "No files";
+                Files.Clear();
                 return;
             }
 
