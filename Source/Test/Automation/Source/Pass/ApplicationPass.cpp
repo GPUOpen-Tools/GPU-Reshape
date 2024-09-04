@@ -32,6 +32,13 @@
 #include <Test/Automation/Data/TestData.h>
 #include <Test/Automation/Data/HistoryData.h>
 
+// System
+#ifdef _WIN32
+#   include <Windows.h>
+#else // _WIN32
+#   error Not implemented
+#endif // _WIN32
+
 // Common
 #include <Common/Win32Object.h>
 #include <Common/RegistryScope.h>
