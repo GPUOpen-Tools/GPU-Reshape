@@ -501,6 +501,8 @@ void BootstrapLayer(const char* invoker) {
         LayerFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1"));
         LayerFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory2"));
         LayerFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(KernelXGetProcAddressOriginal(LayerModule, "HookD3D12EnableExperimentalFeatures"));
+        LayerFunctionTable.next_AMDAGSInitialize           = reinterpret_cast<PFN_AMD_AGS_INITIALIZE>(GetProcAddress(LayerModule, "HookAMDAGSInitialize"));
+        LayerFunctionTable.next_AMDAGSDeinitialize         = reinterpret_cast<PFN_AMD_AGS_DEINITIALIZE>(GetProcAddress(LayerModule, "HookAMDAGSDeinitialize"));
         LayerFunctionTable.next_AMDAGSCreateDevice         = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(GetProcAddress(LayerModule, "HookAMDAGSCreateDevice"));
         LayerFunctionTable.next_AMDAGSDestroyDevice        = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(GetProcAddress(LayerModule, "HookAMDAGSDestroyDevice"));
         LayerFunctionTable.next_AMDAGSPushMarker           = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(GetProcAddress(LayerModule, "HookAMDAGSPushMarker"));
@@ -1540,6 +1542,22 @@ HRESULT HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, v
     return next(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
 }
 
+AGSReturnCode HookAMDAGSInitialize(int agsVersion, const AGSConfiguration* config, AGSContext** context, AGSGPUInfo* gpuInfo) {
+    WaitForDeferredInitialization();
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSInitialize, DetourFunctionTable.next_AMDAGSInitialize);
+    return next(agsVersion, config, context, gpuInfo);
+}
+
+AGSReturnCode HookAMDAGSDeinitialize(AGSContext* context) {
+    WaitForDeferredInitialization();
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSDeinitialize, DetourFunctionTable.next_AMDAGSDeinitialize);
+    return next(context);
+}
+
 AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {
     WaitForDeferredInitialization();
 
@@ -1613,6 +1631,14 @@ void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
     
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
+
+    // Attach against original address
+    DetourFunctionTable.next_AMDAGSInitialize = reinterpret_cast<PFN_AMD_AGS_INITIALIZE>(KernelXGetProcAddressOriginal(handle, "agsInitialize"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSInitialize), reinterpret_cast<void*>(HookAMDAGSInitialize));
+
+    // Attach against original address
+    DetourFunctionTable.next_AMDAGSDeinitialize = reinterpret_cast<PFN_AMD_AGS_DEINITIALIZE>(KernelXGetProcAddressOriginal(handle, "agsDeInitialize"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDeinitialize), reinterpret_cast<void*>(HookAMDAGSDeinitialize));
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSCreateDevice = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice"));
@@ -1757,12 +1783,16 @@ void DetachInitialCreation() {
 
     // Remove AMD ags
     if (DetourFunctionTable.next_AMDAGSCreateDevice) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSInitialize), reinterpret_cast<void*>(HookAMDAGSInitialize));
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDeinitialize), reinterpret_cast<void*>(HookAMDAGSDeinitialize));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSCreateDevice), reinterpret_cast<void*>(HookAMDAGSCreateDevice));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDestroyDevice), reinterpret_cast<void*>(HookAMDAGSDestroyDevice));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPushMarker), reinterpret_cast<void*>(HookAMDAGSPushMarker));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPopMarker), reinterpret_cast<void*>(HookAMDAGSPopMarker));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSSetMarker), reinterpret_cast<void*>(HookAMDAGSSetMarker));
 
+        DetourFunctionTable.next_AMDAGSInitialize = nullptr;
+        DetourFunctionTable.next_AMDAGSDeinitialize = nullptr;
         DetourFunctionTable.next_AMDAGSCreateDevice = nullptr;
         DetourFunctionTable.next_AMDAGSDestroyDevice = nullptr;
         DetourFunctionTable.next_AMDAGSPushMarker = nullptr;

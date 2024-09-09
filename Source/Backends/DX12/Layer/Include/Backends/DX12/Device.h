@@ -52,7 +52,33 @@ HRESULT WINAPI HookID3D12DeviceFactoryEnableExperimentalFeatures(ID3D12DeviceFac
 HRESULT WINAPI HookID3D12DeviceFactoryCreateDevice(ID3D12DeviceFactory *_this, IUnknown *unknown, D3D_FEATURE_LEVEL featureLevel, IID iid, void **ppvDevice);
 
 /// Extension hooks
+DX12_C_LINKAGE AGSReturnCode HookAMDAGSInitialize(int agsVersion, const AGSConfiguration* config, AGSContext** context, AGSGPUInfo* gpuInfo);
+DX12_C_LINKAGE AGSReturnCode HookAMDAGSDeinitialize(AGSContext* context);
 DX12_C_LINKAGE AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams);
+
+/// Conditionally enable the experimental shading models for additional feature support
+void ConditionallyEnableExperimentalMode();
+
+/// Conditionally create the device factory for SDK overrides
+void ConditionallyCreateDeviceFactory();
+
+/// Create a new device
+/// \param device target device
+/// \param pAdapter user supplied adapter
+/// \param minimumFeatureLevel expected minimum feature level
+/// \param riid expected target iid
+/// \param ppDevice target device
+/// \param sdk internal sdk runtime information
+/// \param info optional, creation time configuration
+/// \return status code
+HRESULT WINAPI D3D12CreateDeviceGPUOpen(
+    ID3D12Device* device,
+    IUnknown *pAdapter,
+    D3D_FEATURE_LEVEL minimumFeatureLevel,
+    REFIID riid, void **ppDevice,
+    const D3D12GPUOpenSDKRuntime& sdk,
+    const D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO* info
+);
 
 /// Commit all bridge activity on a device
 /// \param device device to be committed

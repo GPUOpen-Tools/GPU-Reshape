@@ -489,7 +489,7 @@ static HRESULT EnableExperimentalFeaturesWithFastTrack(UINT NumFeatures, const I
     return S_OK;
 }
 
-static void ConditionallyEnableExperimentalMode() {
+void ConditionallyEnableExperimentalMode() {
     // Only attempt this on development modes
     if (static bool DeveloperModeEnabled = IsDevelopmentModeEnabled(); !DeveloperModeEnabled) {
         return;
@@ -507,7 +507,7 @@ static std::filesystem::path GetD3D12CorePath() {
     return GetCurrentModuleDirectory() / "Dependencies" / "D3D12";
 }
 
-static void ConditionallyCreateDeviceFactory() {
+void ConditionallyCreateDeviceFactory() {
     ID3D12SDKConfiguration1* sdkConfig{nullptr};
     
     // Only invoke on first run, successive device creations are lost otherwise
@@ -685,58 +685,6 @@ HRESULT WINAPI HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *
 
     // Enable with fast track
     return EnableExperimentalFeaturesWithFastTrack(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
-}
-
-AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {
-    // Create with base interface
-    AGSDX12DeviceCreationParams params = *creationParams;
-    params.pAdapter = UnwrapObject(params.pAdapter);
-    params.iid = __uuidof(ID3D12Device);
-
-    // Try to enable for faster instrumentation
-    ConditionallyEnableExperimentalMode();
-
-    // Pass down callchain
-    AGSReturnCode code = D3D12GPUOpenFunctionTableNext.next_AMDAGSCreateDevice(context, &params, extensionParams, returnedParams);
-    if (code != AGS_SUCCESS) {
-        return code;
-    }
-
-    // Queried device
-    decltype(AGSDX12ReturnedParams::pDevice) device;
-
-    // AGS *may* internally call the hooked device creation, double the wrap double the trouble
-    if (DeviceState* wrap{nullptr}; SUCCEEDED(returnedParams->pDevice->QueryInterface(__uuidof(DeviceState), reinterpret_cast<void**>(&wrap)))) {
-        // Query wrapped to expected interface
-        if (FAILED(returnedParams->pDevice->QueryInterface(creationParams->iid, reinterpret_cast<void**>(&device)))) {
-            return AGS_FAILURE;
-        }
-
-        // Parent caller implicitly adds a reference to the object, release the fake reference
-        returnedParams->pDevice->Release();
-
-        // OK
-        returnedParams->pDevice = device;
-        return AGS_SUCCESS;
-    }
-
-    // Create wrapper, iid dictated by creation parameters
-    HRESULT hr = D3D12CreateDeviceGPUOpen(
-        reinterpret_cast<ID3D12Device*>(returnedParams->pDevice),
-        creationParams->pAdapter,
-        creationParams->FeatureLevel,
-        creationParams->iid,
-        reinterpret_cast<void**>(&device),
-        D3D12GPUOpenSDKRuntime {},
-        D3D12DeviceGPUOpenGPUReshapeInfo ? &*D3D12DeviceGPUOpenGPUReshapeInfo : nullptr
-    );
-    if (FAILED(hr)) {
-        return AGS_FAILURE;
-    }
-
-    // OK
-    returnedParams->pDevice = device;
-    return AGS_SUCCESS;
 }
 
 HRESULT WINAPI HookID3D12DeviceCheckFeatureSupport(ID3D12Device* device, D3D12_FEATURE Feature, void *pFeatureSupportData, UINT FeatureSupportDataSize) {

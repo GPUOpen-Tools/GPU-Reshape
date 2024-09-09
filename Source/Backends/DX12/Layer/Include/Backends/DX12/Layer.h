@@ -66,6 +66,8 @@ using PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN = HRESULT(WINAPI *)(const struct D3D1
 using PFN_D3D12_GET_GPUOPEN_BOOTSTRAPPER_INFO = void(WINAPI *)(const struct D3D12GPUOpenBootstrapperInfo* out);
 
 /// Extension pointer types
+using PFN_AMD_AGS_INITIALIZE = AGSReturnCode(__stdcall *)(int agsVersion, const AGSConfiguration* config, AGSContext** context, AGSGPUInfo* gpuInfo);
+using PFN_AMD_AGS_DEINITIALIZE = AGSReturnCode(__stdcall *)(AGSContext* context);
 using PFN_AMD_AGS_CREATE_DEVICE = AGSReturnCode(__stdcall *)(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams);
 using PFN_AMD_AGS_DESTRIY_DEVICE = AGSReturnCode(__stdcall *)(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences);
 using PFN_AMD_AGS_PUSH_MARKER = AGSReturnCode(__stdcall *)(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data);
@@ -99,6 +101,8 @@ struct D3D12GPUOpenFunctionTable {
     PFN_ENABLE_EXPERIMENTAL_FEATURES next_EnableExperimentalFeatures{nullptr};
 
     /// Extensions
+    PFN_AMD_AGS_INITIALIZE     next_AMDAGSInitialize{nullptr};
+    PFN_AMD_AGS_DEINITIALIZE   next_AMDAGSDeinitialize{nullptr};
     PFN_AMD_AGS_CREATE_DEVICE  next_AMDAGSCreateDevice{nullptr};
     PFN_AMD_AGS_DESTRIY_DEVICE next_AMDAGSDestroyDevice{nullptr};
     PFN_AMD_AGS_PUSH_MARKER    next_AMDAGSPushMarker{nullptr};
@@ -108,7 +112,15 @@ struct D3D12GPUOpenFunctionTable {
 
 /// SDK state
 struct D3D12GPUOpenSDKRuntime {
+    /// SDK overrides
     bool isAgilitySDKOverride714{false};
+    bool isAMDAGS{false};
+
+    // AGS payload
+    struct {
+        uint32_t reservedUavSpace;
+        uint32_t reservedUavSlot;
+    } AMDAGS;
 };
 
 /// Process state
