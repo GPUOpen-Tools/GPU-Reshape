@@ -54,7 +54,7 @@
                     <DataTemplate x:DataType="vm:WhatsNewStoryViewModel">
                         <controls:StoryRadio
                             Title="{Binding Title}"
-                            Width="250"
+                            Width="225"
                             GroupName="WhatsNewGroup"
                             IsSelected="{Binding Selected}"
                             CommandParameter="{Binding}"
@@ -83,11 +83,11 @@
             <ContentPresenter.ContentTemplate>
                 <DataTemplate x:DataType="vm:WhatsNewViewModel">
                     <md:MarkdownScrollViewer
-                        Margin="300 20 0 0"
+                        Margin="275 20 0 15"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
                         UseResource="True"
-                        MarkdownStyleName="DefaultTheme"
+                        MarkdownStyleName="Empty"
                         Source="{Binding SelectedStory.Uri, FallbackValue='avares://GPUReshape/Resources/WhatsNew/WhatsNew.md'}" />
                 </DataTemplate>
             </ContentPresenter.ContentTemplate>

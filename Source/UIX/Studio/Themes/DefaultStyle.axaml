@@ -235,6 +235,7 @@
     <StyleInclude Source="avares://GPUReshape/Themes/TreeView.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/ValidationButton.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/ScrollBars.axaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/Markdown.axaml" />
     
     <!-- Specialized docking -->
     <StyleInclude Source="avares://GPUReshape/Themes/Dock/DocumentControl.xaml" />
