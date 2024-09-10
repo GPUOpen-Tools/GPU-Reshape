@@ -35,6 +35,7 @@
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
+#include <Backend/Diagnostic/DiagnosticFatal.h>
 
 // Common
 #include <Common/Format.h>
@@ -376,7 +377,8 @@ static void ValidateHighReserved(DeviceState* state, const DescriptorHeapState* 
     }
 
     // Display friendly message
-    MessageBoxA(nullptr, Format(
+    Backend::DiagnosticFatal(
+        "Descriptor Heap Exhaustion",
         "GPU Reshape has exhausted the user descriptor heap {}, please decrease the descriptor count (max {}, ideally {})\n\n"
         "Your driver reports a limit of {} view descriptors. On such driver constraints, GPU Reshape reserves the "
         "high descriptor range of user heaps, as there is no other mechanism to inject descriptors.",
@@ -384,10 +386,7 @@ static void ValidateHighReserved(DeviceState* state, const DescriptorHeapState* 
         driverLimit - idealBound / 4,
         driverLimit - idealBound,
         driverLimit
-    ).c_str(), "GPU Reshape - Descriptor Heap Exhaustion", 0x0);
-
-    // There is no defined behaviour at this point, abort
-    ExitProcess(1u);
+    );
 }
 
 void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {

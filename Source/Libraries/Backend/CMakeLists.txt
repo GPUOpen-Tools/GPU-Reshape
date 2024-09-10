@@ -49,6 +49,7 @@ add_library(
     Source/IL/PrettyGraph.cpp
     Source/IL/Function.cpp
     Source/IL/BasicBlock.cpp
+    Source/Diagnostic/DiagnosticFatal.cpp
 
     # Generated schemas
     ${GeneratedLibSchemaCPP}
