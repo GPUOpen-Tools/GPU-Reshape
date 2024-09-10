@@ -85,6 +85,10 @@ public:
     }
 
 private:
+    /// Report a fatal memory exhaustion message
+    void ReportFatalExhaustion();
+
+private:
     /// Texel address allocator
     TexelAddressAllocator addressAllocator;
 

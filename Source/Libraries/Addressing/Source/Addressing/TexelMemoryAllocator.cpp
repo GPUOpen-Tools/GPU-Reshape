@@ -32,6 +32,7 @@
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/Scheduler/SchedulerTileMapping.h>
 #include <Backend/ShaderData/IShaderDataHost.h>
+#include <Backend/Diagnostic/DiagnosticFatal.h>
 
 // Common
 #include <Common/Registry.h>
@@ -127,9 +128,16 @@ TexelMemoryAllocation TexelMemoryAllocator::Allocate(const ResourceInfo &info) {
     uint32_t allocationDWords = out.headerDWordCount + out.texelBlockCount + 1u;
     out.buddy = texelBuddyAllocator.Allocate(allocationDWords);
 
+    // Report buddy exhaustion
+    if (out.buddy.offset == kInvalidBuddyAllocation.offset) {
+        ReportFatalExhaustion();
+    }
+
     // Just assume the starting offset from the buddy allocation
     out.texelBaseBlock = Cast32Checked(out.buddy.offset);
-    ASSERT(out.texelBaseBlock + allocationDWords < blockCapacityAlignPow2, "Texel capacity exceeded");
+    if (out.texelBaseBlock + allocationDWords >= blockCapacityAlignPow2) {
+        ReportFatalExhaustion();
+    }
         
     // Allocate all tiles in range
 #if USE_TILED_RESOURCES
@@ -141,6 +149,17 @@ TexelMemoryAllocation TexelMemoryAllocator::Allocate(const ResourceInfo &info) {
 
     // OK
     return out;
+}
+
+void TexelMemoryAllocator::ReportFatalExhaustion() {
+    Backend::DiagnosticFatal(
+        "Texel Memory Exhaustion",
+        "GPU Reshape has exhausted the internal texel memory address range of {} blocks ({} unique texels or bytes). "
+        "Texel addressing is limited by hardware texel addressing constraints, will be improved in the future.\n\n"
+        "To work around this issue, disable Texel Addressing in the Launch configuration, or in Settings.",
+        blockCapacityAlignPow2,
+        blockCapacityAlignPow2 * 32u
+    );
 }
 
 void TexelMemoryAllocator::Initialize(CommandBuilder &builder, const TexelMemoryAllocation &allocation, uint32_t failureBlockCode) const {
