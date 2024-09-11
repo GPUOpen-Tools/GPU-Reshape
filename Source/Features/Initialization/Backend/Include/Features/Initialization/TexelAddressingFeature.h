@@ -224,12 +224,19 @@ private:
 
         /// Slot keys
         uint64_t pendingMappingKey{};
+
+        /// Is a whole resource blit pending?
+        bool pendingWholeResourceBlit{false};
     };
 
     /// Map an allocation
     /// \param allocation allocation to be mapped
     /// \param immediate if true, mapped during allocation event
     void MapAllocationNoLock(Allocation& allocation, bool immediate);
+
+    /// Schedule a whole resource blit
+    /// \param allocation allocation to be blitted
+    void ScheduleWholeResourceBlit(Allocation& allocation);
     
     /// Map all pending allocations
     void MapPendingAllocationsNoLock();

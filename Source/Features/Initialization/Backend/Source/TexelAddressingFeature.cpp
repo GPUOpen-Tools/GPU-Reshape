@@ -463,6 +463,7 @@ void TexelAddressingInitializationFeature::MapAllocationNoLock(Allocation &alloc
     }
 
     // If the resource requires a clear for stable metadata, mark the failure code as such
+    // This only occurs in immediate mode, as post-creation tracking will likely produce no relevant data
 #if USE_METADATA_CLEAR_CHECKS
     if (immediate && (allocation.createInfo.createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear)) {
         allocation.failureCode = FailureCode::MetadataRequiresHardwareClear;
@@ -484,6 +485,45 @@ void TexelAddressingInitializationFeature::MapAllocationNoLock(Allocation &alloc
 
     // Mapped!
     allocation.mapped = true;
+
+    // Was a whole resource blit requested?
+    if (allocation.pendingWholeResourceBlit) {
+        allocation.pendingWholeResourceBlit = false;
+        ScheduleWholeResourceBlit(allocation);
+    }
+}
+
+void TexelAddressingInitializationFeature::ScheduleWholeResourceBlit(Allocation &allocation) {
+    ResourceInfo wholeRange = allocation.createInfo.resource;
+    wholeRange.token.DefaultViewToRange();
+    wholeRange.token.viewBaseWidth = 0;
+
+    // Default the descriptors
+    if (wholeRange.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+        wholeRange.bufferDescriptor.offset = 0;
+        wholeRange.bufferDescriptor.width = wholeRange.token.width;
+    } else {
+        // Default base region
+        wholeRange.textureDescriptor.region.offsetX = 0;
+        wholeRange.textureDescriptor.region.offsetY = 0;
+        wholeRange.textureDescriptor.region.offsetZ = 0;
+
+        // Default all sub-resources
+        wholeRange.textureDescriptor.region.baseMip = 0;
+        wholeRange.textureDescriptor.region.baseSlice = 0;
+        wholeRange.textureDescriptor.region.mipCount = wholeRange.token.mipCount;
+
+        // Default full extent
+        wholeRange.textureDescriptor.region.width = wholeRange.token.width;
+        wholeRange.textureDescriptor.region.height = wholeRange.token.height;
+        wholeRange.textureDescriptor.region.depth = wholeRange.token.depthOrSliceCount;
+    }
+    
+    // Mark for host initialization
+    pendingInitializationQueue.push_back(InitialiationTag {
+        .info = wholeRange,
+        .srb = ~0u
+    });
 }
 
 void TexelAddressingInitializationFeature::MapPendingAllocationsNoLock() {
@@ -543,45 +583,26 @@ void TexelAddressingInitializationFeature::OnDestroyResource(const ResourceInfo 
 void TexelAddressingInitializationFeature::OnMapResource(const ResourceInfo &source) {
     std::lock_guard guard(mutex);
 
+    // Mapping any resource is currently treated as marking the entire thing as initialized
+    // This could be tracked on a range basis, but even that doesn't really reflect reality, the
+    // way forward really is page guards on the fetched memory, and, also, tracking things on a
+    // per byte level.
+    
     // Skip if already initialized
     if (puidSRBInitializationSet.contains(source.token.puid)) {
         return;
     }
 
-    // Mapping any resource is currently treated as marking the entire thing as initialized
-    // This could be tracked on a range basis, but even that doesn't really reflect reality, the
-    // way forward really is page guards on the fetched memory, and, also, tracking things on a
-    // per byte level.
-    ResourceInfo wholeRange = source;
-    wholeRange.token.DefaultViewToRange();
-    wholeRange.token.viewBaseWidth = 0;
+    // Get allocation
+    Allocation& allocation = allocations[source.token.puid];
 
-    // Default the descriptors
-    if (wholeRange.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
-        wholeRange.bufferDescriptor.offset = 0;
-        wholeRange.bufferDescriptor.width = wholeRange.token.width;
+    // If the allocation has already been mapped to memory, schedule it immediately
+    if (allocation.mapped) {
+        ScheduleWholeResourceBlit(allocation);
     } else {
-        // Default base region
-        wholeRange.textureDescriptor.region.offsetX = 0;
-        wholeRange.textureDescriptor.region.offsetY = 0;
-        wholeRange.textureDescriptor.region.offsetZ = 0;
-
-        // Default all sub-resources
-        wholeRange.textureDescriptor.region.baseMip = 0;
-        wholeRange.textureDescriptor.region.baseSlice = 0;
-        wholeRange.textureDescriptor.region.mipCount = wholeRange.token.mipCount;
-
-        // Default full extent
-        wholeRange.textureDescriptor.region.width = wholeRange.token.width;
-        wholeRange.textureDescriptor.region.height = wholeRange.token.height;
-        wholeRange.textureDescriptor.region.depth = wholeRange.token.depthOrSliceCount;
+        // Not yet mapped, so, let the future map pick up the request
+        allocation.pendingWholeResourceBlit = true;
     }
-    
-    // Mark for host initialization
-    pendingInitializationQueue.push_back(InitialiationTag {
-        .info = wholeRange,
-        .srb = ~0u
-    });
 }
 
 void TexelAddressingInitializationFeature::OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
@@ -694,7 +715,7 @@ void TexelAddressingInitializationFeature::OnSubmitBatchBegin(SubmissionContext&
     // Force map all allocations pending initialization
     for (const InitialiationTag& tag : pendingInitializationQueue) {
         if (auto it = allocations.find(tag.info.token.puid); it != allocations.end() && !it->second.mapped) {
-            MapAllocationNoLock(it->second, false);
+            ASSERT(it->second.mapped, "Pending initialization without mapping");
 
             // Removing from pending queue
             pendingMappingAllocations.Remove(&it->second);
