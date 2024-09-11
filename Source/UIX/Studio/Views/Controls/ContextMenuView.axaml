@@ -40,7 +40,6 @@
             <Setter Property="IsVisible" Value="{Binding IsVisible}"/>
             <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
             <Setter Property="Command" Value="{Binding Command}"/>
-            <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
         </Style>
     </ContextMenu.Styles>
 </ContextMenu>
