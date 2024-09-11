@@ -84,7 +84,7 @@ AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCre
         skdRuntime.AMDAGS.reservedUavSpace = 0;
         skdRuntime.AMDAGS.reservedUavSlot = extensionParams->uavSlot;
     } else {
-        skdRuntime.AMDAGS.reservedUavSpace = AGS_DX12_SHADER_INSTRINSICS_SPACE_ID;
+        skdRuntime.AMDAGS.reservedUavSpace = AGS_DX12_SHADER_INTRINSICS_SPACE_ID;
         skdRuntime.AMDAGS.reservedUavSlot  = 0;
     }
 

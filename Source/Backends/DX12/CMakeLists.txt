@@ -326,6 +326,7 @@ add_library(
     GRS.Backends.DX12.Layer SHARED
     Layer/Source/DXGIFactory.cpp
     Layer/Source/Device.cpp
+    Layer/Source/AMDAGS.cpp
     Layer/Source/Device11On12.cpp
     Layer/Source/Resource.cpp
     Layer/Source/Fence.cpp
