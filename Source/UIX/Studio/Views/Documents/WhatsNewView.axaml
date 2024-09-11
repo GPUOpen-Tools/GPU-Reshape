@@ -41,6 +41,11 @@
     <Design.DataContext>
         <vm:WhatsNewViewModel />
     </Design.DataContext>
+    
+    <UserControl.Styles>
+        <!-- Open-ended styling is fairly expensive, include it where it's needed -->
+        <StyleInclude Source="avares://GPUReshape/Themes/Markdown.axaml" />
+    </UserControl.Styles>
 
     <Grid Focusable="True" Background="{StaticResource InfoMediumBackground}">
         <ScrollViewer
