@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,34 +24,28 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Avalonia.Controls;
-using ReactiveUI;
-using System;
 using Avalonia;
-using Markdown.Avalonia;
-using Studio.Extensions;
-using Studio.ViewModels.Documents;
+using Avalonia.VisualTree;
 
-namespace Studio.Views.Documents
+namespace Studio.Extensions
 {
-    public partial class WhatsNewView : UserControl
+    public static class VisualExtensions
     {
-        public WhatsNewView()
+        /// <summary>
+        /// Get an immediate visual child of name and type
+        /// </summary>
+        public static T? GetVisualChild<T>(this Visual self, string name) where T : class
         {
-            InitializeComponent();
-
-            // Bind events
-            this.WhenAnyValue(x => x.DataContext).CastNullable<WhatsNewViewModel>().Subscribe(x =>
+            foreach (Visual child in self.GetVisualChildren())
             {
-                // Reset scroll on story change
-                x.WhenAnyValue(y => y.SelectedStory).Subscribe(_ =>
+                if (child.Name == name && child is T typed)
                 {
-                    if (Presenter.GetVisualChild<MarkdownScrollViewer>("MarkdownScrollViewer") is {} markdown)
-                    {
-                        markdown.ScrollValue = Vector.Zero;
-                    }
-                });
-            });
+                    return typed;
+                }
+            }
+
+            // None found
+            return null;
         }
     }
 }

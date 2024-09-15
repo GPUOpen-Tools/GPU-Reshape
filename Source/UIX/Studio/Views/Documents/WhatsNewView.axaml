@@ -84,10 +84,11 @@
             Content="Don't show again"/>
 
         <!-- Wrap in presenter, bug with visual stack -->
-        <ContentPresenter Content="{Binding}">
+        <ContentPresenter x:Name="Presenter" Content="{Binding}">
             <ContentPresenter.ContentTemplate>
                 <DataTemplate x:DataType="vm:WhatsNewViewModel">
                     <md:MarkdownScrollViewer
+                        x:Name="MarkdownScrollViewer"
                         Margin="275 20 0 15"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
