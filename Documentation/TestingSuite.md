@@ -23,6 +23,8 @@ Games
 - **The Riftbreaker** (EXOR Studios, DX12)
 - **Starfield** (Bethesda Game Studios, DX12)
 - **Cyberpunk 2077** (CD PROJEKT RED, DX12)
+- **Counter-Strike 2** (Valve, Vulkan)
+- **Warhammer 40,000: Darktide** (Fatshark, DX12)
 
 Engines
 - **Unreal Engine 4** (Epic Games, DX12, Vulkan)
@@ -45,3 +47,6 @@ Microsoft
 
 WebGPU
 - **Chrome, Standard Sample Applications** (DX12)
+
+User Github Repositories
+- https://github.com/TheRealMJP/DeferredTexturing (TheRealMJP, DX12)
