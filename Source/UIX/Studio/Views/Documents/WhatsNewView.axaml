@@ -98,5 +98,13 @@
                 </DataTemplate>
             </ContentPresenter.ContentTemplate>
         </ContentPresenter>
+        
+        <TextBlock 
+            IsVisible="{Binding IsFootnoteVisible}"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Margin="0 0 10 26"
+            Foreground="{StaticResource StatusForeground}"
+            Text="Update written by Lou Kramer &amp; Miguel Petersen"/>
     </Grid>
 </UserControl>

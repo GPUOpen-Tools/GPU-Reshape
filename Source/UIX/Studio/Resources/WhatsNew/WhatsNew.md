@@ -17,3 +17,5 @@ Including, but not limited to:
 * **Mesh Shader Support**` `  
   Full support for existing feature set against mesh shaders
 * **And, of course, bug fixes**
+
+Please see the left hand sections for more information.

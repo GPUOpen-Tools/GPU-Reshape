@@ -93,6 +93,15 @@ namespace Studio.ViewModels.Documents
             set => this.RaiseAndSetIfChanged(ref _selectedStory, value);
         }
 
+        /// <summary>
+        /// Is the footnote visible?
+        /// </summary>
+        public bool IsFootnoteVisible
+        {
+            get => _isFootnoteVisible;
+            set => this.RaiseAndSetIfChanged(ref _isFootnoteVisible, value);
+        }
+
         public WhatsNewViewModel()
         {
             // Create commands
@@ -140,6 +149,13 @@ namespace Studio.ViewModels.Documents
             // Always have a story selected
             SelectedStory = Stories[0];
             SelectedStory.Selected = true;
+
+            // By default, footnotes are only visible on the welcoming story
+            // A bit hardcoded, but it'll suffice for now
+            this.WhenAnyValue(x => x.SelectedStory).Subscribe(_ =>
+            {
+                IsFootnoteVisible = SelectedStory == Stories[0];
+            });
         }
 
         /// <summary>
@@ -187,5 +203,10 @@ namespace Studio.ViewModels.Documents
         /// Internal story selection
         /// </summary>
         private WhatsNewStoryViewModel? _selectedStory;
+
+        /// <summary>
+        /// Internal footnote state
+        /// </summary>
+        private bool _isFootnoteVisible = false;
     }
 }
