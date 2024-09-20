@@ -72,6 +72,22 @@ struct InstanceDispatchTable {
         return Table.at(key);
     }
 
+    /// Get a table
+    /// \param key the dispatch key
+    /// \return the table, nullptr if not found
+    static InstanceDispatchTable *GetNullable(void *key) {
+        if (!key) {
+            return nullptr;
+        }
+
+        std::lock_guard lock(Mutex);
+        if (auto it = Table.find(key); it != Table.end()) {
+            return it->second;
+        }
+
+        return nullptr;
+    }
+
     /// Populate this table
     /// \param getProcAddr the device proc address fn for the next layer
     void Populate(VkInstance instance, PFN_vkGetInstanceProcAddr getProcAddr);

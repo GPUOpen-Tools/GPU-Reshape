@@ -170,6 +170,9 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
         table->enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     }
 
+    // Next isn't deep-copied, but keep it for the creation
+    table->createInfo->pNext = pCreateInfo->pNext;
+    
     // Set new layers and extensions
     table->createInfo->ppEnabledLayerNames = table->enabledLayers.data();
     table->createInfo->enabledLayerCount = static_cast<uint32_t>(table->enabledLayers.size());
@@ -181,6 +184,9 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     if (result != VK_SUCCESS) {
         return result;
     }
+
+    // Don't keep it around to avoid accidental traversal
+    table->createInfo->pNext = nullptr;
 
     // Create lookup
     InstanceDispatchTable::Add(GetInternalTable(*pInstance), table);
