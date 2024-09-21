@@ -29,3 +29,7 @@ if "%~1"=="%1" (
 ) else (
     xcopy %1 %2 /s /d /Y /i
 )
+
+if not exist "%3" (
+    echo Installed > "%3"
+)

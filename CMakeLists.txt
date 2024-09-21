@@ -36,19 +36,22 @@ cmake_policy(SET CMP0135 NEW)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # All options
-option(INSTALL_THIRD_PARTY     "Fetch and install third party libraries" ON)
-option(ENABLE_BACKEND_VULKAN   "Enables Vulkan backend" ON)
-option(ENABLE_BACKEND_DX12     "Enables DX12 backend" ON)
-option(ENABLE_UIX              "Enables UIX building" ON)
-option(ENABLE_MIXED_COMPILER   "Enables mixed compiler building, separates build folders" ON)
-option(ENABLE_NUGET_RESTORE    "Enables nuget restore during configuration" ON)
-option(ENABLE_X86_BOOTSTRAPPER "Enables the x86 bootstrapper" ON)
-option(ENABLE_EXPERIMENTAL     "Enables experimental features" OFF)
+option(ENABLE_BACKEND_VULKAN    "Enables Vulkan backend" ON)
+option(ENABLE_BACKEND_DX12      "Enables DX12 backend" ON)
+option(ENABLE_UIX               "Enables UIX building" ON)
+option(ENABLE_MIXED_COMPILER    "Enables mixed compiler building, separates build folders" ON)
+option(ENABLE_NUGET_RESTORE     "Enables nuget restore during configuration" ON)
+option(ENABLE_X86_BOOTSTRAPPER  "Enables the x86 bootstrapper" ON)
+option(ENABLE_EXPERIMENTAL      "Enables experimental features" OFF)
+option(DISCONNECTED_THIRD_PARTY "Third party libraries are disconnected by default" ON)
 
 # Developmental options
 option(ENABLE_DXIL_DUMP      "Enables DXIL dumping on shader builds" ON)
 option(ENABLE_ASAN           "Enables ASAN" OFF)
 option(ENABLE_RELEASE_DEBUG  "Enables debug information in release" ON)
+
+# Always compile single tasks with multiple processes
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 
 # Primary build tree?
 if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)

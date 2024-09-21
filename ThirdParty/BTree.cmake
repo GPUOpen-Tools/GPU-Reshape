@@ -33,7 +33,9 @@ ExternalProject_Add(
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/BTree
     USES_TERMINAL_INSTALL 0
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
+    UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
-    INSTALL_COMMAND COMMAND ${CMAKE_SOURCE_DIR}/Build/Utils/Copy "${CMAKE_CURRENT_SOURCE_DIR}/BTree" "${CMAKE_BINARY_DIR}/External/include/btree" /s /d
+    INSTALL_COMMAND ""
+    PATCH_COMMAND COMMAND ${CMAKE_SOURCE_DIR}/Build/Utils/Copy "${CMAKE_CURRENT_SOURCE_DIR}/BTree" "${CMAKE_BINARY_DIR}/External/include/btree" "${CMAKE_BINARY_DIR}/External/stamps/BTree.stamp"
 )

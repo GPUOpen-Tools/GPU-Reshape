@@ -27,11 +27,7 @@
 include(ExternalProject)
 
 # Disconnected third party fetch?
-if (INSTALL_THIRD_PARTY)
-    set(ThirdPartyDisconnected 0)
-else()
-    set(ThirdPartyDisconnected 1)
-endif()
+set(ThirdPartyDisconnected ${DISCONNECTED_THIRD_PARTY})
 
 # Global
 set(ThirdPartyDisconnected ${ThirdPartyDisconnected} CACHE INTERNAL "ThirdPartyDisconnected")
@@ -39,6 +35,7 @@ set(ThirdPartyDisconnected ${ThirdPartyDisconnected} CACHE INTERNAL "ThirdPartyD
 # Create install directories at compile time, avoid potential sharing violations
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/External/include")
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/External/lib")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/External/stamps")
 
 # Install all third party libraries
 # TODO: While the pulled objects are generally trusted, there should be some safety mechanism
