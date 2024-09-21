@@ -10,6 +10,8 @@ Including, but not limited to:
 * **Per-Texel/Byte Addressing for Initialization and Concurrency**` `  
   Initialization and concurrency tracking now occurs on a per-texel/byte level for resources, greatly improving
   accuracy
+* **Placed Resource Validation**` `  
+  Validation that placed resources have been appropriately initialized before use
 * **Infinite Loops**` `  
   No longer experimental, and features additional safe guarding against TDRs
 * **Multi Device/Process**` `  
