@@ -40,7 +40,7 @@ struct SpvPhysicalBlockTable;
 
 /// Shader PRMT utilities
 struct SpvUtilShaderDescriptorConstantData {
-    SpvUtilShaderDescriptorConstantData(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable& table);
+    SpvUtilShaderDescriptorConstantData(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable& table);
 
     /// Compile the records
     /// \param job source job being compiled against
@@ -68,7 +68,7 @@ private:
     Allocators allocators;
 
     /// Backend program
-    Backend::IL::Program &program;
+    IL::Program &program;
 
     /// Parent table
     SpvPhysicalBlockTable& table;

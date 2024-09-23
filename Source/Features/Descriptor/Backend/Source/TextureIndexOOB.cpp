@@ -47,7 +47,7 @@ void TextureIndexOOBExecutor(Test::IDevice *device) {
     // Create sets
     ResourceSetID resourceSet = device->CreateResourceSet(layout, {
         device->CreateCBuffer(64, &cbuffer, sizeof(cbuffer)),
-        device->CreateTexture(ResourceType::RWTexture2D, Backend::IL::Format::R32Float, 64u, 64u, 1u, nullptr, 0)
+        device->CreateTexture(ResourceType::RWTexture2D, IL::Format::R32Float, 64u, 64u, 1u, nullptr, 0)
     });
 
     // Create command buffer

@@ -273,7 +273,7 @@ namespace IL {
     struct SampleTextureInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::SampleTexture;
 
-        Backend::IL::TextureSampleMode sampleMode;
+        IL::TextureSampleMode sampleMode;
 
         ID texture;
         ID sampler;
@@ -395,7 +395,7 @@ namespace IL {
     struct KernelValueInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::KernelValue;
 
-        Backend::IL::KernelValue value;
+        IL::KernelValue value;
     };
 
     struct ExtendedInstruction : public Instruction {
@@ -414,7 +414,7 @@ namespace IL {
             return sizeof(ExtendedInstruction) + operands.ElementSize();
         }
         
-        Backend::IL::ExtendedOp extendedOp;
+        IL::ExtendedOp extendedOp;
         InlineArray<ID> operands;
     };
 

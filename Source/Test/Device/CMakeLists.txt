@@ -61,7 +61,7 @@ target_link_libraries(GRS.Test.Device.Generator PUBLIC GRS.Libraries.Common)
 ExternalProject_Link(GRS.Test.Device.Generator ArgParse)
 
 # Test helper
-function(Project_AddShaderType OUT_GENERATED ARGS HLSL)
+function(Project_AddShaderType OUT_GENERATED ARGS FEATURE_NAME HLSL)
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir GRS.Libraries.Message.Generator SOURCE_DIR)
 
@@ -71,7 +71,7 @@ function(Project_AddShaderType OUT_GENERATED ARGS HLSL)
 
     # Compile the hlsl for all relevant backends
     set(HlslGenerated "")
-    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${HLSL} Source/HLSL/${HLSLName} kShaderCode ${ARGN})
+    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${HLSL} Source/HLSL/${HLSLName} kShaderCode${HLSLName} ${ARGN})
 
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir GRS.Test.Device.Generator SOURCE_DIR)
@@ -89,6 +89,7 @@ function(Project_AddShaderType OUT_GENERATED ARGS HLSL)
             ${Templates}/ShaderType.cppt
         COMMAND GRS.Test.Device.Generator
             -shaderType ${HLSLName}
+            -feature ${FEATURE_NAME}
             -name ${HLSLName}
             -templates ${Templates}
             -o ${HLSLOutPath}
@@ -101,7 +102,7 @@ endfunction()
 # Test helper
 function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
     # Create shader
-    Project_AddShaderType(${OUT_GENERATED} ${ARGS} ${TEST} ${ARGN})
+    Project_AddShaderType(${OUT_GENERATED} ${ARGS} ${FEATURE_NAME} ${TEST} ${ARGN})
 
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir GRS.Libraries.Message.Generator SOURCE_DIR)

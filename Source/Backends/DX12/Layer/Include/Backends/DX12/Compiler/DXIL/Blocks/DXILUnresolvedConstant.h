@@ -30,7 +30,7 @@
 #include <Backend/IL/Constant.h>
 
 struct DXILUnresolvedConstant : IL::Constant {
-    static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::None;
+    static constexpr IL::ConstantKind kKind = IL::ConstantKind::None;
 
     /// The previously unmapped absolute LLVM identifier
     uint32_t mappedId{~0u};

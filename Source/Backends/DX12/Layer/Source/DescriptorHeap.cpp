@@ -215,7 +215,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_SRV_DIMENSION dimensi
             return VirtualResourceMapping {
                 ResourceToken {
                     .puid = IL::kResourceTokenPUIDReservedNullBuffer,
-                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer)
+                    .type = static_cast<uint32_t>(IL::ResourceTokenType::Buffer)
                 }
             };
         }
@@ -231,7 +231,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_SRV_DIMENSION dimensi
             return VirtualResourceMapping {
                 ResourceToken {
                     .puid = IL::kResourceTokenPUIDReservedNullTexture,
-                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
+                    .type = static_cast<uint32_t>(IL::ResourceTokenType::Texture)
                 }
             };
         }
@@ -249,7 +249,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_RTV_DIMENSION dimensi
             return VirtualResourceMapping {
                 ResourceToken {
                     .puid = IL::kResourceTokenPUIDReservedNullBuffer,
-                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer)
+                    .type = static_cast<uint32_t>(IL::ResourceTokenType::Buffer)
                 }
             };
         }
@@ -263,7 +263,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_RTV_DIMENSION dimensi
             return VirtualResourceMapping {
                 ResourceToken {
                     .puid = IL::kResourceTokenPUIDReservedNullTexture,
-                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
+                    .type = static_cast<uint32_t>(IL::ResourceTokenType::Texture)
                 }
             };
         }
@@ -281,7 +281,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_UAV_DIMENSION dimensi
             return VirtualResourceMapping {
                 ResourceToken {
                     .puid = IL::kResourceTokenPUIDReservedNullBuffer,
-                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer)
+                    .type = static_cast<uint32_t>(IL::ResourceTokenType::Buffer)
                 }
             };
         }
@@ -295,7 +295,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_UAV_DIMENSION dimensi
             return VirtualResourceMapping {
                 ResourceToken {
                     .puid = IL::kResourceTokenPUIDReservedNullTexture,
-                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
+                    .type = static_cast<uint32_t>(IL::ResourceTokenType::Texture)
                 }
             };
         }
@@ -318,7 +318,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_DSV_DIMENSION dimensi
             return VirtualResourceMapping {
                 ResourceToken {
                     .puid = IL::kResourceTokenPUIDReservedNullTexture,
-                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
+                    .type = static_cast<uint32_t>(IL::ResourceTokenType::Texture)
                 }
             };
         }
@@ -756,7 +756,7 @@ void WINAPI HookID3D12DeviceCreateSampler(ID3D12Device* _this, const D3D12_SAMPL
         heap->prmTable->WriteMapping(tableOffset, nullptr, VirtualResourceMapping {
             ResourceToken {
                 .puid = 0,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler)
+                .type = static_cast<uint32_t>(IL::ResourceTokenType::Sampler)
             }
         });
     } else {
@@ -785,7 +785,7 @@ void WINAPI HookID3D12DeviceCreateSampler2(ID3D12Device* _this, const D3D12_SAMP
         heap->prmTable->WriteMapping(tableOffset, nullptr, VirtualResourceMapping {
             ResourceToken {
                 .puid = 0,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler)
+                .type = static_cast<uint32_t>(IL::ResourceTokenType::Sampler)
             }
         });
     } else {

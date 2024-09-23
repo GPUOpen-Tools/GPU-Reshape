@@ -29,30 +29,30 @@
 
 void DXILUtilIntrinsics::Compile() {
     // Get type map
-    Backend::IL::TypeMap &typeMap = program.GetTypeMap();
+    IL::TypeMap &typeMap = program.GetTypeMap();
 
     // Inbuilt
-    voidType = typeMap.FindTypeOrAdd(Backend::IL::VoidType{});
+    voidType = typeMap.FindTypeOrAdd(IL::VoidType{});
 
     // Numeric
-    i1Type = typeMap.FindTypeOrAdd(Backend::IL::BoolType{});
-    i8Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
-    i32Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
-    f32Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 32});
-    f16Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 16});
+    i1Type = typeMap.FindTypeOrAdd(IL::BoolType{});
+    i8Type = typeMap.FindTypeOrAdd(IL::IntType{.bitWidth = 8, .signedness = true});
+    i32Type = typeMap.FindTypeOrAdd(IL::IntType{.bitWidth = 32, .signedness = true});
+    f32Type = typeMap.FindTypeOrAdd(IL::FPType{.bitWidth = 32});
+    f16Type = typeMap.FindTypeOrAdd(IL::FPType{.bitWidth = 16});
 
     // Structured handle type
-    handleType = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType{
+    handleType = table.type.typeMap.CompileOrFindNamedType(IL::StructType{
         .memberTypes {
-            typeMap.FindTypeOrAdd(Backend::IL::PointerType{
+            typeMap.FindTypeOrAdd(IL::PointerType{
                 .pointee = i8Type,
-                .addressSpace = Backend::IL::AddressSpace::Function
+                .addressSpace = IL::AddressSpace::Function
             })
         }
     }, "dx.types.Handle");
 
     // Structured size map
-    dimensionsType = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+    dimensionsType = table.type.typeMap.CompileOrFindNamedType(IL::StructType {
         .memberTypes {
             i32Type,
             i32Type,
@@ -62,7 +62,7 @@ void DXILUtilIntrinsics::Compile() {
     }, "dx.types.Dimensions");
 
     // Resource return I32
-    resRetI32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+    resRetI32 = table.type.typeMap.CompileOrFindNamedType(IL::StructType {
         .memberTypes {
             i32Type,
             i32Type,
@@ -73,7 +73,7 @@ void DXILUtilIntrinsics::Compile() {
     }, "dx.types.ResRet.i32");
 
     // Resource return F32
-    resRetF32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+    resRetF32 = table.type.typeMap.CompileOrFindNamedType(IL::StructType {
         .memberTypes {
             f32Type,
             f32Type,
@@ -84,7 +84,7 @@ void DXILUtilIntrinsics::Compile() {
     }, "dx.types.ResRet.f32");
 
     // Resource return I32
-    cbufRetI32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+    cbufRetI32 = table.type.typeMap.CompileOrFindNamedType(IL::StructType {
         .memberTypes {
             i32Type,
             i32Type,
@@ -94,7 +94,7 @@ void DXILUtilIntrinsics::Compile() {
     }, "dx.types.CBufRet.i32");
 
     // Resource return F32
-    cbufRetF32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+    cbufRetF32 = table.type.typeMap.CompileOrFindNamedType(IL::StructType {
         .memberTypes {
             f32Type,
             f32Type,
@@ -104,7 +104,7 @@ void DXILUtilIntrinsics::Compile() {
     }, "dx.types.CBufRet.f32");
 
     // Resource return F32
-    resBind = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+    resBind = table.type.typeMap.CompileOrFindNamedType(IL::StructType {
         .memberTypes {
             i32Type,
             i32Type,
@@ -114,7 +114,7 @@ void DXILUtilIntrinsics::Compile() {
     }, "dx.types.ResBind");
 
     // Resource return F32
-    resourceProperties = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+    resourceProperties = table.type.typeMap.CompileOrFindNamedType(IL::StructType {
         .memberTypes {
             i32Type,
             i32Type
@@ -150,10 +150,10 @@ const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrin
     LLVMBlock *global = &table.scan.GetRoot();
 
     // Get type map
-    Backend::IL::TypeMap &typeMap = program.GetTypeMap();
+    IL::TypeMap &typeMap = program.GetTypeMap();
 
     // Function signature
-    Backend::IL::FunctionType funcTy;
+    IL::FunctionType funcTy;
     funcTy.returnType = GetType(spec.returnType);
 
     // Add parameters
@@ -162,7 +162,7 @@ const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrin
     }
 
     // Compile function type
-    const Backend::IL::FunctionType *fnType = typeMap.FindTypeOrAdd(funcTy);
+    const IL::FunctionType *fnType = typeMap.FindTypeOrAdd(funcTy);
 
     // TODO: Intrinsic parameter group support
     LLVMParameterGroupValue attributes[] = { LLVMParameterGroupValue::NoUnwind };
@@ -224,7 +224,7 @@ const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrin
     return decl;
 }
 
-const Backend::IL::Type *DXILUtilIntrinsics::GetType(const DXILIntrinsicTypeSpec &type) {
+const IL::Type *DXILUtilIntrinsics::GetType(const DXILIntrinsicTypeSpec &type) {
     switch (type) {
         default:
             ASSERT(false, "Not implemented");

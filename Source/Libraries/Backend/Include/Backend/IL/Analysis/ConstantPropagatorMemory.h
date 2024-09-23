@@ -49,19 +49,19 @@ namespace IL {
                 }
 
                 propagationValues[constant->id] = PropagatedValue {
-                    .lattice = Backend::IL::PropagationResult::Mapped,
+                    .lattice = IL::PropagationResult::Mapped,
                     .constant = constant
                 };
             }
 
             // Set global variable constants
-            for (const Backend::IL::Variable* variable : program.GetVariableList()) {
+            for (const IL::Variable* variable : program.GetVariableList()) {
                 if (!variable->initializer) {
                     continue;
                 }
 
                 PropagatedValue value {
-                    .lattice = Backend::IL::PropagationResult::Mapped,
+                    .lattice = IL::PropagationResult::Mapped,
                     .constant = nullptr
                 };
 
@@ -69,9 +69,9 @@ namespace IL {
                     default:
                         value.constant = variable->initializer;
                         break;
-                    case Backend::IL::TypeKind::Struct:
-                    case Backend::IL::TypeKind::Array:
-                    case Backend::IL::TypeKind::Vector:
+                    case IL::TypeKind::Struct:
+                    case IL::TypeKind::Array:
+                    case IL::TypeKind::Vector:
                         CreateMemoryTree(&GetMemoryRange(value)->tree, variable->initializer);
                         break;
                 }
@@ -127,7 +127,7 @@ namespace IL {
 
         struct PropagatedMemory {
             /// Memory lattice value
-            Backend::IL::PropagationResult lattice{Backend::IL::PropagationResult::None};
+            IL::PropagationResult lattice{IL::PropagationResult::None};
 
             /// Reference used for the memory location
             MemoryAddressChain addressChain;
@@ -159,7 +159,7 @@ namespace IL {
 
         struct PropagatedValue {
             /// Current lattice value
-            Backend::IL::PropagationResult lattice{Backend::IL::PropagationResult::None};
+            IL::PropagationResult lattice{IL::PropagationResult::None};
 
             /// Optional, memory range on indirections
             /// Not that each reference may have a different lattice value
@@ -224,7 +224,7 @@ namespace IL {
             bool hasBaseCompositeOffset = false;
 
             // Walk reverse address back (index -> ... -> allocation)
-            Backend::IL::VisitGlobalAddressChainReverse(program, id, [&](ID id, bool isCompositeBase) {
+            IL::VisitGlobalAddressChainReverse(program, id, [&](ID id, bool isCompositeBase) {
                 if (isCompositeBase) {
                     hasBaseCompositeOffset |= IsBaseOffsetNonConstantZero(id);
                     return true;
@@ -304,9 +304,9 @@ namespace IL {
             switch (constant->type->kind) {
                 default:
                     break;
-                case Backend::IL::TypeKind::Struct:
-                case Backend::IL::TypeKind::Array:
-                case Backend::IL::TypeKind::Vector:
+                case IL::TypeKind::Struct:
+                case IL::TypeKind::Array:
+                case IL::TypeKind::Vector:
                     CreateMemoryTreeFromImmediate(node, constant);
                     break;
             }
@@ -369,7 +369,7 @@ namespace IL {
             const PropagatedValue& value = propagationValues.at(id);
 
             // Set payload
-            if (value.lattice == Backend::IL::PropagationResult::Mapped) {
+            if (value.lattice == IL::PropagationResult::Mapped) {
                 node.type = MemoryAddressType::Constant;
                 node.constant = value.constant;
             } else {
@@ -417,21 +417,21 @@ namespace IL {
         /// Composite a known propagated memory range
         void CompositePropagatedMemoryRange(PropagatedValue& value, ID id) {
             // Get type of constant
-            const Backend::IL::Type* type = program.GetTypeMap().GetType(id);
+            const IL::Type* type = program.GetTypeMap().GetType(id);
             if (!type) {
                 ASSERT(false, "Failed to map constant to pointer kind");
                 return;
             }
 
             // Must be pointer type
-            const auto* ptrType = type->Cast<Backend::IL::PointerType>();
+            const auto* ptrType = type->Cast<IL::PointerType>();
             if (!ptrType) {
                 ASSERT(false, "Non-indirect memory propagation range");
                 return;
             }
 
             // Assume the lattice is mapped
-            Backend::IL::PropagationResult lattice = Backend::IL::PropagationResult::Mapped;
+            IL::PropagationResult lattice = IL::PropagationResult::Mapped;
 
             // Construct the constant
             const Constant* constant = CompositeConstant(ptrType->pointee, &value.memory->tree, lattice);
@@ -445,7 +445,7 @@ namespace IL {
         }
 
         /// Composite a memory node to a constant
-        const Constant* CompositeConstant(const Backend::IL::Type* type, MemoryAccessTreeNode* node, Backend::IL::PropagationResult& lattice) {
+        const Constant* CompositeConstant(const IL::Type* type, MemoryAccessTreeNode* node, IL::PropagationResult& lattice) {
             if (node->memory && node->memory->value && node->memory->value->Is<UnexposedConstant>()) {
                 return node->memory->value;
             }
@@ -454,32 +454,32 @@ namespace IL {
                 default: {
                     return nullptr;
                 }
-                case Backend::IL::TypeKind::Int:
-                case Backend::IL::TypeKind::FP:
-                case Backend::IL::TypeKind::Bool:
+                case IL::TypeKind::Int:
+                case IL::TypeKind::FP:
+                case IL::TypeKind::Bool:
                     return CompositePrimitiveConstant(type, node, lattice);
-                case Backend::IL::TypeKind::Array:
-                    return CompositeConstant(type->As<Backend::IL::ArrayType>(), node, lattice);
-                case Backend::IL::TypeKind::Vector:
-                    return CompositeConstant(type->As<Backend::IL::VectorType>(), node, lattice);
+                case IL::TypeKind::Array:
+                    return CompositeConstant(type->As<IL::ArrayType>(), node, lattice);
+                case IL::TypeKind::Vector:
+                    return CompositeConstant(type->As<IL::VectorType>(), node, lattice);
             }
         }
 
         /// Composite a memory node to a constant
-        const Constant* CompositePrimitiveConstant(const Backend::IL::Type* type, MemoryAccessTreeNode* node, Backend::IL::PropagationResult& lattice) {
+        const Constant* CompositePrimitiveConstant(const IL::Type* type, MemoryAccessTreeNode* node, IL::PropagationResult& lattice) {
             if (!node->memory) {
                 return nullptr;
             }
 
-            if (node->memory->lattice != Backend::IL::PropagationResult::Mapped) {
-                lattice = Backend::IL::PropagationResult::Varying;
+            if (node->memory->lattice != IL::PropagationResult::Mapped) {
+                lattice = IL::PropagationResult::Varying;
             }
 
             return node->memory->value;
         }
 
         /// Composite a memory node to a constant
-        const Constant* CompositeConstant(const Backend::IL::ArrayType* type, MemoryAccessTreeNode* node, Backend::IL::PropagationResult& lattice) {
+        const Constant* CompositeConstant(const IL::ArrayType* type, MemoryAccessTreeNode* node, IL::PropagationResult& lattice) {
             ArrayConstant array;
             array.elements.resize(type->count);
 
@@ -509,7 +509,7 @@ namespace IL {
             // Check for partial constants
             for (const Constant* element : array.elements) {
                 if (!element) {
-                    lattice = Backend::IL::PropagationResult::Varying;
+                    lattice = IL::PropagationResult::Varying;
                 }
 
                 isSymbolic |= !element || element->IsSymbolic();
@@ -524,7 +524,7 @@ namespace IL {
         }
 
         /// Composite a memory node to a constant
-        const Constant* CompositeConstant(const Backend::IL::VectorType* type, MemoryAccessTreeNode* node, Backend::IL::PropagationResult& lattice) {
+        const Constant* CompositeConstant(const IL::VectorType* type, MemoryAccessTreeNode* node, IL::PropagationResult& lattice) {
             VectorConstant array;
             array.elements.resize(type->dimension);
 
@@ -554,7 +554,7 @@ namespace IL {
             // Check for partial constants
             for (const Constant* element : array.elements) {
                 if (!element) {
-                    lattice = Backend::IL::PropagationResult::Varying;
+                    lattice = IL::PropagationResult::Varying;
                 }
 
                 isSymbolic |= !element || element->IsSymbolic();
@@ -574,7 +574,7 @@ namespace IL {
                 const PropagatedValue& value = propagationValues.at(stack[i]);
 
                 // Unmapped?
-                if (value.lattice != Backend::IL::PropagationResult::Mapped) {
+                if (value.lattice != IL::PropagationResult::Mapped) {
                     return nullptr;
                 }
 
@@ -589,15 +589,15 @@ namespace IL {
                         // Unknown traversal
                         return nullptr;
                     }
-                    case Backend::IL::ConstantKind::Array: {
+                    case IL::ConstantKind::Array: {
                         auto array = value.constant->As<ArrayConstant>();
                         return array->elements.at(index->value);
                     }
-                    case Backend::IL::ConstantKind::Struct: {
+                    case IL::ConstantKind::Struct: {
                         auto _struct = value.constant->As<StructConstant>();
                         return _struct->members.at(index->value);
                     }
-                    case Backend::IL::ConstantKind::Vector: {
+                    case IL::ConstantKind::Vector: {
                         auto _struct = value.constant->As<VectorConstant>();
                         return _struct->elements.at(index->value);
                     }
@@ -614,20 +614,20 @@ namespace IL {
             switch (constant->kind) {
                 default: {
                     node->memory = new PropagatedMemory {
-                        .lattice = Backend::IL::PropagationResult::Mapped,
+                        .lattice = IL::PropagationResult::Mapped,
                         .value = constant
                     };
                     break;
                 }
-                case Backend::IL::ConstantKind::Array: {
+                case IL::ConstantKind::Array: {
                     auto array = constant->As<ArrayConstant>();
 
                     for (uint32_t i = 0; i < array->elements.size(); i++) {
                         MemoryAddressNode addressNode {
                             .type = MemoryAddressType::Constant,
                             .constant = program.GetConstants().FindConstantOrAdd(
-                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true}),
-                                Backend::IL::IntConstant{.value = i}
+                                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth = 32, .signedness = true}),
+                                IL::IntConstant{.value = i}
                             )
                         };
 
@@ -637,15 +637,15 @@ namespace IL {
                     }
                     break;
                 }
-                case Backend::IL::ConstantKind::Struct: {
+                case IL::ConstantKind::Struct: {
                     auto _struct = constant->As<StructConstant>();
 
                     for (uint32_t i = 0; i < _struct->members.size(); i++) {
                         MemoryAddressNode addressNode {
                             .type = MemoryAddressType::Constant,
                             .constant = program.GetConstants().FindConstantOrAdd(
-                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true}),
-                                Backend::IL::IntConstant{.value = i}
+                                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth = 32, .signedness = true}),
+                                IL::IntConstant{.value = i}
                             )
                         };
 
@@ -655,15 +655,15 @@ namespace IL {
                     }
                     break;
                 }
-                case Backend::IL::ConstantKind::Vector: {
+                case IL::ConstantKind::Vector: {
                     auto _struct = constant->As<VectorConstant>();
 
                     for (uint32_t i = 0; i < _struct->elements.size(); i++) {
                         MemoryAddressNode addressNode {
                             .type = MemoryAddressType::Constant,
                             .constant = program.GetConstants().FindConstantOrAdd(
-                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true}),
-                                Backend::IL::IntConstant{.value = i}
+                                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth = 32, .signedness = true}),
+                                IL::IntConstant{.value = i}
                             )
                         };
 

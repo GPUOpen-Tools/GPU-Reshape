@@ -48,7 +48,7 @@ struct DXILValueReader;
 
 /// Function block
 struct DXILPhysicalBlockFunction : public DXILPhysicalBlockSection {
-    DXILPhysicalBlockFunction(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+    DXILPhysicalBlockFunction(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Copy this block
     /// \param out destination block
@@ -96,7 +96,7 @@ public:
 private:
     struct SVOXElement {
         /// Extracted type
-        const Backend::IL::Type* type{nullptr};
+        const IL::Type* type{nullptr};
 
         /// Extracted value
         IL::ID value{IL::InvalidID};
@@ -133,26 +133,26 @@ private:
     /// @param values all values inside the struct
     /// @param count number of values
     /// @return svox identifier
-    IL::ID AllocateSVOStructSequential(const Backend::IL::Type *type, const IL::ID *values, uint32_t count);
+    IL::ID AllocateSVOStructSequential(const IL::Type *type, const IL::ID *values, uint32_t count);
 
     /// Iterate a scalar / vector-of-x operation
     /// \param lhs lhs operand
     /// \param rhs rhs operand
-    /// \param functor functor(const Backend::IL::Type* type, uint32_t value, uint32_t index, uint32_t max)
+    /// \param functor functor(const IL::Type* type, uint32_t value, uint32_t index, uint32_t max)
     template<typename F>
     void IterateSVOX(LLVMBlock* block, IL::ID value, F&& functor);
 
     /// Compile a unary scalar / vector-of-x operation
     /// \param lhs lhs operand
     /// \param rhs rhs operand
-    /// \param functor functor(const Backend::IL::Type* type, uint32_t result, uint32_t lhs)
+    /// \param functor functor(const IL::Type* type, uint32_t result, uint32_t lhs)
     template<typename F>
     void UnaryOpSVOX(LLVMBlock* block, IL::ID result, IL::ID value, F&& functor);
 
     /// Compile a binary scalar / vector-of-x operation
     /// \param lhs lhs operand
     /// \param rhs rhs operand
-    /// \param functor functor(const Backend::IL::Type* type, uint32_t result, uint32_t lhs, uint32_t rhs)
+    /// \param functor functor(const IL::Type* type, uint32_t result, uint32_t lhs, uint32_t rhs)
     template<typename F>
     void BinaryOpSVOX(LLVMBlock* block, IL::ID result, IL::ID lhs, IL::ID rhs, F&& functor);
 
@@ -269,17 +269,17 @@ private:
     /// Get a resource type from annotation
     /// \param properties resource properties
     /// \return resource type
-    const Backend::IL::Type* GetTypeFromProperties(const DXILResourceProperties& properties);
+    const IL::Type* GetTypeFromProperties(const DXILResourceProperties& properties);
 
     /// Get a texture resource type from annotation
     /// \param properties resource properties
     /// \return resource type
-    const Backend::IL::Type* GetTypeFromTextureProperties(const DXILResourceProperties& properties);
+    const IL::Type* GetTypeFromTextureProperties(const DXILResourceProperties& properties);
 
     /// Get a buffer resource type from annotation
     /// \param properties resource properties
     /// \return resource type
-    const Backend::IL::Type* GetTypeFromBufferProperties(const DXILResourceProperties& properties);
+    const IL::Type* GetTypeFromBufferProperties(const DXILResourceProperties& properties);
 
 private:
     /// Compile an export instruction

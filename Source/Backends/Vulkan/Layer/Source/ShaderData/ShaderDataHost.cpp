@@ -135,7 +135,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    bufferInfo.size = Backend::IL::GetSize(info.format) * info.elementCount;
+    bufferInfo.size = IL::GetSize(info.format) * info.elementCount;
 
     // If tiled, append flags
     if (info.flagSet & ShaderDataBufferFlag::Tiled) {

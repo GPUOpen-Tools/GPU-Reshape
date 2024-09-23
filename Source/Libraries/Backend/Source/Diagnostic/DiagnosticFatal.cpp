@@ -26,12 +26,8 @@
 
 #include <Backend/Diagnostic/DiagnosticFatal.h>
 
-// System
-#if _WIN32
-#   include <Windows.h>
-#else // _WIN32
-#   error Not implemented
-#endif // _WIN32
+// Common
+#include <Common/System.h>
 
 void Backend::DiagnosticFatal(const char* subject, const char* message) {
 #if _WIN32

@@ -28,7 +28,7 @@
 #include <fstream>
 #endif // PROPAGATION_DEBUG_CONTROL_FLOW
 
-namespace Backend::IL {
+namespace IL {
     class PropagationEngine {
     public:
         /** Loosely based on

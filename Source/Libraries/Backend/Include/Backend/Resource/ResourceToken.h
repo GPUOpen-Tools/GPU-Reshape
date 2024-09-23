@@ -36,13 +36,13 @@
 /// Unpacked token type
 struct ResourceToken {
     /// Get the type of the resource
-    Backend::IL::ResourceTokenType GetType() const {
-        return static_cast<Backend::IL::ResourceTokenType>(type);
+    IL::ResourceTokenType GetType() const {
+        return static_cast<IL::ResourceTokenType>(type);
     }
 
     /// Get the format of the resource
-    Backend::IL::Format GetFormat() const {
-        return static_cast<Backend::IL::Format>(formatId);
+    IL::Format GetFormat() const {
+        return static_cast<IL::Format>(formatId);
     }
 
     /// Default all view properties to the full range

@@ -40,7 +40,7 @@
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/lib/Bitcode/Writer/BitcodeWriter.cpp
  */
 
-DXILPhysicalBlockFunctionAttribute::DXILPhysicalBlockFunctionAttribute(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table):
+DXILPhysicalBlockFunctionAttribute::DXILPhysicalBlockFunctionAttribute(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table):
     DXILPhysicalBlockSection(allocators.Tag(kAllocModuleDXILFunctionAttributes), program, table),
     parameterAttributeGroups(allocators.Tag(kAllocModuleDXILFunctionAttributes)),
     parameterGroups(allocators.Tag(kAllocModuleDXILFunctionAttributes)) {

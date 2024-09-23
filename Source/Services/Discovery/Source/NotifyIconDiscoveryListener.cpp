@@ -28,13 +28,13 @@
 
 // Common
 #include <Common/FileSystem.h>
+#include <Common/System.h>
 
 // Std
 #include <wchar.h>
 
 // System
 #ifdef _WIN32
-#   include <Windows.h>
 #   include <process.h>
 #   include <tlhelp32.h>
 #   include <Psapi.h>

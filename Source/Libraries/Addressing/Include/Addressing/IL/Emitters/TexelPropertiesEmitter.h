@@ -42,7 +42,7 @@
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 #include <Backend/IL/InstructionValueCommon.h>
 
-namespace Backend::IL {
+namespace IL {
     template<typename E = Emitter<>>
     struct TexelPropertiesEmitter {
         static constexpr bool kGuardCoordinates = true;
@@ -273,7 +273,7 @@ namespace Backend::IL {
                     auto _instr = instr->As<IL::LoadInstruction>();
 
                     // Validate type
-                    auto type = program->GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                    auto type = program->GetTypeMap().GetType(_instr->address)->As<IL::PointerType>();
                     ASSERT(IsGenericResourceAddressSpace(type), "Invalid load instruction");
 
                     // Get the coordinate and offset from the access chain
@@ -285,7 +285,7 @@ namespace Backend::IL {
                     auto _instr = instr->As<IL::StoreInstruction>();
                     
                     // Validate type
-                    auto type = program->GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                    auto type = program->GetTypeMap().GetType(_instr->address)->As<IL::PointerType>();
                     ASSERT(IsGenericResourceAddressSpace(type), "Invalid load instruction");
 
                     // Get the coordinate and offset from the access chain
@@ -323,7 +323,7 @@ namespace Backend::IL {
             // Different resource types may use different addressing schemas
             TexelAddressEmitter addressEmitter(emitter, token, subresourceEmitter);
             if (isMemoryAddressing) {
-                ASSERT(resourceType->Is<Backend::IL::BufferType>(), "Expected buffer type");
+                ASSERT(resourceType->Is<IL::BufferType>(), "Expected buffer type");
                 out.address = addressEmitter.LocalMemoryTexelAddress(out.x, out.offset, out.texelCountLiteral);
             } else if (resourceType->Is<TextureType>()) {
                 out.address = addressEmitter.LocalTextureTexelAddress(out.x, out.y, out.z, out.mip, isVolumetric);

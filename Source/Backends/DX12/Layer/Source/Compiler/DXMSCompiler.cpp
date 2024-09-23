@@ -30,13 +30,11 @@
 #include <Backends/DX12/Compiler/IDXCompilerEnvironment.h>
 #include <Backends/DX12/Compiler/IDXModule.h>
 
-// System
-#include <Windows.h>
-
 // Common
 #include <Common/FileSystem.h>
 #include <Common/Containers/TrivialStackVector.h>
 #include <Common/String.h>
+#include <Common/System.h>
 
 // Std
 #include <string>

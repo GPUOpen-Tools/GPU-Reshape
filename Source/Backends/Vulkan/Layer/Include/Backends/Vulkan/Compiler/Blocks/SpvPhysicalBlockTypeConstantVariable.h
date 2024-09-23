@@ -48,7 +48,7 @@ struct SpvJob;
 
 /// Type constant and variable physical block
 struct SpvPhysicalBlockTypeConstantVariable : public SpvPhysicalBlockSection {
-    SpvPhysicalBlockTypeConstantVariable(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable& table);
+    SpvPhysicalBlockTypeConstantVariable(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable& table);
 
     /// Parse all instructions
     void Parse();
@@ -95,7 +95,7 @@ public:
     }
 
     /// Get the block type
-    const Backend::IL::Type* GetPushConstantBlockType() const {
+    const IL::Type* GetPushConstantBlockType() const {
         return pushConstantBlockType;
     }
 
@@ -109,7 +109,7 @@ public:
     /// \param builtin given id, created if not present
     /// \param type expected value type
     /// \return existing or allocated id
-    IL::ID FindOrCreateInput(SpvBuiltIn builtin, const Backend::IL::Type* type);
+    IL::ID FindOrCreateInput(SpvBuiltIn builtin, const IL::Type* type);
     
     /// Get the literal of a known constant
     /// \param id source id
@@ -124,13 +124,13 @@ public:
                 ASSERT(false, "Non-literal constant");
                 return T{};
             }
-            case Backend::IL::ConstantKind::Bool: {
+            case IL::ConstantKind::Bool: {
                 return static_cast<T>(constant->As<IL::BoolConstant>()->value);
             }
-            case Backend::IL::ConstantKind::Int: {
+            case IL::ConstantKind::Int: {
                 return static_cast<T>(constant->As<IL::IntConstant>()->value);
             }
-            case Backend::IL::ConstantKind::FP: {
+            case IL::ConstantKind::FP: {
                 return static_cast<T>(constant->As<IL::FPConstant>()->value);
             }
         }
@@ -141,7 +141,7 @@ private:
 
 private:
     /// PC structure type
-    const Backend::IL::Type* pushConstantBlockType{nullptr};
+    const IL::Type* pushConstantBlockType{nullptr};
 
     /// PC user member offset
     uint32_t pushConstantMemberOffset = 0;

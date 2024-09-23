@@ -39,4 +39,4 @@ struct VirtualResourceMapping {
 };
 
 /// Validation
-static_assert(sizeof(VirtualResourceMapping) == sizeof(uint32_t) * static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count), "Metadata mismatch");
+static_assert(sizeof(VirtualResourceMapping) == sizeof(uint32_t) * static_cast<uint32_t>(IL::ResourceTokenMetadataField::Count), "Metadata mismatch");

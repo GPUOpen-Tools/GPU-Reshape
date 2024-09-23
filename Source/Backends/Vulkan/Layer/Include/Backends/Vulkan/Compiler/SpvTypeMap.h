@@ -44,7 +44,7 @@
 #include <unordered_map>
 
 struct SpvTypeMap {
-    SpvTypeMap(const Allocators& allocators, Backend::IL::TypeMap* programMap) : allocators(allocators), programMap(programMap) {
+    SpvTypeMap(const Allocators& allocators, IL::TypeMap* programMap) : allocators(allocators), programMap(programMap) {
 
     }
 
@@ -70,8 +70,8 @@ struct SpvTypeMap {
     /// \param decl the IL type declaration
     /// \return the new type
     template<typename T>
-    const Backend::IL::Type* AddType(SpvId id, uint32_t sourceOffset, const T& decl) {
-        const Backend::IL::Type* type = programMap->AddType<T>(id, sourceOffset, decl);
+    const IL::Type* AddType(SpvId id, uint32_t sourceOffset, const T& decl) {
+        const IL::Type* type = programMap->AddType<T>(id, sourceOffset, decl);
         AddMapping(id, type);
         return type;
     }
@@ -79,7 +79,7 @@ struct SpvTypeMap {
     /// Get a type from a given spv identifier
     /// \param id the identifier
     /// \return nullptr if not found
-    const Backend::IL::Type* GetTypeFromId(SpvId id) const {
+    const IL::Type* GetTypeFromId(SpvId id) const {
         auto it = idMap.find(id);
         if (it == idMap.end()) {
             return nullptr;
@@ -91,7 +91,7 @@ struct SpvTypeMap {
     /// Get the type for a given id
     /// \param id the id to be looked up
     /// \return the resulting type, may be nullptr
-    SpvId GetSpvTypeId(const Backend::IL::Type* type) {
+    SpvId GetSpvTypeId(const IL::Type* type) {
         auto it = spvMap.find(type);
         if (it == spvMap.end()) {
             return EmitSpvType(type);
@@ -103,45 +103,45 @@ struct SpvTypeMap {
     /// Add a mapping
     /// \param id destination id
     /// \param type type to be mapped
-    void AddMapping(SpvId id, const Backend::IL::Type* type) {
+    void AddMapping(SpvId id, const IL::Type* type) {
         spvMap[type] = id;
         idMap[id] = type;
     }
 
 private:
-    SpvId EmitSpvType(const Backend::IL::Type* type) {
+    SpvId EmitSpvType(const IL::Type* type) {
         switch (type->kind) {
             default:
                 ASSERT(false, "Invalid type compilation");
                 return InvalidSpvId;
-            case Backend::IL::TypeKind::Bool:
-                return EmitSpvType(static_cast<const Backend::IL::BoolType*>(type));
-            case Backend::IL::TypeKind::Void:
-                return EmitSpvType(static_cast<const Backend::IL::VoidType*>(type));
-            case Backend::IL::TypeKind::Int:
-                return EmitSpvType(static_cast<const Backend::IL::IntType*>(type));
-            case Backend::IL::TypeKind::FP:
-                return EmitSpvType(static_cast<const Backend::IL::FPType*>(type));
-            case Backend::IL::TypeKind::Vector:
-                return EmitSpvType(static_cast<const Backend::IL::VectorType*>(type));
-            case Backend::IL::TypeKind::Matrix:
-                return EmitSpvType(static_cast<const Backend::IL::MatrixType*>(type));
-            case Backend::IL::TypeKind::Pointer:
-                return EmitSpvType(static_cast<const Backend::IL::PointerType*>(type));
-            case Backend::IL::TypeKind::Array:
-                return EmitSpvType(static_cast<const Backend::IL::ArrayType*>(type));
-            case Backend::IL::TypeKind::Texture:
-                return EmitSpvType(static_cast<const Backend::IL::TextureType*>(type));
-            case Backend::IL::TypeKind::Buffer:
-                return EmitSpvType(static_cast<const Backend::IL::BufferType*>(type));
-            case Backend::IL::TypeKind::Struct:
-                return EmitSpvType(static_cast<const Backend::IL::StructType*>(type));
-            case Backend::IL::TypeKind::Function:
-                return EmitSpvType(static_cast<const Backend::IL::FunctionType*>(type));
+            case IL::TypeKind::Bool:
+                return EmitSpvType(static_cast<const IL::BoolType*>(type));
+            case IL::TypeKind::Void:
+                return EmitSpvType(static_cast<const IL::VoidType*>(type));
+            case IL::TypeKind::Int:
+                return EmitSpvType(static_cast<const IL::IntType*>(type));
+            case IL::TypeKind::FP:
+                return EmitSpvType(static_cast<const IL::FPType*>(type));
+            case IL::TypeKind::Vector:
+                return EmitSpvType(static_cast<const IL::VectorType*>(type));
+            case IL::TypeKind::Matrix:
+                return EmitSpvType(static_cast<const IL::MatrixType*>(type));
+            case IL::TypeKind::Pointer:
+                return EmitSpvType(static_cast<const IL::PointerType*>(type));
+            case IL::TypeKind::Array:
+                return EmitSpvType(static_cast<const IL::ArrayType*>(type));
+            case IL::TypeKind::Texture:
+                return EmitSpvType(static_cast<const IL::TextureType*>(type));
+            case IL::TypeKind::Buffer:
+                return EmitSpvType(static_cast<const IL::BufferType*>(type));
+            case IL::TypeKind::Struct:
+                return EmitSpvType(static_cast<const IL::StructType*>(type));
+            case IL::TypeKind::Function:
+                return EmitSpvType(static_cast<const IL::FunctionType*>(type));
         }
     }
 
-    SpvId EmitSpvType(const Backend::IL::IntType* type) {
+    SpvId EmitSpvType(const IL::IntType* type) {
         SpvId id = map->Allocate();
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeInt, 4);
@@ -153,7 +153,7 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::FPType* type) {
+    SpvId EmitSpvType(const IL::FPType* type) {
         SpvId id = map->Allocate();
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeFloat, 3);
@@ -164,7 +164,7 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::VoidType* type) {
+    SpvId EmitSpvType(const IL::VoidType* type) {
         SpvId id = map->Allocate();
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeVoid, 3);
@@ -174,7 +174,7 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::BoolType* type) {
+    SpvId EmitSpvType(const IL::BoolType* type) {
         SpvId id = map->Allocate();
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeBool, 2);
@@ -184,21 +184,21 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::PointerType* type) {
+    SpvId EmitSpvType(const IL::PointerType* type) {
         SpvId id = map->Allocate();
 
         SpvId pointee = GetSpvTypeId(type->pointee);
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypePointer, 4);
         spv[1] = id;
-        spv[2] = Translate(type->addressSpace);
+        spv[2] = SpvTranslate(type->addressSpace);
         spv[3] = pointee;
 
         AddMapping(id, type);
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::VectorType* type) {
+    SpvId EmitSpvType(const IL::VectorType* type) {
         SpvId id = map->Allocate();
 
         SpvId contained = GetSpvTypeId(type->containedType);
@@ -212,10 +212,10 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::MatrixType* type) {
+    SpvId EmitSpvType(const IL::MatrixType* type) {
         SpvId id = map->Allocate();
 
-        SpvId column = GetSpvTypeId(programMap->FindTypeOrAdd(Backend::IL::VectorType {
+        SpvId column = GetSpvTypeId(programMap->FindTypeOrAdd(IL::VectorType {
             .containedType = type->containedType,
             .dimension = type->rows
         }));
@@ -229,12 +229,12 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::ArrayType* type) {
+    SpvId EmitSpvType(const IL::ArrayType* type) {
         SpvId id = map->Allocate();
 
         SpvId element = GetSpvTypeId(type->elementType);
 
-        SpvId dim = GetSpvTypeId(programMap->FindTypeOrAdd(Backend::IL::IntType {
+        SpvId dim = GetSpvTypeId(programMap->FindTypeOrAdd(IL::IntType {
             .bitWidth = 32,
             .signedness = false
         }));
@@ -255,7 +255,7 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::TextureType* type) {
+    SpvId EmitSpvType(const IL::TextureType* type) {
         SpvId id = map->Allocate();
 
         SpvId sampled = GetSpvTypeId(type->sampledType);
@@ -266,24 +266,24 @@ private:
             default:
             ASSERT(false, "Invalid dimension");
                 return InvalidSpvId;
-            case Backend::IL::TextureDimension::Texture1D:
+            case IL::TextureDimension::Texture1D:
                 dim = SpvDim1D;
                 break;
-            case Backend::IL::TextureDimension::Texture2D:
+            case IL::TextureDimension::Texture2D:
                 dim = SpvDim2D;
                 break;
-            case Backend::IL::TextureDimension::Texture3D:
+            case IL::TextureDimension::Texture3D:
                 dim = SpvDim3D;
                 break;
-            case Backend::IL::TextureDimension::Texture1DArray:
+            case IL::TextureDimension::Texture1DArray:
                 dim = SpvDim1D;
                 isArray = true;
                 break;
-            case Backend::IL::TextureDimension::Texture2DArray:
+            case IL::TextureDimension::Texture2DArray:
                 dim = SpvDim2D;
                 isArray = true;
                 break;
-            case Backend::IL::TextureDimension::Texture2DCube:
+            case IL::TextureDimension::Texture2DCube:
                 dim = SpvDimCube;
                 break;
         }
@@ -296,13 +296,13 @@ private:
         spv[5] = isArray;
         spv[6] = type->multisampled;
         spv[7] = 1;
-        spv[8] = Translate(type->format);
+        spv[8] = SpvTranslate(type->format);
 
         AddMapping(id, type);
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::StructType* type) {
+    SpvId EmitSpvType(const IL::StructType* type) {
         SpvId id = map->Allocate();
 
         // Get member uids
@@ -322,13 +322,13 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::BufferType* type) {
+    SpvId EmitSpvType(const IL::BufferType* type) {
         SpvId id = map->Allocate();
 
         SpvId element = GetSpvTypeId(type->elementType);
 
         // Texel buffer?
-        if (type->texelType != Backend::IL::Format::None) {
+        if (type->texelType != IL::Format::None) {
             SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeImage, 9);
             spv[1] = id;
             spv[2] = element;
@@ -338,18 +338,18 @@ private:
             spv[6] = 0;
 
             switch (type->samplerMode) {
-                case Backend::IL::ResourceSamplerMode::RuntimeOnly:
+                case IL::ResourceSamplerMode::RuntimeOnly:
                     spv[7] = 0;
                     break;
-                case Backend::IL::ResourceSamplerMode::Compatible:
+                case IL::ResourceSamplerMode::Compatible:
                     spv[7] = 1;
                     break;
-                case Backend::IL::ResourceSamplerMode::Writable:
+                case IL::ResourceSamplerMode::Writable:
                     spv[7] = 2;
                     break;
             }
 
-            spv[8] = Translate(type->texelType);
+            spv[8] = SpvTranslate(type->texelType);
         } else {
             ASSERT(false, "Structured buffers not implemented");
             return InvalidSpvId;
@@ -359,7 +359,7 @@ private:
         return id;
     }
 
-    SpvId EmitSpvType(const Backend::IL::FunctionType* type) {
+    SpvId EmitSpvType(const IL::FunctionType* type) {
         SpvId id = map->Allocate();
 
         // Get return uid
@@ -393,9 +393,9 @@ private:
     SpvStream *declarationStream{nullptr};
 
     /// IL type map
-    Backend::IL::TypeMap* programMap{nullptr};
+    IL::TypeMap* programMap{nullptr};
 
     /// Bidirectional
-    std::unordered_map<const Backend::IL::Type*, SpvId> spvMap;
-    std::unordered_map<SpvId, const Backend::IL::Type*> idMap;
+    std::unordered_map<const IL::Type*, SpvId> spvMap;
+    std::unordered_map<SpvId, const IL::Type*> idMap;
 };

@@ -29,7 +29,7 @@
 // Backend
 #include "Program.h"
 
-namespace Backend::IL {
+namespace IL {
     /// Redirect an instruction result
     /// \param program source program
     /// \param it source instruction

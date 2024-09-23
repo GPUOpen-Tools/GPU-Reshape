@@ -104,9 +104,9 @@ void PopulateAndTestUniqueAddressing(ResourceInfo info, bool lastBlocksAllReside
         TexelAddressAllocationInfo addressInfo = allocator.GetAllocationInfo(info, false);
 
         // Setup emitters
-        Backend::IL::CPUResourceTokenEmitter tokenEmitter(info);
-        Backend::IL::CPUSubresourceEmitter   subresourceEmitter(info, addressInfo);
-        Backend::IL::TexelAddressEmitter     address(emitter, tokenEmitter, subresourceEmitter);
+        IL::CPUResourceTokenEmitter tokenEmitter(info);
+        IL::CPUSubresourceEmitter   subresourceEmitter(info, addressInfo);
+        IL::TexelAddressEmitter     address(emitter, tokenEmitter, subresourceEmitter);
 
         // Packed layout, always resident
         PopulateAndTestUniqueAddressing(info, addressInfo, address, true);
@@ -134,9 +134,9 @@ void PopulateAndTestUniqueAddressing(ResourceInfo info, bool lastBlocksAllReside
         TexelAddressAllocationInfo addressInfo = allocator.GetAllocationInfo(info, true);
 
         // Setup emitters
-        Backend::IL::CPUResourceTokenEmitter   tokenEmitter(info);
-        Backend::IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
-        Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
+        IL::CPUResourceTokenEmitter   tokenEmitter(info);
+        IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
+        IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
     
         PopulateAndTestUniqueAddressing(info, addressInfo, address, lastBlocksAllResident);
     }
@@ -149,9 +149,9 @@ TEST_CASE("Backend.IL.BufferAddressing.1D") {
     info.token.viewFormatSize = 1;
 
     IL::CPUEmitter                         emitter;
-    Backend::IL::CPUResourceTokenEmitter   tokenEmitter(info);
-    Backend::IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
-    Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
+    IL::CPUResourceTokenEmitter   tokenEmitter(info);
+    IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
+    IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
 
     REQUIRE(address.LocalBufferTexelAddress(0, 0, 1).texelOffset == 0);
     REQUIRE(address.LocalBufferTexelAddress(1, 0, 1).texelOffset == 1);
@@ -166,9 +166,9 @@ TEST_CASE("Backend.IL.BufferAddressing.1D.ViewExpansion") {
     info.token.viewFormatSize = 4; // R32
 
     IL::CPUEmitter                         emitter;
-    Backend::IL::CPUResourceTokenEmitter   tokenEmitter(info);
-    Backend::IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
-    Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
+    IL::CPUResourceTokenEmitter   tokenEmitter(info);
+    IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
+    IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
 
     for (uint32_t i = 0; i < 64; i++) {
         REQUIRE(address.LocalBufferTexelAddress(i, 0, 1).texelOffset == i * 4);
@@ -182,9 +182,9 @@ TEST_CASE("Backend.IL.BufferAddressing.1D.ViewContraction") {
     info.token.viewFormatSize = 0; // R1
 
     IL::CPUEmitter                         emitter;
-    Backend::IL::CPUResourceTokenEmitter   tokenEmitter(info);
-    Backend::IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
-    Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
+    IL::CPUResourceTokenEmitter   tokenEmitter(info);
+    IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
+    IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
 
     for (uint32_t i = 0; i < 64; i++) {
         REQUIRE(address.LocalBufferTexelAddress(i, 0, 1).texelOffset == i / 4);

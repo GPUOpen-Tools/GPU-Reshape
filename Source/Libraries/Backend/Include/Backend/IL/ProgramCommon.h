@@ -29,7 +29,7 @@
 // Backend
 #include "Program.h"
 
-namespace Backend::IL {
+namespace IL {
     /// Get the true termination block
     /// \param program program to be fetched from
     /// \return termination block

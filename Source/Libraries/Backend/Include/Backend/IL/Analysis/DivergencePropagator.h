@@ -57,7 +57,7 @@ namespace IL {
 
     public:
         /// Install this propagator
-        bool Install(Backend::IL::PropagationEngine* engine) override {
+        bool Install(IL::PropagationEngine* engine) override {
             propagationEngine = engine;
 
             // Compute dominator analysis for propagation
@@ -80,7 +80,7 @@ namespace IL {
         }
 
         /// Propagate an instruction
-        void PropagateInstruction(Backend::IL::PropagationResult, const BasicBlock* block, const Instruction* instr, const BasicBlock*) override {
+        void PropagateInstruction(IL::PropagationResult, const BasicBlock* block, const Instruction* instr, const BasicBlock*) override {
             switch (instr->opCode) {
                 default: {
                     // Result-less instructions are ignored
@@ -164,7 +164,7 @@ namespace IL {
             }
 
             // Conditionally mark variables as divergent
-            for (const Backend::IL::Variable *variable: program.GetVariableList()) {
+            for (const IL::Variable *variable: program.GetVariableList()) {
                 if (variable->initializer) {
                     MarkAsUniform(variable->id);
                     continue;
@@ -176,7 +176,7 @@ namespace IL {
 
             // Mark all program inputs as divergent, interprocedural call arguments are handled separately
             if (program.GetEntryPoint() == &function) {
-                for (const Backend::IL::Variable *variable: function.GetParameters()) {
+                for (const IL::Variable *variable: function.GetParameters()) {
                     MarkAsDivergent(variable->id);
                 }
             }
@@ -361,7 +361,7 @@ namespace IL {
             bool isAnyDivergent = false;
 
             // Collect operand attributes
-            Backend::IL::VisitOperands(instr, [&](IL::ID id) {
+            IL::VisitOperands(instr, [&](IL::ID id) {
                 isAnyUnknown |= memory->divergenceValues[id].divergence == WorkGroupDivergence::Unknown;
                 isAnyDivergent |= memory->divergenceValues[id].divergence == WorkGroupDivergence::Divergent;
             });
@@ -412,11 +412,11 @@ namespace IL {
 
                 /** Load operations to external memory are always divergent */
                 case OpCode::Load: {
-                    auto* type = program.GetTypeMap().GetType(instr->As<LoadInstruction>()->address)->As<Backend::IL::PointerType>();
+                    auto* type = program.GetTypeMap().GetType(instr->As<LoadInstruction>()->address)->As<IL::PointerType>();
                     return AsDivergence(
-                        type->addressSpace == Backend::IL::AddressSpace::Buffer ||
-                        type->addressSpace == Backend::IL::AddressSpace::Texture ||
-                        type->addressSpace == Backend::IL::AddressSpace::Resource
+                        type->addressSpace == IL::AddressSpace::Buffer ||
+                        type->addressSpace == IL::AddressSpace::Texture ||
+                        type->addressSpace == IL::AddressSpace::Resource
                     );
                 }
 
@@ -442,26 +442,26 @@ namespace IL {
         }
 
         /// Get the divergence of a global address space
-        WorkGroupDivergence GetGlobalAddressSpaceDivergence(Backend::IL::AddressSpace space) {
+        WorkGroupDivergence GetGlobalAddressSpaceDivergence(IL::AddressSpace space) {
             switch (space) {
                 default: {
                     ASSERT(false, "Not a global address space");
                     return WorkGroupDivergence::Uniform;
                 }
                 
-                case Backend::IL::AddressSpace::Constant:
-                case Backend::IL::AddressSpace::RootConstant: {
+                case IL::AddressSpace::Constant:
+                case IL::AddressSpace::RootConstant: {
                     return WorkGroupDivergence::Uniform;
                 }
                 
-                case Backend::IL::AddressSpace::Texture:
-                case Backend::IL::AddressSpace::Buffer:
-                case Backend::IL::AddressSpace::Resource:
-                case Backend::IL::AddressSpace::GroupShared:
-                case Backend::IL::AddressSpace::Function:
-                case Backend::IL::AddressSpace::Input:
-                case Backend::IL::AddressSpace::Output:
-                case Backend::IL::AddressSpace::Unexposed: {
+                case IL::AddressSpace::Texture:
+                case IL::AddressSpace::Buffer:
+                case IL::AddressSpace::Resource:
+                case IL::AddressSpace::GroupShared:
+                case IL::AddressSpace::Function:
+                case IL::AddressSpace::Input:
+                case IL::AddressSpace::Output:
+                case IL::AddressSpace::Unexposed: {
                     return WorkGroupDivergence::Divergent;
                 }
             }
@@ -874,7 +874,7 @@ namespace IL {
         Function& function;
 
         /// Installed engine
-        Backend::IL::PropagationEngine* propagationEngine{nullptr};
+        IL::PropagationEngine* propagationEngine{nullptr};
 
         /// Assigned memory
         ComRef<MemoryState> memory{nullptr};

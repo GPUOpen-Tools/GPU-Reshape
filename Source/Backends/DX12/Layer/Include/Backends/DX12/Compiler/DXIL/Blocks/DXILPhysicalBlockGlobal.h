@@ -32,7 +32,7 @@
 
 /// Type block
 struct DXILPhysicalBlockGlobal : public DXILPhysicalBlockSection {
-    DXILPhysicalBlockGlobal(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+    DXILPhysicalBlockGlobal(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Copy this block
     /// \param out destination block
@@ -87,5 +87,5 @@ public:
 
 private:
     /// All pending resolves
-    Vector<std::pair<Backend::IL::Variable*, IL::ID>> initializerResolves;
+    Vector<std::pair<IL::Variable*, IL::ID>> initializerResolves;
 };

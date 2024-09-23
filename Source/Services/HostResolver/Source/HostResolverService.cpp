@@ -30,11 +30,7 @@
 // Common
 #include <Common/IPGlobalLock.h>
 #include <Common/FileSystem.h>
-
-// System
-#ifdef _WIN64
-#include <Windows.h>
-#endif
+#include <Common/System.h>
 
 bool HostResolverService::Install() {
     // Already acquired?

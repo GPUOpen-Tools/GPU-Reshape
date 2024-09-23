@@ -25,13 +25,7 @@
 // 
 
 #include <Common/Library.h>
-
-// Platform
-#ifdef _WIN32
-#   include <Windows.h>
-#else
-#   error Not implemented
-#endif
+#include <Common/System.h>
 
 // Implementation
 #ifdef WIN32

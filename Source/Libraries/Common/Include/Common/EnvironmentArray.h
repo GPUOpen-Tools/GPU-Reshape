@@ -26,15 +26,13 @@
 
 #pragma once
 
+// Common
+#include <Common/System.h>
+
+// Std
 #include <map>
 #include <sstream>
 #include <stdlib.h>
-
-#if _WIN32
-#include <Windows.h>
-#else // _WIN32
-#error Not implemented
-#endif // _WIN32
 
 /** Note: This is not a performant helper, used in one offs */
 class EnvironmentArray {

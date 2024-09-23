@@ -25,16 +25,10 @@
 // 
 
 #include <Common/FileSystem.h>
+#include <Common/System.h>
 
 // Std
 #include <fstream>
-
-// System
-#if defined(_MSC_VER)
-#include <Windows.h>
-#else
-#include <unistd.h>
-#endif
 
 std::filesystem::path GetCurrentExecutableDirectory() {
 #if defined(_MSC_VER)

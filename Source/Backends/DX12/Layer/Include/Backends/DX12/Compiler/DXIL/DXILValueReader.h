@@ -74,7 +74,7 @@ struct DXILValueReader : public LLVMRecordReader {
             uint32_t forwardRelative = table.idMap.GetMappedForward(anchor, DXILIDRemapper::DecodeForward(id));
 
             // Immediate next is the type
-            const Backend::IL::Type *resovledType = table.type.typeMap.GetType(ConsumeOp32());
+            const IL::Type *resovledType = table.type.typeMap.GetType(ConsumeOp32());
 
             // Set the type, most future'd operations can get away with the type alone during parsing
             table.type.typeMap.GetProgramMap().SetType(forwardRelative, resovledType);

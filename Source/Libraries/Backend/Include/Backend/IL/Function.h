@@ -154,12 +154,12 @@ namespace IL {
         }
 
         /// Set the type of the function
-        void SetFunctionType(const Backend::IL::FunctionType* type) {
+        void SetFunctionType(const IL::FunctionType* type) {
             functionType = type;
         }
 
         /// Get the type of the function
-        const Backend::IL::FunctionType* GetFunctionType() const {
+        const IL::FunctionType* GetFunctionType() const {
             return functionType;
         }
 
@@ -190,7 +190,7 @@ namespace IL {
         AnalysisMap<IFunctionAnalysis> analysisMap;
 
         /// Function type
-        const Backend::IL::FunctionType* functionType{nullptr};
+        const IL::FunctionType* functionType{nullptr};
 
         /// Function flags
         FunctionFlagSet flags{0};

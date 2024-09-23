@@ -7,8 +7,8 @@
 namespace {
     struct $NAMEInitializer {
         $NAMEInitializer() {
-            ShaderHost::Register("$NAME", "D3D12", ShaderBlob{.code = kShaderCodeD3D12, .length = sizeof(kShaderCodeD3D12)});
-            ShaderHost::Register("$NAME", "Vulkan", ShaderBlob{.code = kShaderCodeVulkan, .length = sizeof(kShaderCodeVulkan)});
+            ShaderHost::Register("$NAME", "D3D12", ShaderBlob{.code = kShaderCode$NAMED3D12, .length = sizeof(kShaderCode$NAMED3D12)});
+            ShaderHost::Register("$NAME", "Vulkan", ShaderBlob{.code = kShaderCode$NAMEVulkan, .length = sizeof(kShaderCode$NAMEVulkan)});
         }
     } $NAMEInitializer;
 }

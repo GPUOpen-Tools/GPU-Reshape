@@ -38,7 +38,7 @@ class MaskCopyRangeShaderProgram final : public IShaderProgram {
 public:
     /// Constructor
     /// \param initializationMaskBufferID
-    MaskCopyRangeShaderProgram(ShaderDataID initializationMaskBufferID, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric);
+    MaskCopyRangeShaderProgram(ShaderDataID initializationMaskBufferID, IL::ResourceTokenType from, IL::ResourceTokenType to, bool isVolumetric);
 
     /// Install the masking program
     /// \return
@@ -85,8 +85,8 @@ private:
     ShaderDataID destTokenID{InvalidShaderDataID};
 
     /// Type being copied
-    Backend::IL::ResourceTokenType from;
-    Backend::IL::ResourceTokenType to;
+    IL::ResourceTokenType from;
+    IL::ResourceTokenType to;
 
     /// Volumetric indexing?
     bool isVolumetric;

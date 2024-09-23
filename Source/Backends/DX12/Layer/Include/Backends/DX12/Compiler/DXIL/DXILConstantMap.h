@@ -42,7 +42,7 @@
 
 class DXILConstantMap {
 public:
-    DXILConstantMap(const Allocators& allocators, Backend::IL::ConstantMap& programMap, Backend::IL::IdentifierMap& identifierMap, DXILTypeMap& typeMap) :
+    DXILConstantMap(const Allocators& allocators, IL::ConstantMap& programMap, IL::IdentifierMap& identifierMap, DXILTypeMap& typeMap) :
         programMap(programMap),
         identifierMap(identifierMap),
         constants(allocators.Tag(kAllocModuleDXILConstants)),
@@ -62,7 +62,7 @@ public:
     /// Add a constant to this map, must be unique
     /// \param constant the constant to be added
     template<typename T>
-    const Backend::IL::Constant* AddConstant(IL::ID id, const typename T::Type* type, const T &constant) {
+    const IL::Constant* AddConstant(IL::ID id, const typename T::Type* type, const T &constant) {
         const auto *constantPtr = programMap.AddConstant<T>(id, type, constant);
         constants.push_back(constantPtr);
         AddConstantMapping(constantPtr, id);
@@ -72,7 +72,7 @@ public:
     /// Add a constant to this map, must be unique
     /// \param constant the constant to be added
     template<typename T>
-    const Backend::IL::Constant* AddUnsortedConstant(IL::ID id, const Backend::IL::Type* type, const T &constant) {
+    const IL::Constant* AddUnsortedConstant(IL::ID id, const IL::Type* type, const T &constant) {
         const auto *constantPtr = programMap.AddUnsortedConstant<T>(id, type, constant);
         constants.push_back(constantPtr);
         AddConstantMapping(constantPtr, id);
@@ -85,7 +85,7 @@ public:
     /// \param type of the constant to be instantiated
     /// \param constant the constant to be added
     template<typename T>
-    Backend::IL::Constant* AddUnresolvedConstant(IL::ID id, const Backend::IL::Type* type, const T &constant) {
+    IL::Constant* AddUnresolvedConstant(IL::ID id, const IL::Type* type, const T &constant) {
         auto *constantPtr = programMap.AddUnresolvedConstant<T>(id, type, constant);
         constants.push_back(constantPtr);
         AddConstantMapping(constantPtr, id);
@@ -114,7 +114,7 @@ public:
     /// Get a constant from a type
     /// \param type IL type
     /// \return DXIL id
-    uint64_t GetConstant(const Backend::IL::Constant* constant) {
+    uint64_t GetConstant(const IL::Constant* constant) {
         // Allocate if need be
         if (!HasConstant(constant)) {
             return CompileConstant(constant);
@@ -128,7 +128,7 @@ public:
     /// Add a new constant mapping
     /// \param type IL type
     /// \param index DXIL id
-    void AddConstantMapping(const Backend::IL::Constant* constant, uint64_t index) {
+    void AddConstantMapping(const IL::Constant* constant, uint64_t index) {
         if (constantLookup.size() <= constant->id) {
             constantLookup.resize(constant->id + 1, ~0u);
         }
@@ -139,7 +139,7 @@ public:
     /// Check if a constant is present in DXIL
     /// \param type IL type
     /// \return true if present
-    bool HasConstant(const Backend::IL::Constant* type) {
+    bool HasConstant(const IL::Constant* type) {
         return type->id < constantLookup.size() && constantLookup[type->id] != ~0u;
     }
 
@@ -153,32 +153,32 @@ private:
     /// Compile a given constant
     /// \param constant
     /// \return DXIL id
-    uint64_t CompileConstant(const Backend::IL::Constant* constant) {
+    uint64_t CompileConstant(const IL::Constant* constant) {
         switch (constant->kind) {
             default:
                 ASSERT(false, "Unsupported constant type for recompilation");
                 return ~0;
-            case Backend::IL::ConstantKind::Bool:
-                return CompileConstant(static_cast<const Backend::IL::BoolConstant*>(constant));
-            case Backend::IL::ConstantKind::Int:
-                return CompileConstant(static_cast<const Backend::IL::IntConstant*>(constant));
-            case Backend::IL::ConstantKind::FP:
-                return CompileConstant(static_cast<const Backend::IL::FPConstant*>(constant));
-            case Backend::IL::ConstantKind::Undef:
-                return CompileConstant(static_cast<const Backend::IL::UndefConstant*>(constant));
-            case Backend::IL::ConstantKind::Null:
-                return CompileConstant(static_cast<const Backend::IL::NullConstant*>(constant));
-            case Backend::IL::ConstantKind::Struct:
-                return CompileConstant(static_cast<const Backend::IL::StructConstant*>(constant));
-            case Backend::IL::ConstantKind::Vector:
-                return CompileConstant(static_cast<const Backend::IL::VectorConstant*>(constant));
-            case Backend::IL::ConstantKind::Array:
-                return CompileConstant(static_cast<const Backend::IL::ArrayConstant*>(constant));
+            case IL::ConstantKind::Bool:
+                return CompileConstant(static_cast<const IL::BoolConstant*>(constant));
+            case IL::ConstantKind::Int:
+                return CompileConstant(static_cast<const IL::IntConstant*>(constant));
+            case IL::ConstantKind::FP:
+                return CompileConstant(static_cast<const IL::FPConstant*>(constant));
+            case IL::ConstantKind::Undef:
+                return CompileConstant(static_cast<const IL::UndefConstant*>(constant));
+            case IL::ConstantKind::Null:
+                return CompileConstant(static_cast<const IL::NullConstant*>(constant));
+            case IL::ConstantKind::Struct:
+                return CompileConstant(static_cast<const IL::StructConstant*>(constant));
+            case IL::ConstantKind::Vector:
+                return CompileConstant(static_cast<const IL::VectorConstant*>(constant));
+            case IL::ConstantKind::Array:
+                return CompileConstant(static_cast<const IL::ArrayConstant*>(constant));
         }
     }
 
     /// Compile a given constant
-    uint64_t CompileConstant(const Backend::IL::BoolConstant* constant) {
+    uint64_t CompileConstant(const IL::BoolConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Integer);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -187,7 +187,7 @@ private:
     }
 
     /// Compile a given constant
-    uint64_t CompileConstant(const Backend::IL::IntConstant* constant) {
+    uint64_t CompileConstant(const IL::IntConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Integer);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -196,7 +196,7 @@ private:
     }
 
     /// Compile a given constant
-    uint64_t CompileConstant(const Backend::IL::FPConstant* constant) {
+    uint64_t CompileConstant(const IL::FPConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Float);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -205,7 +205,7 @@ private:
     }
 
     /// Compile a given constant
-    uint64_t CompileConstant(const Backend::IL::UndefConstant* constant) {
+    uint64_t CompileConstant(const IL::UndefConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Undef);
         record.opCount = 0;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -213,7 +213,7 @@ private:
     }
 
     /// Compile a given constant
-    uint64_t CompileConstant(const Backend::IL::NullConstant* constant) {
+    uint64_t CompileConstant(const IL::NullConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Null);
         record.opCount = 0;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -221,7 +221,7 @@ private:
     }
 
     /// Compile a given constant
-    uint64_t CompileConstant(const Backend::IL::StructConstant* constant) {
+    uint64_t CompileConstant(const IL::StructConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Aggregate);
         record.opCount = static_cast<uint32_t>(constant->members.size());
         record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
@@ -234,7 +234,7 @@ private:
     }
 
     /// Compile a given constant
-    uint64_t CompileConstant(const Backend::IL::VectorConstant* constant) {
+    uint64_t CompileConstant(const IL::VectorConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Aggregate);
         record.opCount = static_cast<uint32_t>(constant->elements.size());
         record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
@@ -247,7 +247,7 @@ private:
     }
 
     /// Compile a given constant
-    uint64_t CompileConstant(const Backend::IL::ArrayConstant* constant) {
+    uint64_t CompileConstant(const IL::ArrayConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Aggregate);
         record.opCount = static_cast<uint32_t>(constant->elements.size());
         record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
@@ -263,7 +263,7 @@ private:
     /// \param constant constant to be emitted
     /// \param record constant record
     /// \return DXIL id
-    uint64_t Emit(const Backend::IL::Constant* constant, LLVMRecord& record) {
+    uint64_t Emit(const IL::Constant* constant, LLVMRecord& record) {
         // Insert type record prior
         LLVMRecord setTypeRecord(LLVMConstantRecord::SetType);
         setTypeRecord.opCount = 1;
@@ -289,10 +289,10 @@ private:
 
 private:
     /// IL map
-    Backend::IL::ConstantMap& programMap;
+    IL::ConstantMap& programMap;
 
     /// Identifier map
-    Backend::IL::IdentifierMap& identifierMap;
+    IL::IdentifierMap& identifierMap;
 
     /// All constants
     Vector<const IL::Constant*> constants;

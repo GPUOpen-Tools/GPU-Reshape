@@ -32,7 +32,7 @@
 // Std
 #include <bit>
 
-namespace Backend::IL {
+namespace IL {
     enum class ResourceTokenMetadataField {
         PackedToken,
 

@@ -31,8 +31,10 @@
 #include <winsock2.h>
 #include <sddl.h>
 #include <sysinfoapi.h>
-#include <Windows.h>
 #endif // _WIN64
+
+// Common
+#include <Common/System.h>
 
 class IPGlobalLock {
 public:

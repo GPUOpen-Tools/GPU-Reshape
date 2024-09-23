@@ -54,8 +54,8 @@ void SamplerIndexOOBExecutor(Test::IDevice *device) {
     ResourceSetID resourceSets[] = {
         device->CreateResourceSet(layouts[0], {
             device->CreateCBuffer(64, &cbuffer, sizeof(cbuffer)),
-            device->CreateTexelBuffer(ResourceType::RWTexelBuffer, Backend::IL::Format::R32Float, 64u, nullptr, 0),
-            device->CreateTexture(ResourceType::Texture2D, Backend::IL::Format::R32Float, 64u, 64u, 1u, nullptr, 0)
+            device->CreateTexelBuffer(ResourceType::RWTexelBuffer, IL::Format::R32Float, 64u, nullptr, 0),
+            device->CreateTexture(ResourceType::Texture2D, IL::Format::R32Float, 64u, 64u, 1u, nullptr, 0)
         }),
         device->CreateResourceSet(layouts[1], {
             device->CreateSampler()

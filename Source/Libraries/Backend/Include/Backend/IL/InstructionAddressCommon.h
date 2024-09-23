@@ -29,7 +29,7 @@
 // Backend
 #include "Program.h"
 
-namespace Backend::IL {
+namespace IL {
     /// Visit the complete address chain in reverse order
     /// \param program given program
     /// \param address top address to decompose and visit

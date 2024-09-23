@@ -55,23 +55,23 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 break;
             }
             case LLVMTypeRecord::Void: {
-                typeMap.AddType(typeAlloc++, Backend::IL::VoidType{});
+                typeMap.AddType(typeAlloc++, IL::VoidType{});
                 break;
             }
             case LLVMTypeRecord::Half: {
-                typeMap.AddType(typeAlloc++, Backend::IL::FPType{
+                typeMap.AddType(typeAlloc++, IL::FPType{
                     .bitWidth = 16
                 });
                 break;
             }
             case LLVMTypeRecord::Float: {
-                typeMap.AddType(typeAlloc++, Backend::IL::FPType{
+                typeMap.AddType(typeAlloc++, IL::FPType{
                     .bitWidth = 32
                 });
                 break;
             }
             case LLVMTypeRecord::Double: {
-                typeMap.AddType(typeAlloc++, Backend::IL::FPType{
+                typeMap.AddType(typeAlloc++, IL::FPType{
                     .bitWidth = 64
                 });
                 break;
@@ -80,9 +80,9 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 const auto bitWidth = static_cast<uint8_t>(record.ops[0]);
 
                 if (bitWidth == 1) {
-                    typeMap.AddType(typeAlloc++, Backend::IL::BoolType{ });
+                    typeMap.AddType(typeAlloc++, IL::BoolType{ });
                 } else {
-                    typeMap.AddType(typeAlloc++, Backend::IL::IntType{
+                    typeMap.AddType(typeAlloc++, IL::IntType{
                         .bitWidth = bitWidth,
                         .signedness = true
                     });
@@ -91,14 +91,14 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
             }
             case LLVMTypeRecord::Pointer: {
                 // Get pointee
-                const Backend::IL::Type *pointee = typeMap.GetType(static_cast<uint32_t>(record.ops[0]));
+                const IL::Type *pointee = typeMap.GetType(static_cast<uint32_t>(record.ops[0]));
                 if (!pointee) {
                     ASSERT(false, "Invalid pointer record");
                     return;
                 }
 
                 // Default space
-                Backend::IL::AddressSpace space = Backend::IL::AddressSpace::Function;
+                IL::AddressSpace space = IL::AddressSpace::Function;
 
                 // Has address space?
                 if (record.opCount > 1) {
@@ -107,22 +107,22 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                         default:
                             break;
                         case DXILAddressSpace::Local:
-                            space = Backend::IL::AddressSpace::Function;
+                            space = IL::AddressSpace::Function;
                             break;
                         case DXILAddressSpace::Device:
-                            space = Backend::IL::AddressSpace::Resource;
+                            space = IL::AddressSpace::Resource;
                             break;
                         case DXILAddressSpace::Constant:
-                            space = Backend::IL::AddressSpace::Constant;
+                            space = IL::AddressSpace::Constant;
                             break;
                         case DXILAddressSpace::GroupShared:
-                            space = Backend::IL::AddressSpace::GroupShared;
+                            space = IL::AddressSpace::GroupShared;
                             break;
                     }
                 }
 
                 // Add type
-                typeMap.AddType(typeAlloc++, Backend::IL::PointerType{
+                typeMap.AddType(typeAlloc++, IL::PointerType{
                     .pointee = pointee,
                     .addressSpace = space
                 });
@@ -130,14 +130,14 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
             }
             case LLVMTypeRecord::Array: {
                 // Get contained
-                const Backend::IL::Type *contained = typeMap.GetType(static_cast<uint32_t>(record.ops[1]));
+                const IL::Type *contained = typeMap.GetType(static_cast<uint32_t>(record.ops[1]));
                 if (!contained) {
                     ASSERT(false, "Invalid array record");
                     return;
                 }
 
                 // Add type
-                typeMap.AddType(typeAlloc++, Backend::IL::ArrayType{
+                typeMap.AddType(typeAlloc++, IL::ArrayType{
                     .elementType = contained,
                     .count = record.OpAs<uint32_t>(0)
                 });
@@ -145,14 +145,14 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
             }
             case LLVMTypeRecord::Vector: {
                 // Get contained
-                const Backend::IL::Type *contained = typeMap.GetType(static_cast<uint32_t>(record.ops[1]));
+                const IL::Type *contained = typeMap.GetType(static_cast<uint32_t>(record.ops[1]));
                 if (!contained) {
                     ASSERT(false, "Invalid array record");
                     return;
                 }
 
                 // Add type
-                typeMap.AddType(typeAlloc++, Backend::IL::VectorType{
+                typeMap.AddType(typeAlloc++, IL::VectorType{
                     .containedType = contained,
                     .dimension = record.OpAs<uint8_t>(0)
                 });
@@ -181,7 +181,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 break;
             }
             case LLVMTypeRecord::StructAnon: {
-                Backend::IL::StructType type;
+                IL::StructType type;
 
                 for (uint32_t i = 1; i < record.opCount; i++) {
                     type.memberTypes.push_back(typeMap.GetType(record.Op32(i)));
@@ -191,7 +191,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 break;
             }
             case LLVMTypeRecord::StructNamed: {
-                Backend::IL::StructType type;
+                IL::StructType type;
 
                 for (uint32_t i = 1; i < record.opCount; i++) {
                     type.memberTypes.push_back(typeMap.GetType(record.Op32(i)));
@@ -215,7 +215,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
             case LLVMTypeRecord::Function: {
                 ASSERT(record.Op(0) == 0, "VaArg functions not supported");
 
-                Backend::IL::FunctionType decl;
+                IL::FunctionType decl;
                 decl.returnType = typeMap.GetType(record.Op32(1));
 
                 // Preallocate

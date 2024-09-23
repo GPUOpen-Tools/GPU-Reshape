@@ -159,7 +159,7 @@ namespace IL {
         /// \param ix remaining arguments
         /// \return result value
         template<typename T, typename... IX>
-        T Extended(Backend::IL::ExtendedOp op, T a, IX... ix) {
+        T Extended(IL::ExtendedOp op, T a, IX... ix) {
             // Fold it down
             T ops[] = {a, ix...};
 
@@ -167,38 +167,38 @@ namespace IL {
                 default:
                     ASSERT(false, "Invalid extended op-code");
                     return {};
-                case Backend::IL::ExtendedOp::Min: {
+                case IL::ExtendedOp::Min: {
                     return std::min<T>(ops[0], ops[1]);
                 }
-                case Backend::IL::ExtendedOp::Max: {
+                case IL::ExtendedOp::Max: {
                     return std::max<T>(ops[0], ops[1]);
                 }
-                case Backend::IL::ExtendedOp::Abs: {
+                case IL::ExtendedOp::Abs: {
                     if constexpr (std::is_unsigned_v<T>) {
                         return ops[0];
                     } else {
                         return std::abs(ops[0]);
                     }
                 }
-                case Backend::IL::ExtendedOp::Floor: {
+                case IL::ExtendedOp::Floor: {
                     return static_cast<T>(std::floor(ops[0]));
                 }
-                case Backend::IL::ExtendedOp::Ceil: {
+                case IL::ExtendedOp::Ceil: {
                     return static_cast<T>(std::ceil(ops[0]));
                 }
-                case Backend::IL::ExtendedOp::Round: {
+                case IL::ExtendedOp::Round: {
                     return static_cast<T>(std::round(ops[0]));
                 }
-                case Backend::IL::ExtendedOp::Pow: {
+                case IL::ExtendedOp::Pow: {
                     return static_cast<T>(std::pow(ops[0], ops[1]));
                 }
-                case Backend::IL::ExtendedOp::Exp: {
+                case IL::ExtendedOp::Exp: {
                     return static_cast<T>(std::exp(ops[0]));
                 }
-                case Backend::IL::ExtendedOp::Sqrt: {
+                case IL::ExtendedOp::Sqrt: {
                     return static_cast<T>(std::sqrt(ops[0]));
                 }
-                case Backend::IL::ExtendedOp::FirstBitLow: {
+                case IL::ExtendedOp::FirstBitLow: {
                     if constexpr(std::is_integral_v<T>) {
                         return 1u << std::countr_zero(ops[0]);
                     } else {
@@ -206,7 +206,7 @@ namespace IL {
                         return 0;
                     }
                 }
-                case Backend::IL::ExtendedOp::FirstBitHigh: {
+                case IL::ExtendedOp::FirstBitHigh: {
                     if constexpr(std::is_integral_v<T>) {
                         return std::bit_width(ops[0]) - 1;
                     } else {

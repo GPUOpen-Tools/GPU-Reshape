@@ -65,9 +65,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     state->createInfo = *pCreateInfo;
 
     // Create mapping template
-    state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+    state->virtualMapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Buffer);
     state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMapping.token.formatId = static_cast<uint32_t>(Backend::IL::Format::None);
+    state->virtualMapping.token.formatId = static_cast<uint32_t>(IL::Format::None);
     state->virtualMapping.token.formatSize = 0;
     state->virtualMapping.token.width = static_cast<uint32_t>(pCreateInfo->size);
     state->virtualMapping.token.DefaultViewToRange();
@@ -165,7 +165,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
     ASSERT(pCreateInfo->extent.depth == 1u || pCreateInfo->arrayLayers == 1u, "Volumetric and sliced image");
 
     // Create mapping template
-    state->virtualMappingTemplate.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+    state->virtualMappingTemplate.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Texture);
     state->virtualMappingTemplate.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
     state->virtualMappingTemplate.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
     state->virtualMappingTemplate.token.formatSize = GetFormatByteSize(pCreateInfo->format);
@@ -249,7 +249,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSampler(VkDevice device, const VkSam
     state->table = table;
 
     // Create mapping template
-    state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
+    state->virtualMapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Sampler);
     state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
 
     // Store lookup

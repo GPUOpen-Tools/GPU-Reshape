@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-namespace Backend::IL {
+namespace IL {
     enum class PropagationResult {
         /// No mapped propagation
         None,

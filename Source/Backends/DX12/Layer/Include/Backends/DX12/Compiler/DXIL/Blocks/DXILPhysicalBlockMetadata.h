@@ -43,7 +43,7 @@ struct DXCompileJob;
 /// Type block
 struct DXILPhysicalBlockMetadata : public DXILPhysicalBlockSection {
 public:
-    DXILPhysicalBlockMetadata(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+    DXILPhysicalBlockMetadata(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Copy this block
     /// \param out destination block
@@ -60,12 +60,12 @@ public:
     /// Get the medata handle type
     /// \param handleID the unique handle id
     /// \return nullptr if not found
-    const Backend::IL::Type* GetHandleType(DXILShaderResourceClass _class, uint32_t handleID);
+    const IL::Type* GetHandleType(DXILShaderResourceClass _class, uint32_t handleID);
 
     /// Get the binding group that a handle type belongs to
     /// \param type type to check
     /// \return binding group
-    IL::ID GetTypeSymbolicBindingGroup(const Backend::IL::Type* type);
+    IL::ID GetTypeSymbolicBindingGroup(const IL::Type* type);
 
 public:
     /// Compile all records
@@ -95,17 +95,17 @@ public:
     /// Get the IL component format
     /// \param type dxil type
     /// \return format, optionally unexposed
-    Backend::IL::Format GetComponentFormat(ComponentType type);
+    IL::Format GetComponentFormat(ComponentType type);
 
     /// Get the component type
     /// \param format the IL format
     /// \return component type
-    ComponentType GetFormatComponent(Backend::IL::Format format);
+    ComponentType GetFormatComponent(IL::Format format);
     
     /// Get the IL component ype
     /// \param type dxil type
     /// \return type, optionally unexposed
-    const Backend::IL::Type* GetComponentType(ComponentType type);
+    const IL::Type* GetComponentType(ComponentType type);
 
 private:
     void CompileProgramEntryPoints();
@@ -123,7 +123,7 @@ private:
         /// Payload
         union {
             struct {
-                const Backend::IL::Type* type;
+                const IL::Type* type;
                 const IL::Constant* constant;
             } value;
         };
@@ -196,7 +196,7 @@ private:
     /// \param block destination block
     /// \param constant constant to be added
     /// \return md index
-    uint32_t FindOrAddOperandConstant(MetadataBlock& metadata, LLVMBlock* block, const Backend::IL::Constant* constant);
+    uint32_t FindOrAddOperandConstant(MetadataBlock& metadata, LLVMBlock* block, const IL::Constant* constant);
 
     /// Find or add a new u32 constant
     /// \param metadata destination md
@@ -205,8 +205,8 @@ private:
     /// \return md index
     uint32_t FindOrAddOperandU32Constant(MetadataBlock& metadata, LLVMBlock* block, uint32_t value) {
         return FindOrAddOperandConstant(metadata, block, program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true}),
-            Backend::IL::IntConstant{.value = value}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth = 32, .signedness = true}),
+            IL::IntConstant{.value = value}
         ));
     }
 
@@ -217,8 +217,8 @@ private:
     /// \return md index
     uint32_t FindOrAddOperandBoolConstant(MetadataBlock& metadata, LLVMBlock* block, bool value) {
         return FindOrAddOperandConstant(metadata, block, program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
-            Backend::IL::BoolConstant{.value = value}
+            program.GetTypeMap().FindTypeOrAdd(IL::BoolType{}),
+            IL::BoolConstant{.value = value}
         ));
     }
 

@@ -48,29 +48,29 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
     table.capability.Add(SpvCapabilityImageBuffer);
 
     // IL type map
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // UInt32
-    const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+    const IL::Type *uintType = ilTypeMap.FindTypeOrAdd(IL::IntType{
         .bitWidth = 32,
         .signedness = false
     });
 
     // Buffer<uint>
-    buffer32UI = ilTypeMap.FindTypeOrAdd(Backend::IL::BufferType{
+    buffer32UI = ilTypeMap.FindTypeOrAdd(IL::BufferType{
         .elementType = uintType,
-        .samplerMode = Backend::IL::ResourceSamplerMode::Compatible,
-        .texelType = Backend::IL::Format::R32UInt
+        .samplerMode = IL::ResourceSamplerMode::Compatible,
+        .texelType = IL::Format::R32UInt
     });
 
     // Buffer<uint>*
-    buffer32UIPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
+    buffer32UIPtr = ilTypeMap.FindTypeOrAdd(IL::PointerType{
         .pointee = buffer32UI,
-        .addressSpace = Backend::IL::AddressSpace::Resource
+        .addressSpace = IL::AddressSpace::Resource
     });
 
     // Control structure for a resource mapping
-    prmControl = ilTypeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+    prmControl = ilTypeMap.FindTypeOrAdd(IL::ArrayType {
         .elementType = uintType,
         .count = 3
     });
@@ -104,7 +104,7 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
 }
 
 SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const SpvJob& job, SpvStream &stream, IL::ID function, IL::ID resource) {
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Output
     SpvPRMTOffset out;
@@ -115,7 +115,7 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
     out.tableNotBound = table.scan.header.bound++;
 
     // UInt32
-    const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType {
+    const IL::Type *uintType = ilTypeMap.FindTypeOrAdd(IL::IntType {
         .bitWidth = 32,
         .signedness = false
     });
@@ -138,9 +138,9 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
 
     // Null value
     SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+    spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::IntType {.bitWidth = 32, .signedness = false}));
     spvOffset[2] = strideId;
-    spvOffset[3] = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
+    spvOffset[3] = static_cast<uint32_t>(IL::ResourceTokenMetadataField::Count);
     
     // Final PRM offset, Offset * MetadataStride
     SpvInstruction& mulSpv = stream.Allocate(SpvOpIMul, 5);
@@ -159,7 +159,7 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
 
         // DynamicOffset >= Length
         SpvInstruction& spv = stream.Allocate(SpvOpUGreaterThanEqual, 5);
-        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType { }));
+        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::BoolType { }));
         spv[2] = out.outOfBounds;
         spv[3] = valueDecoration.dynamicOffset;
         spv[4] = baseLengthId;
@@ -172,13 +172,13 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
 
         // Null value
         SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-        spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+        spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::IntType {.bitWidth = 32, .signedness = false}));
         spvOffset[2] = nullId;
         spvOffset[3] = kDescriptorDataNullOffset;
 
         // BaseOffset == kDescriptorDataNullOffset
         SpvInstruction& spv = stream.Allocate(SpvOpIEqual, 5);
-        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType { }));
+        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::BoolType { }));
         spv[2] = out.tableNotBound;
         spv[3] = baseOffsetId;
         spv[4] = nullId;
@@ -189,19 +189,19 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
 }
 
 void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID function, IL::ID resource, IL::ID result) {
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Total number of dwords in the token metadata
-    static constexpr uint32_t kMetadataDWordCount = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
+    static constexpr uint32_t kMetadataDWordCount = static_cast<uint32_t>(IL::ResourceTokenMetadataField::Count);
     
     // UInt32
-    Backend::IL::IntType typeInt;
+    IL::IntType typeInt;
     typeInt.bitWidth = 32;
     typeInt.signedness = false;
-    const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(typeInt);
+    const IL::Type *uintType = ilTypeMap.FindTypeOrAdd(typeInt);
 
     // <UInt32, 4>
-    const Backend::IL::Type *uint4Type = ilTypeMap.FindTypeOrAdd(Backend::IL::VectorType{
+    const IL::Type *uint4Type = ilTypeMap.FindTypeOrAdd(IL::VectorType{
         .containedType = uintType,
         .dimension = 4
     });
@@ -229,7 +229,7 @@ void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID fu
 
     // Null value
     SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+    spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::IntType {.bitWidth = 32, .signedness = false}));
     spvOffset[2] = strideId;
     spvOffset[3] = 1u;
 
@@ -347,7 +347,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
         const uint32_t prmtOffset = descriptorSetPhysicalMapping.bindings.at(source.descriptorOffset).prmtOffset;
 
         // uint32
-        SpvId uintId = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+        SpvId uintId = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::IntType {.bitWidth = 32, .signedness = false}));
 
         // Descriptor Set
         SpvInstruction &spvDescSet = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
@@ -424,7 +424,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
 
                 // Add dynamic offset
                 SpvInstruction& spv = stream.Allocate(SpvOpIAdd, 5);
-                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::IntType {.bitWidth = 32, .signedness = false}));
                 spv[2] = offsetId;
                 spv[3] = dynamic.dynamicOffset;
                 spv[4] = addressChain->chains[1].index;
@@ -442,7 +442,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
     }
 
     // Are we referencing a parameter?
-    if (const Backend::IL::Variable *var = program.GetFunctionList().GetFunction(function)->GetParameters().GetVariable(resource)) {
+    if (const IL::Variable *var = program.GetFunctionList().GetFunction(function)->GetParameters().GetVariable(resource)) {
         // Get metadata
         const SpvPhysicalBlockFunction::IdentifierMetadata& fnMd  = table.function.identifierMetadata[function];
         const SpvPhysicalBlockFunction::IdentifierMetadata& varMd = table.function.identifierMetadata[var->id];
@@ -454,7 +454,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
         dynamic.dynamicOffset = table.scan.header.bound++;
 
         // uint32
-        uint32_t uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{}));
+        uint32_t uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::IntType{}));
 
         // Extract descriptor set
         SpvInstruction& spvExDescSet = stream.Allocate(SpvOpCompositeExtract, 6);

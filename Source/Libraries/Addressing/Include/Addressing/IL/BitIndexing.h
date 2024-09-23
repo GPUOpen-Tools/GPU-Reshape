@@ -39,7 +39,7 @@
 /// \return existing value
 template<typename T>
 static IL::ID AtomicOrTexelAddressValue(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset, IL::ID value) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract element
     IL::ID element  = emitter.Div(texelOffset, constants.UInt(32)->id);
@@ -60,7 +60,7 @@ static IL::ID AtomicOrTexelAddressValue(IL::Emitter<T>& emitter, IL::ID buffer, 
 /// \return bit
 template<typename T>
 static IL::ID GetTexelAddressBit(IL::Emitter<T>& emitter, IL::ID texelOffset) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract bit
     IL::ID bitIndex = emitter.Rem(texelOffset, constants.UInt(32)->id);
@@ -75,7 +75,7 @@ static IL::ID GetTexelAddressBit(IL::Emitter<T>& emitter, IL::ID texelOffset) {
 /// \return existing value
 template<typename T>
 static IL::ID AtomicOrTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract bit
     IL::ID bitIndex = emitter.Rem(texelOffset, constants.UInt(32)->id);
@@ -104,7 +104,7 @@ static uint32_t GetNumAtomicBlocks(uint32_t byteWidth) {
 /// \return existing value
 template<typename T>
 static IL::ID AtomicAndTexelAddressValue(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset, IL::ID value) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract element and global element
     IL::ID element       = emitter.Div(texelOffset, constants.UInt(32)->id);
@@ -125,7 +125,7 @@ static IL::ID AtomicAndTexelAddressValue(IL::Emitter<T>& emitter, IL::ID buffer,
 /// \return existing value
 template<typename T>
 static IL::ID AtomicAndTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract bit
     IL::ID bitIndex = emitter.Rem(texelOffset, constants.UInt(32)->id);
@@ -142,7 +142,7 @@ static IL::ID AtomicAndTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::
 /// \return existing value
 template<typename T>
 static IL::ID AtomicClearTexelAddressValue(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset, IL::ID value) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract element and global element
     IL::ID element       = emitter.Div(texelOffset, constants.UInt(32)->id);
@@ -166,7 +166,7 @@ static IL::ID AtomicClearTexelAddressValue(IL::Emitter<T>& emitter, IL::ID buffe
 /// \return existing value
 template<typename T>
 static IL::ID AtomicClearTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract the bit and flip it
     IL::ID bitIndex = emitter.Rem(texelOffset, constants.UInt(32)->id);
@@ -183,7 +183,7 @@ static IL::ID AtomicClearTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL
 /// \return existing value
 template<typename T>
 static IL::ID ReadTexelAddressValue(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset, IL::ID value) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract element and global element
     IL::ID element       = emitter.Div(texelOffset, constants.UInt(32)->id);
@@ -204,7 +204,7 @@ static IL::ID ReadTexelAddressValue(IL::Emitter<T>& emitter, IL::ID buffer, IL::
 /// \return existing value
 template<typename T>
 static IL::ID ReadTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Extract bit
     IL::ID bitIndex = emitter.Rem(texelOffset, constants.UInt(32)->id);
@@ -279,7 +279,7 @@ struct RegionCombinerAnyNotEqual {
 /// \return combiner result
 template<template<typename> typename COMBINER, typename OP, typename FUNCTOR>
 static IL::ID AtomicOpTexelAddressRegion(IL::Emitter<OP>& emitter, FUNCTOR&& functor, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset, uint32_t texelCountLiteral, IL::ID texelCountRuntime) {
-    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+    IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
 
     // Default combiner result
     IL::ID result = COMBINER<OP>{}.Default(emitter);

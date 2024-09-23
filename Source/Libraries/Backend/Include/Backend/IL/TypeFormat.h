@@ -29,7 +29,7 @@
 #include "TypeMap.h"
 #include "Format.h"
 
-namespace Backend::IL {
+namespace IL {
     inline const Type* GetSampledFormatType(TypeMap& map, Format format) {
         switch (format) {
             default:

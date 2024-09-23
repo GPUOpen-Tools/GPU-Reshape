@@ -32,7 +32,7 @@
 // Common
 #include <Common/IComponent.h>
 
-namespace Backend::IL {
+namespace IL {
     class PropagationEngine;
 }
 
@@ -48,14 +48,14 @@ namespace IL {
         /// Install this propagator
         /// \param engine the propagation engine
         /// \return success state
-        virtual bool Install(Backend::IL::PropagationEngine* engine) = 0;
+        virtual bool Install(IL::PropagationEngine* engine) = 0;
 
         /// Propgate an instruction
         /// \param result propagator engine result
         /// \param block source block
         /// \param instr source instruction
         /// \param branchBlock branch chosen, if applicable
-        virtual void PropagateInstruction(Backend::IL::PropagationResult result, const BasicBlock* block, const Instruction* instr, const BasicBlock* branchBlock) = 0;
+        virtual void PropagateInstruction(IL::PropagationResult result, const BasicBlock* block, const Instruction* instr, const BasicBlock* branchBlock) = 0;
 
         /// Propagate all side effects of a loop
         /// \param loop given loop

@@ -38,7 +38,7 @@ class MaskBlitShaderProgram final : public IShaderProgram {
 public:
     /// Constructor
     /// \param initializationMaskBufferID
-    MaskBlitShaderProgram(ShaderDataID initializationMaskBufferID, Backend::IL::ResourceTokenType type, bool isVolumetric);
+    MaskBlitShaderProgram(ShaderDataID initializationMaskBufferID, IL::ResourceTokenType type, bool isVolumetric);
 
     /// Install the masking program
     /// \return
@@ -79,7 +79,7 @@ private:
     ShaderDataID destTokenID{InvalidShaderDataID};
 
     /// Type being copied
-    Backend::IL::ResourceTokenType type;
+    IL::ResourceTokenType type;
 
     /// Volumetric indexing?
     bool isVolumetric;

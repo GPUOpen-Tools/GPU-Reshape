@@ -86,17 +86,17 @@ namespace IL {
             return id == InvalidID;
         }
 
-        const Backend::IL::Type* type{nullptr};
+        const IL::Type* type{nullptr};
 
-        Backend::IL::ConstantKind kind{Backend::IL::ConstantKind::None};
+        IL::ConstantKind kind{IL::ConstantKind::None};
 
-        ::IL::ID id{::IL::InvalidID};
+        ID id{::IL::InvalidID};
     };
 
     struct UnexposedConstant : public Constant {
-        using Type = Backend::IL::UnexposedType;
+        using Type = IL::UnexposedType;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Unexposed;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::Unexposed;
 
         auto SortKey(const Type* _type) const {
             return _type->SortKey();
@@ -104,9 +104,9 @@ namespace IL {
     };
 
     struct BoolConstant : public Constant {
-        using Type = Backend::IL::BoolType;
+        using Type = IL::BoolType;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Bool;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::Bool;
 
         auto SortKey(const Type* _type) const {
             return std::make_tuple(_type->SortKey(), value);
@@ -116,9 +116,9 @@ namespace IL {
     };
 
     struct IntConstant : public Constant {
-        using Type = Backend::IL::IntType;
+        using Type = IL::IntType;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Int;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::Int;
 
         auto SortKey(const Type* _type) const {
             return std::make_tuple(_type->SortKey(), value);
@@ -128,9 +128,9 @@ namespace IL {
     };
 
     struct FPConstant : public Constant {
-        using Type = Backend::IL::FPType;
+        using Type = IL::FPType;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::FP;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::FP;
 
         auto SortKey(const Type* _type) const {
             return std::make_tuple(_type->SortKey(), value);
@@ -140,9 +140,9 @@ namespace IL {
     };
 
     struct ArrayConstant : public Constant {
-        using Type = Backend::IL::ArrayType;
+        using Type = IL::ArrayType;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Array;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::Array;
 
         auto SortKey(const Type* _type) const {
             return std::make_tuple(_type->SortKey(), elements);
@@ -152,9 +152,9 @@ namespace IL {
     };
 
     struct VectorConstant : public Constant {
-        using Type = Backend::IL::VectorType;
+        using Type = IL::VectorType;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Vector;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::Vector;
 
         auto SortKey(const Type* _type) const {
             return std::make_tuple(_type->SortKey(), elements);
@@ -164,9 +164,9 @@ namespace IL {
     };
 
     struct StructConstant : public Constant {
-        using Type = Backend::IL::StructType;
+        using Type = IL::StructType;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Struct;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::Struct;
 
         auto SortKey(const Type* _type) const {
             return std::make_tuple(_type->SortKey(), members);
@@ -176,9 +176,9 @@ namespace IL {
     };
 
     struct UndefConstant : public Constant {
-        using Type = Backend::IL::Type;
+        using Type = IL::Type;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Undef;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::Undef;
 
         auto SortKey(const Type* _type) const {
             return std::make_tuple(_type);
@@ -186,9 +186,9 @@ namespace IL {
     };
 
     struct NullConstant : public Constant {
-        using Type = Backend::IL::Type;
+        using Type = IL::Type;
 
-        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Null;
+        static constexpr IL::ConstantKind kKind = IL::ConstantKind::Null;
 
         auto SortKey(const Type* _type) const {
             return std::make_tuple(_type);

@@ -42,7 +42,7 @@
 #include <tuple>
 #include <vector>
 
-namespace Backend::IL {
+namespace IL {
     struct Type {
         /// Reinterpret this type
         /// \tparam T the target type
@@ -72,7 +72,7 @@ namespace Backend::IL {
         }
 
         TypeKind kind{TypeKind::None};
-        ::IL::ID id{::IL::InvalidID};
+        ID id{::IL::InvalidID};
         uint32_t sourceOffset{::IL::InvalidOffset};
     };
 

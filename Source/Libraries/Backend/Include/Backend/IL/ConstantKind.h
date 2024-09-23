@@ -29,7 +29,7 @@
 // Std
 #include <cstdint>
 
-namespace Backend::IL {
+namespace IL {
     enum class ConstantKind : uint8_t {
         None,
         Undef,

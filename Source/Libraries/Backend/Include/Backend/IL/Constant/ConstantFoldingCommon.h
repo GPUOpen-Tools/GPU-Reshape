@@ -3,55 +3,55 @@
 // Backend
 #include <Backend/IL/InstructionCommon.h>
 
-namespace Backend::IL {
-    bool CanFoldWithImmediates(const ::IL::Instruction* instr) {
+namespace IL {
+    bool CanFoldWithImmediates(const Instruction* instr) {
         switch (instr->opCode) {
             default: {
                 return true;
             }
 
             /** Custom instructions can never be folded */
-            case ::IL::OpCode::Export:
-            case ::IL::OpCode::ResourceSize:
-            case ::IL::OpCode::ResourceToken:
+            case OpCode::Export:
+            case OpCode::ResourceSize:
+            case OpCode::ResourceToken:
 
             /** Inter-stages can never be folded */
-            case ::IL::OpCode::StoreOutput:
-            case ::IL::OpCode::StoreVertexOutput:
-            case ::IL::OpCode::StorePrimitiveOutput:
+            case OpCode::StoreOutput:
+            case OpCode::StoreVertexOutput:
+            case OpCode::StorePrimitiveOutput:
 
             /** No resource immediates */
-            case ::IL::OpCode::SampleTexture:
-            case ::IL::OpCode::StoreTexture:
-            case ::IL::OpCode::LoadTexture:
-            case ::IL::OpCode::StoreBuffer:
-            case ::IL::OpCode::LoadBuffer:
-            case ::IL::OpCode::StoreBufferRaw:
-            case ::IL::OpCode::LoadBufferRaw:
+            case OpCode::SampleTexture:
+            case OpCode::StoreTexture:
+            case OpCode::LoadTexture:
+            case OpCode::StoreBuffer:
+            case OpCode::LoadBuffer:
+            case OpCode::StoreBufferRaw:
+            case OpCode::LoadBufferRaw:
 
             /** No CFG immediates */
-            case ::IL::OpCode::Branch:
-            case ::IL::OpCode::BranchConditional:
-            case ::IL::OpCode::Return:
-            case ::IL::OpCode::Switch:
-            case ::IL::OpCode::Phi:
-            case ::IL::OpCode::Select:
+            case OpCode::Branch:
+            case OpCode::BranchConditional:
+            case OpCode::Return:
+            case OpCode::Switch:
+            case OpCode::Phi:
+            case OpCode::Select:
 
             /** Interprocedurals are not "immediate" folds, I wish... */
-            case ::IL::OpCode::Call:
+            case OpCode::Call:
 
             /** Memory operations cannot be folded with immediates */
-            case ::IL::OpCode::Load:
-            case ::IL::OpCode::Store:
+            case OpCode::Load:
+            case OpCode::Store:
 
             /** No atomic immediates */
-            case ::IL::OpCode::AtomicOr:
-            case ::IL::OpCode::AtomicXOr:
-            case ::IL::OpCode::AtomicAnd:
-            case ::IL::OpCode::AtomicAdd:
-            case ::IL::OpCode::AtomicMin:
-            case ::IL::OpCode::AtomicMax:
-            case ::IL::OpCode::AtomicExchange: {
+            case OpCode::AtomicOr:
+            case OpCode::AtomicXOr:
+            case OpCode::AtomicAnd:
+            case OpCode::AtomicAdd:
+            case OpCode::AtomicMin:
+            case OpCode::AtomicMax:
+            case OpCode::AtomicExchange: {
                 return false;
             }
 

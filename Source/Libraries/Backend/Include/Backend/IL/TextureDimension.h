@@ -32,7 +32,7 @@
 // Common
 #include <Common/Assert.h>
 
-namespace Backend::IL {
+namespace IL {
     enum class TextureDimension {
         Texture1D,
         Texture2D,

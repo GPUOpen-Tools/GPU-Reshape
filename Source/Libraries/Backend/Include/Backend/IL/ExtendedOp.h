@@ -26,7 +26,7 @@
 
 #pragma once
 
-namespace Backend::IL {
+namespace IL {
     enum class ExtendedOp {
         Min,
         Max,

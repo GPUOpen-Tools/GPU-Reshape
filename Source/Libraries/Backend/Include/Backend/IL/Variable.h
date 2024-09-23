@@ -34,12 +34,12 @@ namespace IL {
     struct Constant;
 }
 
-namespace Backend::IL {
+namespace IL {
     struct Type;
 
     struct Variable {
         /// Identifier of the argument
-        ::IL::ID id{::IL::InvalidID};
+        ID id{::IL::InvalidID};
 
         /// Address space of the variable
         AddressSpace addressSpace{AddressSpace::Unexposed};
@@ -48,6 +48,6 @@ namespace Backend::IL {
         const Type* type{nullptr};
 
         /// Base initialization
-        const ::IL::Constant* initializer{nullptr};
+        const Constant* initializer{nullptr};
     };
 }

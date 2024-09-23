@@ -67,7 +67,7 @@
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/lib/Bitcode/Writer/BitcodeWriter.cpp
  */
 
-DXILPhysicalBlockFunction::DXILPhysicalBlockFunction(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table):
+DXILPhysicalBlockFunction::DXILPhysicalBlockFunction(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table):
     DXILPhysicalBlockSection(allocators, program, table),
     unresolvedSemanticInstructions(allocators),
     sourceTraceback(allocators) {
@@ -85,7 +85,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     DXILIDMap::Snapshot idMapSnapshot = table.idMap.CreateSnapshot();
 
     // Get type map
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Create function
     ASSERT(table.metadata.entryPointId != IL::InvalidID, "Expected entrypoint");
@@ -392,11 +392,11 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 ASSERT(false, "Untested path, validate and remove");
 
                 // Get composite
-                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp32());
+                const IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp32());
                 uint32_t compositeValue = reader.GetMappedRelative(anchor);
 
                 // Get index
-                const Backend::IL::Type* indexType = table.type.typeMap.GetType(reader.ConsumeOp32());
+                const IL::Type* indexType = table.type.typeMap.GetType(reader.ConsumeOp32());
                 uint32_t indexValue = reader.GetMappedRelative(anchor);
 
                 // Unused
@@ -417,7 +417,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 ASSERT(false, "Untested path, validate and remove");
 
                 // Get composite
-                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp32());
+                const IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp32());
                 uint32_t compositeValue = reader.GetMappedRelative(anchor);
 
                 // Get index
@@ -445,16 +445,16 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 uint32_t index = reader.ConsumeOp32();
 
                 // Create type mapping
-                const Backend::IL::Type* type = ilTypeMap.GetType(compositeValue);
+                const IL::Type* type = ilTypeMap.GetType(compositeValue);
                 switch (type->kind) {
                     default:
                         ASSERT(false, "Invalid composite extraction");
                         break;
-                    case Backend::IL::TypeKind::Struct:
-                        ilTypeMap.SetType(result, type->As<Backend::IL::StructType>()->memberTypes[index]);
+                    case IL::TypeKind::Struct:
+                        ilTypeMap.SetType(result, type->As<IL::StructType>()->memberTypes[index]);
                         break;
-                    case Backend::IL::TypeKind::Vector:
-                        ilTypeMap.SetType(result, type->As<Backend::IL::VectorType>()->containedType);
+                    case IL::TypeKind::Vector:
+                        ilTypeMap.SetType(result, type->As<IL::VectorType>()->containedType);
                         break;
                 }
 
@@ -486,7 +486,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 bool inBounds{false};
 
                 // The current pointee type
-                const Backend::IL::Type* pointee{ nullptr };
+                const IL::Type* pointee{ nullptr };
 
                 // Handle old instruction types
                 if (record.Is(LLVMFunctionRecord::InstGEP)) {
@@ -527,30 +527,30 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         default:
                             ASSERT(false, "Unexpected GEP chain type");
                             break;
-                        case Backend::IL::TypeKind::None:
+                        case IL::TypeKind::None:
                             break;
-                        case Backend::IL::TypeKind::Vector: {
-                            elementType = elementType->As<Backend::IL::VectorType>()->containedType;
-                            break;
-                        }
-                        case Backend::IL::TypeKind::Matrix: {
-                            elementType = elementType->As<Backend::IL::MatrixType>()->containedType;
+                        case IL::TypeKind::Vector: {
+                            elementType = elementType->As<IL::VectorType>()->containedType;
                             break;
                         }
-                        case Backend::IL::TypeKind::Pointer:{
-                            elementType = elementType->As<Backend::IL::PointerType>()->pointee;
+                        case IL::TypeKind::Matrix: {
+                            elementType = elementType->As<IL::MatrixType>()->containedType;
                             break;
                         }
-                        case Backend::IL::TypeKind::Array:{
-                            elementType = elementType->As<Backend::IL::ArrayType>()->elementType;
+                        case IL::TypeKind::Pointer:{
+                            elementType = elementType->As<IL::PointerType>()->pointee;
                             break;
                         }
-                        case Backend::IL::TypeKind::Struct: {
-                            const Backend::IL::Constant* constant = program.GetConstants().GetConstant(nextChainId);
+                        case IL::TypeKind::Array:{
+                            elementType = elementType->As<IL::ArrayType>()->elementType;
+                            break;
+                        }
+                        case IL::TypeKind::Struct: {
+                            const IL::Constant* constant = program.GetConstants().GetConstant(nextChainId);
                             ASSERT(constant, "GEP struct chains must be constant");
 
-                            uint32_t memberIdx = static_cast<uint32_t>(constant->As<Backend::IL::IntConstant>()->value);
-                            elementType = elementType->As<Backend::IL::StructType>()->memberTypes[memberIdx];
+                            uint32_t memberIdx = static_cast<uint32_t>(constant->As<IL::IntConstant>()->value);
+                            elementType = elementType->As<IL::StructType>()->memberTypes[memberIdx];
                             break;
                         }
                     }
@@ -563,9 +563,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr->chains.count = chainIndex;
 
                 // Set the resulting type as a pointer to the walked type
-                ilTypeMap.SetType(instr->result, ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
+                ilTypeMap.SetType(instr->result, ilTypeMap.FindTypeOrAdd(IL::PointerType {
                     .pointee = elementType,
-                    .addressSpace = Backend::IL::AddressSpace::Function
+                    .addressSpace = IL::AddressSpace::Function
                 }));
 
                 basicBlock->Append(instr);
@@ -596,7 +596,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 /* Inbuilt vector */
             case LLVMFunctionRecord::InstShuffleVec: {
                 // Create type mapping
-                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::UnexposedType{}));
+                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(IL::UnexposedType{}));
 
                 // Emit as unexposed
                 IL::UnexposedInstruction instr{};
@@ -616,7 +616,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 uint32_t rhs = reader.GetMappedRelative(anchor);
 
                 // Create type mapping
-                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::BoolType{}));
+                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(IL::BoolType{}));
 
                 auto cmpOp = static_cast<LLVMCmpOp>(reader.ConsumeOp());
                 switch (cmpOp) {
@@ -749,7 +749,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 GRS_SINK(ordering);
                 GRS_SINK(scope);
 
-                const auto* pointerType = ilTypeMap.GetType(address)->As<Backend::IL::PointerType>();
+                const auto* pointerType = ilTypeMap.GetType(address)->As<IL::PointerType>();
 
                 // Emit as unexposed
                 IL::UnexposedInstruction instr{};
@@ -769,7 +769,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 uint32_t address = reader.GetMappedRelativeValue(anchor);
 
                 // Unwrap pointer to determine result type
-                const auto* pointerType = ilTypeMap.GetType(address)->As<Backend::IL::PointerType>();
+                const auto* pointerType = ilTypeMap.GetType(address)->As<IL::PointerType>();
 
                 // Emit as unexposed
                 IL::UnexposedInstruction instr{};
@@ -939,12 +939,12 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstAlloca: {
-                const Backend::IL::Type *type = table.type.typeMap.GetType(reader.ConsumeOp32());
+                const IL::Type *type = table.type.typeMap.GetType(reader.ConsumeOp32());
 
                 // Create type mapping
-                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
+                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(IL::PointerType{
                     .pointee = type,
-                    .addressSpace = Backend::IL::AddressSpace::Function
+                    .addressSpace = IL::AddressSpace::Function
                 }));
 
                 uint64_t sizeType = reader.ConsumeOp();
@@ -967,13 +967,13 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 uint32_t address = reader.GetMappedRelativeValue(anchor);
 
                 // Get address type
-                const Backend::IL::Type *type = ilTypeMap.GetType(address);
+                const IL::Type *type = ilTypeMap.GetType(address);
 
                 // Set as pointee type
-                if (auto pointer = type->Cast<Backend::IL::PointerType>()) {
+                if (auto pointer = type->Cast<IL::PointerType>()) {
                     ilTypeMap.SetType(result, pointer->pointee);
                 } else {
-                    ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::UnexposedType{}));
+                    ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(IL::UnexposedType{}));
                 }
 
                 // Append
@@ -1047,7 +1047,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 table.compliance.MarkAsUsed(callDecl);
 
                 // Create mapping if present
-                if (!callDecl->type->returnType->Is<Backend::IL::VoidType>()) {
+                if (!callDecl->type->returnType->Is<IL::VoidType>()) {
                     result = table.idMap.AllocMappedID(DXILIDType::Instruction);
 
                     // Set as return type
@@ -1120,8 +1120,8 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
             // While the instructions themselves can be unexposed, the resulting type must never be.
             // Supporting this from the user side would be needless complexity
-            const Backend::IL::Type* type = ilTypeMap.GetType(instr->result);
-            if (!type || type->kind == Backend::IL::TypeKind::Unexposed)
+            const IL::Type* type = ilTypeMap.GetType(instr->result);
+            if (!type || type->kind == IL::TypeKind::Unexposed)
             {
                 // Compose message
                 std::stringstream stream;
@@ -1314,7 +1314,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
 
     // Get function type
     uint32_t type = reader.ConsumeOp32();
-    function->type = table.type.typeMap.GetType(type)->As<Backend::IL::FunctionType>();
+    function->type = table.type.typeMap.GetType(type)->As<IL::FunctionType>();
 
     // Ignored
     uint64_t callingConv = reader.ConsumeOp();
@@ -1432,7 +1432,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
     LLVMRecordStringView view = table.symbol.GetValueString(called);
 
     // Get type map
-    Backend::IL::TypeMap& ilTypeMap = program.GetTypeMap();
+    IL::TypeMap& ilTypeMap = program.GetTypeMap();
 
     // Must match, if it needs to deviate then do translation instead
     static_assert(static_cast<uint32_t>(IL::ComponentMask::X) == BIT(0), "Unexpected color mask");
@@ -1509,9 +1509,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             basicBlock->Append(chain);
 
             // Set type to Handle*
-            ilTypeMap.SetType(chainAddr, ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
+            ilTypeMap.SetType(chainAddr, ilTypeMap.FindTypeOrAdd(IL::PointerType {
                 .pointee = type,
-                .addressSpace = ilTypeMap.GetType(bindingGroup)->As<Backend::IL::PointerType>()->addressSpace
+                .addressSpace = ilTypeMap.GetType(bindingGroup)->As<IL::PointerType>()->addressSpace
             }));
             
             // Expose actual handle as a load
@@ -1552,18 +1552,18 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                     ASSERT(false, "Invalid binding kind");
                     break;
                 }
-                case Backend::IL::ConstantKind::Struct: {
+                case IL::ConstantKind::Struct: {
                     auto _struct = bindings->As<IL::StructConstant>();
 
                     // Get constants
                     ASSERT(_struct->members.size() == 4u, "Unexpected binding size");
-                    rangeLowerBound = _struct->members[0]->As<Backend::IL::IntConstant>()->value;
-                    rangeUpperBound = _struct->members[1]->As<Backend::IL::IntConstant>()->value;
-                    spaceID = _struct->members[2]->As<Backend::IL::IntConstant>()->value;
-                    resourceClass = _struct->members[3]->As<Backend::IL::IntConstant>()->value;
+                    rangeLowerBound = _struct->members[0]->As<IL::IntConstant>()->value;
+                    rangeUpperBound = _struct->members[1]->As<IL::IntConstant>()->value;
+                    spaceID = _struct->members[2]->As<IL::IntConstant>()->value;
+                    resourceClass = _struct->members[3]->As<IL::IntConstant>()->value;
                     break;
                 }
-                case Backend::IL::ConstantKind::Null: {
+                case IL::ConstantKind::Null: {
                     break;
                 }
             }
@@ -2121,13 +2121,13 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 default: {
                     break;
                 }
-                case Backend::IL::ConstantKind::Struct: {
+                case IL::ConstantKind::Struct: {
                     auto _struct = constant->As<IL::StructConstant>();
                     annotation.basic.opaque = static_cast<uint32_t>(_struct->members.at(0)->As<IL::IntConstant>()->value);
                     annotation.typed.opaque = static_cast<uint32_t>(_struct->members.at(1)->As<IL::IntConstant>()->value);
                     break;
                 }
-                case Backend::IL::ConstantKind::Null: {
+                case IL::ConstantKind::Null: {
                     // Null constants are allowed
                     break;
                 }
@@ -2217,10 +2217,10 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
 
                 // Get type
-                const auto *bufferType = program.GetTypeMap().GetType(resource)->As<Backend::IL::BufferType>();
+                const auto *bufferType = program.GetTypeMap().GetType(resource)->As<IL::BufferType>();
 
                 // Number of dimensions
-                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
+                uint32_t formatDimensionCount = IL::GetDimensionSize(bufferType->texelType);
 
                 // Vectorize
                 IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
@@ -2267,10 +2267,10 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 uint64_t alignment = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
 
                 // Get type
-                const auto* bufferType = program.GetTypeMap().GetType(resource)->As<Backend::IL::BufferType>();
+                const auto* bufferType = program.GetTypeMap().GetType(resource)->As<IL::BufferType>();
 
                 // Number of dimensions
-                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
+                uint32_t formatDimensionCount = IL::GetDimensionSize(bufferType->texelType);
 
                 // Vectorize
                 IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
@@ -2319,10 +2319,10 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 }
 
                 // Get type
-                const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+                const auto *textureType = program.GetTypeMap().GetType(resource)->As<IL::TextureType>();
 
                 // Number of dimensions
-                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension, false);
+                uint32_t textureDimensionCount = IL::GetDimensionSize(textureType->dimension, false);
 
                 // Vectorize
                 IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
@@ -2366,17 +2366,17 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 uint32_t oz = reader.GetMappedRelative(anchor);
 
                 // Get type
-                const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+                const auto *textureType = program.GetTypeMap().GetType(resource)->As<IL::TextureType>();
 
                 // Number of dimensions
-                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension, false);
+                uint32_t textureDimensionCount = IL::GetDimensionSize(textureType->dimension, false);
 
                 // Vectorize
                 IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz, cw);
                 IL::ID svoxOffset = AllocateSVOSequential(textureDimensionCount, ox, oy, oz);
 
                 // Emit as sample
-                _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+                _instr->sampleMode = IL::TextureSampleMode::Default;
                 _instr->texture = resource;
                 _instr->sampler = sampler;
                 _instr->coordinate = svoxCoordinate;
@@ -2393,7 +2393,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                         ASSERT(false, "Unexpected sampling opcode");
                         break;
                     case DXILOpcodes::Sample: {
-                        _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+                        _instr->sampleMode = IL::TextureSampleMode::Default;
 
                         // Unused
                         uint32_t clamp = reader.GetMappedRelative(anchor);
@@ -2401,7 +2401,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                         break;
                     }
                     case DXILOpcodes::SampleBias: {
-                        _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+                        _instr->sampleMode = IL::TextureSampleMode::Default;
                         _instr->bias = reader.GetMappedRelative(anchor);
 
                         // Unused
@@ -2410,7 +2410,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                         break;
                     }
                     case DXILOpcodes::SampleCmp: {
-                        _instr->sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
+                        _instr->sampleMode = IL::TextureSampleMode::DepthComparison;
                         _instr->reference = reader.GetMappedRelative(anchor);
 
                         // Unused
@@ -2419,12 +2419,12 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                         break;
                     }
                     case DXILOpcodes::SampleCmpLevelZero: {
-                        _instr->sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
+                        _instr->sampleMode = IL::TextureSampleMode::DepthComparison;
                         _instr->reference = reader.GetMappedRelative(anchor);
                         break;
                     }
                     case DXILOpcodes::SampleGrad: {
-                        _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+                        _instr->sampleMode = IL::TextureSampleMode::Default;
 
                         // DDX
                         uint32_t ddx0 = reader.GetMappedRelative(anchor);
@@ -2446,7 +2446,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                         break;
                     }
                     case DXILOpcodes::SampleLevel: {
-                        _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+                        _instr->sampleMode = IL::TextureSampleMode::Default;
                         _instr->lod = reader.GetMappedRelative(anchor);
                         break;
                     }
@@ -2488,11 +2488,11 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
 
                 // Get type
-                const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+                const auto *textureType = program.GetTypeMap().GetType(resource)->As<IL::TextureType>();
 
                 // Number of dimensions
-                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension, false);
-                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(textureType->format);
+                uint32_t textureDimensionCount = IL::GetDimensionSize(textureType->dimension, false);
+                uint32_t formatDimensionCount = IL::GetDimensionSize(textureType->format);
 
                 // Vectorize
                 IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
@@ -2512,13 +2512,13 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
     unresolvedSemanticInstructions.clear();
 }
 
-const Backend::IL::Type* DXILPhysicalBlockFunction::GetTypeFromProperties(const DXILResourceProperties& properties) {
-    Backend::IL::TypeMap &types = program.GetTypeMap();
+const IL::Type* DXILPhysicalBlockFunction::GetTypeFromProperties(const DXILResourceProperties& properties) {
+    IL::TypeMap &types = program.GetTypeMap();
 
     // Handle on shape
     switch (static_cast<DXILShaderResourceShape>(properties.basic.shape)) {
         default: {
-            return types.FindTypeOrAdd(Backend::IL::UnexposedType{});
+            return types.FindTypeOrAdd(IL::UnexposedType{});
         }
         case DXILShaderResourceShape::Texture1D:
         case DXILShaderResourceShape::Texture2D:
@@ -2537,77 +2537,77 @@ const Backend::IL::Type* DXILPhysicalBlockFunction::GetTypeFromProperties(const 
             return GetTypeFromBufferProperties(properties);
         }
         case DXILShaderResourceShape::CBuffer: {
-            return types.FindTypeOrAdd(Backend::IL::CBufferType{});
+            return types.FindTypeOrAdd(IL::CBufferType{});
         }
         case DXILShaderResourceShape::Sampler: {
-            return types.FindTypeOrAdd(Backend::IL::SamplerType{});
+            return types.FindTypeOrAdd(IL::SamplerType{});
         }
     }
 }
 
-const Backend::IL::Type* DXILPhysicalBlockFunction::GetTypeFromTextureProperties(const DXILResourceProperties& properties) {
-    Backend::IL::TypeMap &types = program.GetTypeMap();
+const IL::Type* DXILPhysicalBlockFunction::GetTypeFromTextureProperties(const DXILResourceProperties& properties) {
+    IL::TypeMap &types = program.GetTypeMap();
 
     // Final format
-    Backend::IL::Format format = table.metadata.GetComponentFormat(static_cast<ComponentType>(properties.typed.resource.componentType));
+    IL::Format format = table.metadata.GetComponentFormat(static_cast<ComponentType>(properties.typed.resource.componentType));
 
     // Final sampled type
-    const Backend::IL::Type* sampledType = table.metadata.GetComponentType(static_cast<ComponentType>(properties.typed.resource.componentType));
+    const IL::Type* sampledType = table.metadata.GetComponentType(static_cast<ComponentType>(properties.typed.resource.componentType));
 
     // Vectorized?
     if (properties.typed.resource.componentCount > 1) {
-        sampledType = types.FindTypeOrAdd(Backend::IL::VectorType {
+        sampledType = types.FindTypeOrAdd(IL::VectorType {
             .containedType = sampledType,
             .dimension = properties.typed.resource.componentCount
         });
     }
 
     // Translate dimension
-    Backend::IL::TextureDimension dimension;
+    IL::TextureDimension dimension;
     switch (static_cast<DXILShaderResourceShape>(properties.basic.shape)) {
         default: {
             ASSERT(false, "Unexpected shape");
             return nullptr;
         }
         case DXILShaderResourceShape::Texture1D:
-            dimension = Backend::IL::TextureDimension::Texture1D;
+            dimension = IL::TextureDimension::Texture1D;
             break;
         case DXILShaderResourceShape::Texture2D:
         case DXILShaderResourceShape::Texture2DMS:
-            dimension = Backend::IL::TextureDimension::Texture2D;
+            dimension = IL::TextureDimension::Texture2D;
             break;
         case DXILShaderResourceShape::Texture3D:
-            dimension = Backend::IL::TextureDimension::Texture3D;
+            dimension = IL::TextureDimension::Texture3D;
             break;
         case DXILShaderResourceShape::TextureCube:
-            dimension = Backend::IL::TextureDimension::Texture2DCube;
+            dimension = IL::TextureDimension::Texture2DCube;
             break;
         case DXILShaderResourceShape::Texture1DArray:
-            dimension = Backend::IL::TextureDimension::Texture1DArray;
+            dimension = IL::TextureDimension::Texture1DArray;
             break;
         case DXILShaderResourceShape::Texture2DArray:
-            dimension = Backend::IL::TextureDimension::Texture2DArray;
+            dimension = IL::TextureDimension::Texture2DArray;
             break;
         case DXILShaderResourceShape::Texture2DMSArray:
-            dimension = Backend::IL::TextureDimension::Texture2DArray;
+            dimension = IL::TextureDimension::Texture2DArray;
             break;
         case DXILShaderResourceShape::TextureCubeArray:
-            dimension = Backend::IL::TextureDimension::Texture2DCubeArray;
+            dimension = IL::TextureDimension::Texture2DCubeArray;
             break;
     }
 
     // Create type
-    return types.FindTypeOrAdd(Backend::IL::TextureType{
+    return types.FindTypeOrAdd(IL::TextureType{
         .sampledType = sampledType,
         .dimension = dimension,
         .multisampled = properties.typed.resource.sampleCount > 1,
-        .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
+        .samplerMode = properties.basic.isUAV ? IL::ResourceSamplerMode::Writable : IL::ResourceSamplerMode::RuntimeOnly,
         .format = format
     });
 }
 
-const Backend::IL::Type * DXILPhysicalBlockFunction::GetTypeFromBufferProperties(const DXILResourceProperties &properties) {
-    Backend::IL::TypeMap &types = program.GetTypeMap();
+const IL::Type * DXILPhysicalBlockFunction::GetTypeFromBufferProperties(const DXILResourceProperties &properties) {
+    IL::TypeMap &types = program.GetTypeMap();
 
     // Special cases
     switch (static_cast<DXILShaderResourceShape>(properties.basic.shape)) {
@@ -2616,48 +2616,48 @@ const Backend::IL::Type * DXILPhysicalBlockFunction::GetTypeFromBufferProperties
         }
         case DXILShaderResourceShape::RawBuffer: {
             // If raw, it's on a per byte address
-            return types.FindTypeOrAdd(Backend::IL::BufferType{
-                .elementType = types.FindTypeOrAdd(Backend::IL::IntType { .bitWidth = 8, .signedness = false }),
-                .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
-                .texelType = Backend::IL::Format::R8,
+            return types.FindTypeOrAdd(IL::BufferType{
+                .elementType = types.FindTypeOrAdd(IL::IntType { .bitWidth = 8, .signedness = false }),
+                .samplerMode = properties.basic.isUAV ? IL::ResourceSamplerMode::Writable : IL::ResourceSamplerMode::RuntimeOnly,
+                .texelType = IL::Format::R8,
                 .byteAddressing = true
             });
         }
         case DXILShaderResourceShape::StructuredBuffer: {
             // No structured type information, just report it as uint8_t[byteStride]
-            return types.FindTypeOrAdd(Backend::IL::BufferType{
-                .elementType = types.FindTypeOrAdd(Backend::IL::ArrayType {
-                    .elementType = types.FindTypeOrAdd(Backend::IL::IntType { .bitWidth = 8, .signedness = false }),
+            return types.FindTypeOrAdd(IL::BufferType{
+                .elementType = types.FindTypeOrAdd(IL::ArrayType {
+                    .elementType = types.FindTypeOrAdd(IL::IntType { .bitWidth = 8, .signedness = false }),
                     .count = properties.typed.structByteStride
                 }),
-                .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
-                .texelType = Backend::IL::Format::None,
+                .samplerMode = properties.basic.isUAV ? IL::ResourceSamplerMode::Writable : IL::ResourceSamplerMode::RuntimeOnly,
+                .texelType = IL::Format::None,
                 .byteAddressing = false
             });
         }
         case DXILShaderResourceShape::CBuffer: {
-            return types.FindTypeOrAdd(Backend::IL::CBufferType{});
+            return types.FindTypeOrAdd(IL::CBufferType{});
         }
     }
 
     // Final format
-    Backend::IL::Format format = table.metadata.GetComponentFormat(static_cast<ComponentType>(properties.typed.resource.componentType));
+    IL::Format format = table.metadata.GetComponentFormat(static_cast<ComponentType>(properties.typed.resource.componentType));
 
     // Final sampled type
-    const Backend::IL::Type* sampledType = table.metadata.GetComponentType(static_cast<ComponentType>(properties.typed.resource.componentType));
+    const IL::Type* sampledType = table.metadata.GetComponentType(static_cast<ComponentType>(properties.typed.resource.componentType));
 
     // Vectorized?
     if (properties.typed.resource.componentCount > 1) {
-        sampledType = types.FindTypeOrAdd(Backend::IL::VectorType {
+        sampledType = types.FindTypeOrAdd(IL::VectorType {
             .containedType = sampledType,
             .dimension = properties.typed.resource.componentCount
         });
     }
 
     // Create type
-    return types.FindTypeOrAdd(Backend::IL::BufferType{
+    return types.FindTypeOrAdd(IL::BufferType{
         .elementType = sampledType,
-        .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
+        .samplerMode = properties.basic.isUAV ? IL::ResourceSamplerMode::Writable : IL::ResourceSamplerMode::RuntimeOnly,
         .texelType = format
     });
 }
@@ -2687,11 +2687,11 @@ uint32_t DXILPhysicalBlockFunction::GetSVOXCount(IL::ID value) {
         }
         case DXILIDUserType::VectorOnStruct:
         case DXILIDUserType::StructOnSequential: {
-            const auto* _struct = lhsType->As<Backend::IL::StructType>();
+            const auto* _struct = lhsType->As<IL::StructType>();
             return static_cast<uint32_t>(_struct->memberTypes.size());
         }
         case DXILIDUserType::VectorOnSequential: {
-            const auto* vector = lhsType->As<Backend::IL::VectorType>();
+            const auto* vector = lhsType->As<IL::VectorType>();
             return vector->dimension;
         }
     }
@@ -2704,7 +2704,7 @@ IL::ID DXILPhysicalBlockFunction::AllocateSVOSequential(uint32_t count, IL::ID x
     }
 
     // Get type, all share the same type in effect
-    const Backend::IL::Type* type = program.GetTypeMap().GetType(x);
+    const IL::Type* type = program.GetTypeMap().GetType(x);
 
     // Emulated value
     IL::ID svox = program.GetIdentifierMap().AllocID();
@@ -2724,7 +2724,7 @@ IL::ID DXILPhysicalBlockFunction::AllocateSVOSequential(uint32_t count, IL::ID x
     table.idRemapper.AllocSourceUserMapping(svox, DXILIDUserType::VectorOnSequential, base);
 
     // Set type
-    program.GetTypeMap().SetType(svox, program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{
+    program.GetTypeMap().SetType(svox, program.GetTypeMap().FindTypeOrAdd(IL::VectorType{
         .containedType = type,
         .dimension = static_cast<uint8_t>(count)
     }));
@@ -2733,7 +2733,7 @@ IL::ID DXILPhysicalBlockFunction::AllocateSVOSequential(uint32_t count, IL::ID x
     return svox;
 }
 
-IL::ID DXILPhysicalBlockFunction::AllocateSVOStructSequential(const Backend::IL::Type *type, const IL::ID *values, uint32_t count) {
+IL::ID DXILPhysicalBlockFunction::AllocateSVOStructSequential(const IL::Type *type, const IL::ID *values, uint32_t count) {
     // Pass through if singular
     if (count == 1) {
         return values[0];
@@ -2772,7 +2772,7 @@ DXILPhysicalBlockFunction::SVOXElement DXILPhysicalBlockFunction::ExtractSVOXEle
             return {lhsType, value};
         }
         case DXILIDUserType::VectorOnStruct: {
-            const auto* vector = lhsType->As<Backend::IL::VectorType>();
+            const auto* vector = lhsType->As<IL::VectorType>();
 
             IL::ID extractedId = program.GetIdentifierMap().AllocID();
 
@@ -2789,12 +2789,12 @@ DXILPhysicalBlockFunction::SVOXElement DXILPhysicalBlockFunction::ExtractSVOXEle
             return {vector->containedType, extractedId};
         }
         case DXILIDUserType::VectorOnSequential: {
-            const auto* vector = lhsType->As<Backend::IL::VectorType>();
+            const auto* vector = lhsType->As<IL::VectorType>();
             uint32_t base = table.idRemapper.TryGetUserMapping(value);
             return {vector->containedType, table.idRemapper.TryGetUserMapping(base + index)};
         }
         case DXILIDUserType::StructOnSequential: {
-            const auto* _struct = lhsType->As<Backend::IL::StructType>();
+            const auto* _struct = lhsType->As<IL::StructType>();
             uint32_t base = table.idRemapper.TryGetUserMapping(value);
             return {_struct->memberTypes[index], table.idRemapper.TryGetUserMapping(base + index)};
         }
@@ -2957,7 +2957,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
     }
 
     // Get the program map
-    Backend::IL::TypeMap &typeMap = program.GetTypeMap();
+    IL::TypeMap &typeMap = program.GetTypeMap();
 
     // Swap source data
     Vector<LLVMRecord> source(allocators);
@@ -3051,7 +3051,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto* _instr = instr->As<IL::LiteralInstruction>();
 
                     // Create constant
-                    const Backend::IL::Constant* constant{nullptr};
+                    const IL::Constant* constant{nullptr};
                     switch (_instr->type) {
                         default: {
                             ASSERT(false, "Invalid literal instruction");
@@ -3059,15 +3059,15 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         }
                         case IL::LiteralType::Int: {
                             constant = program.GetConstants().FindConstantOrAdd(
-                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=_instr->bitWidth, .signedness=_instr->signedness}),
-                                Backend::IL::IntConstant{.value = _instr->value.integral}
+                                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=_instr->bitWidth, .signedness=_instr->signedness}),
+                                IL::IntConstant{.value = _instr->value.integral}
                             );
                             break;
                         }
                         case IL::LiteralType::FP: {
                             constant = program.GetConstants().FindConstantOrAdd(
-                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{.bitWidth=_instr->bitWidth}),
-                                Backend::IL::FPConstant{.value = _instr->value.fp}
+                                program.GetTypeMap().FindTypeOrAdd(IL::FPType{.bitWidth=_instr->bitWidth}),
+                                IL::FPConstant{.value = _instr->value.fp}
                             );
                             break;
                         }
@@ -3127,10 +3127,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             addressID = _instr->address;
                             valueID = _instr->value;
 
-                            const Backend::IL::Type* valueType = program.GetTypeMap().GetType(_instr->value);
-                            ASSERT(valueType->Is<Backend::IL::IntType>(), "Atomic operation on non-integer type");
+                            const IL::Type* valueType = program.GetTypeMap().GetType(_instr->value);
+                            ASSERT(valueType->Is<IL::IntType>(), "Atomic operation on non-integer type");
 
-                            binOp = valueType->As<Backend::IL::IntType>()->signedness ? DXILAtomicBinOp::IMin : DXILAtomicBinOp::UMin;
+                            binOp = valueType->As<IL::IntType>()->signedness ? DXILAtomicBinOp::IMin : DXILAtomicBinOp::UMin;
                             break;
                         }
                         case IL::OpCode::AtomicMax: {
@@ -3138,10 +3138,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             addressID = _instr->address;
                             valueID = _instr->value;
 
-                            const Backend::IL::Type* valueType = program.GetTypeMap().GetType(_instr->value);
-                            ASSERT(valueType->Is<Backend::IL::IntType>(), "Atomic operation on non-integer type");
+                            const IL::Type* valueType = program.GetTypeMap().GetType(_instr->value);
+                            ASSERT(valueType->Is<IL::IntType>(), "Atomic operation on non-integer type");
 
-                            binOp = valueType->As<Backend::IL::IntType>()->signedness ? DXILAtomicBinOp::IMax : DXILAtomicBinOp::UMax;
+                            binOp = valueType->As<IL::IntType>()->signedness ? DXILAtomicBinOp::IMax : DXILAtomicBinOp::UMax;
                             break;
                         }
                         case IL::OpCode::AtomicExchange:
@@ -3165,16 +3165,16 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             ASSERT(false, "Unsupported atomic operation");
                             break;
                         case IL::OpCode::AddressChain: {
-                            auto* chainInstr = addressInstr->As<Backend::IL::AddressChainInstruction>();
+                            auto* chainInstr = addressInstr->As<IL::AddressChainInstruction>();
                             ASSERT(chainInstr->chains.count == 1, "Multi-chain on atomic operations not supported");
 
                             // Get handle of address base
-                            const auto* addressType = program.GetTypeMap().GetType(chainInstr->result)->As<Backend::IL::PointerType>();;
+                            const auto* addressType = program.GetTypeMap().GetType(chainInstr->result)->As<IL::PointerType>();;
 
                             // Handle based atomic?
-                            if (addressType->addressSpace == Backend::IL::AddressSpace::Texture || addressType->addressSpace == Backend::IL::AddressSpace::Buffer) {
-                                if (instr->opCode == Backend::IL::OpCode::AtomicCompareExchange) {
-                                    auto _instr = instr->As<Backend::IL::AtomicCompareExchangeInstruction>();
+                            if (addressType->addressSpace == IL::AddressSpace::Texture || addressType->addressSpace == IL::AddressSpace::Buffer) {
+                                if (instr->opCode == IL::OpCode::AtomicCompareExchange) {
+                                    auto _instr = instr->As<IL::AtomicCompareExchangeInstruction>();
 
                                     // Get intrinsic
                                     const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpAtomicCompareExchangeI32);
@@ -3195,8 +3195,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                     uint64_t ops[7];
 
                                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicCompareExchange)}
+                                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicCompareExchange)}
                                     )->id);
 
                                     ops[1] = table.idRemapper.EncodeRedirectedUserOperand(chainInstr->composite);
@@ -3204,13 +3204,13 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                     ops[2] = table.idRemapper.EncodeRedirectedUserOperand(chainInstr->chains[0].index);
 
                                     ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                                        Backend::IL::UndefConstant{}
+                                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                                        IL::UndefConstant{}
                                     )->id);
 
                                     ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                                        Backend::IL::UndefConstant{}
+                                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                                        IL::UndefConstant{}
                                     )->id);
 
                                     ops[5] = table.idRemapper.EncodeRedirectedUserOperand(_instr->comparator);
@@ -3239,27 +3239,27 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                     uint64_t ops[7];
 
                                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicBinOp)}
+                                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicBinOp)}
                                     )->id);
 
                                     ops[1] = table.idRemapper.EncodeRedirectedUserOperand(chainInstr->composite);
 
                                     ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(binOp)}
+                                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                                        IL::IntConstant{.value = static_cast<uint32_t>(binOp)}
                                     )->id);
 
                                     ops[3] = table.idRemapper.EncodeRedirectedUserOperand(chainInstr->chains[0].index);
 
                                     ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                                        Backend::IL::UndefConstant{}
+                                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                                        IL::UndefConstant{}
                                     )->id);
 
                                     ops[5] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                                        Backend::IL::UndefConstant{}
+                                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                                        IL::UndefConstant{}
                                     )->id);
 
                                     ops[6] = table.idRemapper.EncodeRedirectedUserOperand(valueID);
@@ -3304,7 +3304,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::AddInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
@@ -3321,7 +3321,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::SubInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
@@ -3335,15 +3335,15 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::DivInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
                                 record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
 
-                                if (type->Is<Backend::IL::FPType>()) {
+                                if (type->Is<IL::FPType>()) {
                                     opCode = LLVMBinOp::SDiv;
-                                } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                } else if (auto intType = type->Cast<IL::IntType>()) {
                                     opCode = intType->signedness ? LLVMBinOp::SDiv : LLVMBinOp::UDiv;
                                 } else {
                                     ASSERT(false, "Invalid type in Div");
@@ -3358,7 +3358,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::MulInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
@@ -3372,7 +3372,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::OrInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
@@ -3386,7 +3386,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::BitOrInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
@@ -3400,7 +3400,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::BitXOrInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
@@ -3414,7 +3414,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::AndInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
@@ -3428,7 +3428,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::BitAndInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
@@ -3442,7 +3442,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::BitShiftLeftInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->value, _instr->shift, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value, IL::ID shift) {
+                            BinaryOpSVOX(block, instr->result, _instr->value, _instr->shift, [&](const IL::Type* type, IL::ID result, IL::ID value, IL::ID shift) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3456,13 +3456,13 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::BitShiftRightInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->value, _instr->shift, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value, IL::ID shift) {
+                            BinaryOpSVOX(block, instr->result, _instr->value, _instr->shift, [&](const IL::Type* type, IL::ID result, IL::ID value, IL::ID shift) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
                                 record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(shift);
 
-                                if (type->As<Backend::IL::IntType>()->signedness) {
+                                if (type->As<IL::IntType>()->signedness) {
                                     record.ops[2] = static_cast<uint64_t>(LLVMBinOp::AShR);
                                 } else {
                                     record.ops[2] = static_cast<uint64_t>(LLVMBinOp::LShR);
@@ -3476,15 +3476,15 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             auto _instr = instr->As<IL::RemInstruction>();
 
                             // Handle as binary
-                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
                                 record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
 
-                                if (type->Is<Backend::IL::FPType>()) {
+                                if (type->Is<IL::FPType>()) {
                                     opCode = LLVMBinOp::SRem;
-                                } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                } else if (auto intType = type->Cast<IL::IntType>()) {
                                     opCode = intType->signedness ? LLVMBinOp::SRem : LLVMBinOp::URem;
                                 } else {
                                     ASSERT(false, "Invalid type in Rem");
@@ -3510,18 +3510,18 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Create mask
                     IL::ID xorMask;
-                    if (auto intType = valueType->Cast<Backend::IL::IntType>()) {
+                    if (auto intType = valueType->Cast<IL::IntType>()) {
                         xorMask = program.GetConstants().UInt(~0u, intType->bitWidth)->id;
                     } else {
-                        ASSERT(valueType->Is<Backend::IL::BoolType>(), "Unexpected not value");
+                        ASSERT(valueType->Is<IL::BoolType>(), "Unexpected not value");
                         xorMask = program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
+                            program.GetTypeMap().FindTypeOrAdd(IL::BoolType{}),
                             IL::BoolConstant{.value = true}
                         )->id;
                     }
 
                     // Handle as unary
-                    UnaryOpSVOX(block, instr->result, _instr->value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
+                    UnaryOpSVOX(block, instr->result, _instr->value, [&](const IL::Type* type, IL::ID result, IL::ID value) {
                         record.SetUser(true, ~0u, result);
                         record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                         record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3542,10 +3542,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         default:
                             ASSERT(false, "Invalid bit width");
                             return;
-                        case Backend::IL::TypeKind::Int:
+                        case IL::TypeKind::Int:
                             intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpWaveActiveAllEqualI32);
                             break;
-                        case Backend::IL::TypeKind::FP:
+                        case IL::TypeKind::FP:
                             break;
                     }
                     
@@ -3575,27 +3575,27 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     uint64_t ops[3];
 
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::GetDimensions)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::GetDimensions)}
                     )->id);
 
                     ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->resource);
 
                     // Buffer types are assigned undefined constants
-                    if (typeMap.GetType(_instr->resource)->Is<Backend::IL::BufferType>()) {
+                    if (typeMap.GetType(_instr->resource)->Is<IL::BufferType>()) {
                         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                            Backend::IL::UndefConstant{}
+                            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                            IL::UndefConstant{}
                         )->id);
                     } else {
                         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                            Backend::IL::IntConstant{.value = 0}
+                            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                            IL::IntConstant{.value = 0}
                         )->id);
                     }
 
                     // Scalar return?
-                    if (!typeMap.GetType(_instr->result)->Is<Backend::IL::VectorType>()){
+                    if (!typeMap.GetType(_instr->result)->Is<IL::VectorType>()){
                         IL::ID structDimensions = program.GetIdentifierMap().AllocID();
 
                         // Invoke
@@ -3641,8 +3641,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
                             record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
-                            const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
-                            if (type->Is<Backend::IL::FPType>()) {
+                            const IL::Type *type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<IL::FPType>()) {
                                 opCode = LLVMCmpOp::FloatUnorderedEqual;
                             } else {
                                 opCode = LLVMCmpOp::IntEqual;
@@ -3658,8 +3658,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
                             record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
-                            const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
-                            if (type->Is<Backend::IL::FPType>()) {
+                            const IL::Type *type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<IL::FPType>()) {
                                 opCode = LLVMCmpOp::FloatUnorderedNotEqual;
                             } else {
                                 opCode = LLVMCmpOp::IntNotEqual;
@@ -3675,10 +3675,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
                             record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
-                            const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
-                            if (type->Is<Backend::IL::FPType>()) {
+                            const IL::Type *type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<IL::FPType>()) {
                                 opCode = LLVMCmpOp::FloatUnorderedLessThan;
-                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                            } else if (auto intType = type->Cast<IL::IntType>()) {
                                 opCode = intType->signedness ? LLVMCmpOp::IntSignedLessThan : LLVMCmpOp::IntUnsignedLessThan;
                             } else {
                                 ASSERT(false, "Invalid type in LessThan");
@@ -3694,10 +3694,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
                             record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
-                            const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
-                            if (type->Is<Backend::IL::FPType>()) {
+                            const IL::Type *type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<IL::FPType>()) {
                                 opCode = LLVMCmpOp::FloatUnorderedLessEqual;
-                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                            } else if (auto intType = type->Cast<IL::IntType>()) {
                                 opCode = intType->signedness ? LLVMCmpOp::IntSignedLessEqual : LLVMCmpOp::IntUnsignedLessEqual;
                             } else {
                                 ASSERT(false, "Invalid type in LessThanEqual");
@@ -3713,10 +3713,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
                             record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
-                            const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
-                            if (type->Is<Backend::IL::FPType>()) {
+                            const IL::Type *type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<IL::FPType>()) {
                                 opCode = LLVMCmpOp::FloatUnorderedGreaterThan;
-                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                            } else if (auto intType = type->Cast<IL::IntType>()) {
                                 opCode = intType->signedness ? LLVMCmpOp::IntSignedGreaterThan : LLVMCmpOp::IntUnsignedGreaterThan;
                             } else {
                                 ASSERT(false, "Invalid type in GreaterThan");
@@ -3730,15 +3730,15 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         case IL::OpCode::GreaterThanEqual: {
                             auto _instr = instr->As<IL::GreaterThanEqualInstruction>();
 
-                            BinaryOpSVOX(block, _instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                            BinaryOpSVOX(block, _instr->result, _instr->lhs, _instr->rhs, [&](const IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
                                 record.SetUser(true, ~0u, result);
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
                                 record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
 
-                                if (type->Is<Backend::IL::FPType>()) {
+                                if (type->Is<IL::FPType>()) {
                                     opCode = LLVMCmpOp::FloatUnorderedGreaterEqual;
-                                } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                } else if (auto intType = type->Cast<IL::IntType>()) {
                                     opCode = intType->signedness ? LLVMCmpOp::IntSignedGreaterEqual : LLVMCmpOp::IntUnsignedGreaterEqual;
                                 } else {
                                     ASSERT(false, "Invalid type in GreaterThanEqual");
@@ -3772,12 +3772,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     }
 
                     // Handle as unary
-                    UnaryOpSVOX(block, instr->result, value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
+                    UnaryOpSVOX(block, instr->result, value, [&](const IL::Type* type, IL::ID result, IL::ID value) {
                         uint64_t ops[2];
 
                         // Get intrinsic
                         const DXILFunctionDeclaration *intrinsic;
-                        switch (type->As<Backend::IL::FPType>()->bitWidth) {
+                        switch (type->As<IL::FPType>()->bitWidth) {
                             default:
                                 ASSERT(false, "Invalid bit width");
                                 return;
@@ -3791,8 +3791,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                         // Opcode
                         ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                            Backend::IL::IntConstant{.value = static_cast<uint32_t>(dxilOpCode)}
+                            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                            IL::IntConstant{.value = static_cast<uint32_t>(dxilOpCode)}
                         )->id);
 
                         // Value test
@@ -3813,7 +3813,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             ASSERT(false, "Invalid value");
                             break;
                         }
-                        case Backend::IL::KernelValue::DispatchThreadID: {
+                        case IL::KernelValue::DispatchThreadID: {
                             const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpThreadI32);
 
                             // Get each dimension
@@ -3832,7 +3832,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             table.idRemapper.SetUserRedirect(instr->result, AllocateSVOSequential(3, threadIds[0], threadIds[1], threadIds[2]));
                             break;
                         }
-                        case Backend::IL::KernelValue::FlattenedLocalThreadID: {
+                        case IL::KernelValue::FlattenedLocalThreadID: {
                             const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpFlattenedThreadIdInGroupI32);
                            
                             // Get thread id
@@ -3860,12 +3860,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             ASSERT(false, "Invalid extended opcode");
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Min: {
+                        case IL::ExtendedOp::Min: {
                             auto type = GetComponentType(program.GetTypeMap().GetType(_instr->operands[0]));
-                            if (type->Is<Backend::IL::FPType>()) {
+                            if (type->Is<IL::FPType>()) {
                                 intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryF32);
                                 opCode = DXILOpcodes::FMin_;
-                            } else if (type->As<Backend::IL::IntType>()->signedness) {
+                            } else if (type->As<IL::IntType>()->signedness) {
                                 intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryI32);
                                 opCode = DXILOpcodes::IMin_;
                             } else {
@@ -3873,7 +3873,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 opCode = DXILOpcodes::UMin_;
                             }
 
-                            BinaryOpSVOX(block, _instr->result, _instr->operands[0], _instr->operands[1], [&](const Backend::IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
+                            BinaryOpSVOX(block, _instr->result, _instr->operands[0], _instr->operands[1], [&](const IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
                                 uint64_t ops[3];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(opCode))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(a);
@@ -3882,12 +3882,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Max: {
+                        case IL::ExtendedOp::Max: {
                             auto type = GetComponentType(program.GetTypeMap().GetType(_instr->operands[0]));
-                            if (type->Is<Backend::IL::FPType>()) {
+                            if (type->Is<IL::FPType>()) {
                                 intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryF32);
                                 opCode = DXILOpcodes::FMax_;
-                            } else if (type->As<Backend::IL::IntType>()->signedness) {
+                            } else if (type->As<IL::IntType>()->signedness) {
                                 intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryI32);
                                 opCode = DXILOpcodes::IMax_;
                             } else {
@@ -3895,7 +3895,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 opCode = DXILOpcodes::UMax_;
                             }
 
-                            BinaryOpSVOX(block, _instr->result, _instr->operands[0], _instr->operands[1], [&](const Backend::IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
+                            BinaryOpSVOX(block, _instr->result, _instr->operands[0], _instr->operands[1], [&](const IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
                                 uint64_t ops[3];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(opCode))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(a);
@@ -3904,7 +3904,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Pow: {
+                        case IL::ExtendedOp::Pow: {
                             intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32);
                             opCode = DXILOpcodes::Exp_;
 
@@ -3913,7 +3913,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             IL::ID logMulResult = program.GetIdentifierMap().AllocID();
 
                             // log(x)
-                            UnaryOpSVOX(block, logResult, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                            UnaryOpSVOX(block, logResult, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Log_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3921,7 +3921,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
 
                             // log(x) * b
-                            BinaryOpSVOX(block, logMulResult, logResult, _instr->operands[1], [&](const Backend::IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
+                            BinaryOpSVOX(block, logMulResult, logResult, _instr->operands[1], [&](const IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
                                 record.SetUser(true, ~0u, result);
                                 record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
                                 record.opCount = 3;
@@ -3933,7 +3933,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
 
                             // exp(log(x) * b)
-                            UnaryOpSVOX(block, _instr->result, logMulResult, [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                            UnaryOpSVOX(block, _instr->result, logMulResult, [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Exp_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3941,8 +3941,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Exp: {
-                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                        case IL::ExtendedOp::Exp: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Exp_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3950,8 +3950,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Floor: {
-                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                        case IL::ExtendedOp::Floor: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Round_ni_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3959,8 +3959,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Ceil: {
-                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                        case IL::ExtendedOp::Ceil: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Round_pi_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3968,8 +3968,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Round: {
-                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                        case IL::ExtendedOp::Round: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Round_ne_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3977,8 +3977,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Sqrt: {
-                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                        case IL::ExtendedOp::Sqrt: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Sqrt_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3986,8 +3986,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::Abs: {
-                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                        case IL::ExtendedOp::Abs: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::FAbs_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -3995,8 +3995,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::FirstBitLow: {
-                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                        case IL::ExtendedOp::FirstBitLow: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::FirstbitLo_))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -4004,20 +4004,20 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
                             break;
                         }
-                        case Backend::IL::ExtendedOp::FirstBitHigh: {
+                        case IL::ExtendedOp::FirstBitHigh: {
                             IL::ID firstBitResult = program.GetIdentifierMap().AllocID();
                             IL::ID constant31     = program.GetConstants().UInt(31)->id;
 
                             // Select opcode
                             auto type = GetComponentType(program.GetTypeMap().GetType(_instr->operands[0]));
-                            if (type->As<Backend::IL::IntType>()->signedness) {
+                            if (type->As<IL::IntType>()->signedness) {
                                 opCode = DXILOpcodes::FirstbitSHi_;
                             } else {
                                 opCode = DXILOpcodes::FirstbitHi_;
                             }
                             
                             // FirstBitHigh
-                            UnaryOpSVOX(block, firstBitResult, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                            UnaryOpSVOX(block, firstBitResult, _instr->operands[0], [&](const IL::Type*, IL::ID result, IL::ID value) {
                                 uint64_t ops[2];
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(opCode))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
@@ -4025,7 +4025,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             });
 
                             // 31 - FirstBitHigh
-                            UnaryOpSVOX(block, _instr->result, firstBitResult, [&](const Backend::IL::Type*, IL::ID result, IL::ID b) {
+                            UnaryOpSVOX(block, _instr->result, firstBitResult, [&](const IL::Type*, IL::ID result, IL::ID b) {
                                 record.SetUser(true, ~0u, result);
                                 record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
                                 record.opCount = 3;
@@ -4135,12 +4135,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::BitCastInstruction>();
 
                     // Get types
-                    const Backend::IL::Type* valueType = typeMap.GetType(_instr->value);
-                    const Backend::IL::Type* resultType = typeMap.GetType(_instr->result);
+                    const IL::Type* valueType = typeMap.GetType(_instr->value);
+                    const IL::Type* resultType = typeMap.GetType(_instr->result);
 
                     // LLVM IR does not differentiate between signed and unsigned, and is instead part of the instructions themselves (Fx. SDiv, UDiv)
                     // So, the resulting type will dictate future operations, value redirection is enough.
-                    const bool bIsIntegerCast = Backend::IL::IsComponentType<Backend::IL::IntType>(valueType) && Backend::IL::IsComponentType<Backend::IL::IntType>(resultType);
+                    const bool bIsIntegerCast = IL::IsComponentType<IL::IntType>(valueType) && IL::IsComponentType<IL::IntType>(resultType);
 
                     // Any need to cast at all?
                     if (valueType == resultType || bIsIntegerCast) {
@@ -4148,7 +4148,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         table.idRemapper.SetUserRedirect(instr->result, _instr->value);
                     } else {
                         // Handle as unary
-                        UnaryOpSVOX(block, _instr->result, _instr->value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
+                        UnaryOpSVOX(block, _instr->result, _instr->value, [&](const IL::Type* type, IL::ID result, IL::ID value) {
                             // Prepare record
                             record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCast);
                             record.opCount = 3;
@@ -4170,7 +4170,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
 
                     // Get types
-                    const Backend::IL::Type* resultType = typeMap.GetType(instr->result);
+                    const IL::Type* resultType = typeMap.GetType(instr->result);
                     
                     // Translate op code
                     LLVMCastOp opCode{};
@@ -4218,7 +4218,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     }
 
                     // Handle as SVOX
-                    IterateSVOX(block, value, [&](const Backend::IL::Type* type, IL::ID id, uint32_t index, IL::ID max) {
+                    IterateSVOX(block, value, [&](const IL::Type* type, IL::ID id, uint32_t index, IL::ID max) {
                         IL::ID cmpId;
 
                         // Set comparison operation
@@ -4227,13 +4227,13 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 ASSERT(false, "Invalid type");
                                 break;
                             }
-                            case Backend::IL::TypeKind::Bool: {
+                            case IL::TypeKind::Bool: {
                                 // Already in perfect form
                                 cmpId = id;
                                 break;
                             }
-                            case Backend::IL::TypeKind::Int:
-                            case Backend::IL::TypeKind::FP: {
+                            case IL::TypeKind::Int:
+                            case IL::TypeKind::FP: {
                                 // Allocate new id
                                 cmpId = program.GetIdentifierMap().AllocID();
 
@@ -4245,11 +4245,11 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 cmpRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 cmpRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(id);
 
-                                if (type->kind == Backend::IL::TypeKind::FP) {
+                                if (type->kind == IL::TypeKind::FP) {
                                     // Compare against 0.0f
                                     cmpRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        type->As<Backend::IL::FPType>(),
-                                        Backend::IL::FPConstant{.value = 0.0f}
+                                        type->As<IL::FPType>(),
+                                        IL::FPConstant{.value = 0.0f}
                                     )->id);
 
                                     // Float comparison
@@ -4257,8 +4257,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 } else {
                                     // Compare against 0
                                     cmpRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                                        type->As<Backend::IL::IntType>(),
-                                        Backend::IL::IntConstant{.value = 0}
+                                        type->As<IL::IntType>(),
+                                        IL::IntConstant{.value = 0}
                                     )->id);
 
                                     // Integer comparison
@@ -4322,13 +4322,13 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::AddressChainInstruction>();
 
                     // Get resulting type
-                    const auto* pointerType = typeMap.GetType(_instr->result)->As<Backend::IL::PointerType>();
+                    const auto* pointerType = typeMap.GetType(_instr->result)->As<IL::PointerType>();
 
                     // Get type of the composite
-                    const Backend::IL::Type* compositeType = program.GetTypeMap().GetType(_instr->composite);
+                    const IL::Type* compositeType = program.GetTypeMap().GetType(_instr->composite);
 
                     // Resource indexing is handled in the using instruction
-                    if (pointerType->addressSpace == Backend::IL::AddressSpace::Texture || pointerType->addressSpace == Backend::IL::AddressSpace::Buffer) {
+                    if (pointerType->addressSpace == IL::AddressSpace::Texture || pointerType->addressSpace == IL::AddressSpace::Buffer) {
                         break;
                     }
 
@@ -4352,14 +4352,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::Alloca: {
                     auto _instr = instr->As<IL::AllocaInstruction>();
                     
-                    const auto* pointerType = typeMap.GetType(_instr->result)->As<Backend::IL::PointerType>();
+                    const auto* pointerType = typeMap.GetType(_instr->result)->As<IL::PointerType>();
                     
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstAlloca);
                     record.opCount = 4u;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
                     record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(pointerType));
-                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{})));
-                    record.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(Backend::IL::GetPODNonAlignedTypeByteSize(pointerType->pointee))->id);
+                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().FindTypeOrAdd(IL::IntType{})));
+                    record.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(IL::GetPODNonAlignedTypeByteSize(pointerType->pointee))->id);
                     record.ops[3] = LLVMBitStreamWriter::EncodeSigned(4);
                     block->AddRecord(record);
                     break;
@@ -4369,14 +4369,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::LoadInstruction>();
 
                     // Get type
-                    const auto* pointerType = typeMap.GetType(_instr->address)->As<Backend::IL::PointerType>();
+                    const auto* pointerType = typeMap.GetType(_instr->address)->As<IL::PointerType>();
 
                     switch (pointerType->addressSpace) {
                         default: {
                             ASSERT(false, "Not implemented");
                             break;
                         }
-                        case Backend::IL::AddressSpace::Function: {
+                        case IL::AddressSpace::Function: {
                             record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstLoad);
                             record.opCount = 4u;
                             record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
@@ -4387,8 +4387,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             block->AddRecord(record);
                             break;
                         }
-                        case Backend::IL::AddressSpace::Resource: {
-                            ASSERT(pointerType->pointee->kind == Backend::IL::TypeKind::Buffer || pointerType->pointee->kind == Backend::IL::TypeKind::Texture, "Unexpected resource load");
+                        case IL::AddressSpace::Resource: {
+                            ASSERT(pointerType->pointee->kind == IL::TypeKind::Buffer || pointerType->pointee->kind == IL::TypeKind::Texture, "Unexpected resource load");
                             
                             // The IL abstraction exposes resource handles as "pointers" for inclusive conformity,
                             // however, DXIL handles have no such concept. Just "assume" they were loaded, and let
@@ -4405,8 +4405,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::StoreInstruction>();
 
                     // Validate address space
-                    const auto* pointerType = typeMap.GetType(_instr->address)->As<Backend::IL::PointerType>();
-                    ASSERT(pointerType->addressSpace == Backend::IL::AddressSpace::Function, "Non function space stores not supported");
+                    const auto* pointerType = typeMap.GetType(_instr->address)->As<IL::PointerType>();
+                    ASSERT(pointerType->addressSpace == IL::AddressSpace::Function, "Non function space stores not supported");
 
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstStore);
                     record.opCount = 4u;
@@ -4424,33 +4424,33 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::LoadBufferInstruction>();
 
                     // Get type
-                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<IL::BufferType>();
 
                     // Type used for intrinsic
-                    const Backend::IL::Type* elementType = bufferType->elementType;
+                    const IL::Type* elementType = bufferType->elementType;
 
                     // Mutate element type on structured
-                    if (auto _struct = elementType->Cast<Backend::IL::StructType>()) {
+                    if (auto _struct = elementType->Cast<IL::StructType>()) {
                         ASSERT(_instr->offset != IL::InvalidID, "Offset on non-structured type");
 
                         // Get offset
-                        auto offset = program.GetConstants().GetConstant(_instr->offset)->As<Backend::IL::IntConstant>();
+                        auto offset = program.GetConstants().GetConstant(_instr->offset)->As<IL::IntConstant>();
 
                         // Get the element type
-                        elementType = Backend::IL::GetStructuredTypeAtOffset(_struct, offset->value);
+                        elementType = IL::GetStructuredTypeAtOffset(_struct, offset->value);
                         ASSERT(elementType, "Failed to deduce element type from offset");
                     }
 
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
-                    switch (Backend::IL::GetComponentType(elementType)->kind) {
+                    switch (IL::GetComponentType(elementType)->kind) {
                         default:
                             ASSERT(false, "Invalid buffer element type");
                             return;
-                        case Backend::IL::TypeKind::Int:
+                        case IL::TypeKind::Int:
                             intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferLoadI32);
                             break;
-                        case Backend::IL::TypeKind::FP:
+                        case IL::TypeKind::FP:
                             intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferLoadF32);
                             break;
                     }
@@ -4459,8 +4459,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Opcode
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
                     )->id);
 
                     // Handle
@@ -4474,8 +4474,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(_instr->offset);
                     } else {
                         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                            Backend::IL::UndefConstant{}
+                            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                            IL::UndefConstant{}
                         )->id);
                     }
 
@@ -4491,24 +4491,24 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::LoadBufferRawInstruction>();
 
                     // Get type
-                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<IL::BufferType>();
 
                     // Type used for intrinsic
-                    const Backend::IL::Type* elementType = bufferType->elementType;
+                    const IL::Type* elementType = bufferType->elementType;
 
                     // Mutate element type on structured
-                    if (auto _struct = elementType->Cast<Backend::IL::StructType>()) {
+                    if (auto _struct = elementType->Cast<IL::StructType>()) {
                         ASSERT(_instr->offset != IL::InvalidID, "Offset on non-structured type");
 
                         // Get offset
-                        auto offset = program.GetConstants().GetConstant(_instr->offset)->As<Backend::IL::IntConstant>();
+                        auto offset = program.GetConstants().GetConstant(_instr->offset)->As<IL::IntConstant>();
 
                         // Get the element type
-                        elementType = Backend::IL::GetStructuredTypeAtOffset(_struct, offset->value);
+                        elementType = IL::GetStructuredTypeAtOffset(_struct, offset->value);
                         ASSERT(elementType, "Failed to deduce element type from offset");
                     }
 
-                    const Backend::IL::Type *componentType = Backend::IL::GetComponentType(elementType);
+                    const IL::Type *componentType = IL::GetComponentType(elementType);
 
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
@@ -4516,13 +4516,13 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         default:
                             ASSERT(false, "Invalid buffer element type");
                             return;
-                        case Backend::IL::TypeKind::Int: {
-                            auto _int = componentType->As<Backend::IL::IntType>();
+                        case IL::TypeKind::Int: {
+                            auto _int = componentType->As<IL::IntType>();
                             intrinsic = table.intrinsics.GetIntrinsic(_int->bitWidth == 16 ? Intrinsics::DxOpRawBufferLoadI16 : Intrinsics::DxOpRawBufferLoadI32);
                             break;
                         }
-                        case Backend::IL::TypeKind::FP: {
-                            auto _float = componentType->As<Backend::IL::FPType>();
+                        case IL::TypeKind::FP: {
+                            auto _float = componentType->As<IL::FPType>();
                             intrinsic = table.intrinsics.GetIntrinsic(_float->bitWidth == 16 ? Intrinsics::DxOpRawBufferLoadF16 : Intrinsics::DxOpRawBufferLoadF32);
                             break;
                         }
@@ -4532,8 +4532,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Opcode
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::RawBufferLoad)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::RawBufferLoad)}
                     )->id);
 
                     // Handle
@@ -4547,8 +4547,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(_instr->offset);
                     } else {
                         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                            Backend::IL::UndefConstant{}
+                            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                            IL::UndefConstant{}
                         )->id);
                     }
 
@@ -4570,18 +4570,18 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::StoreBufferInstruction>();
 
                     // Get type
-                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<IL::BufferType>();
 
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
-                    switch (Backend::IL::GetComponentType(bufferType->elementType)->kind) {
+                    switch (IL::GetComponentType(bufferType->elementType)->kind) {
                         default:
                             ASSERT(false, "Invalid buffer element type");
                             return;
-                        case Backend::IL::TypeKind::Int:
+                        case IL::TypeKind::Int:
                             intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferStoreI32);
                             break;
-                        case Backend::IL::TypeKind::FP:
+                        case IL::TypeKind::FP:
                             intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferStoreF32);
                             break;
                     }
@@ -4590,8 +4590,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Opcode
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
                     )->id);
 
                     // Handle
@@ -4602,8 +4602,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // C1
                     ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::UndefConstant{}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::UndefConstant{}
                     )->id);
 
                     // Get component count
@@ -4618,8 +4618,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Write mask
                     ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=8, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
                     )->id);
 
                     // Invoke into result
@@ -4631,9 +4631,9 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::StoreBufferRawInstruction>();
 
                     // Get type
-                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<IL::BufferType>();
 
-                    const Backend::IL::Type *componentType = Backend::IL::GetComponentType(bufferType->elementType);
+                    const IL::Type *componentType = IL::GetComponentType(bufferType->elementType);
 
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
@@ -4641,13 +4641,13 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         default:
                             ASSERT(false, "Invalid buffer element type");
                             return;
-                        case Backend::IL::TypeKind::Int: {
-                            auto _int = componentType->As<Backend::IL::IntType>();
+                        case IL::TypeKind::Int: {
+                            auto _int = componentType->As<IL::IntType>();
                             intrinsic = table.intrinsics.GetIntrinsic(_int->bitWidth == 16 ? Intrinsics::DxOpRawBufferStoreI16 : Intrinsics::DxOpRawBufferStoreI32);
                             break;
                         }
-                        case Backend::IL::TypeKind::FP: {
-                            auto _float = componentType->As<Backend::IL::FPType>();
+                        case IL::TypeKind::FP: {
+                            auto _float = componentType->As<IL::FPType>();
                             intrinsic = table.intrinsics.GetIntrinsic(_float->bitWidth == 16 ? Intrinsics::DxOpRawBufferStoreF16 : Intrinsics::DxOpRawBufferStoreF32);
                             break;
                         }
@@ -4657,8 +4657,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Opcode
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::RawBufferStore)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::RawBufferStore)}
                     )->id);
 
                     // Handle
@@ -4672,8 +4672,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(_instr->offset);
                     } else {
                         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                            Backend::IL::UndefConstant{}
+                            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                            IL::UndefConstant{}
                         )->id);
                     }
 
@@ -4702,10 +4702,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::StoreTextureInstruction>();
 
                     // Get type
-                    const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
+                    const auto* textureType = typeMap.GetType(_instr->texture)->As<IL::TextureType>();
 
                     // Get component type
-                    const Backend::IL::Type* componentType = Backend::IL::GetComponentType(textureType->sampledType);
+                    const IL::Type* componentType = IL::GetComponentType(textureType->sampledType);
 
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
@@ -4713,8 +4713,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         default:
                         ASSERT(false, "Invalid buffer element type");
                             return;
-                        case Backend::IL::TypeKind::Int: {
-                            const auto* intType = componentType->As<Backend::IL::IntType>();
+                        case IL::TypeKind::Int: {
+                            const auto* intType = componentType->As<IL::IntType>();
                             switch (intType->bitWidth) {
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
@@ -4725,8 +4725,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             }
                             break;
                         }
-                        case Backend::IL::TypeKind::FP: {
-                            const auto* fpType = componentType->As<Backend::IL::FPType>();
+                        case IL::TypeKind::FP: {
+                            const auto* fpType = componentType->As<IL::FPType>();
                             switch (fpType->bitWidth) {
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
@@ -4746,8 +4746,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Opcode
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::TextureStore)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::TextureStore)}
                     )->id);
 
                     // Handle
@@ -4759,14 +4759,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Undefined value
                     uint64_t undefIntConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=false}),
-                        Backend::IL::UndefConstant{}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=false}),
+                        IL::UndefConstant{}
                     )->id);
 
                     // Undefined value
                     uint64_t nullChannelConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                         componentType,
-                        Backend::IL::NullConstant{}
+                        IL::NullConstant{}
                     )->id);
 
                     // C0,1,2
@@ -4782,8 +4782,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Write mask
                     ops[9] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(_instr->mask.value)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=8, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(_instr->mask.value)}
                     )->id);
 
                     // Invoke into result
@@ -4795,10 +4795,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::LoadTextureInstruction>();
 
                     // Get type
-                    const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
+                    const auto* textureType = typeMap.GetType(_instr->texture)->As<IL::TextureType>();
 
                     // Get component type
-                    const Backend::IL::Type* componentType = Backend::IL::GetComponentType(textureType->sampledType);
+                    const IL::Type* componentType = IL::GetComponentType(textureType->sampledType);
 
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
@@ -4806,8 +4806,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         default:
                             ASSERT(false, "Invalid buffer element type");
                             return;
-                        case Backend::IL::TypeKind::Int: {
-                            const auto* intType = componentType->As<Backend::IL::IntType>();
+                        case IL::TypeKind::Int: {
+                            const auto* intType = componentType->As<IL::IntType>();
                             switch (intType->bitWidth) {
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
@@ -4818,8 +4818,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             }
                             break;
                         }
-                        case Backend::IL::TypeKind::FP: {
-                            const auto* fpType = componentType->As<Backend::IL::FPType>();
+                        case IL::TypeKind::FP: {
+                            const auto* fpType = componentType->As<IL::FPType>();
                             switch (fpType->bitWidth) {
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
@@ -4839,8 +4839,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Opcode
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::TextureLoad)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::TextureLoad)}
                     )->id);
 
                     // Handle
@@ -4850,8 +4850,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     if (_instr->mip == IL::InvalidID) {
                         // Unassigned mips are undef values in DXIL
                         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=false}),
-                            Backend::IL::UndefConstant{}
+                            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=false}),
+                            IL::UndefConstant{}
                         )->id);
                     } else {
                         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->mip);
@@ -4863,8 +4863,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Undefined value
                     uint64_t undefIntConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=false}),
-                        Backend::IL::UndefConstant{}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=false}),
+                        IL::UndefConstant{}
                     )->id);
 
                     // C0,1,2
@@ -4886,10 +4886,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::SampleTextureInstruction>();
 
                     // Get type
-                    const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
+                    const auto* textureType = typeMap.GetType(_instr->texture)->As<IL::TextureType>();
 
                     // Get bit-width
-                    uint32_t bitWidth = Backend::IL::GetComponentType(textureType->sampledType)->As<Backend::IL::FPType>()->bitWidth;
+                    uint32_t bitWidth = IL::GetComponentType(textureType->sampledType)->As<IL::FPType>()->bitWidth;
                     ASSERT(bitWidth == 16 || bitWidth == 32, "Unsupported sampling operation");
 
                     // Final op code
@@ -4928,7 +4928,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         default:
                             ASSERT(false, "Unexpected sample mode");
                             break;
-                        case Backend::IL::TextureSampleMode::Default: {
+                        case IL::TextureSampleMode::Default: {
                             if (_instr->bias != IL::InvalidID) {
                                 intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleBiasF16 : Intrinsics::DxOpSampleBiasF32);
                                 opcode = DXILOpcodes::SampleBias;
@@ -4944,7 +4944,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             }
                             break;
                         }
-                        case Backend::IL::TextureSampleMode::DepthComparison: {
+                        case IL::TextureSampleMode::DepthComparison: {
                             intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleCmpF16 : Intrinsics::DxOpSampleCmpF32);
                             opcode = sourceOpcode == DXILOpcodes::SampleCmpLevelZero ? DXILOpcodes::SampleCmpLevelZero : DXILOpcodes::SampleCmp;
                             break;
@@ -4955,8 +4955,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Opcode
                     ops.Add(table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(opcode)}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                        IL::IntConstant{.value = static_cast<uint32_t>(opcode)}
                     )->id));
 
                     // Handle
@@ -4971,14 +4971,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                     // Undefined value
                     uint64_t undefFPConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{.bitWidth=32}),
-                        Backend::IL::UndefConstant{}
+                        program.GetTypeMap().FindTypeOrAdd(IL::FPType{.bitWidth=32}),
+                        IL::UndefConstant{}
                     )->id);
 
                     // Undefined value
                     uint64_t undefIntConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=false}),
-                        Backend::IL::UndefConstant{}
+                        program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=false}),
+                        IL::UndefConstant{}
                     )->id);
 
                     // C0,1,2
@@ -5060,7 +5060,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     auto _instr = instr->As<IL::ConstructInstruction>();
 
                     // Get resulting type
-                    const Backend::IL::Type *type = program.GetTypeMap().GetType(_instr->result);
+                    const IL::Type *type = program.GetTypeMap().GetType(_instr->result);
 
                     // Create svox for composite
                     IL::ID svox = IL::InvalidID;
@@ -5069,12 +5069,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             ASSERT(false, "Unsupported construct");
                             break;
                         }
-                        case Backend::IL::TypeKind::Struct: {
+                        case IL::TypeKind::Struct: {
                             svox = AllocateSVOStructSequential(type, _instr->values.Data(), _instr->values.count);
                             break;
                         }
-                        case Backend::IL::TypeKind::Vector: {
-                            auto vector = type->As<Backend::IL::VectorType>();
+                        case IL::TypeKind::Vector: {
+                            auto vector = type->As<IL::VectorType>();
                             
                             svox = AllocateSVOSequential(
                                 vector->dimension,
@@ -5506,33 +5506,33 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
 
             // OpCode
             ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CreateHandleFromBinding)}
+                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CreateHandleFromBinding)}
                 )->id);
 
             // Binding
             ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                 table.intrinsics.resBind,
-                Backend::IL::StructConstant{
+                IL::StructConstant{
                     .members = {
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = registerBase}),
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = registerBase}),
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.space}),
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i8Type, Backend::IL::IntConstant{.value = static_cast<uint32_t>(_class)})
+                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, IL::IntConstant{.value = registerBase}),
+                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, IL::IntConstant{.value = registerBase}),
+                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, IL::IntConstant{.value = table.bindingInfo.bindingInfo.space}),
+                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i8Type, IL::IntConstant{.value = static_cast<uint32_t>(_class)})
                     }
                 }
             )->id);
 
             // Base register
             ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = registerBase}
+                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                IL::IntConstant{.value = registerBase}
             )->id);
 
             // Non-unform
             ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
-                Backend::IL::BoolConstant{.value = false}
+                program.GetTypeMap().FindTypeOrAdd(IL::BoolType{}),
+                IL::BoolConstant{.value = false}
             )->id);
 
             // Create SM6.6 handle
@@ -5569,7 +5569,7 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
                     break;
                 case DXILShaderResourceClass::CBVs:
                     properties.basic.shape = static_cast<uint8_t>(DXILShaderResourceShape::CBuffer);
-                    properties.typed.cbufferByteSize = static_cast<uint32_t>(Backend::IL::GetPODNonAlignedTypeByteSize(entry->type->As<Backend::IL::PointerType>()->pointee));
+                    properties.typed.cbufferByteSize = static_cast<uint32_t>(IL::GetPODNonAlignedTypeByteSize(entry->type->As<IL::PointerType>()->pointee));
                     break;
                 case DXILShaderResourceClass::Samplers:
                     properties.basic.shape = static_cast<uint8_t>(DXILShaderResourceShape::Sampler);
@@ -5580,8 +5580,8 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
 
             // OpCode
             ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AnnotateHandle)}
+                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AnnotateHandle)}
                 )->id);
 
             // Handle
@@ -5590,10 +5590,10 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
             // Properties
             ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                 table.intrinsics.resourceProperties,
-                Backend::IL::StructConstant{
+                IL::StructConstant{
                     .members = {
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = properties.basic.opaque}),
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = properties.typed.opaque})
+                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, IL::IntConstant{.value = properties.basic.opaque}),
+                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, IL::IntConstant{.value = properties.typed.opaque})
                     }
                 }
             )->id);
@@ -5619,32 +5619,32 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
 
         // OpCode
         ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CreateHandle)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CreateHandle)}
         )->id);
 
         // Resource class
         ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(_class)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=8, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(_class)}
         )->id);
 
         // Handle
         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = handleId}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = handleId}
         )->id);
 
         // Register base
         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = registerBase}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = registerBase}
         )->id);
 
         // Non-uniform?
         ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
-            Backend::IL::BoolConstant{.value = false}
+            program.GetTypeMap().FindTypeOrAdd(IL::BoolType{}),
+            IL::BoolConstant{.value = false}
         )->id);
 
         // Create shared resource prmt handle
@@ -5750,15 +5750,15 @@ void DXILPhysicalBlockFunction::CreateEventHandle(const DXCompileJob &job, struc
         uint64_t ops[3];
 
         ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
         )->id);
 
         ops[1] = table.idRemapper.EncodeRedirectedUserOperand(eventHandle);
 
         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<int64_t>(row)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<int64_t>(row)}
         )->id);
 
         // Invoke
@@ -5775,7 +5775,7 @@ void DXILPhysicalBlockFunction::CreateEventHandle(const DXCompileJob &job, struc
         }
 
         // Get variable
-        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+        const IL::Variable* variable = shaderDataMap.Get(info.id);
 
         // Extract respective value
         LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
@@ -5845,15 +5845,15 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
         uint64_t ops[3];
 
         ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
         )->id);
 
         ops[1] = table.idRemapper.EncodeRedirectedUserOperand(constantHandle);
 
         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<int64_t>(row)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<int64_t>(row)}
         )->id);
 
         // Invoke
@@ -5887,7 +5887,7 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
         }
 
         // Get variable
-        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+        const IL::Variable* variable = shaderDataMap.Get(info.id);
 
         // Extract all dwords
         TrivialStackVector<IL::ID, 16> dwords;
@@ -5916,7 +5916,7 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
         // If multiple dwords, create aggregate
         if (info.descriptor.dwordCount > 1) {
             // Get pointee
-            const Backend::IL::Type *pointee = variable->type;
+            const IL::Type *pointee = variable->type;
 
             // Create struct from dwords
             table.idRemapper.SetUserRedirect(variable->id, AllocateSVOStructSequential(pointee, dwords.Data(), info.descriptor.dwordCount));
@@ -5940,7 +5940,7 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXCompileJob &job, 
         }
 
         // Get variable
-        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+        const IL::Variable* variable = shaderDataMap.Get(info.id);
 
         // Create handle
         CreateUniversalHandle(
@@ -5981,13 +5981,13 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
             default: {
                 break;
             }
-            case Backend::IL::ConstantKind::Struct: {
+            case IL::ConstantKind::Struct: {
                 auto _struct = constant->As<IL::StructConstant>();
                 annotation.basic.opaque = static_cast<uint32_t>(_struct->members.at(0)->As<IL::IntConstant>()->value);
                 annotation.typed.opaque = static_cast<uint32_t>(_struct->members.at(1)->As<IL::IntConstant>()->value);
                 break;
             }
-            case Backend::IL::ConstantKind::Null: {
+            case IL::ConstantKind::Null: {
                 // Null constants are allowed
                 break;
             }
@@ -6053,18 +6053,18 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
                     ASSERT(false, "Invalid binding kind");
                     break;
                 }
-                case Backend::IL::ConstantKind::Struct: {
+                case IL::ConstantKind::Struct: {
                     auto _struct = bindings->As<IL::StructConstant>();
 
                     // Get constants
                     ASSERT(_struct->members.size() == 4u, "Unexpected binding size");
-                    rangeLowerBound = _struct->members[0]->As<Backend::IL::IntConstant>()->value;
-                    rangeUpperBound = _struct->members[1]->As<Backend::IL::IntConstant>()->value;
-                    spaceID = _struct->members[2]->As<Backend::IL::IntConstant>()->value;
-                    metadata._class = static_cast<DXILShaderResourceClass>(_struct->members[3]->As<Backend::IL::IntConstant>()->value);
+                    rangeLowerBound = _struct->members[0]->As<IL::IntConstant>()->value;
+                    rangeUpperBound = _struct->members[1]->As<IL::IntConstant>()->value;
+                    spaceID = _struct->members[2]->As<IL::IntConstant>()->value;
+                    metadata._class = static_cast<DXILShaderResourceClass>(_struct->members[3]->As<IL::IntConstant>()->value);
                     break;
                 }
-                case Backend::IL::ConstantKind::Null: {
+                case IL::ConstantKind::Null: {
                     // Null constants are allowed, SRV -> 0
                     metadata._class = DXILShaderResourceClass::SRVs;
                     break;
@@ -6230,7 +6230,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     ASSERT(userMapping.source || userMapping.dynamicOffset != IL::InvalidID, "Fallback user mappings not supported yet");
 
     // Total number of metadata dwords
-    static constexpr uint32_t kMetadataDWordCount = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
+    static constexpr uint32_t kMetadataDWordCount = static_cast<uint32_t>(IL::ResourceTokenMetadataField::Count);
 
     // Use shared representation
     auto tokenMetadataStruct = program.GetTypeMap().GetResourceToken();
@@ -6243,11 +6243,11 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     if (userMapping.source && userMapping.source->isStaticSampler) {
         // Assign packed token
         metadataMap.Add(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = VirtualResourceMapping {
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = VirtualResourceMapping {
                 ResourceToken {
                     .puid = 0,
-                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler)
+                    .type = static_cast<uint32_t>(IL::ResourceTokenType::Sampler)
                 }
             }.token.packedToken}
         )->id);
@@ -6305,15 +6305,15 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             uint64_t ops[3];
 
             ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
+                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
             )->id);
 
             ops[1] = table.idRemapper.EncodeRedirectedUserOperand(descriptorHandle);
 
             ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = static_cast<int64_t>(rowOffset + i)}
+                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                IL::IntConstant{.value = static_cast<int64_t>(rowOffset + i)}
             )->id);
 
             // Invoke
@@ -6352,12 +6352,12 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             dwordOffset++;
         }
 
-        const Backend::IL::Type *resourceType = program.GetTypeMap().GetType(_instr->resource);
+        const IL::Type *resourceType = program.GetTypeMap().GetType(_instr->resource);
 
         // Root descriptors don't have any view descriptor metadata, it's based on the
         // owning resource from the virtual address. So, let the shader set up the view data.
-        if (resourceType->kind == Backend::IL::TypeKind::Buffer) {
-            auto buffer = resourceType->As<Backend::IL::BufferType>();
+        if (resourceType->kind == IL::TypeKind::Buffer) {
+            auto buffer = resourceType->As<IL::BufferType>();
 
             // Byte addressing ignores this type entirely
             if (!buffer->byteAddressing) {
@@ -6375,7 +6375,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 baseWidthDiv.SetUser(true, ~0u, viewBaseWidthId);
                 baseWidthDiv.opCount = 3;
                 baseWidthDiv.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-                baseWidthDiv.ops[0] = DXILIDRemapper::EncodeUserOperand(metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::ViewBaseWidth)]);
+                baseWidthDiv.ops[0] = DXILIDRemapper::EncodeUserOperand(metadataMap[static_cast<uint32_t>(IL::ResourceTokenMetadataField::ViewBaseWidth)]);
                 baseWidthDiv.ops[1] = DXILIDRemapper::EncodeUserOperand(program.GetConstants().UInt(token.formatSize)->id);
                 baseWidthDiv.ops[2] = static_cast<uint64_t>(LLVMBinOp::UDiv);
                 block->AddRecord(baseWidthDiv);
@@ -6385,15 +6385,15 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 widthDiv.SetUser(true, ~0u, viewWidthId);
                 widthDiv.opCount = 3;
                 widthDiv.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-                widthDiv.ops[0] = DXILIDRemapper::EncodeUserOperand(metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::ViewWidth)]);
+                widthDiv.ops[0] = DXILIDRemapper::EncodeUserOperand(metadataMap[static_cast<uint32_t>(IL::ResourceTokenMetadataField::ViewWidth)]);
                 widthDiv.ops[1] = DXILIDRemapper::EncodeUserOperand(program.GetConstants().UInt(token.formatSize)->id);
                 widthDiv.ops[2] = static_cast<uint64_t>(LLVMBinOp::UDiv);
                 block->AddRecord(widthDiv);
 
                 // Replace dwords
-                metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::PackedFormat)]  = program.GetConstants().UInt(token.packedFormat)->id;
-                metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::ViewBaseWidth)] = viewBaseWidthId;
-                metadataMap[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::ViewWidth)]     = viewWidthId;
+                metadataMap[static_cast<uint32_t>(IL::ResourceTokenMetadataField::PackedFormat)]  = program.GetConstants().UInt(token.packedFormat)->id;
+                metadataMap[static_cast<uint32_t>(IL::ResourceTokenMetadataField::ViewBaseWidth)] = viewBaseWidthId;
+                metadataMap[static_cast<uint32_t>(IL::ResourceTokenMetadataField::ViewWidth)]     = viewWidthId;
             }
         }
 
@@ -6409,21 +6409,21 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             default:
                 ASSERT(false, "Invalid resource type to get token from");
                 return;
-            case Backend::IL::TypeKind::CBuffer:
-            case Backend::IL::TypeKind::Texture:
-            case Backend::IL::TypeKind::Buffer: {
+            case IL::TypeKind::CBuffer:
+            case IL::TypeKind::Texture:
+            case IL::TypeKind::Buffer: {
                 prmtBufferId = resourcePRMTHandle;
 
                 // Resource invalidation literals are tied to the heap bounds
                 invalidBindingId = resourceVirtualBound;
                 break;
             }
-            case Backend::IL::TypeKind::Sampler: {
+            case IL::TypeKind::Sampler: {
                 prmtBufferId = samplerPRMTHandle;
 
                 // Sampler invalidation literals are constant
                 invalidBindingId = program.GetConstants().FindConstantOrAdd(
-                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                    program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
                     IL::IntConstant{.value = kDescriptorDataSamplerInvalidOffset}
                 )->id;
                 break;
@@ -6461,8 +6461,8 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(rootOffset);
 
                 addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                    Backend::IL::IntConstant{.value = userMapping.source->offset}
+                    program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                    IL::IntConstant{.value = userMapping.source->offset}
                 )->id);
 
                 block->AddRecord(addRecord);
@@ -6470,8 +6470,8 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         } else {
             // Source wise offset is the heap prefix
             descriptorOffset = program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = 0u}
+                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                IL::IntConstant{.value = 0u}
             )->id;
         }
 
@@ -6524,7 +6524,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             addRecord.opCount = 3u;
             addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
             addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(descriptorOffset);
-            addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count))->id);
+            addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(IL::ResourceTokenMetadataField::Count))->id);
             addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Mul);
             block->AddRecord(addRecord);
         }
@@ -6548,8 +6548,8 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                 addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(texelOffsetId);
                 addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                    Backend::IL::IntConstant{.value = 1}
+                    program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                    IL::IntConstant{.value = 1}
                 )->id);
                 addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
                 block->AddRecord(addRecord);
@@ -6576,14 +6576,14 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 uint64_t ops[4];
 
                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                    Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
+                    program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                    IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
                 )->id);
                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtBufferId);
                 ops[2] = table.idRemapper.EncodeRedirectedUserOperand(texelOffsetId);
                 ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                    Backend::IL::UndefConstant{}
+                    program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                    IL::UndefConstant{}
                 )->id);
 
                 // Invoke
@@ -6612,8 +6612,8 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             recordSelect.opCount = 3;
             recordSelect.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
             recordSelect.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = IL::kResourceTokenPUIDInvalidOutOfBounds}
+                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                IL::IntConstant{.value = IL::kResourceTokenPUIDInvalidOutOfBounds}
             )->id);
             recordSelect.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(metadataMap[0]);
             recordSelect.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(outOfHeapOperand);
@@ -6643,8 +6643,8 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         recordSelect.opCount = 3;
         recordSelect.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
         recordSelect.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = IL::kResourceTokenPUIDInvalidTableNotBound}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = IL::kResourceTokenPUIDInvalidTableNotBound}
         )->id);
         recordSelect.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(metadataMap[0]);
         recordSelect.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(isTableNotBound);
@@ -6681,35 +6681,35 @@ void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const
         uint64_t ops[7];
 
         ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicBinOp)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicBinOp)}
         )->id);
 
         ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportCounterHandle);
 
         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(0)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(0)}
         )->id);
 
         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = _instr->exportID}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = _instr->exportID}
         )->id);
 
         ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::UndefConstant{}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::UndefConstant{}
         )->id);
 
         ops[5] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::UndefConstant{}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::UndefConstant{}
         )->id);
 
         ops[6] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(_instr->values.count)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(_instr->values.count)}
         )->id);
 
         // Invoke
@@ -6736,8 +6736,8 @@ void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const
             addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
             addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(atomicHead);
             addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = i}
+                program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+                IL::IntConstant{.value = i}
             )->id);
             addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
             block->AddRecord(addRecord);
@@ -6760,8 +6760,8 @@ void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const
         uint64_t ops[9];
 
         ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
         )->id);
 
         ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportStreamHandles[_instr->exportID]);
@@ -6769,8 +6769,8 @@ void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const
         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(valueHead);
 
         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::UndefConstant{}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true}),
+            IL::UndefConstant{}
         )->id);
 
         ops[4] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i]);
@@ -6779,8 +6779,8 @@ void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const
         ops[7] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i]);
 
         ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
+            program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=8, .signedness=true}),
+            IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
         )->id);
 
         // Invoke

@@ -75,14 +75,14 @@ void SpvPhysicalBlockFunction::Parse() {
             md.function.optionalControlStructure = IL::InvalidID;
             
             // Get the type
-            auto type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx++)->As<Backend::IL::FunctionType>();
+            auto type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx++)->As<IL::FunctionType>();
             
             // Check parameters for control
             bool requiresControlMetadata = false;
-            for (const Backend::IL::Type* parameterType : type->parameterTypes) {
+            for (const IL::Type* parameterType : type->parameterTypes) {
                 // If the parameter is a resource type, we need to track a bit of extra metadata with it.
                 // This also means that parameterized users need to be recompiled, such as calls
-                if (Backend::IL::IsPointerToResourceType(parameterType)) {
+                if (IL::IsPointerToResourceType(parameterType)) {
                     requiresControlMetadata = true;
                     break;
                 }
@@ -142,9 +142,9 @@ void SpvPhysicalBlockFunction::ParseFunctionHeader(IL::Function *function, SpvPa
                 IdentifierMetadata& md = identifierMetadata.at(ctx.GetResult());
                 md.parameter.linearIndex = function->GetParameters().GetCount();
                 
-                function->GetParameters().Add(new (allocators) Backend::IL::Variable {
+                function->GetParameters().Add(new (allocators) IL::Variable {
                     .id = ctx.GetResult(),
-                    .addressSpace = Backend::IL::AddressSpace::Function,
+                    .addressSpace = IL::AddressSpace::Function,
                     .type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx.GetResultType())
                 });
                 break;
@@ -234,10 +234,10 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 IL::ID value = ctx++;
 
                 // Get pointer type
-                auto pointerType = program.GetTypeMap().GetType(address)->As<Backend::IL::PointerType>();
+                auto pointerType = program.GetTypeMap().GetType(address)->As<IL::PointerType>();
 
                 // Append as output instruction if needed
-                if (pointerType->addressSpace == Backend::IL::AddressSpace::Output) {
+                if (pointerType->addressSpace == IL::AddressSpace::Output) {
                     IL::StoreOutputInstruction instr{};
                     instr.opCode = IL::OpCode::StoreOutput;
                     instr.result = IL::InvalidID;
@@ -642,7 +642,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpVariable: {
-                const Backend::IL::Type *type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx.GetResultType());
+                const IL::Type *type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx.GetResultType());
 
                 // Append as top-most allocas (order does not matter)
                 IL::AllocaInstruction instr{};
@@ -678,9 +678,9 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 uint32_t image = ctx++;
                 uint32_t coordinate = ctx++;
 
-                const Backend::IL::Type *type = program.GetTypeMap().GetType(image);
+                const IL::Type *type = program.GetTypeMap().GetType(image);
 
-                if (type->kind == Backend::IL::TypeKind::Buffer) {
+                if (type->kind == IL::TypeKind::Buffer) {
                     // Append
                     IL::LoadBufferInstruction instr{};
                     instr.opCode = IL::OpCode::LoadBuffer;
@@ -765,20 +765,20 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 // Optional reference
                 switch (ctx->GetOp()) {
                     default:
-                        instr.sampleMode = Backend::IL::TextureSampleMode::Default;
+                        instr.sampleMode = IL::TextureSampleMode::Default;
                         break;
                     case SpvOpImageSampleProjImplicitLod:
                     case SpvOpImageSampleProjExplicitLod:
-                        instr.sampleMode = Backend::IL::TextureSampleMode::Projection;
+                        instr.sampleMode = IL::TextureSampleMode::Projection;
                         break;
                     case SpvOpImageSampleDrefImplicitLod:
                     case SpvOpImageSampleDrefExplicitLod:
-                        instr.sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
+                        instr.sampleMode = IL::TextureSampleMode::DepthComparison;
                         instr.reference = ctx++;
                         break;
                     case SpvOpImageSampleProjDrefImplicitLod:
                     case SpvOpImageSampleProjDrefExplicitLod:
-                        instr.sampleMode = Backend::IL::TextureSampleMode::ProjectionDepthComparison;
+                        instr.sampleMode = IL::TextureSampleMode::ProjectionDepthComparison;
                         instr.reference = ctx++;
                         break;
                 }
@@ -815,9 +815,9 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 uint32_t coordinate = ctx++;
                 uint32_t texel = ctx++;
 
-                const Backend::IL::Type *type = program.GetTypeMap().GetType(image);
+                const IL::Type *type = program.GetTypeMap().GetType(image);
 
-                if (type->kind == Backend::IL::TypeKind::Buffer) {
+                if (type->kind == IL::TypeKind::Buffer) {
                     // Append
                     IL::StoreBufferInstruction instr{};
                     instr.opCode = IL::OpCode::StoreBuffer;
@@ -882,7 +882,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
                     // Check if this parameter requires control data
                     // Functions may be compiled out of order, so we cannot rely on pre-parsing
-                    if (Backend::IL::IsPointerToResourceType(program.GetTypeMap().GetType(instr->arguments[i]))) {
+                    if (IL::IsPointerToResourceType(program.GetTypeMap().GetType(instr->arguments[i]))) {
                         requiresControlStructure = true;
                     }
                 }
@@ -1171,32 +1171,32 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                             ASSERT(false, "Unexpected access chain type");
                             break;
                         }
-                        case Backend::IL::TypeKind::Vector: {
-                            elementType = elementType->As<Backend::IL::VectorType>()->containedType;
+                        case IL::TypeKind::Vector: {
+                            elementType = elementType->As<IL::VectorType>()->containedType;
                             break;
                         }
-                        case Backend::IL::TypeKind::Matrix: {
-                            const auto* matrixType = elementType->As<Backend::IL::MatrixType>();
-                            elementType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+                        case IL::TypeKind::Matrix: {
+                            const auto* matrixType = elementType->As<IL::MatrixType>();
+                            elementType = program.GetTypeMap().FindTypeOrAdd(IL::VectorType {
                                 .containedType = matrixType->containedType,
                                 .dimension = matrixType->rows
                             });
                             break;
                         }
-                        case Backend::IL::TypeKind::Pointer:{
-                            elementType = elementType->As<Backend::IL::PointerType>()->pointee;
+                        case IL::TypeKind::Pointer:{
+                            elementType = elementType->As<IL::PointerType>()->pointee;
                             break;
                         }
-                        case Backend::IL::TypeKind::Array:{
-                            elementType = elementType->As<Backend::IL::ArrayType>()->elementType;
+                        case IL::TypeKind::Array:{
+                            elementType = elementType->As<IL::ArrayType>()->elementType;
                             break;
                         }
-                        case Backend::IL::TypeKind::Struct: {
-                            const Backend::IL::Constant* constant = program.GetConstants().GetConstant(nextChainId);
+                        case IL::TypeKind::Struct: {
+                            const IL::Constant* constant = program.GetConstants().GetConstant(nextChainId);
                             ASSERT(constant, "Access chain struct chains must be constant");
 
-                            uint32_t memberIdx = static_cast<uint32_t>(constant->As<Backend::IL::IntConstant>()->value);
-                            elementType = elementType->As<Backend::IL::StructType>()->memberTypes[memberIdx];
+                            uint32_t memberIdx = static_cast<uint32_t>(constant->As<IL::IntConstant>()->value);
+                            elementType = elementType->As<IL::StructType>()->memberTypes[memberIdx];
                             break;
                         }
                     }
@@ -1276,7 +1276,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 }
 
 void SpvPhysicalBlockFunction::CompileControlStructure(const SpvJob &job, const SpvIdMap &idMap, const IL::Function &fn) {
-    const Backend::IL::FunctionType* type = fn.GetFunctionType();
+    const IL::FunctionType* type = fn.GetFunctionType();
     ASSERT(type, "Function without a given type");
 
     // Get metadata
@@ -1286,12 +1286,12 @@ void SpvPhysicalBlockFunction::CompileControlStructure(const SpvJob &job, const 
     }
 
     // uint32
-    const Backend::IL::IntType *uintType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.signedness = false});
+    const IL::IntType *uintType = program.GetTypeMap().FindTypeOrAdd(IL::IntType{.signedness = false});
         
     // Check parameters for control
-    TrivialStackVector<const Backend::IL::Type*, 16> controlTypes;
-    for (const Backend::IL::Type* parameterType : type->parameterTypes) {
-        if (Backend::IL::IsPointerToResourceType(parameterType)) {
+    TrivialStackVector<const IL::Type*, 16> controlTypes;
+    for (const IL::Type* parameterType : type->parameterTypes) {
+        if (IL::IsPointerToResourceType(parameterType)) {
             // Resource handle, pass PRM control
             controlTypes.Add(table.shaderPRMT.GetPRMControlType());
         } else {
@@ -1301,7 +1301,7 @@ void SpvPhysicalBlockFunction::CompileControlStructure(const SpvJob &job, const 
     }
 
     // Create control structure
-    Backend::IL::StructType structDecl;
+    IL::StructType structDecl;
     structDecl.memberTypes.insert(structDecl.memberTypes.end(), controlTypes.begin(), controlTypes.end());
     md.function.type = program.GetTypeMap().FindTypeOrAdd(structDecl);
 }
@@ -1339,7 +1339,7 @@ bool SpvPhysicalBlockFunction::Compile(const SpvJob& job, SpvIdMap &idMap) {
 }
 
 bool SpvPhysicalBlockFunction::CompileFunction(const SpvJob& job, SpvIdMap &idMap, IL::Function &fn, bool emitDefinition) {
-    const Backend::IL::FunctionType* type = fn.GetFunctionType();
+    const IL::FunctionType* type = fn.GetFunctionType();
     ASSERT(type, "Function without a given type");
 
     // Get metadata
@@ -1360,7 +1360,7 @@ bool SpvPhysicalBlockFunction::CompileFunction(const SpvJob& job, SpvIdMap &idMa
     spvFn[4] = table.typeConstantVariable.typeMap.GetSpvTypeId(type);
 
     // Generate parameters
-    for (const Backend::IL::Variable* parameter : fn.GetParameters()) {
+    for (const IL::Variable* parameter : fn.GetParameters()) {
         SpvInstruction& spvParam = block->stream.Allocate(SpvOpFunctionParameter, 3);
         spvParam[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(parameter->type);
         spvParam[2] = parameter->id;
@@ -1408,7 +1408,7 @@ IL::ID SpvPhysicalBlockFunction::CreateControlStructure(const SpvJob& job, SpvSt
     IL::Function *type = program.GetFunctionList().GetFunction(call->target);
 
     // uint32
-    uint32_t uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{}));
+    uint32_t uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::IntType{}));
 
     // Constant dummy zero
     SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
@@ -1421,10 +1421,10 @@ IL::ID SpvPhysicalBlockFunction::CreateControlStructure(const SpvJob& job, SpvSt
 
     // Setup control array arguments
     for (uint32_t i = 0; i < type->GetFunctionType()->parameterTypes.size(); i++) {
-        const Backend::IL::Type* parameterType = type->GetFunctionType()->parameterTypes[i];
+        const IL::Type* parameterType = type->GetFunctionType()->parameterTypes[i];
         
         // No control data for non-resources
-        if (!Backend::IL::IsPointerToResourceType(parameterType)) {
+        if (!IL::IsPointerToResourceType(parameterType)) {
             elements.Add(zero);
             continue;
         }
@@ -1525,7 +1525,7 @@ IL::ID SpvPhysicalBlockFunction::MigrateCombinedImageSampler(SpvStream &stream, 
 bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &idMap, IL::Function& fn, IL::BasicBlock *bb, bool isModifiedScope) {
     SpvStream& stream = block->stream;
 
-    Backend::IL::TypeMap& ilTypeMap = program.GetTypeMap();
+    IL::TypeMap& ilTypeMap = program.GetTypeMap();
     
     // Shared instruction container
     TrivialStackAllocation<256> instructionStack;
@@ -1576,7 +1576,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
         }
 
         // Result type of the instruction
-        const Backend::IL::Type* resultType = nullptr;
+        const IL::Type* resultType = nullptr;
         if (instr->result != IL::InvalidID) {
             resultType = ilTypeMap.GetType(instr->result);
         }
@@ -1617,22 +1617,22 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         opCount += 5;
                         break;
                     }
-                    case Backend::IL::TextureSampleMode::Default: {
+                    case IL::TextureSampleMode::Default: {
                         op = sampleTexture->lod == IL::InvalidID ? SpvOpImageSampleImplicitLod : SpvOpImageSampleExplicitLod;
                         opCount += 5;
                         break;
                     }
-                    case Backend::IL::TextureSampleMode::DepthComparison: {
+                    case IL::TextureSampleMode::DepthComparison: {
                         op = sampleTexture->lod == IL::InvalidID ? SpvOpImageSampleDrefImplicitLod : SpvOpImageSampleDrefExplicitLod;
                         opCount += 6;
                         break;
                     }
-                    case Backend::IL::TextureSampleMode::Projection: {
+                    case IL::TextureSampleMode::Projection: {
                         op = sampleTexture->lod == IL::InvalidID ? SpvOpImageSampleProjImplicitLod : SpvOpImageSampleProjExplicitLod;
                         opCount += 5;
                         break;
                     }
-                    case Backend::IL::TextureSampleMode::ProjectionDepthComparison: {
+                    case IL::TextureSampleMode::ProjectionDepthComparison: {
                         op = sampleTexture->lod == IL::InvalidID ? SpvOpImageSampleProjDrefImplicitLod : SpvOpImageSampleProjDrefExplicitLod;
                         opCount += 6;
                         break;
@@ -1661,8 +1661,8 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 spv[offset++] = idMap.Get(sampleTexture->coordinate);
 
                 // Has reference value?
-                if (sampleTexture->sampleMode == Backend::IL::TextureSampleMode::DepthComparison ||
-                    sampleTexture->sampleMode == Backend::IL::TextureSampleMode::ProjectionDepthComparison) {
+                if (sampleTexture->sampleMode == IL::TextureSampleMode::DepthComparison ||
+                    sampleTexture->sampleMode == IL::TextureSampleMode::ProjectionDepthComparison) {
                     spv[offset++] = idMap.Get(sampleTexture->reference);
                 }
 
@@ -1726,7 +1726,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Rem: {
                 auto *add = instr.As<IL::RemInstruction>();
 
-                SpvOp op = resultType->kind == Backend::IL::TypeKind::FP ? SpvOpFRem : SpvOpSRem;
+                SpvOp op = resultType->kind == IL::TypeKind::FP ? SpvOpFRem : SpvOpSRem;
 
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
@@ -1738,7 +1738,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Add: {
                 auto *add = instr.As<IL::AddInstruction>();
 
-                SpvOp op = resultType->kind == Backend::IL::TypeKind::FP ? SpvOpFAdd : SpvOpIAdd;
+                SpvOp op = resultType->kind == IL::TypeKind::FP ? SpvOpFAdd : SpvOpIAdd;
 
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
@@ -1750,7 +1750,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Sub: {
                 auto *add = instr.As<IL::SubInstruction>();
 
-                SpvOp op = resultType->kind == Backend::IL::TypeKind::FP ? SpvOpFSub : SpvOpISub;
+                SpvOp op = resultType->kind == IL::TypeKind::FP ? SpvOpFSub : SpvOpISub;
 
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
@@ -1763,8 +1763,8 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *add = instr.As<IL::DivInstruction>();
 
                 SpvOp op;
-                if (resultType->kind == Backend::IL::TypeKind::Int) {
-                    op = resultType->As<Backend::IL::IntType>()->signedness ? SpvOpSDiv : SpvOpUDiv;
+                if (resultType->kind == IL::TypeKind::Int) {
+                    op = resultType->As<IL::IntType>()->signedness ? SpvOpSDiv : SpvOpUDiv;
                 } else {
                     op = SpvOpFDiv;
                 }
@@ -1779,7 +1779,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Mul: {
                 auto *add = instr.As<IL::MulInstruction>();
 
-                SpvOp op = resultType->kind == Backend::IL::TypeKind::FP ? SpvOpFMul : SpvOpIMul;
+                SpvOp op = resultType->kind == IL::TypeKind::FP ? SpvOpFMul : SpvOpIMul;
 
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
@@ -1791,7 +1791,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Or: {
                 auto *_or = instr.As<IL::OrInstruction>();
 
-                const Backend::IL::Type* lhsType = ilTypeMap.GetType(_or->lhs);
+                const IL::Type* lhsType = ilTypeMap.GetType(_or->lhs);
 
                 SpvOp op;
                 switch (lhsType->kind) {
@@ -1799,10 +1799,10 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         ASSERT(false, "Invalid And operand type");
                         op = SpvOpBitwiseOr;
                         break;
-                    case Backend::IL::TypeKind::Bool:
+                    case IL::TypeKind::Bool:
                         op = SpvOpLogicalOr;
                         break;
-                    case Backend::IL::TypeKind::Int:
+                    case IL::TypeKind::Int:
                         op = SpvOpBitwiseOr;
                         break;
                 }
@@ -1817,7 +1817,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Not: {
                 auto *_not = instr.As<IL::NotInstruction>();
 
-                const Backend::IL::Type* valueType = ilTypeMap.GetType(_not->value);
+                const IL::Type* valueType = ilTypeMap.GetType(_not->value);
 
                 SpvOp op;
                 switch (valueType->kind) {
@@ -1825,10 +1825,10 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         ASSERT(false, "Invalid Not operand type");
                         op = SpvOpNot;
                         break;
-                    case Backend::IL::TypeKind::Bool:
+                    case IL::TypeKind::Bool:
                         op = SpvOpLogicalNot;
                         break;
-                    case Backend::IL::TypeKind::Int:
+                    case IL::TypeKind::Int:
                         op = SpvOpNot;
                         break;
                 }
@@ -1842,7 +1842,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::And: {
                 auto *_and = instr.As<IL::AndInstruction>();
 
-                const Backend::IL::Type* lhsType = ilTypeMap.GetType(_and->lhs);
+                const IL::Type* lhsType = ilTypeMap.GetType(_and->lhs);
 
                 SpvOp op;
                 switch (lhsType->kind) {
@@ -1850,10 +1850,10 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         ASSERT(false, "Invalid And operand type");
                         op = SpvOpBitwiseAnd;
                         break;
-                    case Backend::IL::TypeKind::Bool:
+                    case IL::TypeKind::Bool:
                         op = SpvOpLogicalAnd;
                         break;
-                    case Backend::IL::TypeKind::Int:
+                    case IL::TypeKind::Int:
                         op = SpvOpBitwiseAnd;
                         break;
                 }
@@ -1868,9 +1868,9 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Any: {
                 auto *any = instr.As<IL::AnyInstruction>();
 
-                const Backend::IL::Type* type = ilTypeMap.GetType(any->value);
+                const IL::Type* type = ilTypeMap.GetType(any->value);
 
-                if (type->kind != Backend::IL::TypeKind::Vector) {
+                if (type->kind != IL::TypeKind::Vector) {
                     // Non vector bool types, just set the value directly
                     idMap.Set(any->result, any->value);
                 } else {
@@ -1884,9 +1884,9 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::All: {
                 auto *all = instr.As<IL::AllInstruction>();
 
-                const Backend::IL::Type* type = ilTypeMap.GetType(all->value);
+                const IL::Type* type = ilTypeMap.GetType(all->value);
 
-                if (type->kind != Backend::IL::TypeKind::Vector) {
+                if (type->kind != IL::TypeKind::Vector) {
                     // Non vector bool types, just set the value directly
                     idMap.Set(all->result, all->value);
                 } else {
@@ -1900,7 +1900,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Equal: {
                 auto *equal = instr.As<IL::EqualInstruction>();
 
-                const Backend::IL::Type* lhsType = ilTypeMap.GetType(equal->lhs);
+                const IL::Type* lhsType = ilTypeMap.GetType(equal->lhs);
 
                 SpvOp op;
                 switch (lhsType->kind) {
@@ -1908,13 +1908,13 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         ASSERT(false, "Invalid Equal operand type");
                         op = SpvOpIEqual;
                         break;
-                    case Backend::IL::TypeKind::Bool:
+                    case IL::TypeKind::Bool:
                         op = SpvOpLogicalEqual;
                         break;
-                    case Backend::IL::TypeKind::FP:
+                    case IL::TypeKind::FP:
                         op = SpvOpFOrdEqual;
                         break;
-                    case Backend::IL::TypeKind::Int:
+                    case IL::TypeKind::Int:
                         op = SpvOpIEqual;
                         break;
                 }
@@ -1929,7 +1929,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::NotEqual: {
                 auto *notEqual = instr.As<IL::NotEqualInstruction>();
 
-                const Backend::IL::Type* lhsType = ilTypeMap.GetType(notEqual->lhs);
+                const IL::Type* lhsType = ilTypeMap.GetType(notEqual->lhs);
 
                 SpvOp op;
                 switch (lhsType->kind) {
@@ -1937,13 +1937,13 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         ASSERT(false, "Invalid NotEqual operand type");
                         op = SpvOpINotEqual;
                         break;
-                    case Backend::IL::TypeKind::Bool:
+                    case IL::TypeKind::Bool:
                         op = SpvOpLogicalNotEqual;
                         break;
-                    case Backend::IL::TypeKind::FP:
+                    case IL::TypeKind::FP:
                         op = SpvOpFOrdNotEqual;
                         break;
-                    case Backend::IL::TypeKind::Int:
+                    case IL::TypeKind::Int:
                         op = SpvOpINotEqual;
                         break;
                 }
@@ -1958,12 +1958,12 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::LessThan: {
                 auto *lessThan = instr.As<IL::LessThanInstruction>();
 
-                const Backend::IL::Type* lhsType = ilTypeMap.GetType(lessThan->lhs);
-                const Backend::IL::Type* component = GetComponentType(lhsType);
+                const IL::Type* lhsType = ilTypeMap.GetType(lessThan->lhs);
+                const IL::Type* component = GetComponentType(lhsType);
 
                 SpvOp op;
-                if (component->kind == Backend::IL::TypeKind::Int) {
-                    op = component->As<Backend::IL::IntType>()->signedness ? SpvOpSLessThan : SpvOpULessThan;
+                if (component->kind == IL::TypeKind::Int) {
+                    op = component->As<IL::IntType>()->signedness ? SpvOpSLessThan : SpvOpULessThan;
                 } else {
                     op = SpvOpFOrdLessThan;
                 }
@@ -1978,12 +1978,12 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::LessThanEqual: {
                 auto *lessThanEqual = instr.As<IL::LessThanEqualInstruction>();
 
-                const Backend::IL::Type* lhsType = ilTypeMap.GetType(lessThanEqual->lhs);
-                const Backend::IL::Type* component = GetComponentType(lhsType);
+                const IL::Type* lhsType = ilTypeMap.GetType(lessThanEqual->lhs);
+                const IL::Type* component = GetComponentType(lhsType);
 
                 SpvOp op;
-                if (component->kind == Backend::IL::TypeKind::Int) {
-                    op = component->As<Backend::IL::IntType>()->signedness ? SpvOpSLessThanEqual : SpvOpULessThanEqual;
+                if (component->kind == IL::TypeKind::Int) {
+                    op = component->As<IL::IntType>()->signedness ? SpvOpSLessThanEqual : SpvOpULessThanEqual;
                 } else {
                     op = SpvOpFOrdLessThanEqual;
                 }
@@ -1998,12 +1998,12 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::GreaterThan: {
                 auto *greaterThan = instr.As<IL::GreaterThanInstruction>();
 
-                const Backend::IL::Type* lhsType = ilTypeMap.GetType(greaterThan->lhs);
-                const Backend::IL::Type* component = GetComponentType(lhsType);
+                const IL::Type* lhsType = ilTypeMap.GetType(greaterThan->lhs);
+                const IL::Type* component = GetComponentType(lhsType);
 
                 SpvOp op;
-                if (component->kind == Backend::IL::TypeKind::Int) {
-                    op = component->As<Backend::IL::IntType>()->signedness ? SpvOpSGreaterThan : SpvOpUGreaterThan;
+                if (component->kind == IL::TypeKind::Int) {
+                    op = component->As<IL::IntType>()->signedness ? SpvOpSGreaterThan : SpvOpUGreaterThan;
                 } else {
                     op = SpvOpFOrdGreaterThan;
                 }
@@ -2018,12 +2018,12 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::GreaterThanEqual: {
                 auto *greaterThanEqual = instr.As<IL::GreaterThanEqualInstruction>();
 
-                const Backend::IL::Type* lhsType = ilTypeMap.GetType(greaterThanEqual->lhs);
-                const Backend::IL::Type* component = GetComponentType(lhsType);
+                const IL::Type* lhsType = ilTypeMap.GetType(greaterThanEqual->lhs);
+                const IL::Type* component = GetComponentType(lhsType);
 
                 SpvOp op;
-                if (component->kind == Backend::IL::TypeKind::Int) {
-                    op = component->As<Backend::IL::IntType>()->signedness ? SpvOpSGreaterThanEqual : SpvOpUGreaterThanEqual;
+                if (component->kind == IL::TypeKind::Int) {
+                    op = component->As<IL::IntType>()->signedness ? SpvOpSGreaterThanEqual : SpvOpUGreaterThanEqual;
                 } else {
                     op = SpvOpFOrdGreaterThanEqual;
                 }
@@ -2061,9 +2061,9 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         ASSERT(false, "Invalid value");
                         break;
                     }
-                    case Backend::IL::KernelValue::DispatchThreadID: {
-                        const Backend::IL::Type *type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{
-                            .containedType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = false}),
+                    case IL::KernelValue::DispatchThreadID: {
+                        const IL::Type *type = program.GetTypeMap().FindTypeOrAdd(IL::VectorType{
+                            .containedType = program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth = 32, .signedness = false}),
                             .dimension = 3
                         });
 
@@ -2075,8 +2075,8 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         spv[3] = varId;
                         break;
                     }
-                    case Backend::IL::KernelValue::FlattenedLocalThreadID: {
-                        const Backend::IL::Type *type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = false});
+                    case IL::KernelValue::FlattenedLocalThreadID: {
+                        const IL::Type *type = program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth = 32, .signedness = false});
 
                         IL::ID varId = table.typeConstantVariable.FindOrCreateInput(SpvBuiltInLocalInvocationIndex, type);
 
@@ -2104,11 +2104,11 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         ASSERT(false, "Invalid extended opcode");
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Min: {
+                    case IL::ExtendedOp::Min: {
                         auto type = GetComponentType(program.GetTypeMap().GetType(extended->operands[0]));
-                        if (type->Is<Backend::IL::FPType>()) {
+                        if (type->Is<IL::FPType>()) {
                             std450Id = GLSLstd450FMin;
-                        } else if (type->As<Backend::IL::IntType>()->signedness) {
+                        } else if (type->As<IL::IntType>()->signedness) {
                             std450Id = GLSLstd450SMin;
                         } else {
                             std450Id = GLSLstd450UMin;
@@ -2118,11 +2118,11 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         operands.Add(extended->operands[1]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Max: {
+                    case IL::ExtendedOp::Max: {
                         auto type = GetComponentType(program.GetTypeMap().GetType(extended->operands[0]));
-                        if (type->Is<Backend::IL::FPType>()) {
+                        if (type->Is<IL::FPType>()) {
                             std450Id = GLSLstd450FMax;
-                        } else if (type->As<Backend::IL::IntType>()->signedness) {
+                        } else if (type->As<IL::IntType>()->signedness) {
                             std450Id = GLSLstd450SMax;
                         } else {
                             std450Id = GLSLstd450UMax;
@@ -2132,40 +2132,40 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         operands.Add(extended->operands[1]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Pow: {
+                    case IL::ExtendedOp::Pow: {
                         std450Id = GLSLstd450Pow;
                         operands.Add(extended->operands[0]);
                         operands.Add(extended->operands[1]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Exp: {
+                    case IL::ExtendedOp::Exp: {
                         std450Id = GLSLstd450Exp;
                         operands.Add(extended->operands[0]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Floor: {
+                    case IL::ExtendedOp::Floor: {
                         std450Id = GLSLstd450Floor;
                         operands.Add(extended->operands[0]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Ceil: {
+                    case IL::ExtendedOp::Ceil: {
                         std450Id = GLSLstd450Ceil;
                         operands.Add(extended->operands[0]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Round: {
+                    case IL::ExtendedOp::Round: {
                         std450Id = GLSLstd450Round;
                         operands.Add(extended->operands[0]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Sqrt: {
+                    case IL::ExtendedOp::Sqrt: {
                         std450Id = GLSLstd450Sqrt;
                         operands.Add(extended->operands[0]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::Abs: {
+                    case IL::ExtendedOp::Abs: {
                         auto type = GetComponentType(program.GetTypeMap().GetType(extended->operands[0]));
-                        if (type->Is<Backend::IL::FPType>()) {
+                        if (type->Is<IL::FPType>()) {
                             std450Id = GLSLstd450FAbs;
                         } else {
                             std450Id = GLSLstd450SAbs;
@@ -2174,14 +2174,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         operands.Add(extended->operands[0]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::FirstBitLow: {
+                    case IL::ExtendedOp::FirstBitLow: {
                         std450Id = GLSLstd450FindILsb;
                         operands.Add(extended->operands[0]);
                         break;
                     }
-                    case Backend::IL::ExtendedOp::FirstBitHigh: {
+                    case IL::ExtendedOp::FirstBitHigh: {
                         auto type = GetComponentType(program.GetTypeMap().GetType(extended->operands[0]));
-                        if (type->As<Backend::IL::IntType>()->signedness) {
+                        if (type->As<IL::IntType>()->signedness) {
                             std450Id = GLSLstd450FindSMsb;
                         } else {
                             std450Id = GLSLstd450FindUMsb;
@@ -2293,7 +2293,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *bitCast = instr.As<IL::BitCastInstruction>();
 
                 // Get value type
-                const Backend::IL::Type* valueType = ilTypeMap.GetType(bitCast->value);
+                const IL::Type* valueType = ilTypeMap.GetType(bitCast->value);
 
                 // Any need to cast at all?
                 if (valueType == resultType) {
@@ -2311,10 +2311,10 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *cast = instr.As<IL::IntToFloatInstruction>();
 
                 // Get value type
-                const Backend::IL::Type* valueType = ilTypeMap.GetType(cast->value);
+                const IL::Type* valueType = ilTypeMap.GetType(cast->value);
 
                 // Handle sign
-                if (valueType->As<Backend::IL::IntType>()->signedness) {
+                if (valueType->As<IL::IntType>()->signedness) {
                     SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpConvertSToF, 4, cast->source);
                     spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                     spv[2] = cast->result;
@@ -2331,7 +2331,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *cast = instr.As<IL::FloatToIntInstruction>();
 
                 // Handle sign
-                if (resultType->As<Backend::IL::IntType>()->signedness) {
+                if (resultType->As<IL::IntType>()->signedness) {
                     SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpConvertFToS, 4, cast->source);
                     spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                     spv[2] = cast->result;
@@ -2348,7 +2348,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *bitOr = instr.As<IL::BitOrInstruction>();
 
                 SpvOp op;
-                if (ilTypeMap.GetType(bitOr->lhs)->Is<Backend::IL::BoolType>()) {
+                if (ilTypeMap.GetType(bitOr->lhs)->Is<IL::BoolType>()) {
                     op = SpvOpLogicalOr;
                 } else {
                     op = SpvOpBitwiseOr;
@@ -2365,7 +2365,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *bitAnd = instr.As<IL::BitAndInstruction>();
 
                 SpvOp op;
-                if (ilTypeMap.GetType(bitAnd->lhs)->Is<Backend::IL::BoolType>()) {
+                if (ilTypeMap.GetType(bitAnd->lhs)->Is<IL::BoolType>()) {
                     op = SpvOpLogicalAnd;
                 } else {
                     op = SpvOpBitwiseAnd;
@@ -2527,12 +2527,12 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *loadBuffer = instr.As<IL::LoadBufferInstruction>();
 
                 // Get the buffer type
-                const auto* bufferType = ilTypeMap.GetType(loadBuffer->buffer)->As<Backend::IL::BufferType>();
+                const auto* bufferType = ilTypeMap.GetType(loadBuffer->buffer)->As<IL::BufferType>();
 
                 // Texel buffer?
-                if (bufferType->texelType != Backend::IL::Format::None) {
+                if (bufferType->texelType != IL::Format::None) {
                     // Load image with appropriate instruction
-                    if (bufferType->samplerMode == Backend::IL::ResourceSamplerMode::Writable) {
+                    if (bufferType->samplerMode == IL::ResourceSamplerMode::Writable) {
                         SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
                         spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                         spv[2] = loadBuffer->result;
@@ -2554,10 +2554,10 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *storeBuffer = instr.As<IL::StoreBufferInstruction>();
 
                 // Get the buffer type
-                const auto* bufferType = ilTypeMap.GetType(storeBuffer->buffer)->As<Backend::IL::BufferType>();
+                const auto* bufferType = ilTypeMap.GetType(storeBuffer->buffer)->As<IL::BufferType>();
 
                 // Texel buffer?
-                if (bufferType->texelType != Backend::IL::Format::None) {
+                if (bufferType->texelType != IL::Format::None) {
                     // Write image
                     SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
                     spv[1] = idMap.Get(storeBuffer->buffer);
@@ -2583,14 +2583,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         ASSERT(false, "Invalid ResourceSize type kind");
                         return false;
                     }
-                    case Backend::IL::TypeKind::Texture: {
-                        auto* texture = resourceType->As<Backend::IL::TextureType>();
+                    case IL::TypeKind::Texture: {
+                        auto* texture = resourceType->As<IL::TextureType>();
 
-                        if (texture->samplerMode == Backend::IL::ResourceSamplerMode::Compatible && !texture->multisampled) {
+                        if (texture->samplerMode == IL::ResourceSamplerMode::Compatible && !texture->multisampled) {
                             uint32_t constantZeroId = table.scan.header.bound++;
 
                             // UInt32
-                            const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+                            const IL::Type *intType = ilTypeMap.FindTypeOrAdd(IL::IntType{
                                 .bitWidth = 32,
                                 .signedness = false
                             });
@@ -2616,9 +2616,9 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
                         break;
                     }
-                    case Backend::IL::TypeKind::Buffer: {
+                    case IL::TypeKind::Buffer: {
                         // Texel buffer?
-                        if (resourceType->As<Backend::IL::BufferType>()->texelType != Backend::IL::Format::None) {
+                        if (resourceType->As<IL::BufferType>()->texelType != IL::Format::None) {
                             // Query image
                             SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageQuerySize, 4, instr->source);
                             spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
@@ -2642,7 +2642,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::AtomicExchange:
             case IL::OpCode::AtomicCompareExchange: {
                 // uint32_t
-                const Backend::IL::Type* uintType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness=false});
+                const IL::Type* uintType = ilTypeMap.FindTypeOrAdd(IL::IntType {.bitWidth = 32, .signedness=false});
 
                 // Identifiers
                 uint32_t scopeId = table.scan.header.bound++;
@@ -2704,7 +2704,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                     case IL::OpCode::AtomicAdd: {
                         auto *_instr = instr.As<IL::AtomicAddInstruction>();
 
-                        ASSERT(resultType->kind == Backend::IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
+                        ASSERT(resultType->kind == IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
 
                         SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpAtomicIAdd, 7, _instr->source);
                         spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
@@ -2718,8 +2718,8 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                     case IL::OpCode::AtomicMin: {
                         auto *_instr = instr.As<IL::AtomicMinInstruction>();
 
-                        ASSERT(resultType->kind == Backend::IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
-                        SpvOp op = resultType->As<Backend::IL::IntType>()->signedness ? SpvOpAtomicSMin : SpvOpAtomicUMin;
+                        ASSERT(resultType->kind == IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
+                        SpvOp op = resultType->As<IL::IntType>()->signedness ? SpvOpAtomicSMin : SpvOpAtomicUMin;
 
                         SpvInstruction& spv = stream.TemplateOrAllocate(op, 7, _instr->source);
                         spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
@@ -2733,8 +2733,8 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                     case IL::OpCode::AtomicMax: {
                         auto *_instr = instr.As<IL::AtomicMaxInstruction>();
 
-                        ASSERT(resultType->kind == Backend::IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
-                        SpvOp op = resultType->As<Backend::IL::IntType>()->signedness ? SpvOpAtomicSMax : SpvOpAtomicUMax;
+                        ASSERT(resultType->kind == IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
+                        SpvOp op = resultType->As<IL::IntType>()->signedness ? SpvOpAtomicSMax : SpvOpAtomicUMax;
 
                         SpvInstruction& spv = stream.TemplateOrAllocate(op, 7, _instr->source);
                         spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
@@ -2778,17 +2778,17 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 auto *_instr = instr.As<IL::AddressChainInstruction>();
 
                 // Get resulting type
-                const auto* pointerType = resultType->As<Backend::IL::PointerType>();
+                const auto* pointerType = resultType->As<IL::PointerType>();
 
                 // Texel addresses must be handled separately
-                if (pointerType->addressSpace == Backend::IL::AddressSpace::Texture || pointerType->addressSpace == Backend::IL::AddressSpace::Buffer) {
+                if (pointerType->addressSpace == IL::AddressSpace::Texture || pointerType->addressSpace == IL::AddressSpace::Buffer) {
                     ASSERT(_instr->chains.count == 1, "Resource address chains do not support a depth greater than 1");
 
                     // Id allocations
                     uint32_t spvMSId = table.scan.header.bound++;
 
                     // UInt32
-                    const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+                    const IL::Type *intType = ilTypeMap.FindTypeOrAdd(IL::IntType{
                         .bitWidth = 32,
                         .signedness = false
                     });
@@ -2828,7 +2828,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
                 // Scope value
                 SpvInstruction &spvScope = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-                spvScope[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+                spvScope[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(IL::IntType {.bitWidth = 32, .signedness = false}));
                 spvScope[2] = scopeId;
                 spvScope[3] = SpvScopeSubgroup;
                 
@@ -3015,7 +3015,7 @@ void SpvPhysicalBlockFunction::PostPatchLoops(IL::Function* fn) {
 
         // Move all contents from the source header block to the post block
         // Do not let the split modify any incoming phi nor loop header instructions, we already took care of that
-        headerBlock->Split(postBlock, Backend::IL::FirstNonPhi(headerBlock), BasicBlockSplitFlag::RedirectBranchUsers);
+        headerBlock->Split(postBlock, IL::FirstNonPhi(headerBlock), BasicBlockSplitFlag::RedirectBranchUsers);
 
         // Actual header maintains the control flow and branches directly to the body
         // Maintain the instruction source
@@ -3066,7 +3066,7 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
     IL::ShaderDataMap& shaderDataMap = program.GetShaderDataMap();
 
     // Get IL map
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Current offset
     uint32_t shaderDataOffset = 0;
@@ -3078,18 +3078,18 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
         }
 
         // Get variable
-        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+        const IL::Variable* variable = shaderDataMap.Get(info.id);
 
         // Variables always pointer to
-        const auto* pointerType = variable->type->As<Backend::IL::PointerType>();
+        const auto* pointerType = variable->type->As<IL::PointerType>();
 
         // Only buffers supported for now
         ASSERT(info.type == ShaderDataType::Buffer, "Only buffers are implemented for now");
 
         // RWBuffer<uint>*
-        auto* bufferPtrType = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
-            .pointee =  pointerType->pointee->As<Backend::IL::BufferType>(),
-            .addressSpace = Backend::IL::AddressSpace::Resource,
+        auto* bufferPtrType = ilTypeMap.FindTypeOrAdd(IL::PointerType{
+            .pointee =  pointerType->pointee->As<IL::BufferType>(),
+            .addressSpace = IL::AddressSpace::Resource,
         });
 
         // SpvIds
@@ -3135,7 +3135,7 @@ void SpvPhysicalBlockFunction::CreateDataConstantMap(const SpvJob &job, SpvStrea
         }
 
         // Get variable
-        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+        const IL::Variable* variable = shaderDataMap.Get(info.id);
 
         // Set the identifier redirect, the frontend exposes the event ids as constant IDs independent of the function.
         // However, as multiple functions can be instrumented we have to load them per function, use the redirector in this case.
@@ -3155,10 +3155,10 @@ void SpvPhysicalBlockFunction::CreateDataLookups(const SpvJob& job, SpvStream& s
     IL::ShaderDataMap& shaderDataMap = program.GetShaderDataMap();
 
     // Get IL map
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // UInt32
-    const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+    const IL::Type *intType = ilTypeMap.FindTypeOrAdd(IL::IntType{
         .bitWidth = 32,
         .signedness = false
     });
@@ -3199,7 +3199,7 @@ void SpvPhysicalBlockFunction::CreateDataLookups(const SpvJob& job, SpvStream& s
         }
 
         // Get variable
-        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+        const IL::Variable* variable = shaderDataMap.Get(info.id);
 
         // Id allocations
         IL::ID pcRedirect = table.scan.header.bound++;

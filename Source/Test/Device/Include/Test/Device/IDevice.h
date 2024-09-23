@@ -67,7 +67,7 @@ namespace Test {
         /// \param data initial data
         /// \param dataSize byte size of the initial data
         /// \return resource identifier
-        virtual BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) = 0;
+        virtual BufferID CreateTexelBuffer(ResourceType type, IL::Format format, uint64_t size, const void *data, uint64_t dataSize) = 0;
 
         /// Create a new structured buffer
         /// \param type resource type
@@ -87,7 +87,7 @@ namespace Test {
         /// \param data initial data
         /// \param dataSize byte size of the initial data
         /// \return resource identifier
-        virtual TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) = 0;
+        virtual TextureID CreateTexture(ResourceType type, IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) = 0;
 
         /// Create a new sampler
         /// \return resource identifier

@@ -59,7 +59,7 @@ namespace IL {
         }
 
         /// Get the resource type
-        ::IL::ID GetFormat() {
+        ID GetFormat() {
             if (format != IL::InvalidID) {
                 return format;
             }
@@ -69,7 +69,7 @@ namespace IL {
         }
 
         /// Get the resource type
-        ::IL::ID GetFormatSize() {
+        ID GetFormatSize() {
             if (formatSize != IL::InvalidID) {
                 return formatSize;
             }
@@ -99,7 +99,7 @@ namespace IL {
         }
 
         /// Get the resource type
-        ::IL::ID GetViewFormat() {
+        ID GetViewFormat() {
             if (viewFormat != IL::InvalidID) {
                 return viewFormat;
             }
@@ -109,7 +109,7 @@ namespace IL {
         }
 
         /// Get the resource type
-        ::IL::ID GetViewFormatSize() {
+        ID GetViewFormatSize() {
             if (viewFormatSize != IL::InvalidID) {
                 return viewFormatSize;
             }
@@ -153,12 +153,12 @@ namespace IL {
         Emitter<T>& emitter;
         
         /// Cache
-        ::IL::ID puid{IL::InvalidID};
-        ::IL::ID format{IL::InvalidID};
-        ::IL::ID formatSize{IL::InvalidID};
-        ::IL::ID type{IL::InvalidID};
-        ::IL::ID viewFormat{IL::InvalidID};
-        ::IL::ID viewFormatSize{IL::InvalidID};
+        ID puid{IL::InvalidID};
+        ID format{IL::InvalidID};
+        ID formatSize{IL::InvalidID};
+        ID type{IL::InvalidID};
+        ID viewFormat{IL::InvalidID};
+        ID viewFormatSize{IL::InvalidID};
 
         /// Shader struct to fetch from
         ShaderStruct<ResourceToken> info;

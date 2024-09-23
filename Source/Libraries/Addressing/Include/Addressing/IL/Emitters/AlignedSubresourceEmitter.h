@@ -34,7 +34,7 @@
 #include <Backend/IL/Emitters/ExtendedEmitter.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 
-namespace Backend::IL {
+namespace IL {
     template<typename E = Emitter<>, typename RTE = ResourceTokenEmitter<E>>
     struct AlignedSubresourceEmitter {
         /// Constructor

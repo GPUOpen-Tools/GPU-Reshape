@@ -38,7 +38,7 @@ struct SpvPhysicalBlockTable;
 
 /// Base physical block
 struct SpvPhysicalBlockSection {
-    SpvPhysicalBlockSection(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable &table) :
+    SpvPhysicalBlockSection(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
         allocators(allocators), program(program), table(table) {
         /* */
     }
@@ -50,7 +50,7 @@ struct SpvPhysicalBlockSection {
     Allocators allocators;
 
     /// Backend program
-    Backend::IL::Program &program;
+    IL::Program &program;
 
     /// Block table
     SpvPhysicalBlockTable &table;

@@ -36,7 +36,7 @@
 // Std
 #include <cmath>
 
-namespace Backend::IL {
+namespace IL {
     struct CPUSubresourceEmitter {
         /// Constructor
         /// \param resourceInfo resource to get subresource for

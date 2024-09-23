@@ -96,7 +96,7 @@ namespace IL {
         }
 
         /// Get the underlying propagation engine
-        const Backend::IL::PropagationEngine& GetPropagationEngine() const {
+        const IL::PropagationEngine& GetPropagationEngine() const {
             return propagationEngine;
         }
 
@@ -165,13 +165,13 @@ namespace IL {
 
     public:
         /// Propagate an instruction
-        Backend::IL::PropagationResult PropagateInstruction(const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateInstruction(const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
             // Interproceduralism is handled by the simulator, not constant propagator
             if (auto call = instr->Cast<CallInstruction>()) {
                 SimulateProcedure(block, call);
             }
             
-            Backend::IL::PropagationResult result = constantPropagator.PropagateInstruction(block, instr, branchBlock);
+            IL::PropagationResult result = constantPropagator.PropagateInstruction(block, instr, branchBlock);
 
             // Notify propagators
             for (const ComRef<ISimulationPropagator>& propagator : propagators) {
@@ -231,7 +231,7 @@ namespace IL {
 
             // Assign all parameters
             for (uint32_t i = 0; i < call->arguments.count; i++) {
-                const Backend::IL::Variable *parameter = *parameterIt;
+                const IL::Variable *parameter = *parameterIt;
 
                 // Inform constant propagator of static store
                 constantPropagator.StoreStatic(parameter->id, call->arguments[i]);
@@ -260,7 +260,7 @@ namespace IL {
         Function& function;
 
         /// Underlying propagation engine
-        Backend::IL::PropagationEngine propagationEngine;
+        IL::PropagationEngine propagationEngine;
 
         /// Constant analysis
         ConstantPropagator constantPropagator;

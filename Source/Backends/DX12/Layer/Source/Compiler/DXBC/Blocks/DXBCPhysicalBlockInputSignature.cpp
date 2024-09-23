@@ -33,7 +33,7 @@
 // Common
 #include <Common/Sink.h>
 
-DXBCPhysicalBlockInputSignature::DXBCPhysicalBlockInputSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table)
+DXBCPhysicalBlockInputSignature::DXBCPhysicalBlockInputSignature(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table)
     : DXBCPhysicalBlockSection(allocators, program, table), entries(allocators) {
     /* */
 }

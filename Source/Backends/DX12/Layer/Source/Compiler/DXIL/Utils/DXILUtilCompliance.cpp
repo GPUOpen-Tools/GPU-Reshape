@@ -28,7 +28,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/Utils/DXILUtilCompliance.h>
 
-DXILUtilCompliance::DXILUtilCompliance(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table):
+DXILUtilCompliance::DXILUtilCompliance(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table):
     DXILUtil(allocators, program, table),
     declarations(allocators) {
     /* */

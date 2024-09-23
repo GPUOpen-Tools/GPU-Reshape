@@ -29,25 +29,25 @@
 // Backend
 #include "Instruction.h"
 
-namespace Backend::IL {
+namespace IL {
     /// Get the control flow of an instruction
     /// \param instr given instruction
     /// \param out output control flow
     /// \return true if the instruction has control flow
-    inline bool GetControlFlow(const ::IL::Instruction* instr, ::IL::BranchControlFlow& out) {
+    inline bool GetControlFlow(const Instruction* instr, BranchControlFlow& out) {
         switch (instr->opCode) {
             default: {
                 return false;
             }
-            case ::IL::OpCode::Branch: {
+            case OpCode::Branch: {
                 out = instr->As<::IL::BranchInstruction>()->controlFlow;
                 return true;
             }
-            case ::IL::OpCode::BranchConditional: {
+            case OpCode::BranchConditional: {
                 out = instr->As<::IL::BranchConditionalInstruction>()->controlFlow;
                 return true;
             }
-            case ::IL::OpCode::Switch: {
+            case OpCode::Switch: {
                 out = instr->As<::IL::SwitchInstruction>()->controlFlow;
                 return true;
             }
@@ -55,14 +55,14 @@ namespace Backend::IL {
     }
 
     /// Check if an instruction is a terminator
-    inline bool IsTerminator(const ::IL::Instruction* instr) {
+    inline bool IsTerminator(const Instruction* instr) {
         switch (instr->opCode) {
             default:
                 return false;
-            case ::IL::OpCode::Return:
-            case ::IL::OpCode::Switch:
-            case ::IL::OpCode::Branch:
-            case ::IL::OpCode::BranchConditional:
+            case OpCode::Return:
+            case OpCode::Switch:
+            case OpCode::Branch:
+            case OpCode::BranchConditional:
                 return true;
         }
     }
@@ -71,155 +71,155 @@ namespace Backend::IL {
     /// \param instr instruction to visit
     /// \param functor visitor
     template<typename F>
-    inline void VisitOperands(const ::IL::Instruction* instr, F&& functor) {
+    inline void VisitOperands(const Instruction* instr, F&& functor) {
         switch (instr->opCode) {
-            case ::IL::OpCode::None: {
+            case OpCode::None: {
                 break;
             }
-            case ::IL::OpCode::Unexposed: {
+            case OpCode::Unexposed: {
                 auto typed = instr->As<::IL::UnexposedInstruction>();
                 for (uint32_t i = 0; i < typed->operandCount; i++) {
                     functor(typed->operands[i]);
                 }
                 break;
             }
-            case ::IL::OpCode::Literal: {
+            case OpCode::Literal: {
                 break;
             }
-            case ::IL::OpCode::Any: {
+            case OpCode::Any: {
                 auto typed = instr->As<::IL::AnyInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::All: {
+            case OpCode::All: {
                 auto typed = instr->As<::IL::AllInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::Add: {
+            case OpCode::Add: {
                 auto typed = instr->As<::IL::AddInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::Sub: {
+            case OpCode::Sub: {
                 auto typed = instr->As<::IL::SubInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::Div: {
+            case OpCode::Div: {
                 auto typed = instr->As<::IL::DivInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::Mul: {
+            case OpCode::Mul: {
                 auto typed = instr->As<::IL::MulInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::Rem: {
+            case OpCode::Rem: {
                 auto typed = instr->As<::IL::RemInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::Trunc: {
+            case OpCode::Trunc: {
                 auto typed = instr->As<::IL::TruncInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::Or: {
+            case OpCode::Or: {
                 auto typed = instr->As<::IL::OrInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::And: {
+            case OpCode::And: {
                 auto typed = instr->As<::IL::AndInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::Not: {
+            case OpCode::Not: {
                 auto typed = instr->As<::IL::NotInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::Equal: {
+            case OpCode::Equal: {
                 auto typed = instr->As<::IL::EqualInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::NotEqual: {
+            case OpCode::NotEqual: {
                 auto typed = instr->As<::IL::NotEqualInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::LessThan: {
+            case OpCode::LessThan: {
                 auto typed = instr->As<::IL::LessThanInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::LessThanEqual: {
+            case OpCode::LessThanEqual: {
                 auto typed = instr->As<::IL::LessThanEqualInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::GreaterThan: {
+            case OpCode::GreaterThan: {
                 auto typed = instr->As<::IL::GreaterThanInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::GreaterThanEqual: {
+            case OpCode::GreaterThanEqual: {
                 auto typed = instr->As<::IL::GreaterThanEqualInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::IsInf: {
+            case OpCode::IsInf: {
                 auto typed = instr->As<::IL::IsInfInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::IsNaN: {
+            case OpCode::IsNaN: {
                 auto typed = instr->As<::IL::IsNaNInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::KernelValue: {
+            case OpCode::KernelValue: {
                 break;
             }
-            case ::IL::OpCode::Extended: {
+            case OpCode::Extended: {
                 auto typed = instr->As<::IL::ExtendedInstruction>();
                 for (uint32_t i = 0; i < typed->operands.count; i++) {
                     functor(typed->operands[i]);
                 }
                 break;
             }
-            case ::IL::OpCode::Select: {
+            case OpCode::Select: {
                 auto typed = instr->As<::IL::SelectInstruction>();
                 functor(typed->condition);
                 functor(typed->pass);
                 functor(typed->fail);
                 break;
             }
-            case ::IL::OpCode::Branch: {
+            case OpCode::Branch: {
                 break;
             }
-            case ::IL::OpCode::BranchConditional: {
+            case OpCode::BranchConditional: {
                 auto typed = instr->As<::IL::BranchConditionalInstruction>();
                 functor(typed->cond);
                 break;
             }
-            case ::IL::OpCode::Switch: {
+            case OpCode::Switch: {
                 auto typed = instr->As<::IL::SwitchInstruction>();
                 functor(typed->value);
                 for (uint32_t i = 0; i < typed->cases.count; i++) {
@@ -227,21 +227,21 @@ namespace Backend::IL {
                 }
                 break;
             }
-            case ::IL::OpCode::Phi: {
+            case OpCode::Phi: {
                 auto typed = instr->As<::IL::PhiInstruction>();
                 for (uint32_t i = 0; i < typed->values.count; i++) {
                     functor(typed->values[i].value);
                 }
                 break;
             }
-            case ::IL::OpCode::Return: {
+            case OpCode::Return: {
                 auto typed = instr->As<::IL::ReturnInstruction>();
-                if (typed->value != ::IL::InvalidID) {
+                if (typed->value != InvalidID) {
                     functor(typed->value);
                 }
                 break;
             }
-            case ::IL::OpCode::Call: {
+            case OpCode::Call: {
                 auto typed = instr->As<::IL::CallInstruction>();
                 functor(typed->target);
                 for (uint32_t i = 0; i < typed->arguments.count; i++) {
@@ -249,86 +249,86 @@ namespace Backend::IL {
                 }
                 break;
             }
-            case ::IL::OpCode::AtomicOr: {
+            case OpCode::AtomicOr: {
                 auto typed = instr->As<::IL::AtomicOrInstruction>();
                 functor(typed->address);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::AtomicXOr: {
+            case OpCode::AtomicXOr: {
                 auto typed = instr->As<::IL::AtomicXOrInstruction>();
                 functor(typed->address);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::AtomicAnd: {
+            case OpCode::AtomicAnd: {
                 auto typed = instr->As<::IL::AtomicAndInstruction>();
                 functor(typed->address);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::AtomicAdd: {
+            case OpCode::AtomicAdd: {
                 auto typed = instr->As<::IL::AtomicAddInstruction>();
                 functor(typed->address);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::AtomicMin: {
+            case OpCode::AtomicMin: {
                 auto typed = instr->As<::IL::AtomicMinInstruction>();
                 functor(typed->address);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::AtomicMax: {
+            case OpCode::AtomicMax: {
                 auto typed = instr->As<::IL::AtomicMaxInstruction>();
                 functor(typed->address);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::AtomicExchange: {
+            case OpCode::AtomicExchange: {
                 auto typed = instr->As<::IL::AtomicExchangeInstruction>();
                 functor(typed->value);
                 functor(typed->address);
                 break;
             }
-            case ::IL::OpCode::AtomicCompareExchange: {
+            case OpCode::AtomicCompareExchange: {
                 auto typed = instr->As<::IL::AtomicCompareExchangeInstruction>();
                 functor(typed->value);
                 functor(typed->address);
                 functor(typed->comparator);
                 break;
             }
-            case ::IL::OpCode::BitOr: {
+            case OpCode::BitOr: {
                 auto typed = instr->As<::IL::BitOrInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::BitXOr: {
+            case OpCode::BitXOr: {
                 auto typed = instr->As<::IL::BitXOrInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::BitAnd: {
+            case OpCode::BitAnd: {
                 auto typed = instr->As<::IL::BitAndInstruction>();
                 functor(typed->lhs);
                 functor(typed->rhs);
                 break;
             }
-            case ::IL::OpCode::BitShiftLeft: {
+            case OpCode::BitShiftLeft: {
                 auto typed = instr->As<::IL::BitShiftLeftInstruction>();
                 functor(typed->value);
                 functor(typed->shift);
                 break;
             }
-            case ::IL::OpCode::BitShiftRight: {
+            case OpCode::BitShiftRight: {
                 auto typed = instr->As<::IL::BitShiftRightInstruction>();
                 functor(typed->value);
                 functor(typed->shift);
                 break;
             }
-            case ::IL::OpCode::AddressChain: {
+            case OpCode::AddressChain: {
                 auto typed = instr->As<::IL::AddressChainInstruction>();
                 functor(typed->composite);
                 for (uint32_t i = 0; i < typed->chains.count; i++) {
@@ -336,14 +336,14 @@ namespace Backend::IL {
                 }
                 break;
             }
-            case ::IL::OpCode::Construct: {
+            case OpCode::Construct: {
                 auto typed = instr->As<::IL::ConstructInstruction>();
                 for (uint32_t i = 0; i < typed->values.count; i++) {
                     functor(typed->values[i]);
                 }
                 break;
             }
-            case ::IL::OpCode::Extract: {
+            case OpCode::Extract: {
                 auto typed = instr->As<::IL::ExtractInstruction>();
                 functor(typed->composite);
                 for (uint32_t i = 0; i < typed->chains.count; i++) {
@@ -351,49 +351,49 @@ namespace Backend::IL {
                 }
                 break;
             }
-            case ::IL::OpCode::Insert: {
+            case OpCode::Insert: {
                 auto typed = instr->As<::IL::InsertInstruction>();
                 functor(typed->composite);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::FloatToInt: {
+            case OpCode::FloatToInt: {
                 auto typed = instr->As<::IL::FloatToIntInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::IntToFloat: {
+            case OpCode::IntToFloat: {
                 auto typed = instr->As<::IL::IntToFloatInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::BitCast: {
+            case OpCode::BitCast: {
                 auto typed = instr->As<::IL::BitCastInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::Export: {
+            case OpCode::Export: {
                 auto typed = instr->As<::IL::ExportInstruction>();
                 for (uint32_t i = 0; i < typed->values.count; i++) {
                     functor(typed->values[i]);
                 }
                 break;
             }
-            case ::IL::OpCode::Alloca: {
+            case OpCode::Alloca: {
                 break;
             }
-            case ::IL::OpCode::Load: {
+            case OpCode::Load: {
                 auto typed = instr->As<::IL::LoadInstruction>();
                 functor(typed->address);
                 break;
             }
-            case ::IL::OpCode::Store: {
+            case OpCode::Store: {
                 auto typed = instr->As<::IL::StoreInstruction>();
                 functor(typed->address);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::StoreOutput: {
+            case OpCode::StoreOutput: {
                 auto typed = instr->As<::IL::StoreOutputInstruction>();
                 functor(typed->value);
                 functor(typed->row);
@@ -401,7 +401,7 @@ namespace Backend::IL {
                 functor(typed->index);
                 break;
             }
-            case ::IL::OpCode::StoreVertexOutput: {
+            case OpCode::StoreVertexOutput: {
                 auto typed = instr->As<::IL::StoreVertexOutputInstruction>();
                 functor(typed->value);
                 functor(typed->row);
@@ -410,7 +410,7 @@ namespace Backend::IL {
                 functor(typed->vertexIndex);
                 break;
             }
-            case ::IL::OpCode::StorePrimitiveOutput: {
+            case OpCode::StorePrimitiveOutput: {
                 auto typed = instr->As<::IL::StorePrimitiveOutputInstruction>();
                 functor(typed->value);
                 functor(typed->row);
@@ -419,183 +419,183 @@ namespace Backend::IL {
                 functor(typed->primitiveIndex);
                 break;
             }
-            case ::IL::OpCode::SampleTexture: {
+            case OpCode::SampleTexture: {
                 auto typed = instr->As<::IL::SampleTextureInstruction>();
                 functor(typed->texture);
                 functor(typed->coordinate);
 
-                if (typed->sampler != ::IL::InvalidID) {
+                if (typed->sampler != InvalidID) {
                     functor(typed->sampler);
                 }
 
-                if (typed->reference != ::IL::InvalidID) {
+                if (typed->reference != InvalidID) {
                     functor(typed->reference);
                 }
 
-                if (typed->lod != ::IL::InvalidID) {
+                if (typed->lod != InvalidID) {
                     functor(typed->lod);
                 }
 
-                if (typed->bias != ::IL::InvalidID) {
+                if (typed->bias != InvalidID) {
                     functor(typed->bias);
                 }
 
-                if (typed->ddx != ::IL::InvalidID) {
+                if (typed->ddx != InvalidID) {
                     functor(typed->ddx);
                 }
 
-                if (typed->ddy != ::IL::InvalidID) {
+                if (typed->ddy != InvalidID) {
                     functor(typed->ddy);
                 }
                 break;
             }
-            case ::IL::OpCode::StoreTexture: {
+            case OpCode::StoreTexture: {
                 auto typed = instr->As<::IL::StoreTextureInstruction>();
                 functor(typed->index);
                 functor(typed->texel);
                 functor(typed->texture);
                 break;
             }
-            case ::IL::OpCode::LoadTexture: {
+            case OpCode::LoadTexture: {
                 auto typed = instr->As<::IL::LoadTextureInstruction>();
                 functor(typed->texture);
                 functor(typed->index);
 
-                if (typed->offset != ::IL::InvalidID) {
+                if (typed->offset != InvalidID) {
                     functor(typed->offset);
                 }
 
-                if (typed->mip != ::IL::InvalidID) {
+                if (typed->mip != InvalidID) {
                     functor(typed->mip);
                 }
                 break;
             }
-            case ::IL::OpCode::StoreBuffer: {
+            case OpCode::StoreBuffer: {
                 auto typed = instr->As<::IL::StoreBufferInstruction>();
                 functor(typed->buffer);
                 functor(typed->index);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::StoreBufferRaw: {
+            case OpCode::StoreBufferRaw: {
                 auto typed = instr->As<::IL::StoreBufferRawInstruction>();
                 functor(typed->buffer);
                 functor(typed->index);
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::LoadBuffer: {
+            case OpCode::LoadBuffer: {
                 auto typed = instr->As<::IL::LoadBufferInstruction>();
                 functor(typed->buffer);
                 functor(typed->index);
 
-                if (typed->offset != ::IL::InvalidID) {
+                if (typed->offset != InvalidID) {
                     functor(typed->offset);
                 }
                 break;
             }
-            case ::IL::OpCode::LoadBufferRaw: {
+            case OpCode::LoadBufferRaw: {
                 auto typed = instr->As<::IL::LoadBufferRawInstruction>();
                 functor(typed->buffer);
                 functor(typed->index);
 
-                if (typed->offset != ::IL::InvalidID) {
+                if (typed->offset != InvalidID) {
                     functor(typed->offset);
                 }
                 break;
             }
-            case ::IL::OpCode::ResourceToken: {
+            case OpCode::ResourceToken: {
                 auto typed = instr->As<::IL::ResourceTokenInstruction>();
                 functor(typed->resource);
                 break;
             }
-            case ::IL::OpCode::ResourceSize: {
+            case OpCode::ResourceSize: {
                 auto typed = instr->As<::IL::ResourceSizeInstruction>();
                 functor(typed->resource);
                 break;
             }
-            case ::IL::OpCode::WaveAnyTrue: {
+            case OpCode::WaveAnyTrue: {
                 auto typed = instr->As<::IL::WaveAnyTrueInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveAllTrue: {
+            case OpCode::WaveAllTrue: {
                 auto typed = instr->As<::IL::WaveAllTrueInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveBallot: {
+            case OpCode::WaveBallot: {
                 auto typed = instr->As<::IL::WaveBallotInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveRead: {
+            case OpCode::WaveRead: {
                 auto typed = instr->As<::IL::WaveReadInstruction>();
                 functor(typed->value);
                 functor(typed->lane);
                 break;
             }
-            case ::IL::OpCode::WaveReadFirst: {
+            case OpCode::WaveReadFirst: {
                 auto typed = instr->As<::IL::WaveReadFirstInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveAllEqual: {
+            case OpCode::WaveAllEqual: {
                 auto typed = instr->As<::IL::WaveAllEqualInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveBitAnd: {
+            case OpCode::WaveBitAnd: {
                 auto typed = instr->As<::IL::WaveBitAndInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveBitOr: {
+            case OpCode::WaveBitOr: {
                 auto typed = instr->As<::IL::WaveBitOrInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveBitXOr: {
+            case OpCode::WaveBitXOr: {
                 auto typed = instr->As<::IL::WaveBitXOrInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveCountBits: {
+            case OpCode::WaveCountBits: {
                 auto typed = instr->As<::IL::WaveCountBitsInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveMax: {
+            case OpCode::WaveMax: {
                 auto typed = instr->As<::IL::WaveMaxInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveMin: {
+            case OpCode::WaveMin: {
                 auto typed = instr->As<::IL::WaveMinInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveProduct: {
+            case OpCode::WaveProduct: {
                 auto typed = instr->As<::IL::WaveProductInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WaveSum: {
+            case OpCode::WaveSum: {
                 auto typed = instr->As<::IL::WaveSumInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WavePrefixCountBits: {
+            case OpCode::WavePrefixCountBits: {
                 auto typed = instr->As<::IL::WavePrefixCountBitsInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WavePrefixProduct: {
+            case OpCode::WavePrefixProduct: {
                 auto typed = instr->As<::IL::WavePrefixProductInstruction>();
                 functor(typed->value);
                 break;
             }
-            case ::IL::OpCode::WavePrefixSum: {
+            case OpCode::WavePrefixSum: {
                 auto typed = instr->As<::IL::WavePrefixSumInstruction>();
                 functor(typed->value);
                 break;

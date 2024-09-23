@@ -78,8 +78,8 @@ bool ResourceAddressingInitializationFeature::Install() {
     // Allocate lock buffer
     //   ? Each respective PUID takes one lock integer, representing the current event id
     initializationMaskBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
-        .format = Backend::IL::Format::R32UInt
+        .elementCount = 1u << IL::kResourceTokenPUIDBitCount,
+        .format = IL::Format::R32UInt
     });
 
     // Must have program host
@@ -185,10 +185,10 @@ void ResourceAddressingInitializationFeature::Inject(IL::Program &program, const
                 resource = it->As<IL::LoadTextureInstruction>()->texture;
 
                 // Get type
-                auto type = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+                auto type = program.GetTypeMap().GetType(resource)->As<IL::TextureType>();
 
                 // Sub-pass inputs are not validated
-                if (type->dimension == Backend::IL::TextureDimension::SubPass) {
+                if (type->dimension == IL::TextureDimension::SubPass) {
                     return it;
                 }
                 break;

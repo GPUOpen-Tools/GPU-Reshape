@@ -42,7 +42,7 @@ struct SpvPhysicalBlockTable;
 
 /// Shader debug utilities
 struct SpvUtilShaderDebug {
-    SpvUtilShaderDebug(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable& table);
+    SpvUtilShaderDebug(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable& table);
 
     /// Parse the module
     void Parse();
@@ -93,7 +93,7 @@ private:
     Allocators allocators;
 
     /// Backend program
-    Backend::IL::Program &program;
+    IL::Program &program;
 
     /// Parent table
     SpvPhysicalBlockTable& table;

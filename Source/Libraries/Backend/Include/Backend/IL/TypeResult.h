@@ -30,7 +30,7 @@
 #include "Instruction.h"
 #include "TypeCommon.h"
 
-namespace Backend::IL {
+namespace IL {
     inline const Type* ReplaceVectorizedType(Program& program, const Type* type, const Type* component) {
         switch (type->kind) {
             default:
@@ -365,13 +365,13 @@ namespace Backend::IL {
                 ASSERT(false, "Invalid literal type");
                 return nullptr;
             case IL::LiteralType::Int: {
-                Backend::IL::IntType typeInt;
+                IL::IntType typeInt;
                 typeInt.bitWidth = instr->bitWidth;
                 typeInt.signedness = instr->signedness;
                 return program.GetTypeMap().FindTypeOrAdd(typeInt);
             }
             case IL::LiteralType::FP: {
-                Backend::IL::FPType typeFP;
+                IL::FPType typeFP;
                 typeFP.bitWidth = instr->bitWidth;
                 return program.GetTypeMap().FindTypeOrAdd(typeFP);
             }
@@ -434,20 +434,20 @@ namespace Backend::IL {
                 default:
                 ASSERT(false, "Unexpected GEP chain type");
                     break;
-                case Backend::IL::TypeKind::Vector: {
-                    type = type->As<Backend::IL::VectorType>()->containedType;
+                case IL::TypeKind::Vector: {
+                    type = type->As<IL::VectorType>()->containedType;
                     break;
                 }
-                case Backend::IL::TypeKind::Matrix: {
-                    auto* matrix = type->As<Backend::IL::MatrixType>();
-                    type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+                case IL::TypeKind::Matrix: {
+                    auto* matrix = type->As<IL::MatrixType>();
+                    type = program.GetTypeMap().FindTypeOrAdd(IL::VectorType {
                         .containedType = matrix->containedType,
                         .dimension = matrix->rows
                     });
                     break;
                 }
-                case Backend::IL::TypeKind::Pointer:{
-                    auto* pointer = type->As<Backend::IL::PointerType>();
+                case IL::TypeKind::Pointer:{
+                    auto* pointer = type->As<IL::PointerType>();
 
                     // Texel pointers handled separately
                     switch (pointer->pointee->kind) {
@@ -456,29 +456,29 @@ namespace Backend::IL {
                             type = pointer->pointee;
                             space = pointer->addressSpace;
                         }
-                        case Backend::IL::TypeKind::Buffer: {
-                            type = pointer->pointee->As<Backend::IL::BufferType>()->elementType;
+                        case IL::TypeKind::Buffer: {
+                            type = pointer->pointee->As<IL::BufferType>()->elementType;
                             space = AddressSpace::Buffer;
                             break;
                         }
-                        case Backend::IL::TypeKind::Texture: {
-                            type = pointer->pointee->As<Backend::IL::TextureType>()->sampledType;
+                        case IL::TypeKind::Texture: {
+                            type = pointer->pointee->As<IL::TextureType>()->sampledType;
                             space = AddressSpace::Texture;
                             break;
                         }
                     }
                     break;
                 }
-                case Backend::IL::TypeKind::Array: {
-                    type = type->As<Backend::IL::ArrayType>()->elementType;
+                case IL::TypeKind::Array: {
+                    type = type->As<IL::ArrayType>()->elementType;
                     break;
                 }
-                case Backend::IL::TypeKind::Struct: {
-                    const Backend::IL::Constant* constant = program.GetConstants().GetConstant(instr->chains[i].index);
+                case IL::TypeKind::Struct: {
+                    const IL::Constant* constant = program.GetConstants().GetConstant(instr->chains[i].index);
                     ASSERT(constant, "Struct chains must be constant");
 
-                    auto memberIdx = static_cast<uint32_t>(constant->As<Backend::IL::IntConstant>()->value);
-                    type = type->As<Backend::IL::StructType>()->memberTypes[memberIdx];
+                    auto memberIdx = static_cast<uint32_t>(constant->As<IL::IntConstant>()->value);
+                    type = type->As<IL::StructType>()->memberTypes[memberIdx];
                     break;
                 }
             }
@@ -501,30 +501,30 @@ namespace Backend::IL {
                 default:
                     ASSERT(false, "Unexpected GEP chain type");
                     return nullptr;
-                case Backend::IL::TypeKind::None:
+                case IL::TypeKind::None:
                     return nullptr;
-                case Backend::IL::TypeKind::Buffer:
-                    type = type->As<Backend::IL::BufferType>()->elementType;
+                case IL::TypeKind::Buffer:
+                    type = type->As<IL::BufferType>()->elementType;
                     break;
-                case Backend::IL::TypeKind::Texture:
-                    type = type->As<Backend::IL::TextureType>()->sampledType;
+                case IL::TypeKind::Texture:
+                    type = type->As<IL::TextureType>()->sampledType;
                     break;
-                case Backend::IL::TypeKind::Vector:
-                    type = type->As<Backend::IL::VectorType>()->containedType;
+                case IL::TypeKind::Vector:
+                    type = type->As<IL::VectorType>()->containedType;
                     break;
-                case Backend::IL::TypeKind::Matrix:
-                    type = type->As<Backend::IL::MatrixType>()->containedType;
+                case IL::TypeKind::Matrix:
+                    type = type->As<IL::MatrixType>()->containedType;
                     break;
-                case Backend::IL::TypeKind::Pointer:
-                    type = type->As<Backend::IL::PointerType>()->pointee;
+                case IL::TypeKind::Pointer:
+                    type = type->As<IL::PointerType>()->pointee;
                     break;
-                case Backend::IL::TypeKind::Array:
-                    type = type->As<Backend::IL::ArrayType>()->elementType;
+                case IL::TypeKind::Array:
+                    type = type->As<IL::ArrayType>()->elementType;
                     break;
-                case Backend::IL::TypeKind::Struct: {
+                case IL::TypeKind::Struct: {
                     const Constant* index = program.GetConstants().GetConstant(instr->chains[i].index);
                     ASSERT(index, "Dynamic structured extraction not supported");
-                    type = type->As<Backend::IL::StructType>()->memberTypes[index->As<IntConstant>()->value];
+                    type = type->As<IL::StructType>()->memberTypes[index->As<IntConstant>()->value];
                 }
             }
         }

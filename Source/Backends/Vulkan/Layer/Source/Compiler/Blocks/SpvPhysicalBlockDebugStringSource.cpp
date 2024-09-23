@@ -28,7 +28,7 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
 
-SpvPhysicalBlockDebugStringSource::SpvPhysicalBlockDebugStringSource(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable &table)
+SpvPhysicalBlockDebugStringSource::SpvPhysicalBlockDebugStringSource(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table)
     : SpvPhysicalBlockSection(allocators, program, table) {
     
 }

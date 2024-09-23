@@ -37,7 +37,7 @@ struct DXILPhysicalBlockTable;
 
 /// Physical block
 struct DXILPhysicalBlockSection {
-    DXILPhysicalBlockSection(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table) :
+    DXILPhysicalBlockSection(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table) :
         allocators(allocators), program(program), table(table) {
         /* */
     }
@@ -46,7 +46,7 @@ struct DXILPhysicalBlockSection {
     Allocators allocators;
 
     /// Backend program
-    Backend::IL::Program &program;
+    IL::Program &program;
 
     /// Block table
     DXILPhysicalBlockTable &table;

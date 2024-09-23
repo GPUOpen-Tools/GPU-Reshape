@@ -83,14 +83,14 @@ void DescriptorFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, Backend::IL::ResourceTokenType compileTypeLiteral, const SetInstrumentationConfigMessage& config) {
+IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, IL::ResourceTokenType compileTypeLiteral, const SetInstrumentationConfigMessage& config) {
     IL::BasicBlock* basicBlock = it.block;
 
     // Do we need a merge (phi) for result data?
     const bool needsSafeGuardCFMerge = config.safeGuard && it->result != IL::InvalidID;
 
     // Resulting type of the instruction (safe-guarding)
-    const Backend::IL::Type* resultType;
+    const IL::Type* resultType;
     if (needsSafeGuardCFMerge) {
         resultType = program.GetTypeMap().GetType(it->result);
     }
@@ -122,7 +122,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
         // Redirect the user instruction
         if (needsSafeGuardCFMerge) {
             safeGuardRedirect = program.GetIdentifierMap().AllocID();
-            Backend::IL::RedirectResult(program, splitIt, safeGuardRedirect);
+            IL::RedirectResult(program, splitIt, safeGuardRedirect);
         }
 
         // Branch back to resume
@@ -198,7 +198,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
 
         // If safe-guarded, allocate null fallback constant
         if (needsSafeGuardCFMerge) {
-            safeGuardZero = program.GetConstants().FindConstantOrAdd(resultType, Backend::IL::NullConstant{})->id;
+            safeGuardZero = program.GetConstants().FindConstantOrAdd(resultType, IL::NullConstant{})->id;
         }
 
         // Branch to resume
@@ -232,32 +232,32 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
             default:
                 return it;
             case IL::OpCode::LoadBuffer: {
-                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
+                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferInstruction>()->buffer, IL::ResourceTokenType::Buffer, config);
             }
             case IL::OpCode::StoreBuffer: {
-                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
+                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferInstruction>()->buffer, IL::ResourceTokenType::Buffer, config);
             }
             case IL::OpCode::LoadBufferRaw: {
-                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferRawInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
+                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferRawInstruction>()->buffer, IL::ResourceTokenType::Buffer, config);
             }
             case IL::OpCode::StoreBufferRaw: {
-                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferRawInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
+                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferRawInstruction>()->buffer, IL::ResourceTokenType::Buffer, config);
             }
             case IL::OpCode::StoreTexture: {
-                return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config);
+                return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, IL::ResourceTokenType::Texture, config);
             }
             case IL::OpCode::LoadTexture: {
                 IL::ID resource = it->As<IL::LoadTextureInstruction>()->texture;
 
                 // Get type
-                auto type = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+                auto type = program.GetTypeMap().GetType(resource)->As<IL::TextureType>();
 
                 // Sub-pass inputs are not validated
-                if (type->dimension == Backend::IL::TextureDimension::SubPass) {
+                if (type->dimension == IL::TextureDimension::SubPass) {
                     return it;
                 }
                 
-                return InjectForResource(program, context.function, it, resource, Backend::IL::ResourceTokenType::Texture, config);
+                return InjectForResource(program, context.function, it, resource, IL::ResourceTokenType::Texture, config);
             }
             case IL::OpCode::SampleTexture: {
                 auto* instr = it->As<IL::SampleTextureInstruction>();
@@ -267,7 +267,7 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
                 IL::ID sampler = instr->sampler;
 
                 // Validate texture
-                IL::BasicBlock::Iterator next = InjectForResource(program, context.function, it, texture, Backend::IL::ResourceTokenType::Texture, config);
+                IL::BasicBlock::Iterator next = InjectForResource(program, context.function, it, texture, IL::ResourceTokenType::Texture, config);
 
                 // Samplers are not guaranteed (can be combined)
                 if (sampler == IL::InvalidID) {
@@ -275,7 +275,7 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
                 }
 
                 // Validate sampler
-                return InjectForResource(program, context.function, next, sampler, Backend::IL::ResourceTokenType::Sampler, config);
+                return InjectForResource(program, context.function, next, sampler, IL::ResourceTokenType::Sampler, config);
             }
         }
     });

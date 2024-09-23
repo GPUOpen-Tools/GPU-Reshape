@@ -35,7 +35,7 @@ struct DXCompileJob;
 
 /// Input signature block
 struct DXBCPhysicalBlockInputSignature : public DXBCPhysicalBlockSection {
-    DXBCPhysicalBlockInputSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
+    DXBCPhysicalBlockInputSignature(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table);
 
     /// Parse signature
     void Parse();

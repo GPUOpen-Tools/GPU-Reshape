@@ -40,14 +40,10 @@
 // Common
 #include <Common/FileSystem.h>
 #include <Common/GlobalUID.h>
+#include <Common/System.h>
 
 // Std
 #include <fstream>
-
-// System
-#if defined(_MSC_VER)
-#   include <Windows.h>
-#endif
 
 ShaderCompilerDebug::ShaderCompilerDebug(InstanceDispatchTable *table) : table(table) {
     path = GetIntermediateDebugPath();

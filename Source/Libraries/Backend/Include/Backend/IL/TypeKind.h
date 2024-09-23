@@ -29,7 +29,7 @@
 // Std
 #include <cstdint>
 
-namespace Backend::IL {
+namespace IL {
     enum class TypeKind : uint8_t {
         None,
         Bool,

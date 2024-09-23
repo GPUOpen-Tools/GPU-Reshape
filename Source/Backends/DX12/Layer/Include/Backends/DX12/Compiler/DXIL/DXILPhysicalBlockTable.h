@@ -52,7 +52,7 @@ struct DXCompileJob;
 struct DXStream;
 
 struct DXILPhysicalBlockTable {
-    DXILPhysicalBlockTable(const Allocators &allocators, Backend::IL::Program &program);
+    DXILPhysicalBlockTable(const Allocators &allocators, IL::Program &program);
 
     /// Parse the DXIL bytecode
     /// \param byteCode code start

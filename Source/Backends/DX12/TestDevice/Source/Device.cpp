@@ -185,7 +185,7 @@ QueueID Device::GetQueue(QueueType type) {
     return QueueID::Invalid();
 }
 
-BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) {
+BufferID Device::CreateTexelBuffer(ResourceType type, IL::Format format, uint64_t size, const void *data, uint64_t dataSize) {
     ResourceInfo &resource = resources.emplace_back();
     resource.type = type;
     resource.format = format;
@@ -244,7 +244,7 @@ BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format
 BufferID Device::CreateStructuredBuffer(ResourceType type, uint32_t elementSize, uint64_t size, const void *data, uint64_t dataSize) {
     ResourceInfo &resource = resources.emplace_back();
     resource.type = type;
-    resource.format = Backend::IL::Format::None;
+    resource.format = IL::Format::None;
     resource.structuredSize = elementSize;
 
     // Destination heap
@@ -298,7 +298,7 @@ BufferID Device::CreateStructuredBuffer(ResourceType type, uint32_t elementSize,
     return BufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 }
 
-TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) {
+TextureID Device::CreateTexture(ResourceType type, IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) {
     ResourceInfo &resource = resources.emplace_back();
     resource.type = type;
     resource.format = format;
@@ -449,7 +449,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
                 desc.Buffer.FirstElement = 0;
                 desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-                desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / Backend::IL::GetSize(resource.format));
+                desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / IL::GetSize(resource.format));
                 desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
                 device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
                 set.count++;
@@ -461,7 +461,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
                 desc.Buffer.FirstElement = 0;
                 desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-                desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / Backend::IL::GetSize(resource.format));
+                desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / IL::GetSize(resource.format));
                 device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
                 set.count++;
                 break;

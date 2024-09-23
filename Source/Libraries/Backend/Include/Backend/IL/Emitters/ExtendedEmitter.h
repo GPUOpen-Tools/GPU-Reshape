@@ -43,7 +43,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Min(T a, T b) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Min, a, b);
+            return emitter.Extended(IL::ExtendedOp::Min, a, b);
         }
 
         /// Max two values
@@ -52,7 +52,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Max(T a, T b) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Max, a, b);
+            return emitter.Extended(IL::ExtendedOp::Max, a, b);
         }
 
         /// Clamp a value between two bounds
@@ -72,7 +72,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Pow(T a, T b) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Pow, a, b);
+            return emitter.Extended(IL::ExtendedOp::Pow, a, b);
         }
 
         /// Get the absolute of a value
@@ -80,7 +80,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Abs(T x) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Abs, x);
+            return emitter.Extended(IL::ExtendedOp::Abs, x);
         }
 
         /// Floor a value
@@ -88,7 +88,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Floor(T x) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Floor, x);
+            return emitter.Extended(IL::ExtendedOp::Floor, x);
         }
 
         /// Ceil a value
@@ -96,7 +96,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Ceil(T x) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Ceil, x);
+            return emitter.Extended(IL::ExtendedOp::Ceil, x);
         }
 
         /// Round a value
@@ -104,7 +104,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Round(T x) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Round, x);
+            return emitter.Extended(IL::ExtendedOp::Round, x);
         }
 
         /// Exp a value
@@ -112,7 +112,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Exp(T x) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Exp, x);
+            return emitter.Extended(IL::ExtendedOp::Exp, x);
         }
 
         /// Compute the sqrt of a value
@@ -120,7 +120,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T Sqrt(T x) {
-            return emitter.Extended(Backend::IL::ExtendedOp::Sqrt, x);
+            return emitter.Extended(IL::ExtendedOp::Sqrt, x);
         }
 
         /// Find the (zero based) index of the first bit set, starting from the low order
@@ -128,7 +128,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T FirstBitLow(T x) {
-            return emitter.Extended(Backend::IL::ExtendedOp::FirstBitLow, x);
+            return emitter.Extended(IL::ExtendedOp::FirstBitLow, x);
         }
 
         /// Find the (zero based) index of the first bit set, starting from the high order
@@ -136,7 +136,7 @@ namespace IL {
         /// \return result
         template<typename T>
         T FirstBitHigh(T x) {
-            return emitter.Extended(Backend::IL::ExtendedOp::FirstBitHigh, x);
+            return emitter.Extended(IL::ExtendedOp::FirstBitHigh, x);
         }
 
     private:

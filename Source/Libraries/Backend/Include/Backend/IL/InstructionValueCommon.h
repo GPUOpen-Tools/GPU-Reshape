@@ -29,9 +29,9 @@
 // Backend
 #include "Emitters/Emitter.h"
 
-namespace Backend::IL {
+namespace IL {
     template<typename T>
-    inline ::IL::ID BitCastToSignedness(::IL::Emitter<T>& emitter, const ::IL::ID id, bool _signed) {
+    inline ID BitCastToSignedness(::IL::Emitter<T>& emitter, const ID id, bool _signed) {
         TypeMap& typeMap =  emitter.GetProgram()->GetTypeMap();
 
         // Must be integer
@@ -47,12 +47,12 @@ namespace Backend::IL {
     }
     
     template<typename T>
-    inline ::IL::ID BitCastToSigned(::IL::Emitter<T>& emitter, const ::IL::ID id) {
+    inline ID BitCastToSigned(::IL::Emitter<T>& emitter, const ID id) {
         return BitCastToSignedness(emitter, id, true);
     }
     
     template<typename T>
-    inline ::IL::ID BitCastToUnsigned(::IL::Emitter<T>& emitter, const ::IL::ID id) {
+    inline ID BitCastToUnsigned(::IL::Emitter<T>& emitter, const ID id) {
         return BitCastToSignedness(emitter, id, false);
     }
 }

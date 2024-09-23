@@ -123,7 +123,7 @@ public:
             } sampleImage;
 
             struct {
-                const Backend::IL::StructType* type;
+                const IL::StructType* type;
                 IL::ID optionalControlStructure;
             } function;
 

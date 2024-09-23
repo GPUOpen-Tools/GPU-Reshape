@@ -41,7 +41,7 @@ namespace IL {
     struct ShaderDataMap {
         using Container = std::vector<ShaderDataInfo>;
 
-        ShaderDataMap(IdentifierMap& identifierMap, Backend::IL::TypeMap& typeMap) : identifierMap(identifierMap), typeMap(typeMap) {
+        ShaderDataMap(IdentifierMap& identifierMap, IL::TypeMap& typeMap) : identifierMap(identifierMap), typeMap(typeMap) {
 
         }
 
@@ -56,33 +56,33 @@ namespace IL {
                     ASSERT(false, "Invalid data");
                     break;
                 case ShaderDataType::Buffer:
-                    Add(info.id, typeMap.FindTypeOrAdd(Backend::IL::PointerType{
-                        .pointee = typeMap.FindTypeOrAdd(Backend::IL::BufferType{
-                            .elementType = Backend::IL::GetSampledFormatType(typeMap, info.buffer.format),
-                            .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
+                    Add(info.id, typeMap.FindTypeOrAdd(IL::PointerType{
+                        .pointee = typeMap.FindTypeOrAdd(IL::BufferType{
+                            .elementType = IL::GetSampledFormatType(typeMap, info.buffer.format),
+                            .samplerMode = IL::ResourceSamplerMode::Writable,
                             .texelType = info.buffer.format
                         }),
-                        .addressSpace = Backend::IL::AddressSpace::Resource
+                        .addressSpace = IL::AddressSpace::Resource
                     }));
                     break;
                 case ShaderDataType::Texture:
                     ASSERT(false, "Not implemented");
                     break;
                 case ShaderDataType::Event:
-                    Add(info.id, typeMap.FindTypeOrAdd(Backend::IL::IntType {
+                    Add(info.id, typeMap.FindTypeOrAdd(IL::IntType {
                         .bitWidth = 32,
                         .signedness = false
                     }));
                     break;
                 case ShaderDataType::Descriptor:
-                    const Backend::IL::Type* uint32 = typeMap.FindTypeOrAdd(Backend::IL::IntType {
+                    const IL::Type* uint32 = typeMap.FindTypeOrAdd(IL::IntType {
                         .bitWidth = 32,
                         .signedness = false
                     });
 
                     // If multiple dwords, exposed as aggregate
                     if (info.descriptor.dwordCount > 1) {
-                        Backend::IL::StructType decl;
+                        IL::StructType decl;
                         for (uint32_t i = 0; i < info.descriptor.dwordCount; i++) {
                             decl.memberTypes.push_back(uint32);
                         }
@@ -97,7 +97,7 @@ namespace IL {
         /// Get the variable from a data id
         /// \param rid allocated identifier
         /// \return nullptr if not found
-        const Backend::IL::Variable* Get(ShaderDataID rid) {
+        const IL::Variable* Get(ShaderDataID rid) {
             auto it = identifiers.find(rid);
             if (it == identifiers.end()) {
                 return nullptr;
@@ -126,7 +126,7 @@ namespace IL {
         /// Add a data
         /// \param rid allocation index
         /// \param type expected type
-        void Add(ShaderDataID rid, const Backend::IL::Type* type) {
+        void Add(ShaderDataID rid, const IL::Type* type) {
             ID id = identifierMap.AllocID();
 
             // Set the type association
@@ -136,12 +136,12 @@ namespace IL {
             DataEntry& entry = identifiers[rid];
             entry.variable.id = id;
             entry.variable.type = type;
-            entry.variable.addressSpace = Backend::IL::AddressSpace::Resource;
+            entry.variable.addressSpace = IL::AddressSpace::Resource;
         }
 
     private:
         struct DataEntry {
-            Backend::IL::Variable variable;
+            IL::Variable variable;
         };
 
     private:
@@ -149,7 +149,7 @@ namespace IL {
         IdentifierMap& identifierMap;
 
         /// The shared type map
-        Backend::IL::TypeMap& typeMap;
+        IL::TypeMap& typeMap;
 
         /// Data mappings
         std::unordered_map<ShaderDataID, DataEntry> identifiers;

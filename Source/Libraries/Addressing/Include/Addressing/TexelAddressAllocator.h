@@ -46,7 +46,7 @@ public:
         out.mipCount = info.token.mipCount;
 
         // Buffer types have no complex addressing mechanisms
-        if (info.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+        if (info.token.GetType() == IL::ResourceTokenType::Buffer) {
             out.texelCount += info.token.width;
         } else {
             // Align all texture dimensions to a power of two

@@ -29,7 +29,7 @@
 // Std
 #include <cstdint>
 
-namespace Backend::IL {
+namespace IL {
     enum class ResourceSamplerMode : uint8_t {
         RuntimeOnly,
         Compatible,

@@ -6,7 +6,7 @@
 // Std
 #include <bit>
 
-namespace Backend::IL {
+namespace IL {
     /// Helper, integral type check without booleans
     template<typename T>
     constexpr bool IsNumericV = std::is_integral_v<T> && !std::is_same_v<T, bool>;

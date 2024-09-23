@@ -29,7 +29,7 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
 
-DXBCPhysicalBlockRootSignature::DXBCPhysicalBlockRootSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table):
+DXBCPhysicalBlockRootSignature::DXBCPhysicalBlockRootSignature(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table):
     DXBCPhysicalBlockSection(allocators, program, table),
     parameters(allocators),
     samplers(allocators) {

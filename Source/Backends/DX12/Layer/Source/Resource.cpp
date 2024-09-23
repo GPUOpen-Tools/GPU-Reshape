@@ -37,13 +37,13 @@
 
 ResourceInfo GetResourceInfoFor(ResourceState* state) {
     // Construct without descriptor
-    switch (static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.token.type)) {
+    switch (static_cast<IL::ResourceTokenType>(state->virtualMapping.token.type)) {
         default:
             ASSERT(false, "Unexpected type");
             return {};
-        case Backend::IL::ResourceTokenType::Texture:
+        case IL::ResourceTokenType::Texture:
             return ResourceInfo::Texture(state->virtualMapping.token, state->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D);
-        case Backend::IL::ResourceTokenType::Buffer:
+        case IL::ResourceTokenType::Buffer:
             return ResourceInfo::Buffer(state->virtualMapping.token);
     }
 }
@@ -117,12 +117,12 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
             ASSERT(false, "Unsupported dimension");
             break;
         case D3D12_RESOURCE_DIMENSION_BUFFER:
-            state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+            state->virtualMapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Buffer);
             break;
         case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
         case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
         case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-            state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+            state->virtualMapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Texture);
             break;
     }
 

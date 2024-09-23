@@ -29,7 +29,7 @@
 #include "Program.h"
 #include "Instruction.h"
 
-namespace Backend::IL {
+namespace IL {
     inline const Type* GetComponentType(const Type* type) {
         switch (type->kind) {
             default:
@@ -64,7 +64,7 @@ namespace Backend::IL {
     }
 
     inline const Type* Splat(Program& program, const Type* scalarType, uint8_t count) {
-        return program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+        return program.GetTypeMap().FindTypeOrAdd(IL::VectorType {
             .containedType = scalarType,
             .dimension = count
         });

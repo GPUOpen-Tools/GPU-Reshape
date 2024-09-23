@@ -96,8 +96,8 @@ bool TexelAddressingInitializationFeature::Install() {
     
     // Allocate puid mapping buffer
     puidMemoryBaseBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
-        .format = Backend::IL::Format::R32UInt
+        .elementCount = 1u << IL::kResourceTokenPUIDBitCount,
+        .format = IL::Format::R32UInt
     });
 
     // Try to install texel allocator
@@ -126,7 +126,7 @@ bool TexelAddressingInitializationFeature::PostInstall() {
     OnCreateResource(ResourceCreateInfo {
         .resource = ResourceInfo::Buffer(ResourceToken {
             .puid = IL::kResourceTokenPUIDReservedNullBuffer,
-            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer)
+            .type = static_cast<uint32_t>(IL::ResourceTokenType::Buffer)
         }),
         .createFlags = ResourceCreateFlag::OpenedFromExternalHandle
     });
@@ -135,7 +135,7 @@ bool TexelAddressingInitializationFeature::PostInstall() {
     OnCreateResource(ResourceCreateInfo {
         .resource = ResourceInfo::Texture(ResourceToken {
             .puid = IL::kResourceTokenPUIDReservedNullTexture,
-            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
+            .type = static_cast<uint32_t>(IL::ResourceTokenType::Texture)
         }, false),
         .createFlags = ResourceCreateFlag::OpenedFromExternalHandle
     });
@@ -240,10 +240,10 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
                 IL::ID resource = it->As<IL::LoadTextureInstruction>()->texture;
 
                 // Get type
-                auto type = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+                auto type = program.GetTypeMap().GetType(resource)->As<IL::TextureType>();
 
                 // Sub-pass inputs are not validated
-                if (type->dimension == Backend::IL::TextureDimension::SubPass) {
+                if (type->dimension == IL::TextureDimension::SubPass) {
                     return it;
                 }
                 break;
@@ -252,14 +252,14 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
                 auto _instr = it->As<IL::LoadInstruction>();
     
                 // Quick check, if the address space isn't resource related, ignore it
-                auto type = program.GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                auto type = program.GetTypeMap().GetType(_instr->address)->As<IL::PointerType>();
                 if (!IsGenericResourceAddressSpace(type)) {
                     return it;
                 }
 
                 // Try to find the resource being addressed,
                 // if this either fails, or we're just loading the resource itself, ignore it
-                IL::ID resourceAddress = Backend::IL::GetResourceFromAddressChain(program, _instr->address);
+                IL::ID resourceAddress = IL::GetResourceFromAddressChain(program, _instr->address);
                 if (resourceAddress == IL::InvalidID || resourceAddress == _instr->address) {
                     return it;
                 }
@@ -271,14 +271,14 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
                 auto _instr = it->As<IL::StoreInstruction>();
                 
                 // Quick check, if the address space isn't resource related, ignore it
-                auto type = program.GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                auto type = program.GetTypeMap().GetType(_instr->address)->As<IL::PointerType>();
                 if (!IsGenericResourceAddressSpace(type)) {
                     return it;
                 }
 
                 // Try to find the resource being addressed,
                 // if this either fails, or we're just loading the resource itself, ignore it
-                IL::ID resourceAddress = Backend::IL::GetResourceFromAddressChain(program, _instr->address);
+                IL::ID resourceAddress = IL::GetResourceFromAddressChain(program, _instr->address);
                 if (resourceAddress == IL::InvalidID || resourceAddress == _instr->address) {
                     return it;
                 }
@@ -297,7 +297,7 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
             IL::Emitter<> emitter(program, context.basicBlock, it);
 
             // Get the texel address
-            Backend::IL::TexelPropertiesEmitter propertiesEmitter(emitter, texelAllocator, puidMemoryBaseBufferDataID);
+            IL::TexelPropertiesEmitter propertiesEmitter(emitter, texelAllocator, puidMemoryBaseBufferDataID);
             TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(ref);
 
             // If untracked, don't write any bits
@@ -341,7 +341,7 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
         IL::Emitter<> pre(program, context.basicBlock);
 
         // Get the texel address
-        Backend::IL::TexelPropertiesEmitter propertiesEmitter(pre, texelAllocator, puidMemoryBaseBufferDataID);
+        IL::TexelPropertiesEmitter propertiesEmitter(pre, texelAllocator, puidMemoryBaseBufferDataID);
         TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(IL::InstructionRef(instr));
 
         // If untracked, don't read any bits
@@ -499,7 +499,7 @@ void TexelAddressingInitializationFeature::ScheduleWholeResourceBlit(Allocation 
     wholeRange.token.viewBaseWidth = 0;
 
     // Default the descriptors
-    if (wholeRange.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+    if (wholeRange.token.GetType() == IL::ResourceTokenType::Buffer) {
         wholeRange.bufferDescriptor.offset = 0;
         wholeRange.bufferDescriptor.width = wholeRange.token.width;
     } else {
@@ -904,7 +904,7 @@ void TexelAddressingInitializationFeature::BlitResourceMask(CommandBuffer& buffe
     params.memoryBaseElementAlign32 = allocation.memory.texelBaseBlock;
 
     // Buffers are linearly indexed
-    if (info.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+    if (info.token.GetType() == IL::ResourceTokenType::Buffer) {
         ASSERT(!info.bufferDescriptor.placedDescriptor, "Blitting with placement resource");
         ASSERT(info.bufferDescriptor.width <= allocation.memory.addressInfo.texelCount, "Length of of bounds");
         ASSERT(info.bufferDescriptor.offset + info.bufferDescriptor.width <= allocation.memory.addressInfo.texelCount, "End offset of of bounds");
@@ -969,7 +969,7 @@ void TexelAddressingInitializationFeature::CopyResourceMaskRangeSymmetric(Comman
     params.destMemoryBaseElementAlign32 = destAllocation.memory.texelBaseBlock;
     
     // Buffers are linearly indexed
-    if (source.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+    if (source.token.GetType() == IL::ResourceTokenType::Buffer) {
         params.sourceBaseX = Cast32Checked(source.bufferDescriptor.offset);
         params.destBaseX = Cast32Checked(dest.bufferDescriptor.offset);
         
@@ -1037,7 +1037,7 @@ void TexelAddressingInitializationFeature::CopyResourceMaskRangeAsymmetric(Comma
     params.destMemoryBaseElementAlign32 = destAllocation.memory.texelBaseBlock;
     
     // Buffer -> Texture
-    if (source.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+    if (source.token.GetType() == IL::ResourceTokenType::Buffer) {
         ASSERT(source.bufferDescriptor.width <= sourceAllocation.memory.addressInfo.texelCount, "Length of of bounds");
         ASSERT(source.bufferDescriptor.offset + source.bufferDescriptor.width <= sourceAllocation.memory.addressInfo.texelCount, "End offset of of bounds");
 
@@ -1121,33 +1121,33 @@ bool TexelAddressingInitializationFeature::CreateProgram(const ComRef<IShaderPro
     return true;
 }
 
-bool TexelAddressingInitializationFeature::CreateBlitProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType type, bool isVolumetric) {
+bool TexelAddressingInitializationFeature::CreateBlitProgram(const ComRef<IShaderProgramHost> &programHost, IL::ResourceTokenType type, bool isVolumetric) {
     return CreateProgram(programHost, blitPrograms[{type, isVolumetric}], texelAllocator->GetTexelBlocksBufferID(), type, isVolumetric);
 }
 
-bool TexelAddressingInitializationFeature::CreateCopyProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric) {
+bool TexelAddressingInitializationFeature::CreateCopyProgram(const ComRef<IShaderProgramHost> &programHost, IL::ResourceTokenType from, IL::ResourceTokenType to, bool isVolumetric) {
     return CreateProgram(programHost, copyPrograms[{from, to, isVolumetric}], texelAllocator->GetTexelBlocksBufferID(), from, to, isVolumetric);
 }
 
 bool TexelAddressingInitializationFeature::CreateBlitPrograms(const ComRef<IShaderProgramHost> &programHost) {
-    return CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Buffer, false) &&
-           CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Texture, false) &&
-           CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Texture, true);
+    return CreateBlitProgram(programHost, IL::ResourceTokenType::Buffer, false) &&
+           CreateBlitProgram(programHost, IL::ResourceTokenType::Texture, false) &&
+           CreateBlitProgram(programHost, IL::ResourceTokenType::Texture, true);
 }
 
 bool TexelAddressingInitializationFeature::CreateCopyPrograms(const ComRef<IShaderProgramHost> &programHost) {
     // Matching types
-    if (!CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Buffer, Backend::IL::ResourceTokenType::Buffer, false) ||
-        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Texture, false) ||
-        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Texture, true)) {
+    if (!CreateCopyProgram(programHost, IL::ResourceTokenType::Buffer, IL::ResourceTokenType::Buffer, false) ||
+        !CreateCopyProgram(programHost, IL::ResourceTokenType::Texture, IL::ResourceTokenType::Texture, false) ||
+        !CreateCopyProgram(programHost, IL::ResourceTokenType::Texture, IL::ResourceTokenType::Texture, true)) {
         return false;
     }
 
     // Placement copies
-    if (!CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Buffer, Backend::IL::ResourceTokenType::Texture, false) ||
-        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Buffer, Backend::IL::ResourceTokenType::Texture, true) ||
-        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Buffer, false) ||
-        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Buffer, true)) {
+    if (!CreateCopyProgram(programHost, IL::ResourceTokenType::Buffer, IL::ResourceTokenType::Texture, false) ||
+        !CreateCopyProgram(programHost, IL::ResourceTokenType::Buffer, IL::ResourceTokenType::Texture, true) ||
+        !CreateCopyProgram(programHost, IL::ResourceTokenType::Texture, IL::ResourceTokenType::Buffer, false) ||
+        !CreateCopyProgram(programHost, IL::ResourceTokenType::Texture, IL::ResourceTokenType::Buffer, true)) {
         return false;
     }
 

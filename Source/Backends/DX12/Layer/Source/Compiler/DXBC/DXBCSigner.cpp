@@ -28,9 +28,7 @@
 
 // Common
 #include <Common/FileSystem.h>
-
-// System
-#include <Windows.h>
+#include <Common/System.h>
 
 // Std
 #include <string>

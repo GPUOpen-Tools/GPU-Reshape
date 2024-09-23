@@ -26,7 +26,7 @@
 
 #pragma once
 
-namespace Backend::IL {
+namespace IL {
     template<typename T>
     struct PhysicalMipData {
         /// Texel offset

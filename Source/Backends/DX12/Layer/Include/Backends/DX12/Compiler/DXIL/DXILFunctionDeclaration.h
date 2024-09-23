@@ -54,7 +54,7 @@ struct DXILFunctionDeclaration {
     std::string_view name;
 
     /// Type of this declaration
-    const Backend::IL::FunctionType* type{nullptr};
+    const IL::FunctionType* type{nullptr};
 
     /// Hash of name
     size_t hash{0};

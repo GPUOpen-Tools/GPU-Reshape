@@ -47,16 +47,10 @@ $INCLUDES
 
 using namespace Test;
 
-// Execute test
-#if !INLINE_EXECUTOR
-extern void $EXECUTOR(Test::IDevice*);
-#endif // INLINE_EXECUTOR
-
 namespace {
 
 $CONSTRAINTS;
 
-#if INLINE_EXECUTOR
 static void $TEST_NAMEExecutor(Test::IDevice* device) {
     // Optional, resource set
     ResourceSetID resourceSet;
@@ -121,7 +115,6 @@ static void $TEST_NAMEExecutor(Test::IDevice* device) {
     // Submit on generic graphics
     device->Submit(device->GetQueue(QueueType::Graphics), commandBuffer);
 }
-#endif // INLINE_EXECUTOR
 
 template<typename DEVICE>
 class $TEST_NAMERunner {
@@ -167,11 +160,11 @@ private:
         MessageStream specializationStream;
         MessageStreamView<> specializationView(specializationStream);
 
-#if SAFE_GUARDED
-        // Mark as safe-guarded
-        auto set = specializationView.Add<SetInstrumentationConfigMessage>();
-        set->safeGuard = 1u;
-#endif // SAFE_GUARDED
+        if constexpr ($SAFE_GUARDED) {
+            // Mark as safe-guarded
+            auto set = specializationView.Add<SetInstrumentationConfigMessage>();
+            set->safeGuard = 1u;
+        }
 
         // Global instrumentation
         auto msg = view.Add<SetGlobalInstrumentationMessage>(SetGlobalInstrumentationMessage::AllocationInfo {
@@ -202,11 +195,12 @@ private:
         ConfigureBridge();
 
         // Execute test
-#if INLINE_EXECUTOR
-        $TEST_NAMEExecutor(device.GetUnsafe());
-#else // INLINE_EXECUTOR
-        $EXECUTOR(device.GetUnsafe());
-#endif // INLINE_EXECUTOR
+        if constexpr($INLINE_EXECUTOR) {
+            $TEST_NAMEExecutor(device.GetUnsafe());
+        } else {
+            extern void $EXECUTOR(Test::IDevice*);
+            $EXECUTOR(device.GetUnsafe());
+        }
 
         // Flush pending work
         device->Flush();

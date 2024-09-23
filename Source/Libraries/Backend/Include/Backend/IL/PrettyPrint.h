@@ -33,7 +33,7 @@
 #include "Format.h"
 #include "ResourceSamplerMode.h"
 
-namespace Backend::IL {
+namespace IL {
     struct ConstantMap;
     struct TypeMap;
     struct Type;
@@ -91,11 +91,11 @@ namespace IL {
     void PrettyPrint(const Program* program, const BasicBlock& basicBlock, PrettyPrintContext out);
     void PrettyPrint(const Program* program, const Instruction* instr, PrettyPrintContext out);
     void PrettyPrint(const SOVValue& value, PrettyPrintContext out);
-    void PrettyPrint(Backend::IL::Format format, PrettyPrintContext out);
-    void PrettyPrint(Backend::IL::ResourceSamplerMode mode, PrettyPrintContext out);
-    void PrettyPrint(const Backend::IL::Type* map, PrettyPrintContext out);
-    void PrettyPrint(const Backend::IL::TypeMap& map, PrettyPrintContext out);
-    void PrettyPrint(const Backend::IL::ConstantMap& map, PrettyPrintContext out);
+    void PrettyPrint(IL::Format format, PrettyPrintContext out);
+    void PrettyPrint(IL::ResourceSamplerMode mode, PrettyPrintContext out);
+    void PrettyPrint(const IL::Type* map, PrettyPrintContext out);
+    void PrettyPrint(const IL::TypeMap& map, PrettyPrintContext out);
+    void PrettyPrint(const IL::ConstantMap& map, PrettyPrintContext out);
     void PrettyPrint(const IL::Constant* constant, PrettyPrintContext out);
     void PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out);
     void PrettyPrintBlockJsonGraph(const Function& function, PrettyPrintContext out);

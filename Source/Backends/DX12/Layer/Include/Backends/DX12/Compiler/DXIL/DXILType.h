@@ -32,6 +32,6 @@
 // Layer
 #include "LLVM/LLVMHeader.h"
 
-struct DXILType : public Backend::IL::UnexposedType {
+struct DXILType : public IL::UnexposedType {
     LLVMTypeRecord type;
 };

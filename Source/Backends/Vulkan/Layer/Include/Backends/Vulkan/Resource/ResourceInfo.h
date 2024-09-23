@@ -42,13 +42,13 @@
 /// \return resource info
 static ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping, bool isVolumetric) {
     // Construct without descriptor
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.token.type)) {
+    switch (static_cast<IL::ResourceTokenType>(mapping.token.type)) {
         default:
             ASSERT(false, "Unexpected type");
         return {};
-        case Backend::IL::ResourceTokenType::Texture:
+        case IL::ResourceTokenType::Texture:
             return ResourceInfo::Texture(mapping.token, isVolumetric);
-        case Backend::IL::ResourceTokenType::Buffer:
+        case IL::ResourceTokenType::Buffer:
             return ResourceInfo::Buffer(mapping.token);
     }
 }

@@ -40,7 +40,7 @@ struct SpvPhysicalBlockTable;
 
 /// Shader constant utilities
 struct SpvUtilShaderConstantData {
-    SpvUtilShaderConstantData(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable& table);
+    SpvUtilShaderConstantData(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable& table);
 
     /// Compile the records
     /// \param job source job being compiled against
@@ -51,7 +51,7 @@ struct SpvUtilShaderConstantData {
     /// \param type expected type
     /// \param dwordOffset offset into dword array
     /// \param dwordCount number of dwords for this constant value
-    IL::ID GetConstantData(SpvStream& stream, const Backend::IL::Type* type, uint32_t dwordOffset, uint32_t dwordCount);
+    IL::ID GetConstantData(SpvStream& stream, const IL::Type* type, uint32_t dwordOffset, uint32_t dwordCount);
 
     /// Copy to a new block
     /// \param remote the new block table
@@ -63,7 +63,7 @@ private:
     Allocators allocators;
 
     /// Backend program
-    Backend::IL::Program &program;
+    IL::Program &program;
 
     /// Parent table
     SpvPhysicalBlockTable& table;

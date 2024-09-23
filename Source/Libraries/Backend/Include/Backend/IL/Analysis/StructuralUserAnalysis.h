@@ -66,8 +66,8 @@ namespace IL {
                             default: {
                                 // If this is not an instruction that performs sub-addressing, any operand
                                 // usage of a view value is treated as a <full> structural usage
-                                Backend::IL::VisitOperands(instrIt.Get(), [&](IL::ID operand) {
-                                    const Backend::IL::Type* type = program.GetTypeMap().GetType(operand);
+                                IL::VisitOperands(instrIt.Get(), [&](IL::ID operand) {
+                                    const IL::Type* type = program.GetTypeMap().GetType(operand);
                                     if (!type) {
                                         return;
                                     }

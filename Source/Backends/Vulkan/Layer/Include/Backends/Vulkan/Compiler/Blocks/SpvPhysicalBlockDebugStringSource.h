@@ -48,7 +48,7 @@ struct SpvPhysicalBlockTable;
 
 /// Debug string source basic block
 struct SpvPhysicalBlockDebugStringSource : public SpvPhysicalBlockSection {
-    SpvPhysicalBlockDebugStringSource(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable &table);
+    SpvPhysicalBlockDebugStringSource(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table);
 
     /// Parse all instructions
     void Parse();

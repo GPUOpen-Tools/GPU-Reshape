@@ -30,7 +30,7 @@
 #include "TypeCommon.h"
 #include "Metadata/DataMetadata.h"
 
-namespace Backend::IL {
+namespace IL {
     inline uint64_t GetPODNonAlignedTypeByteSize(const Type* type) {
         switch (type->kind) {
             case TypeKind::None:

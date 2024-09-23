@@ -28,11 +28,9 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCHeader.h>
 #include <Backends/DX12/Layer.h>
 
-// System
-#include <Windows.h>
-
 // Common
 #include <Common/FileSystem.h>
+#include <Common/System.h>
 
 // Std
 #include <string>

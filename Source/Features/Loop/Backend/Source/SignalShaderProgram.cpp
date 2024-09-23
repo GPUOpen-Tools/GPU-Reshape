@@ -51,7 +51,7 @@ bool SignalShaderProgram::Install() {
 
 void SignalShaderProgram::Inject(IL::Program &program) {
     // Must have termination block
-    IL::BasicBlock* basicBlock = Backend::IL::GetTerminationBlock(program);
+    IL::BasicBlock* basicBlock = IL::GetTerminationBlock(program);
     if (!basicBlock) {
         return;
     }

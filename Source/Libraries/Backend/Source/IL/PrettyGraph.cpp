@@ -30,13 +30,7 @@
 
 // Common
 #include <Common/FileSystem.h>
-
-// System
-#ifdef WIN32
-#   include <Windows.h>
-#else // WIN32
-#   error Not implemented
-#endif // WIN32
+#include <Common/System.h>
 
 // Std
 #include <fstream>

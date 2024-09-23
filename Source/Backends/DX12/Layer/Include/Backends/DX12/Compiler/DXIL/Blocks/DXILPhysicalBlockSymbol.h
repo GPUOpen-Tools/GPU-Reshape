@@ -36,7 +36,7 @@
 
 /// Type block
 struct DXILPhysicalBlockSymbol : public DXILPhysicalBlockSection {
-    DXILPhysicalBlockSymbol(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+    DXILPhysicalBlockSymbol(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Copy this block
     /// \param out destination block

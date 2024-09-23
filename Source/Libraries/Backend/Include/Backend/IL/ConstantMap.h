@@ -37,7 +37,7 @@
 // Std
 #include <unordered_map>
 
-namespace Backend::IL {
+namespace IL {
     using namespace ::IL;
 
     /// Constant map, provides unique constants
@@ -104,7 +104,7 @@ namespace Backend::IL {
         /// Add a constant to this map, must be unique
         /// \param constant the constant to be added
         template<typename T>
-        const Constant* AddUnsortedConstant(ID id, const Backend::IL::Type* type, const T &constant) {
+        const Constant* AddUnsortedConstant(ID id, const IL::Type* type, const T &constant) {
             auto constantPtr = AllocateConstant<T>(id, type, constant);
             idMap[id] = constantPtr;
             return constantPtr;
@@ -116,7 +116,7 @@ namespace Backend::IL {
         /// \param type of the constant to be instantiated
         /// \param constant the constant to be added
         template<typename T>
-        Constant* AddUnresolvedConstant(ID id, const Backend::IL::Type* type, const T &constant) {
+        Constant* AddUnresolvedConstant(ID id, const IL::Type* type, const T &constant) {
             Constant* constantPtr = AllocateConstant<T>(id, type, constant);
             idMap[id] = constantPtr;
             return constantPtr;
@@ -141,7 +141,7 @@ namespace Backend::IL {
         ///   ! It must not have any semantic usage
         /// \param constant the constant to be added
         template<typename T>
-        const Constant* AddSymbolicConstant(const Backend::IL::Type* type, const T &constant) {
+        const Constant* AddSymbolicConstant(const IL::Type* type, const T &constant) {
             return AllocateConstant<T>(InvalidID, type, constant);
         }
 
@@ -270,7 +270,7 @@ namespace Backend::IL {
         /// \param decl the declaration specifier
         /// \return the allocated constant
         template<typename T>
-        T *AllocateConstant(ID id, const Backend::IL::Type* type, const T &decl) {
+        T *AllocateConstant(ID id, const IL::Type* type, const T &decl) {
             // Ignore types on symbolics
             if (id != InvalidID) {
                 typeMap.SetType(id, type);

@@ -30,7 +30,7 @@
 #include <Backend/IL/ResourceTokenPacking.h>
 #include <Backend/Resource/ResourceInfo.h>
 
-namespace Backend::IL {
+namespace IL {
     struct CPUResourceTokenEmitter {
         CPUResourceTokenEmitter(const ResourceInfo& info) : info(info) {
             
@@ -118,7 +118,7 @@ namespace Backend::IL {
 
         /// Get the token
         uint32_t GetPackedToken() {
-            return static_cast<uint32_t>(info.token.puid | (static_cast<uint32_t>(info.token.type) << ::IL::kResourceTokenTypeShift));
+            return static_cast<uint32_t>(info.token.puid | (static_cast<uint32_t>(info.token.type) << kResourceTokenTypeShift));
         }
 
     private:

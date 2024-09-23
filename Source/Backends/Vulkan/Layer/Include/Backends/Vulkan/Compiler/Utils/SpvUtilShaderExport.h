@@ -40,7 +40,7 @@ struct SpvPhysicalBlockTable;
 
 /// Shader export utilities
 struct SpvUtilShaderExport {
-    SpvUtilShaderExport(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable& table);
+    SpvUtilShaderExport(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable& table);
 
     /// Compile the records
     /// \param job source job being compiled against
@@ -62,7 +62,7 @@ private:
     Allocators allocators;
 
     /// Backend program
-    Backend::IL::Program &program;
+    IL::Program &program;
 
     /// Parent table
     SpvPhysicalBlockTable& table;
@@ -72,7 +72,7 @@ private:
     uint32_t streamId{0};
 
     /// Type map
-    const Backend::IL::Type *buffer32UIRWArrayPtr{nullptr};
-    const Backend::IL::Type *buffer32UIRWPtr{nullptr};
-    const Backend::IL::Type *buffer32UIRW{nullptr};
+    const IL::Type *buffer32UIRWArrayPtr{nullptr};
+    const IL::Type *buffer32UIRWPtr{nullptr};
+    const IL::Type *buffer32UIRW{nullptr};
 };

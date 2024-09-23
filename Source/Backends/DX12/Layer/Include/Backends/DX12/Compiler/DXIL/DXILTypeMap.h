@@ -48,8 +48,8 @@ class DXILTypeMap {
 public:
     DXILTypeMap(const Allocators &allocators,
                 DXILIDRemapper &remapper,
-                Backend::IL::TypeMap &programMap,
-                Backend::IL::IdentifierMap &identifierMap)
+                IL::TypeMap &programMap,
+                IL::IdentifierMap &identifierMap)
         : programMap(programMap),
           remapper(remapper),
           identifierMap(identifierMap),
@@ -103,7 +103,7 @@ public:
     /// \param decl the IL type declaration
     /// \param name given name
     template<typename T>
-    const Backend::IL::Type* AddNamedType(uint32_t index, const T& decl, const char* name) {
+    const IL::Type* AddNamedType(uint32_t index, const T& decl, const char* name) {
         ASSERT(!namedLookup.contains(name), "Duplicate named type");
 
         // LLVM types are indexed separately from global identifiers, so always allocate
@@ -121,14 +121,14 @@ public:
     /// Get a type
     /// \param index the linear record type index
     /// \return may be nullptr
-    const Backend::IL::Type* GetType(uint32_t index) {
+    const IL::Type* GetType(uint32_t index) {
         return indexLookup.at(index);
     }
 
     /// Get a type
     /// \param index the linear record type index
     /// \return may be nullptr
-    uint32_t GetType(const Backend::IL::Type* type) {
+    uint32_t GetType(const IL::Type* type) {
         // Allocate if need be
         if (!HasType(type)) {
             return CompileCanonicalType(type);
@@ -149,7 +149,7 @@ public:
         // Named types use name as key
         // TODO: Validate fetched type against requested
         if (it != namedLookup.end()) {
-            if constexpr(std::is_same_v<T, Backend::IL::Type>) {
+            if constexpr(std::is_same_v<T, IL::Type>) {
                 return it->second;
             } else {
                 return it->second->As<T>();
@@ -161,8 +161,8 @@ public:
             default:
                 ASSERT(false, "Type does not support naming");
                 break;
-            case Backend::IL::TypeKind::Struct:
-                CompileType(static_cast<const Backend::IL::StructType*>(type), name);
+            case IL::TypeKind::Struct:
+                CompileType(static_cast<const IL::StructType*>(type), name);
                 break;
         }
 
@@ -180,7 +180,7 @@ public:
         // Named types use name as key
         // TODO: Validate fetched type against requested
         if (it != namedLookup.end()) {
-            if constexpr(std::is_same_v<T, Backend::IL::Type>) {
+            if constexpr(std::is_same_v<T, IL::Type>) {
                 return it->second;
             } else {
                 return it->second->As<T>();
@@ -195,8 +195,8 @@ public:
             default:
                 ASSERT(false, "Type does not support naming");
                 break;
-            case Backend::IL::TypeKind::Struct:
-                CompileType(static_cast<const Backend::IL::StructType*>(type), name);
+            case IL::TypeKind::Struct:
+                CompileType(static_cast<const IL::StructType*>(type), name);
                 break;
         }
 
@@ -207,7 +207,7 @@ public:
     /// Add a type mapping from IL to DXIL
     /// \param type IL type
     /// \param index DXIL index
-    void AddTypeMapping(const Backend::IL::Type* type, uint32_t index) {
+    void AddTypeMapping(const IL::Type* type, uint32_t index) {
         if (typeLookup.size() <= type->id) {
             typeLookup.resize(type->id + 1, ~0u);
         }
@@ -218,7 +218,7 @@ public:
     /// Check if there is an existing type mapping
     /// \param type IL type
     /// \return true if present
-    bool HasType(const Backend::IL::Type* type) {
+    bool HasType(const IL::Type* type) {
         return type->id < typeLookup.size() && typeLookup[type->id] != ~0u;
     }
 
@@ -234,7 +234,7 @@ public:
     }
 
     /// Get the program side map
-    Backend::IL::TypeMap& GetProgramMap() const {
+    IL::TypeMap& GetProgramMap() const {
         return programMap;
     }
 
@@ -242,7 +242,7 @@ private:
     /// Compile a given type, checked for non-canonical properties
     /// \param type given type
     /// \return DXIL id
-    uint32_t CompileCanonicalType(const Backend::IL::Type* type) {
+    uint32_t CompileCanonicalType(const IL::Type* type) {
         // Check for non-canonical properties first, faster than out-right creating it
         if (IsNonCanonical(type)) {
             // Filter constraints on type
@@ -263,30 +263,30 @@ private:
     /// Check if a type has non-canonical proeprties
     /// \param type given type
     /// \return true if non-canonical
-    const bool IsNonCanonical(const Backend::IL::Type* type) {
+    const bool IsNonCanonical(const IL::Type* type) {
         switch (type->kind) {
             default: {
                 return false;
             }
-            case Backend::IL::TypeKind::Int: {
-                return !type->As<Backend::IL::IntType>()->signedness;
+            case IL::TypeKind::Int: {
+                return !type->As<IL::IntType>()->signedness;
             }
-            case Backend::IL::TypeKind::Vector: {
-                return IsNonCanonical(type->As<Backend::IL::VectorType>()->containedType);
+            case IL::TypeKind::Vector: {
+                return IsNonCanonical(type->As<IL::VectorType>()->containedType);
             }
-            case Backend::IL::TypeKind::Matrix: {
-                return IsNonCanonical(type->As<Backend::IL::MatrixType>()->containedType);
+            case IL::TypeKind::Matrix: {
+                return IsNonCanonical(type->As<IL::MatrixType>()->containedType);
             }
-            case Backend::IL::TypeKind::Pointer: {
-                return IsNonCanonical(type->As<Backend::IL::PointerType>()->pointee);
+            case IL::TypeKind::Pointer: {
+                return IsNonCanonical(type->As<IL::PointerType>()->pointee);
             }
-            case Backend::IL::TypeKind::Array: {
-                return IsNonCanonical(type->As<Backend::IL::ArrayType>()->elementType);
+            case IL::TypeKind::Array: {
+                return IsNonCanonical(type->As<IL::ArrayType>()->elementType);
             }
-            case Backend::IL::TypeKind::Function: {
-                auto* fn = type->As<Backend::IL::FunctionType>();
+            case IL::TypeKind::Function: {
+                auto* fn = type->As<IL::FunctionType>();
 
-                for (const Backend::IL::Type* paramType : fn->parameterTypes) {
+                for (const IL::Type* paramType : fn->parameterTypes) {
                     if (IsNonCanonical(paramType)) {
                         return true;
                     }
@@ -294,10 +294,10 @@ private:
 
                 return IsNonCanonical(fn->returnType);
             }
-            case Backend::IL::TypeKind::Struct: {
-                auto *_struct = type->As<Backend::IL::StructType>();
+            case IL::TypeKind::Struct: {
+                auto *_struct = type->As<IL::StructType>();
 
-                for (const Backend::IL::Type *memberType: _struct->memberTypes) {
+                for (const IL::Type *memberType: _struct->memberTypes) {
                     if (IsNonCanonical(memberType)) {
                         return true;
                     }
@@ -311,24 +311,24 @@ private:
     /// Get the canonical type
     /// \param type source type
     /// \return canonical type
-    const Backend::IL::Type* GetCanonicalType(const Backend::IL::Type* type) {
+    const IL::Type* GetCanonicalType(const IL::Type* type) {
         switch (type->kind) {
             default: {
                 ASSERT(false, "Invalid type");
                 return nullptr;
             }
-            case Backend::IL::TypeKind::Bool:
-            case Backend::IL::TypeKind::Void:
-            case Backend::IL::TypeKind::FP:
-            case Backend::IL::TypeKind::Sampler:
-            case Backend::IL::TypeKind::CBuffer:
-            case Backend::IL::TypeKind::Unexposed: {
+            case IL::TypeKind::Bool:
+            case IL::TypeKind::Void:
+            case IL::TypeKind::FP:
+            case IL::TypeKind::Sampler:
+            case IL::TypeKind::CBuffer:
+            case IL::TypeKind::Unexposed: {
                 return type;
             }
-            case Backend::IL::TypeKind::Texture: {
-                auto* _type = type->As<Backend::IL::TextureType>();
+            case IL::TypeKind::Texture: {
+                auto* _type = type->As<IL::TextureType>();
 
-                return programMap.FindTypeOrAdd(Backend::IL::TextureType {
+                return programMap.FindTypeOrAdd(IL::TextureType {
                     .sampledType = _type->sampledType ? GetCanonicalType(_type->sampledType) : nullptr,
                     .dimension = _type->dimension,
                     .multisampled = _type->multisampled,
@@ -336,75 +336,75 @@ private:
                     .format = _type->format
                 });
             }
-            case Backend::IL::TypeKind::Buffer:{
-                auto* _type = type->As<Backend::IL::BufferType>();
+            case IL::TypeKind::Buffer:{
+                auto* _type = type->As<IL::BufferType>();
 
-                return programMap.FindTypeOrAdd(Backend::IL::BufferType {
+                return programMap.FindTypeOrAdd(IL::BufferType {
                     .elementType = _type->elementType ? GetCanonicalType(_type->elementType) : nullptr,
                     .samplerMode = _type->samplerMode,
                     .texelType = _type->texelType
                 });
             }
-            case Backend::IL::TypeKind::Int: {
-                auto* _type = type->As<Backend::IL::IntType>();
+            case IL::TypeKind::Int: {
+                auto* _type = type->As<IL::IntType>();
 
-                return programMap.FindTypeOrAdd(Backend::IL::IntType {
+                return programMap.FindTypeOrAdd(IL::IntType {
                     .bitWidth = _type->bitWidth,
                     .signedness = true
                 });
             }
-            case Backend::IL::TypeKind::Vector: {
-                auto* _type = type->As<Backend::IL::VectorType>();
+            case IL::TypeKind::Vector: {
+                auto* _type = type->As<IL::VectorType>();
 
-                return programMap.FindTypeOrAdd(Backend::IL::VectorType {
+                return programMap.FindTypeOrAdd(IL::VectorType {
                     .containedType = GetCanonicalType(_type->containedType),
                     .dimension = _type->dimension
                 });
             }
-            case Backend::IL::TypeKind::Matrix: {
-                auto* _type = type->As<Backend::IL::MatrixType>();
+            case IL::TypeKind::Matrix: {
+                auto* _type = type->As<IL::MatrixType>();
 
-                return programMap.FindTypeOrAdd(Backend::IL::MatrixType {
+                return programMap.FindTypeOrAdd(IL::MatrixType {
                     .containedType = GetCanonicalType(_type->containedType),
                     .rows = _type->rows,
                     .columns = _type->columns
                 });
             }
-            case Backend::IL::TypeKind::Pointer: {
-                auto* _type = type->As<Backend::IL::PointerType>();
+            case IL::TypeKind::Pointer: {
+                auto* _type = type->As<IL::PointerType>();
 
-                return programMap.FindTypeOrAdd(Backend::IL::PointerType {
+                return programMap.FindTypeOrAdd(IL::PointerType {
                     .pointee = GetCanonicalType(_type->pointee),
                     .addressSpace = _type->addressSpace
                 });
             }
-            case Backend::IL::TypeKind::Array: {
-                auto* _type = type->As<Backend::IL::ArrayType>();
+            case IL::TypeKind::Array: {
+                auto* _type = type->As<IL::ArrayType>();
 
-                return programMap.FindTypeOrAdd(Backend::IL::ArrayType {
+                return programMap.FindTypeOrAdd(IL::ArrayType {
                     .elementType = GetCanonicalType(_type->elementType),
                     .count = _type->count
                 });
             }
-            case Backend::IL::TypeKind::Function: {
-                auto* _type = type->As<Backend::IL::FunctionType>();
+            case IL::TypeKind::Function: {
+                auto* _type = type->As<IL::FunctionType>();
 
-                Backend::IL::FunctionType declaration;
+                IL::FunctionType declaration;
 
                 declaration.returnType = GetCanonicalType(_type->returnType);
 
-                for (const Backend::IL::Type* paramType : _type->parameterTypes) {
+                for (const IL::Type* paramType : _type->parameterTypes) {
                     declaration.parameterTypes.push_back(GetCanonicalType(paramType));
                 }
 
                 return programMap.FindTypeOrAdd(declaration);
             }
-            case Backend::IL::TypeKind::Struct: {
-                auto *_struct = type->As<Backend::IL::StructType>();
+            case IL::TypeKind::Struct: {
+                auto *_struct = type->As<IL::StructType>();
 
-                Backend::IL::StructType declaration;
+                IL::StructType declaration;
 
-                for (const Backend::IL::Type *memberType: _struct->memberTypes) {
+                for (const IL::Type *memberType: _struct->memberTypes) {
                     declaration.memberTypes.push_back(GetCanonicalType(memberType));
                 }
 
@@ -416,34 +416,34 @@ private:
     /// Compile a given type
     /// \param type
     /// \return DXIL id
-    uint32_t CompileType(const Backend::IL::Type* type) {
+    uint32_t CompileType(const IL::Type* type) {
         switch (type->kind) {
             default:
                 ASSERT(false, "Unsupported type for recompilation");
                 return ~0;
-            case Backend::IL::TypeKind::Bool:
-                return CompileType(static_cast<const Backend::IL::BoolType*>(type));
-            case Backend::IL::TypeKind::Void:
-                return CompileType(static_cast<const Backend::IL::VoidType*>(type));
-            case Backend::IL::TypeKind::Int:
-                return CompileType(static_cast<const Backend::IL::IntType*>(type));
-            case Backend::IL::TypeKind::FP:
-                return CompileType(static_cast<const Backend::IL::FPType*>(type));
-            case Backend::IL::TypeKind::Vector:
-                return CompileType(static_cast<const Backend::IL::VectorType*>(type));
-            case Backend::IL::TypeKind::Pointer:
-                return CompileType(static_cast<const Backend::IL::PointerType*>(type));
-            case Backend::IL::TypeKind::Array:
-                return CompileType(static_cast<const Backend::IL::ArrayType*>(type));
-            case Backend::IL::TypeKind::Function:
-                return CompileType(static_cast<const Backend::IL::FunctionType*>(type));
-            case Backend::IL::TypeKind::Struct:
-                return CompileType(static_cast<const Backend::IL::StructType*>(type), nullptr);
+            case IL::TypeKind::Bool:
+                return CompileType(static_cast<const IL::BoolType*>(type));
+            case IL::TypeKind::Void:
+                return CompileType(static_cast<const IL::VoidType*>(type));
+            case IL::TypeKind::Int:
+                return CompileType(static_cast<const IL::IntType*>(type));
+            case IL::TypeKind::FP:
+                return CompileType(static_cast<const IL::FPType*>(type));
+            case IL::TypeKind::Vector:
+                return CompileType(static_cast<const IL::VectorType*>(type));
+            case IL::TypeKind::Pointer:
+                return CompileType(static_cast<const IL::PointerType*>(type));
+            case IL::TypeKind::Array:
+                return CompileType(static_cast<const IL::ArrayType*>(type));
+            case IL::TypeKind::Function:
+                return CompileType(static_cast<const IL::FunctionType*>(type));
+            case IL::TypeKind::Struct:
+                return CompileType(static_cast<const IL::StructType*>(type), nullptr);
         }
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::BoolType* type) {
+    uint32_t CompileType(const IL::BoolType* type) {
         LLVMRecord record(LLVMTypeRecord::Integer);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -452,16 +452,16 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::VoidType* type) {
+    uint32_t CompileType(const IL::VoidType* type) {
         LLVMRecord record(LLVMTypeRecord::Void);
         return Emit(type, record);
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::IntType* type) {
+    uint32_t CompileType(const IL::IntType* type) {
         // LLVM shared signed and unsigned integer types
         if (!type->signedness) {
-            uint32_t signedId = GetType(programMap.FindTypeOrAdd(Backend::IL::IntType {
+            uint32_t signedId = GetType(programMap.FindTypeOrAdd(IL::IntType {
                 .bitWidth = type->bitWidth,
                 .signedness = true
             }));
@@ -485,9 +485,9 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::FPType* type) {
+    uint32_t CompileType(const IL::FPType* type) {
         LLVMRecord record;
-        switch (type->As<Backend::IL::FPType>()->bitWidth) {
+        switch (type->As<IL::FPType>()->bitWidth) {
             default:
             ASSERT(false, "Invalid floating point bit-width");
                 break;
@@ -505,7 +505,7 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::VectorType* type) {
+    uint32_t CompileType(const IL::VectorType* type) {
         LLVMRecord record(LLVMTypeRecord::Vector);
         record.ops = recordAllocator.AllocateArray<uint64_t>(2);
         record.opCount = 2;
@@ -515,7 +515,7 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::PointerType* type) {
+    uint32_t CompileType(const IL::PointerType* type) {
         LLVMRecord record(LLVMTypeRecord::Pointer);
         record.opCount = 2;
 
@@ -527,18 +527,18 @@ private:
             default:
             ASSERT(false, "Invalid address space");
                 break;
-            case Backend::IL::AddressSpace::Constant:
+            case IL::AddressSpace::Constant:
                 record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Constant);
                 break;
-            case Backend::IL::AddressSpace::Function:
+            case IL::AddressSpace::Function:
                 record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Local);
                 break;
-            case Backend::IL::AddressSpace::Texture:
-            case Backend::IL::AddressSpace::Buffer:
-            case Backend::IL::AddressSpace::Resource:
+            case IL::AddressSpace::Texture:
+            case IL::AddressSpace::Buffer:
+            case IL::AddressSpace::Resource:
                 record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Device);
                 break;
-            case Backend::IL::AddressSpace::GroupShared:
+            case IL::AddressSpace::GroupShared:
                 record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::GroupShared);
                 break;
         }
@@ -547,7 +547,7 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::ArrayType* type) {
+    uint32_t CompileType(const IL::ArrayType* type) {
         LLVMRecord record(LLVMTypeRecord::Array);
         record.opCount = 2;
 
@@ -559,7 +559,7 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::FunctionType *type) {
+    uint32_t CompileType(const IL::FunctionType *type) {
         // Get return uid
         uint32_t returnId = GetType(type->returnType);
         
@@ -585,7 +585,7 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::StructType* type, const char* name) {
+    uint32_t CompileType(const IL::StructType* type, const char* name) {
         // Insert name record if needed
         if (name) {
             LLVMRecord record(LLVMTypeRecord::StructName);
@@ -629,7 +629,7 @@ private:
     /// \param type type to be emitted
     /// \param record type record
     /// \return DXIL id
-    uint32_t Emit(const Backend::IL::Type* type, LLVMRecord& record) {
+    uint32_t Emit(const IL::Type* type, LLVMRecord& record) {
         // Add mapping
         uint32_t id = static_cast<uint32_t>(indexLookup.size());
         AddTypeMapping(type, id);
@@ -651,19 +651,19 @@ private:
 
 private:
     /// IL map
-    Backend::IL::TypeMap& programMap;
+    IL::TypeMap& programMap;
 
     /// Remapping
     DXILIDRemapper& remapper;
 
     /// Identifier map
-    Backend::IL::IdentifierMap& identifierMap;
+    IL::IdentifierMap& identifierMap;
 
     /// Local lookup table
-    Vector<const Backend::IL::Type*> indexLookup;
+    Vector<const IL::Type*> indexLookup;
 
     /// Named lookup table
-    std::map<std::string, const Backend::IL::Type*> namedLookup;
+    std::map<std::string, const IL::Type*> namedLookup;
 
     /// IL type to DXIL type table
     Vector<uint32_t> typeLookup;

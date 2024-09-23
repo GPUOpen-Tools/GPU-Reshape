@@ -43,7 +43,7 @@
 // Common
 #include <Common/Registry.h>
 
-MaskBlitShaderProgram::MaskBlitShaderProgram(ShaderDataID initializationMaskBufferID, Backend::IL::ResourceTokenType type, bool isVolumetric) :
+MaskBlitShaderProgram::MaskBlitShaderProgram(ShaderDataID initializationMaskBufferID, IL::ResourceTokenType type, bool isVolumetric) :
     initializationMaskBufferID(initializationMaskBufferID),
     type(type),
     isVolumetric(isVolumetric) {
@@ -63,13 +63,13 @@ bool MaskBlitShaderProgram::Install() {
 }
 
 void MaskBlitShaderProgram::Inject(IL::Program &program) {
-    Backend::IL::ConstantMap& constants = program.GetConstants();
+    IL::ConstantMap& constants = program.GetConstants();
 
     // Get entry point
     IL::Function* entryPoint = program.GetEntryPoint();
     
     // Must have termination block
-    IL::BasicBlock* entryBlock = Backend::IL::GetTerminationBlock(program);
+    IL::BasicBlock* entryBlock = IL::GetTerminationBlock(program);
     if (!entryBlock) {
         return;
     }
@@ -94,7 +94,7 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
 
     // Get dispatch offsets
     IL::Emitter<> entryEmitter(program, *entryBlock);
-    IL::ID dispatchID = entryEmitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
+    IL::ID dispatchID = entryEmitter.KernelValue(IL::KernelValue::DispatchThreadID);
     IL::ID dispatchXID = entryEmitter.Extract(dispatchID, constants.UInt(0)->id);
 
     // Guard against the current chunk bounds (relative, not absolute)
@@ -127,14 +127,14 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
     InlineSubresourceEmitter subresourceEmitter(texelEmitter, token, texelEmitter.Load(initializationMaskBufferDataID), baseAlign32);
 
     // Buffer indexing just adds the linear offset
-    if (type == Backend::IL::ResourceTokenType::Buffer) {
+    if (type == IL::ResourceTokenType::Buffer) {
         texelOffset = texelEmitter.Add(data.Get<&MaskBlitParameters::baseX>(texelEmitter), dispatchXID);
     } else {
         // Texel addressing computation
-        Backend::IL::TexelAddressEmitter address(texelEmitter, token, subresourceEmitter);
+        IL::TexelAddressEmitter address(texelEmitter, token, subresourceEmitter);
 
         // Convert to 3d
-        Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
+        IL::TexelCoordinateScalar index = IL::TexelIndexTo3D(
             texelEmitter, dispatchXID,
             data.Get<&MaskBlitParameters::width>(texelEmitter),
             data.Get<&MaskBlitParameters::height>(texelEmitter),

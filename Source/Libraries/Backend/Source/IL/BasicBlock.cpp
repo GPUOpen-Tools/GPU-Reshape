@@ -133,7 +133,7 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
 
             // Is this a loop header we're splitting?
             BranchControlFlow controlFlow;
-            if (Backend::IL::GetControlFlow(terminator.Get(), controlFlow) && controlFlow._continue != InvalidID) {
+            if (IL::GetControlFlow(terminator.Get(), controlFlow) && controlFlow._continue != InvalidID) {
                 BasicBlock* continueBlock = map.GetBasicBlock(controlFlow._continue);
 
                 // Get the terminator in the continue block
@@ -151,7 +151,7 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
     // Splitting phis?
     if (splitIteratorPhi->Is<PhiInstruction>() && splitFlags & BasicBlockSplitFlag::SplitPhiEdges) {
         BranchControlFlow controlFlow;
-        Backend::IL::GetControlFlow(GetTerminator(), controlFlow);
+        IL::GetControlFlow(GetTerminator(), controlFlow);
 
         // Does the phi operation reference a backedge?
         bool hasBackEdge = IsAnyPhiBranchBackEdge(splitIterator->As<PhiInstruction>(), controlFlow);
@@ -167,7 +167,7 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
 
         // If there's no back edges, preserve the phi operations, do not split with them
         if (!hasBackEdge) {
-            splitIteratorPhi = Backend::IL::FirstNonPhi(this, splitIteratorPhi);
+            splitIteratorPhi = IL::FirstNonPhi(this, splitIteratorPhi);
         }
     }
 
@@ -267,7 +267,7 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
     // Do we have back edge phi operations we need to resolve?
     if (hasUnresolvedBackEdgePhis) {
         BranchControlFlow controlFlow;
-        Backend::IL::GetControlFlow(destBlock->GetTerminator(), controlFlow);
+        IL::GetControlFlow(destBlock->GetTerminator(), controlFlow);
             
         // Find all moved phi's
         for (auto it = destBlock->begin(); it != destBlock->end() && it->Is<PhiInstruction>(); ++it) {

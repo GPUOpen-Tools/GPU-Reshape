@@ -33,7 +33,7 @@
 /// Compliance utilities
 struct DXILUtilCompliance : public DXILUtil {
 public:
-    DXILUtilCompliance(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+    DXILUtilCompliance(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Compile this utility
     void Compile();

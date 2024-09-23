@@ -111,7 +111,7 @@ namespace IL {
         }
 
         /// Get the type map
-        Backend::IL::TypeMap &GetTypeMap() {
+        IL::TypeMap &GetTypeMap() {
             return typeMap;
         }
 
@@ -141,7 +141,7 @@ namespace IL {
         }
 
         /// Get the global constants
-        Backend::IL::ConstantMap &GetConstants() {
+        IL::ConstantMap &GetConstants() {
             return constants;
         }
 
@@ -166,7 +166,7 @@ namespace IL {
         }
 
         /// Get the identifier map
-        const Backend::IL::TypeMap &GetTypeMap() const {
+        const IL::TypeMap &GetTypeMap() const {
             return typeMap;
         }
 
@@ -181,7 +181,7 @@ namespace IL {
         }
 
         /// Get the global constants
-        const Backend::IL::ConstantMap &GetConstants() const {
+        const IL::ConstantMap &GetConstants() const {
             return constants;
         }
 
@@ -218,10 +218,10 @@ namespace IL {
         VariableList variables;
 
         /// Global constants
-        Backend::IL::ConstantMap constants;
+        IL::ConstantMap constants;
 
         /// The type map
-        Backend::IL::TypeMap typeMap;
+        IL::TypeMap typeMap;
 
         /// User generated shader data
         ShaderDataMap shaderDataMap;

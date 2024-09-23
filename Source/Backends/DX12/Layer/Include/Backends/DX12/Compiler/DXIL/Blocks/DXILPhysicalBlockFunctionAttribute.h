@@ -37,7 +37,7 @@
 
 /// Function block
 struct DXILPhysicalBlockFunctionAttribute : public DXILPhysicalBlockSection {
-    DXILPhysicalBlockFunctionAttribute(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+    DXILPhysicalBlockFunctionAttribute(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Copy this block
     /// \param out destination block

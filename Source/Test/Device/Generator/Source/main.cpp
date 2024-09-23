@@ -81,6 +81,7 @@ int main(int argc, char *const argv[]) {
         }
 
         // Names
+        shaderTypeTemplate.SubstituteAll("$FEATURE_NAME", feature.c_str());
         shaderTypeTemplate.SubstituteAll("$PATH", shaderType.c_str());
         shaderTypeTemplate.SubstituteAll("$NAME", name.c_str());
 

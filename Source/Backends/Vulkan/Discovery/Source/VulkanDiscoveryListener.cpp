@@ -33,13 +33,7 @@
 // Common
 #include <Common/EnvironmentArray.h>
 #include <Common/FileSystem.h>
-
-// System
-#ifdef _WIN32
-#   include <Windows.h>
-#else
-#   error Not implemented
-#endif
+#include <Common/System.h>
 
 #ifdef _WIN32
 bool QueryImplicitLayer(HKEY key, const wchar_t* path) {

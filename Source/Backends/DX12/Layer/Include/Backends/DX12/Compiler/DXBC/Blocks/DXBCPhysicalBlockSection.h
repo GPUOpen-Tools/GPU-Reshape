@@ -37,7 +37,7 @@ struct DXBCPhysicalBlockTable;
 
 /// Generic section
 struct DXBCPhysicalBlockSection {
-    DXBCPhysicalBlockSection(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table) :
+    DXBCPhysicalBlockSection(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table) :
         allocators(allocators), program(program), table(table) {
         /* */
     }
@@ -46,7 +46,7 @@ struct DXBCPhysicalBlockSection {
     Allocators allocators;
 
     /// Backend program
-    Backend::IL::Program &program;
+    IL::Program &program;
 
     /// Parent table
     DXBCPhysicalBlockTable& table;

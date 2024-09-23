@@ -30,7 +30,7 @@
 #include <Backend/IL/Emitters/ExtendedEmitter.h>
 #include <Backend/IL/Emitters/Emitter.h>
 
-namespace Backend::IL {
+namespace IL {
     /// Scalarized coordinates
     struct TexelCoordinateScalar {
         IL::ID x{InvalidID};

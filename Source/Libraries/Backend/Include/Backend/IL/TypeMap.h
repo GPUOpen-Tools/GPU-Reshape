@@ -42,7 +42,7 @@
 #include <map>
 #include <unordered_map>
 
-namespace Backend::IL {
+namespace IL {
     using namespace ::IL;
     
     /// Type map, provides unique type identifiers 

@@ -45,7 +45,7 @@
 
 /// Combined physical block table
 struct SpvPhysicalBlockTable {
-    SpvPhysicalBlockTable(const Allocators &allocators, Backend::IL::Program &program);
+    SpvPhysicalBlockTable(const Allocators &allocators, IL::Program &program);
 
     /// Parse a stream
     /// \param code stream start

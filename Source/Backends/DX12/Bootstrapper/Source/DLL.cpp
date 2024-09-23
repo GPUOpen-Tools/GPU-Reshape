@@ -28,6 +28,7 @@
 #include <Common/FileSystem.h>
 #include <Common/GlobalUID.h>
 #include <Common/String.h>
+#include <Common/System.h>
 
 // Layer (only header)
 #include <Backends/DX12/Layer.h>
@@ -36,7 +37,6 @@
 #include <Backend/EnvironmentKeys.h>
 
 // System
-#include <Windows.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <Psapi.h>

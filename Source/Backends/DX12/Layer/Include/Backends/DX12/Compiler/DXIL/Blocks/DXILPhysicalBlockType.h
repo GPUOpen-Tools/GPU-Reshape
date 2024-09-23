@@ -32,7 +32,7 @@
 
 /// Type block
 struct DXILPhysicalBlockType : public DXILPhysicalBlockSection {
-    DXILPhysicalBlockType(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+    DXILPhysicalBlockType(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table);
 
     void CopyTo(DXILPhysicalBlockType& out);
 

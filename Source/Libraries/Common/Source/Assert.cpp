@@ -25,16 +25,10 @@
 // 
 
 #include <Common/Assert.h>
+#include <Common/System.h>
 
 // Std
 #include <stdio.h>
-
-// Signal
-#if defined(_MSC_VER)
-#   include <Windows.h>
-#else
-#   include <csignal>
-#endif
 
 void Detail::Break(const char* message) {
     // Write with flush

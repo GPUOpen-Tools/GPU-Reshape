@@ -179,7 +179,7 @@ private:
     /// @param type token type
     /// @param isVolumetric volumetric addressing
     /// @return success state
-    bool CreateBlitProgram(const ComRef<IShaderProgramHost>& programHost, Backend::IL::ResourceTokenType type, bool isVolumetric);
+    bool CreateBlitProgram(const ComRef<IShaderProgramHost>& programHost, IL::ResourceTokenType type, bool isVolumetric);
 
     /// Create a mask blitting program
     /// @param programHost target host
@@ -187,7 +187,7 @@ private:
     /// @param to the destination token type, may be asymmetric
     /// @param isVolumetric volumetric addressing
     /// @return success state
-    bool CreateCopyProgram(const ComRef<IShaderProgramHost>& programHost, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric);
+    bool CreateCopyProgram(const ComRef<IShaderProgramHost>& programHost, IL::ResourceTokenType from, IL::ResourceTokenType to, bool isVolumetric);
     
     /// Create all blitting programs
     /// @param programHost target host
@@ -200,8 +200,8 @@ private:
     bool CreateCopyPrograms(const ComRef<IShaderProgramHost>& programHost);
 
     /// Map keys
-    using BlitSortKey = std::tuple<Backend::IL::ResourceTokenType, bool>;
-    using CopySortKey = std::tuple<Backend::IL::ResourceTokenType, Backend::IL::ResourceTokenType, bool>;
+    using BlitSortKey = std::tuple<IL::ResourceTokenType, bool>;
+    using CopySortKey = std::tuple<IL::ResourceTokenType, IL::ResourceTokenType, bool>;
 
     /// Program maps
     std::map<BlitSortKey, ResourceProgram<MaskBlitShaderProgram>> blitPrograms;

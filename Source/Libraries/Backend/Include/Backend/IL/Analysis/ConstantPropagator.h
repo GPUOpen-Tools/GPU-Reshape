@@ -48,7 +48,7 @@ namespace IL {
         /// \param program program to inject constants to
         /// \param function function to compute constant analysis for
         /// \param propagationEngine shared propagation engine
-        ConstantPropagator(Program& program, Function& function, Backend::IL::PropagationEngine& propagationEngine) :
+        ConstantPropagator(Program& program, Function& function, IL::PropagationEngine& propagationEngine) :
             program(program), function(function),
             propagationEngine(propagationEngine) {
         }
@@ -100,12 +100,12 @@ namespace IL {
         /// \param instr instruction to propagate
         /// \param branchBlock output basic block
         /// \return final result
-        Backend::IL::PropagationResult PropagateInstruction(const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateInstruction(const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
             switch (instr->opCode) {
                 default: {
                     // Result-less instructions are defaulted to varying
                     if (instr->result == InvalidID) {
-                        return Backend::IL::PropagationResult::Varying;
+                        return IL::PropagationResult::Varying;
                     }
 
                     return PropagateResultInstruction(block, instr, branchBlock);
@@ -194,64 +194,64 @@ namespace IL {
         /// Mark an identifier as varying
         /// \param id given identifier
         /// \return propagation result
-        Backend::IL::PropagationResult MarkAsVarying(ID id) {
+        IL::PropagationResult MarkAsVarying(ID id) {
             Memory::PropagatedValue& value = memory->propagationValues[id];
             value.constant = nullptr;
-            return value.lattice = Backend::IL::PropagationResult::Varying;
+            return value.lattice = IL::PropagationResult::Varying;
         }
 
         /// Mark an identifier as ignored
         /// \param id given identifier
         /// \return propagation result
-        Backend::IL::PropagationResult MarkAsIgnored(ID id) {
+        IL::PropagationResult MarkAsIgnored(ID id) {
             Memory::PropagatedValue& value = memory->propagationValues[id];
             value.constant = nullptr;
-            return value.lattice = Backend::IL::PropagationResult::Ignore;
+            return value.lattice = IL::PropagationResult::Ignore;
         }
 
         /// Mark an identifier as mapped
         /// \param id given identifier
         /// \param constant constant to be mapped
         /// \return propagation result
-        Backend::IL::PropagationResult MarkAsMapped(ID id, const Constant* constant) {
+        IL::PropagationResult MarkAsMapped(ID id, const Constant* constant) {
             ASSERT(constant != nullptr, "Invalid mapping");
 
             Memory::PropagatedValue& value = memory->propagationValues[id];
             value.constant = constant;
-            return value.lattice = Backend::IL::PropagationResult::Mapped;
+            return value.lattice = IL::PropagationResult::Mapped;
         }
 
         /// Mark an identifier as overdefined
         /// \param id given identifier
         /// \return propagation result
-        Backend::IL::PropagationResult MarkAsOverdefined(ID id) {
+        IL::PropagationResult MarkAsOverdefined(ID id) {
             Memory::PropagatedValue& value = memory->propagationValues[id];
             value.constant = nullptr;
-            return value.lattice = Backend::IL::PropagationResult::Overdefined;
+            return value.lattice = IL::PropagationResult::Overdefined;
         }
 
         /// Check if an identifier is a constant
         bool IsConstant(ID id) const {
-            return memory->propagationValues.at(id).lattice == Backend::IL::PropagationResult::Mapped;
+            return memory->propagationValues.at(id).lattice == IL::PropagationResult::Mapped;
         }
 
         /// Check if an identifier is a partial constant
         /// Composite types may be partially mapped, such as arrays ([1, 2, -, 4], but 3 not mapped)
         bool IsPartialConstant(ID id) const {
             const Memory::PropagatedValue& value = memory->propagationValues.at(id);
-            return value.constant && value.lattice == Backend::IL::PropagationResult::Varying;
+            return value.constant && value.lattice == IL::PropagationResult::Varying;
         }
 
         /// Check if an identifier is presumed varying (i.e., not constant)
         bool IsVarying(ID id) const {
             // Note that we are checking for a lack of mapping, not the propagation result
             // It may not have been propagated at all
-            return memory->propagationValues.at(id).lattice != Backend::IL::PropagationResult::Mapped;
+            return memory->propagationValues.at(id).lattice != IL::PropagationResult::Mapped;
         }
 
         /// Check if an identifier is overdefined (i.e., has multiple compile time values)
         bool IsOverdefined(ID id) const {
-            return memory->propagationValues.at(id).lattice == Backend::IL::PropagationResult::Overdefined;
+            return memory->propagationValues.at(id).lattice == IL::PropagationResult::Overdefined;
         }
 
     public:
@@ -295,7 +295,7 @@ namespace IL {
                 // If addressing into a constant of unknown origins, treat it as mapped but unexposed
                 if (traversal.partialMatch && traversal.partialMatch->memory->value) {
                     return program.GetConstants().AddSymbolicConstant(
-                        program.GetTypeMap().GetType(address)->As<Backend::IL::PointerType>()->pointee,
+                        program.GetTypeMap().GetType(address)->As<IL::PointerType>()->pointee,
                         UnexposedConstant{}
                     );
                 }
@@ -315,7 +315,7 @@ namespace IL {
 
     private:
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagateAddressChainInstruction(const BasicBlock* block, const AddressChainInstruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateAddressChainInstruction(const BasicBlock* block, const AddressChainInstruction* instr, const BasicBlock** branchBlock) {
             // Address chains "keep" the value around,
             // it's incredibly useful for features to be aware of what the chain saw during propagation,
             // the address or contents may change after this instruction.
@@ -323,17 +323,17 @@ namespace IL {
         }
         
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagateLoadInstruction(const BasicBlock* block, const LoadInstruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateLoadInstruction(const BasicBlock* block, const LoadInstruction* instr, const BasicBlock** branchBlock) {
             return PropagateAddressValueInstruction(block, instr, instr->address, branchBlock);
         }
         
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagateAddressValueInstruction(const BasicBlock* block, const Instruction* instr, ID address, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateAddressValueInstruction(const BasicBlock* block, const Instruction* instr, ID address, const BasicBlock** branchBlock) {
             // Get the pointer type
-            const auto* type = program.GetTypeMap().GetType(address)->As<Backend::IL::PointerType>();
+            const auto* type = program.GetTypeMap().GetType(address)->As<IL::PointerType>();
 
             // If an external address space, don't try to assume the value
-            if (type->addressSpace != Backend::IL::AddressSpace::Function) {
+            if (type->addressSpace != IL::AddressSpace::Function) {
                 return MarkAsVarying(instr->result);
             }
 
@@ -348,13 +348,13 @@ namespace IL {
         }
 
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagateStoreInstruction(const BasicBlock* block, const StoreInstruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateStoreInstruction(const BasicBlock* block, const StoreInstruction* instr, const BasicBlock** branchBlock) {
             // Get the pointer type
-            const auto* type = program.GetTypeMap().GetType(instr->address)->As<Backend::IL::PointerType>();
+            const auto* type = program.GetTypeMap().GetType(instr->address)->As<IL::PointerType>();
 
             // If an external address space, don't try to assume the value
-            if (type->addressSpace != Backend::IL::AddressSpace::Function) {
-                return Backend::IL::PropagationResult::Varying;
+            if (type->addressSpace != IL::AddressSpace::Function) {
+                return IL::PropagationResult::Varying;
             }
 
             // Get propagated value
@@ -367,7 +367,7 @@ namespace IL {
 
             // Check the chain
             if (base == InvalidID) {
-                return Backend::IL::PropagationResult::Varying;
+                return IL::PropagationResult::Varying;
             }
 
             // Get the range associated with the value
@@ -384,9 +384,9 @@ namespace IL {
                 switch (storeValue.constant->type->kind) {
                     default:
                         break;
-                    case Backend::IL::TypeKind::Struct:
-                    case Backend::IL::TypeKind::Array:
-                    case Backend::IL::TypeKind::Vector:
+                    case IL::TypeKind::Struct:
+                    case IL::TypeKind::Array:
+                    case IL::TypeKind::Vector:
                         memory->CreateMemoryTree(propagatedMemory, storeValue.constant);
                     break;
                 }
@@ -399,8 +399,8 @@ namespace IL {
             };
 
             // If the value is unknown, ignore propagation
-            if (propagatedMemory->memory->lattice == Backend::IL::PropagationResult::None) {
-                return Backend::IL::PropagationResult::Ignore;
+            if (propagatedMemory->memory->lattice == IL::PropagationResult::None) {
+                return IL::PropagationResult::Ignore;
             }
 
             // Inform the propagator that this has been mapped, without assigning a value to it
@@ -408,7 +408,7 @@ namespace IL {
         }
 
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagatePhiInstruction(const BasicBlock* block, const PhiInstruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagatePhiInstruction(const BasicBlock* block, const PhiInstruction* instr, const BasicBlock** branchBlock) {
             const Constant* phiConstant = nullptr;
 
             for (uint32_t i = 0; i < instr->values.count; i++) {
@@ -423,11 +423,11 @@ namespace IL {
                 switch (value.lattice) {
                     default:
                         break;
-                    case Backend::IL::PropagationResult::Varying:
-                    case Backend::IL::PropagationResult::Overdefined:
+                    case IL::PropagationResult::Varying:
+                    case IL::PropagationResult::Overdefined:
                         return MarkAsVarying(instr->result);
-                    case Backend::IL::PropagationResult::None:
-                    case Backend::IL::PropagationResult::Ignore:
+                    case IL::PropagationResult::None:
+                    case IL::PropagationResult::Ignore:
                         continue;
                 }
 
@@ -441,34 +441,34 @@ namespace IL {
             }
 
             if (!phiConstant) {
-                return Backend::IL::PropagationResult::Ignore;
+                return IL::PropagationResult::Ignore;
             }
 
             return MarkAsMapped(instr->result, phiConstant);
         }
 
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagateBranchInstruction(const BasicBlock* block, const BranchInstruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateBranchInstruction(const BasicBlock* block, const BranchInstruction* instr, const BasicBlock** branchBlock) {
             *branchBlock = program.GetIdentifierMap().GetBasicBlock(instr->branch);
-            return Backend::IL::PropagationResult::Mapped;
+            return IL::PropagationResult::Mapped;
         }
 
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagateBranchConditionalInstruction(const BasicBlock* block, const BranchConditionalInstruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateBranchConditionalInstruction(const BasicBlock* block, const BranchConditionalInstruction* instr, const BasicBlock** branchBlock) {
             const Memory::PropagatedValue& value = memory->propagationValues[instr->cond];
             switch (value.lattice) {
                 default:
                     break;
-                case Backend::IL::PropagationResult::Varying:
-                case Backend::IL::PropagationResult::Overdefined:
-                case Backend::IL::PropagationResult::Ignore:
-                case Backend::IL::PropagationResult::None:
-                    return Backend::IL::PropagationResult::Varying;
+                case IL::PropagationResult::Varying:
+                case IL::PropagationResult::Overdefined:
+                case IL::PropagationResult::Ignore:
+                case IL::PropagationResult::None:
+                    return IL::PropagationResult::Varying;
             }
 
             // If unexposed, consider it varying, which will visit both branches
             if (value.constant->Is<UnexposedConstant>()) {
-                return Backend::IL::PropagationResult::Varying;
+                return IL::PropagationResult::Varying;
             }
 
             // Determine branch
@@ -480,20 +480,20 @@ namespace IL {
             }
 
             *branchBlock = program.GetIdentifierMap().GetBasicBlock(branch);
-            return Backend::IL::PropagationResult::Mapped;
+            return IL::PropagationResult::Mapped;
         }
 
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagateSwitchInstruction(const BasicBlock* block, const SwitchInstruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateSwitchInstruction(const BasicBlock* block, const SwitchInstruction* instr, const BasicBlock** branchBlock) {
             const Memory::PropagatedValue& value = memory->propagationValues[instr->value];
             switch (value.lattice) {
                 default:
                     break;
-                case Backend::IL::PropagationResult::Varying:
-                case Backend::IL::PropagationResult::Overdefined:
-                case Backend::IL::PropagationResult::Ignore:
-                case Backend::IL::PropagationResult::None:
-                    return Backend::IL::PropagationResult::Varying;
+                case IL::PropagationResult::Varying:
+                case IL::PropagationResult::Overdefined:
+                case IL::PropagationResult::Ignore:
+                case IL::PropagationResult::None:
+                    return IL::PropagationResult::Varying;
             }
 
             for (uint32_t i = 0; i < instr->cases.count; i++) {
@@ -501,7 +501,7 @@ namespace IL {
 
                 if (_case.literal == value.constant->id) {
                     *branchBlock = program.GetIdentifierMap().GetBasicBlock(_case.branch);
-                    return Backend::IL::PropagationResult::Mapped;
+                    return IL::PropagationResult::Mapped;
                 }
             }
 
@@ -509,17 +509,17 @@ namespace IL {
             *branchBlock = program.GetIdentifierMap().GetBasicBlock(instr->_default);
             if (!*branchBlock) {
                 ASSERT(false, "Switch propagation without a viable edge");
-                return Backend::IL::PropagationResult::Varying;
+                return IL::PropagationResult::Varying;
             }
 
             // OK
-            return Backend::IL::PropagationResult::Mapped;
+            return IL::PropagationResult::Mapped;
         }
 
         /// Propagation case handler
-        Backend::IL::PropagationResult PropagateResultInstruction(const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
+        IL::PropagationResult PropagateResultInstruction(const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
             // Check if the instruction can be folded at all
-            if (!Backend::IL::CanFoldWithImmediates(instr)) {
+            if (!IL::CanFoldWithImmediates(instr)) {
                 return MarkAsVarying(instr->result);
             }
 
@@ -530,12 +530,12 @@ namespace IL {
             bool anyUnexposed   = false;
 
             // Gather all operands
-            Backend::IL::VisitOperands(instr, [&](ID id) {
+            IL::VisitOperands(instr, [&](ID id) {
                 const Memory::PropagatedValue& value = memory->propagationValues[id];
-                anyVarying     |= value.lattice == Backend::IL::PropagationResult::Varying;
-                anyOverdefined |= value.lattice == Backend::IL::PropagationResult::Overdefined;
-                anyUnmapped    |= value.lattice == Backend::IL::PropagationResult::None ||
-                                  value.lattice == Backend::IL::PropagationResult::Ignore ||
+                anyVarying     |= value.lattice == IL::PropagationResult::Varying;
+                anyOverdefined |= value.lattice == IL::PropagationResult::Overdefined;
+                anyUnmapped    |= value.lattice == IL::PropagationResult::None ||
+                                  value.lattice == IL::PropagationResult::Ignore ||
                                   (value.constant && value.constant->Is<UndefConstant>());
                 anyUnexposed   |= value.constant && value.constant->Is<UnexposedConstant>();
             });
@@ -560,9 +560,9 @@ namespace IL {
             }
 
             // Try to fold the instruction
-            const Constant* constant = Backend::IL::FoldConstantInstruction(program, instr, [&](IL::ID id) {
+            const Constant* constant = IL::FoldConstantInstruction(program, instr, [&](IL::ID id) {
                 const Memory::PropagatedValue& value = memory->propagationValues[id];
-                ASSERT(value.lattice == Backend::IL::PropagationResult::Mapped, "Mapping invalid constant");
+                ASSERT(value.lattice == IL::PropagationResult::Mapped, "Mapping invalid constant");
                 return value.constant;
             });
 
@@ -577,12 +577,12 @@ namespace IL {
 
     private:
         /// Does the lattice have any data?
-        bool IsStatefulLattice(Backend::IL::PropagationResult lattice) {
-            return static_cast<uint32_t>(lattice) > static_cast<uint32_t>(Backend::IL::PropagationResult::Ignore);
+        bool IsStatefulLattice(IL::PropagationResult lattice) {
+            return static_cast<uint32_t>(lattice) > static_cast<uint32_t>(IL::PropagationResult::Ignore);
         }
 
         /// Join two memory lattices
-        Backend::IL::PropagationResult JoinMemoryLattice(Backend::IL::PropagationResult before, Backend::IL::PropagationResult after) {
+        IL::PropagationResult JoinMemoryLattice(IL::PropagationResult before, IL::PropagationResult after) {
             // If there's no state, just assign it
             if (!IsStatefulLattice(before)) {
                 return after;
@@ -590,7 +590,7 @@ namespace IL {
 
             // If there's two states, it's overdefined
             if (IsStatefulLattice(after)) {
-                return Backend::IL::PropagationResult::Overdefined;
+                return IL::PropagationResult::Overdefined;
             }
 
             // No state in either, just presume ok
@@ -611,7 +611,7 @@ namespace IL {
         struct ReachingStoreResult {
             /// Result of the store search
             /// May be overdefined on ambiguous searches
-            Backend::IL::PropagationResult result{Backend::IL::PropagationResult::None};
+            IL::PropagationResult result{IL::PropagationResult::None};
 
             /// Found version
             Memory::PropagatedMemorySSAVersion* version{nullptr};
@@ -669,7 +669,7 @@ namespace IL {
                 }
 
                 // Assign, do not terminate as the memory pattern by assigned again
-                result.result = Backend::IL::PropagationResult::Mapped;
+                result.result = IL::PropagationResult::Mapped;
                 result.version = &it->second;
                 break;
             }
@@ -690,7 +690,7 @@ namespace IL {
                 // Check if the memory pattern exists
                 // Note that address checks on the loop memory ranges is fine, as it should be unique anyway
                 if (auto memoryIt = info.memoryLookup.find(memory); memoryIt != info.memoryLookup.end()) {
-                    result.result = Backend::IL::PropagationResult::Mapped;
+                    result.result = IL::PropagationResult::Mapped;
                     result.version = &memoryIt->second;
                     return result;
                 }
@@ -730,7 +730,7 @@ namespace IL {
                 }
 
                 ReachingStoreResult store = FindReachingStoreDefinition(predecessor, nullptr, memory, cache);
-                if (store.result == Backend::IL::PropagationResult::Overdefined) {
+                if (store.result == IL::PropagationResult::Overdefined) {
                     return store;
                 }
 
@@ -743,13 +743,13 @@ namespace IL {
                 // If there's already a candidate, and it didn't resolve to the same one we cannot safely proceed
                 // Mark it as overdefined and let the caller handle it
                 if (result.version && result.version != store.version) {
-                    result.result = Backend::IL::PropagationResult::Overdefined;
+                    result.result = IL::PropagationResult::Overdefined;
                     result.version = nullptr;
                     return result;
                 }
 
                 // Mark candidate
-                result.result = Backend::IL::PropagationResult::Mapped;
+                result.result = IL::PropagationResult::Mapped;
                 result.version = store.version;
             }
 
@@ -822,7 +822,7 @@ namespace IL {
 
     private:
         /// Underlying propagation engine
-        Backend::IL::PropagationEngine& propagationEngine;
+        IL::PropagationEngine& propagationEngine;
 
         /// Shared memory
         ConstantPropagatorMemory* memory{nullptr};

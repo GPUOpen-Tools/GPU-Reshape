@@ -92,7 +92,7 @@ struct AccumulatedValue {
 
     /// Append value
     void Add(float append) {
-        float w = weight + max(0.0f, 1.0f - accumulatedWeight);
+        float w = weight + std::max(0.0f, 1.0f - accumulatedWeight);
         value = value * (1.0f - w) + append * w;
         accumulated += append;
         count++;

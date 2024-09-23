@@ -44,7 +44,7 @@
 
 class SpvConstantMap {
 public:
-    SpvConstantMap(Backend::IL::ConstantMap &programMap, SpvTypeMap &typeMap) :
+    SpvConstantMap(IL::ConstantMap &programMap, SpvTypeMap &typeMap) :
         programMap(programMap),
         typeMap(typeMap) {
 
@@ -65,7 +65,7 @@ public:
     /// Add a constant to this map, must be unique
     /// \param constant the constant to be added
     template<typename T>
-    const Backend::IL::Constant *AddConstant(IL::ID id, const typename T::Type *type, const T &constant) {
+    const IL::Constant *AddConstant(IL::ID id, const typename T::Type *type, const T &constant) {
         const auto *constantPtr = programMap.AddConstant<T>(id, type, constant);
         constants.push_back(constantPtr);
         AddConstantMapping(constantPtr, id);
@@ -75,7 +75,7 @@ public:
     /// Add a constant to this map, must be unique
     /// \param constant the constant to be added
     template<typename T>
-    const Backend::IL::Constant *AddUnsortedConstant(IL::ID id, const Backend::IL::Type *type, const T &constant) {
+    const IL::Constant *AddUnsortedConstant(IL::ID id, const IL::Type *type, const T &constant) {
         const auto *constantPtr = programMap.AddUnsortedConstant<T>(id, type, constant);
         constants.push_back(constantPtr);
         AddConstantMapping(constantPtr, id);
@@ -95,7 +95,7 @@ public:
 
     /// Get a constant from a type
     /// \param type IL type
-    void EnsureConstant(const Backend::IL::Constant *constant) {
+    void EnsureConstant(const IL::Constant *constant) {
         // Allocate if need be
         if (!HasConstant(constant)) {
             CompileConstant(constant);
@@ -105,7 +105,7 @@ public:
     /// Add a new constant mapping
     /// \param type IL type
     /// \param index SPIRV id
-    void AddConstantMapping(const Backend::IL::Constant *constant, uint64_t index) {
+    void AddConstantMapping(const IL::Constant *constant, uint64_t index) {
         if (constantLookup.size() <= constant->id) {
             constantLookup.resize(constant->id + 1, ~0u);
         }
@@ -116,7 +116,7 @@ public:
     /// Check if a constant is present in SPIRV
     /// \param type IL type
     /// \return true if present
-    bool HasConstant(const Backend::IL::Constant *type) {
+    bool HasConstant(const IL::Constant *type) {
         return type->id < constantLookup.size() && constantLookup[type->id] != ~0u;
     }
 
@@ -124,39 +124,39 @@ private:
     /// Compile a given constant
     /// \param constant
     /// \return SPIRV id
-    void CompileConstant(const Backend::IL::Constant *constant) {
+    void CompileConstant(const IL::Constant *constant) {
         SpvId typeId = typeMap.GetSpvTypeId(constant->type);
         
         switch (constant->kind) {
             default:
                 ASSERT(false, "Unsupported constant type for recompilation");
                 break;
-            case Backend::IL::ConstantKind::Bool:
+            case IL::ConstantKind::Bool:
                 CompileConstant(constant->As<IL::BoolConstant>(), typeId);
                 break;
-            case Backend::IL::ConstantKind::Int:
+            case IL::ConstantKind::Int:
                 CompileConstant(constant->As<IL::IntConstant>(), typeId);
                 break;
-            case Backend::IL::ConstantKind::FP:
+            case IL::ConstantKind::FP:
                 CompileConstant(constant->As<IL::FPConstant>(), typeId);
                 break;
-            case Backend::IL::ConstantKind::Null:
+            case IL::ConstantKind::Null:
                 CompileConstant(constant->As<IL::NullConstant>(), typeId);
                 break;
-            case Backend::IL::ConstantKind::Struct:
+            case IL::ConstantKind::Struct:
                 CompileConstant(constant->As<IL::StructConstant>(), typeId);
                 break;
-            case Backend::IL::ConstantKind::Vector:
+            case IL::ConstantKind::Vector:
                 CompileConstant(constant->As<IL::VectorConstant>(), typeId);
                 break;
-            case Backend::IL::ConstantKind::Array:
+            case IL::ConstantKind::Array:
                 CompileConstant(constant->As<IL::ArrayConstant>(), typeId);
                 break;
         }
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::BoolConstant *constant, SpvId typeId) {
+    void CompileConstant(const IL::BoolConstant *constant, SpvId typeId) {
         if (constant->value) {
             SpvInstruction &spv = declarationStream->Allocate(SpvOpConstantTrue, 3);
             spv[1] = typeId;
@@ -169,8 +169,8 @@ private:
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::IntConstant *constant, SpvId typeId) {
-        auto* intType = constant->type->As<Backend::IL::IntType>();
+    void CompileConstant(const IL::IntConstant *constant, SpvId typeId) {
+        auto* intType = constant->type->As<IL::IntType>();
 
         SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstant, 3 + (intType->bitWidth + 31) / 32);
         spvOffset[1] = typeId;
@@ -182,8 +182,8 @@ private:
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::FPConstant *constant, SpvId typeId) {
-        auto* fpType = constant->type->As<Backend::IL::FPType>();
+    void CompileConstant(const IL::FPConstant *constant, SpvId typeId) {
+        auto* fpType = constant->type->As<IL::FPType>();
 
         SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstant, 3 + (fpType->bitWidth + 31) / 32);
         spvOffset[1] = typeId;
@@ -195,14 +195,14 @@ private:
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::NullConstant *constant, SpvId typeId) {
+    void CompileConstant(const IL::NullConstant *constant, SpvId typeId) {
         SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantNull, 3);
         spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::StructConstant *constant, SpvId typeId) {
+    void CompileConstant(const IL::StructConstant *constant, SpvId typeId) {
         SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->members.size()));
         spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
@@ -213,7 +213,7 @@ private:
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::VectorConstant *constant, SpvId typeId) {
+    void CompileConstant(const IL::VectorConstant *constant, SpvId typeId) {
         SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->elements.size()));
         spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
@@ -224,7 +224,7 @@ private:
     }
 
     /// Compile a given constant
-    void CompileConstant(const Backend::IL::ArrayConstant *constant, SpvId typeId) {
+    void CompileConstant(const IL::ArrayConstant *constant, SpvId typeId) {
         SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->elements.size()));
         spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
@@ -236,7 +236,7 @@ private:
 
 private:
     /// IL map
-    Backend::IL::ConstantMap &programMap;
+    IL::ConstantMap &programMap;
 
     /// All constants
     std::vector<const IL::Constant *> constants;

@@ -42,37 +42,37 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     table.capability.Add(SpvCapabilityImageBuffer);
 
     // IL type map
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // UInt32
-    const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+    const IL::Type *intType = ilTypeMap.FindTypeOrAdd(IL::IntType{
         .bitWidth = 32,
         .signedness = false
     });
 
     // RWBuffer<uint>
-    buffer32UIRW = ilTypeMap.FindTypeOrAdd(Backend::IL::BufferType{
+    buffer32UIRW = ilTypeMap.FindTypeOrAdd(IL::BufferType{
         .elementType = intType,
-        .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
-        .texelType = Backend::IL::Format::R32UInt
+        .samplerMode = IL::ResourceSamplerMode::Writable,
+        .texelType = IL::Format::R32UInt
     });
 
     // RWBuffer<uint>*
-    buffer32UIRWPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
+    buffer32UIRWPtr = ilTypeMap.FindTypeOrAdd(IL::PointerType{
         .pointee = buffer32UIRW,
-        .addressSpace = Backend::IL::AddressSpace::Resource,
+        .addressSpace = IL::AddressSpace::Resource,
     });
 
     // RWBuffer<uint>[N]
-    const Backend::IL::Type *buffer32UIWWArray = ilTypeMap.FindTypeOrAdd(Backend::IL::ArrayType{
+    const IL::Type *buffer32UIWWArray = ilTypeMap.FindTypeOrAdd(IL::ArrayType{
         .elementType = buffer32UIRW,
         .count = std::max(1u, job.bindingInfo.streamDescriptorCount)
     });
 
     // RWBuffer<uint>[N]*
-    buffer32UIRWArrayPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
+    buffer32UIRWArrayPtr = ilTypeMap.FindTypeOrAdd(IL::PointerType{
         .pointee = buffer32UIWWArray,
-        .addressSpace = Backend::IL::AddressSpace::Resource,
+        .addressSpace = IL::AddressSpace::Resource,
     });
 
     // Id allocations
@@ -125,7 +125,7 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
 }
 
 void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, const IL::ID* values, uint32_t valueCount) {
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Note: This is quite ugly, will be changed
 
@@ -133,16 +133,16 @@ void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, const IL:
     stream.Allocate(SpvOpNop, 1);
 
     // UInt32
-    Backend::IL::IntType typeInt;
+    IL::IntType typeInt;
     typeInt.bitWidth = 32;
     typeInt.signedness = false;
-    const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(typeInt);
+    const IL::Type *uintType = ilTypeMap.FindTypeOrAdd(typeInt);
 
     // Uint32*
-    Backend::IL::PointerType typeUintImagePtr;
+    IL::PointerType typeUintImagePtr;
     typeUintImagePtr.pointee = uintType;
-    typeUintImagePtr.addressSpace = Backend::IL::AddressSpace::Texture;
-    const Backend::IL::Type *uintImagePtrType = ilTypeMap.FindTypeOrAdd(typeUintImagePtr);
+    typeUintImagePtr.addressSpace = IL::AddressSpace::Texture;
+    const IL::Type *uintImagePtrType = ilTypeMap.FindTypeOrAdd(typeUintImagePtr);
 
     // Constant identifiers
     uint32_t zeroUintId = table.scan.header.bound++;

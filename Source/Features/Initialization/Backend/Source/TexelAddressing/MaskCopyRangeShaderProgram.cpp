@@ -43,7 +43,7 @@
 // Common
 #include <Common/Registry.h>
 
-MaskCopyRangeShaderProgram::MaskCopyRangeShaderProgram(ShaderDataID initializationMaskBufferID, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric) :
+MaskCopyRangeShaderProgram::MaskCopyRangeShaderProgram(ShaderDataID initializationMaskBufferID, IL::ResourceTokenType from, IL::ResourceTokenType to, bool isVolumetric) :
     initializationMaskBufferID(initializationMaskBufferID),
     from(from), to(to),
     isVolumetric(isVolumetric)  {
@@ -64,13 +64,13 @@ bool MaskCopyRangeShaderProgram::Install() {
 }
 
 void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
-    Backend::IL::ConstantMap& constants = program.GetConstants();
+    IL::ConstantMap& constants = program.GetConstants();
 
     // Get entry point
     IL::Function* entryPoint = program.GetEntryPoint();
     
     // Must have termination block
-    IL::BasicBlock* entryBlock = Backend::IL::GetTerminationBlock(program);
+    IL::BasicBlock* entryBlock = IL::GetTerminationBlock(program);
     if (!entryBlock) {
         return;
     }
@@ -95,7 +95,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
 
     // Get dispatch offsets
     IL::Emitter<> entryEmitter(program, *entryBlock);
-    IL::ID dispatchID = entryEmitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
+    IL::ID dispatchID = entryEmitter.KernelValue(IL::KernelValue::DispatchThreadID);
     IL::ID dispatchXID = entryEmitter.Extract(dispatchID, constants.UInt(0)->id);
 
     // Guard against the current chunk bounds (relative, not absolute)
@@ -134,12 +134,12 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     // Symmetric copy?
     if (from == to) {
         // Buffer indexing just adds the linear offset
-        if (from == Backend::IL::ResourceTokenType::Buffer) {
+        if (from == IL::ResourceTokenType::Buffer) {
             sourceTexel = texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(texelEmitter), dispatchXID);
             destTexel = texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(texelEmitter), dispatchXID);
         } else {
             // Convert to 3d
-            Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
+            IL::TexelCoordinateScalar index = IL::TexelIndexTo3D(
                 texelEmitter, dispatchXID,
                 data.Get<&MaskCopyRangeParameters::width>(texelEmitter),
                 data.Get<&MaskCopyRangeParameters::height>(texelEmitter),
@@ -147,7 +147,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             );
             
             // Compute the source intra-resource offset
-            sourceTexel = Backend::IL::TexelAddressEmitter(texelEmitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
+            sourceTexel = IL::TexelAddressEmitter(texelEmitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(texelEmitter), index.x),
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(texelEmitter), index.y),
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(texelEmitter), index.z),
@@ -156,7 +156,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             ).texelOffset;
 
             // Compute the destination intra-resource offset
-            destTexel = Backend::IL::TexelAddressEmitter(texelEmitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
+            destTexel = IL::TexelAddressEmitter(texelEmitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(texelEmitter), index.x),
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(texelEmitter), index.y),
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(texelEmitter), index.z),
@@ -169,7 +169,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
         // Follows 1D scheduling with the total number of texels
 
         // Convert to 3d
-        Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
+        IL::TexelCoordinateScalar index = IL::TexelIndexTo3D(
             texelEmitter, dispatchXID,
             data.Get<&MaskCopyRangeParameters::width>(texelEmitter),
             data.Get<&MaskCopyRangeParameters::height>(texelEmitter),
@@ -186,12 +186,12 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
         placementOffset = texelEmitter.Add(placementOffset, index.x);
         
         // Buffer Placement -> Texture
-        if (from == Backend::IL::ResourceTokenType::Buffer) {
+        if (from == IL::ResourceTokenType::Buffer) {
             // Apply base offset to source placement
             sourceTexel = texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(texelEmitter), placementOffset);
             
             // Compute the destination intra-resource offset
-            destTexel = Backend::IL::TexelAddressEmitter(texelEmitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
+            destTexel = IL::TexelAddressEmitter(texelEmitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(texelEmitter), index.x),
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(texelEmitter), index.y),
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(texelEmitter), index.z),
@@ -202,7 +202,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             // Texture -> Buffer Placement
             
             // Compute the source intra-resource offset
-            sourceTexel = Backend::IL::TexelAddressEmitter(texelEmitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
+            sourceTexel = IL::TexelAddressEmitter(texelEmitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(texelEmitter), index.x),
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(texelEmitter), index.y),
                 texelEmitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(texelEmitter), index.z),

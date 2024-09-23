@@ -131,19 +131,19 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     auto* instr = it->As<IL::AddressChainInstruction>();
 
     // Get composite type, must be pointer
-    const auto* compositeType = program.GetTypeMap().GetType(instr->composite)->Cast<Backend::IL::PointerType>();
+    const auto* compositeType = program.GetTypeMap().GetType(instr->composite)->Cast<IL::PointerType>();
     if (!compositeType) {
         return it;
     }
 
     // Is this a function address-space indirection?
-    const bool isFASIndirection = compositeType->addressSpace == Backend::IL::AddressSpace::Function;
+    const bool isFASIndirection = compositeType->addressSpace == IL::AddressSpace::Function;
 
     // Get the composite value type
-    const Backend::IL::Type* compositeValueType = Backend::IL::GetTerminalValueType(program.GetTypeMap().GetType(instr->composite));
+    const IL::Type* compositeValueType = IL::GetTerminalValueType(program.GetTypeMap().GetType(instr->composite));
 
     // Addressing into a resource?
-    const bool isResourceAddressing = Backend::IL::IsResourceType(compositeValueType);
+    const bool isResourceAddressing = IL::IsResourceType(compositeValueType);
 
     // Address chain indirection is primarily concerned with FAS indirections and resource addressing
     if (!isFASIndirection && !isResourceAddressing) {
@@ -170,20 +170,20 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     // FAS based checks?
     if (isFASIndirection) {
         // Addressing vector values can always be compiled to a set of conditional masks
-        if (compositeValueType->Is<Backend::IL::VectorType>()) {
+        if (compositeValueType->Is<IL::VectorType>()) {
             // TODO: Configurable masking limits
         }
 
         // Addressing array values can be compiled to a set of conditional masks for
         // suitably small arrays. Really, it's the same as vectors, it's all scalar
         // execution engines anyway.
-        if (compositeValueType->Is<Backend::IL::ArrayType>()) {
+        if (compositeValueType->Is<IL::ArrayType>()) {
             // TODO: Configurable masking limits
         }
 
         // Addressing matrix types is typically only compiled to a set conditional masks
         // if only a single dimension is varying.
-        if (compositeValueType->Is<Backend::IL::MatrixType>()) {
+        if (compositeValueType->Is<IL::MatrixType>()) {
             // TODO: Configurable masking limits and dimensionality checks
         }
 

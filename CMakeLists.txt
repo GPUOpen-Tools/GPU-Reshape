@@ -43,7 +43,7 @@ option(ENABLE_MIXED_COMPILER   "Enables mixed compiler building, separates build
 option(ENABLE_NUGET_RESTORE    "Enables nuget restore during configuration" ON)
 option(ENABLE_X86_BOOTSTRAPPER "Enables the x86 bootstrapper" ON)
 option(ENABLE_EXPERIMENTAL     "Enables experimental features" OFF)
-option(ENABLE_UNITY_BUILD      "Enables unity (batch) builds" OFF)
+option(ENABLE_UNITY_BUILD      "Enables unity (batch) builds" ON)
 
 # Developmental options
 option(ENABLE_DXIL_DUMP      "Enables DXIL dumping on shader builds" ON)

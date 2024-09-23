@@ -58,7 +58,7 @@ namespace IL {
             for (const Function* function : program.GetFunctionList()) {
                 for (const BasicBlock* block : function->GetBasicBlocks()) {
                     for (auto instrIt = block->begin(); instrIt != block->end(); ++instrIt) {
-                        Backend::IL::VisitOperands(instrIt.Get(), [&](IL::ID operand) {
+                        IL::VisitOperands(instrIt.Get(), [&](IL::ID operand) {
                             views[operand].size++;
                             userCount++;
                         });
@@ -78,7 +78,7 @@ namespace IL {
                     for (auto instrIt = block->begin(); instrIt != block->end(); ++instrIt) {
                         const Instruction* ptr = instrIt.Get();
 
-                        Backend::IL::VisitOperands(ptr, [&](IL::ID operand) {
+                        IL::VisitOperands(ptr, [&](IL::ID operand) {
                             UserViewData& data = views[operand];
 
                             // If there's no user data yet, allocate it

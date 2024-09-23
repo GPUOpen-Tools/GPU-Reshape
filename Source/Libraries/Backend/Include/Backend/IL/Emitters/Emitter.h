@@ -358,7 +358,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        BasicBlock::TypedIterator <BitCastInstruction> BitCast(ID value, const Backend::IL::Type* type) {
+        BasicBlock::TypedIterator <BitCastInstruction> BitCast(ID value, const IL::Type* type) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             BitCastInstruction instr{};
@@ -372,7 +372,7 @@ namespace IL {
         /// Cast an integer value to float
         /// \param value the value to cast
         /// \return instruction reference
-        BasicBlock::TypedIterator <IntToFloatInstruction> IntToFloat(ID value, const Backend::IL::Type* type) {
+        BasicBlock::TypedIterator <IntToFloatInstruction> IntToFloat(ID value, const IL::Type* type) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             IntToFloatInstruction instr{};
@@ -387,7 +387,7 @@ namespace IL {
         /// \param value the value to cast
         /// \return instruction reference
         BasicBlock::TypedIterator <IntToFloatInstruction> IntToFloat32(ID value) {
-            return IntToFloat(value, program->GetTypeMap().FindTypeOrAdd(Backend::IL::FPType {
+            return IntToFloat(value, program->GetTypeMap().FindTypeOrAdd(IL::FPType {
                 .bitWidth = 32
             }));
         }
@@ -395,7 +395,7 @@ namespace IL {
         /// Cast a float value to an integer
         /// \param value the value to cast
         /// \return instruction reference
-        BasicBlock::TypedIterator <FloatToIntInstruction> FloatToInt(ID value, const Backend::IL::Type* type) {
+        BasicBlock::TypedIterator <FloatToIntInstruction> FloatToInt(ID value, const IL::Type* type) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             FloatToIntInstruction instr{};
@@ -410,7 +410,7 @@ namespace IL {
         /// \param value the value to cast
         /// \return instruction reference
         BasicBlock::TypedIterator <FloatToIntInstruction> FloatToUInt32(ID value) {
-            return FloatToInt(value, program->GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {
+            return FloatToInt(value, program->GetTypeMap().FindTypeOrAdd(IL::IntType {
                 .bitWidth = 32,
                 .signedness = false
             }));
@@ -420,7 +420,7 @@ namespace IL {
         /// \param value the value to cast
         /// \return instruction reference
         BasicBlock::TypedIterator <FloatToIntInstruction> FloatToSInt32(ID value) {
-            return FloatToInt(value, program->GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {
+            return FloatToInt(value, program->GetTypeMap().FindTypeOrAdd(IL::IntType {
                 .bitWidth = 32,
                 .signedness = true
             }));
@@ -457,7 +457,7 @@ namespace IL {
         /// \param vx the indices
         /// \return instruction reference
         template<typename... VX>
-        BasicBlock::TypedIterator<ConstructInstruction> Construct(const Backend::IL::Type* type, VX... vx) {
+        BasicBlock::TypedIterator<ConstructInstruction> Construct(const IL::Type* type, VX... vx) {
             // Fold it down
             IL::ID values[] = {vx...};
 
@@ -741,7 +741,7 @@ namespace IL {
         /// Get a kernel provided value
         /// \param value the value to fetch
         /// \return instruction reference
-        BasicBlock::TypedIterator <KernelValueInstruction> KernelValue(Backend::IL::KernelValue value) {
+        BasicBlock::TypedIterator <KernelValueInstruction> KernelValue(IL::KernelValue value) {
             KernelValueInstruction instr{};
             instr.opCode = OpCode::KernelValue;
             instr.source = source;
@@ -755,7 +755,7 @@ namespace IL {
         /// \param ix all arguments
         /// \return instruction reference
         template<typename... IX>
-        BasicBlock::TypedIterator <ExtendedInstruction> Extended(Backend::IL::ExtendedOp op, IX... ix) {
+        BasicBlock::TypedIterator <ExtendedInstruction> Extended(IL::ExtendedOp op, IX... ix) {
             auto instr = ALLOCA_SIZE(IL::ExtendedInstruction, IL::ExtendedInstruction::GetSize(sizeof...(IX)));
             instr->opCode = OpCode::Extended;
             instr->source = source;
@@ -1206,15 +1206,15 @@ namespace IL {
         /// Alloca a varaible
         /// \param type the varaible type
         /// \return instruction reference
-        BasicBlock::TypedIterator <AllocaInstruction> Alloca(const Backend::IL::Type* type) {
+        BasicBlock::TypedIterator <AllocaInstruction> Alloca(const IL::Type* type) {
             AllocaInstruction instr{};
             instr.opCode = OpCode::Alloca;
             instr.source = source;
             instr.result = map->AllocID();
 
-            return Op(instr, program->GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+            return Op(instr, program->GetTypeMap().FindTypeOrAdd(IL::PointerType {
                 .pointee = type,
-                .addressSpace = Backend::IL::AddressSpace::Function
+                .addressSpace = IL::AddressSpace::Function
             }));
         }
 
@@ -1248,7 +1248,7 @@ namespace IL {
         template<typename T>
         BasicBlock::TypedIterator <T> Op(T &instruction) {
             // Set type of the instruction if relevant
-            if (const Backend::IL::Type* type = Backend::IL::ResultOf(*program, &instruction)) {
+            if (const IL::Type* type = IL::ResultOf(*program, &instruction)) {
                 program->GetTypeMap().SetType(instruction.result, type);
             }
 
@@ -1258,7 +1258,7 @@ namespace IL {
 
         /// Perform the operation
         template<typename T>
-        BasicBlock::TypedIterator <T> Op(T &instruction, const Backend::IL::Type* type) {
+        BasicBlock::TypedIterator <T> Op(T &instruction, const IL::Type* type) {
             // Set type of the instruction
             program->GetTypeMap().SetType(instruction.result, type);
 
@@ -1283,7 +1283,7 @@ namespace IL {
         IdentifierMap *map{nullptr};
 
         /// Current type map
-        Backend::IL::TypeMap* typeMap{nullptr};
+        IL::TypeMap* typeMap{nullptr};
 
         /// Current basic block
         BasicBlock *basicBlock{nullptr};

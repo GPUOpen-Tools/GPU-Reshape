@@ -285,7 +285,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
     uint32_t rootDWordOffset = 0;
 
     // Number of dwords per inline token metadata
-    constexpr uint32_t kTokenMetadataDWordCount = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
+    constexpr uint32_t kTokenMetadataDWordCount = static_cast<uint32_t>(IL::ResourceTokenMetadataField::Count);
 
     // Create hash and mappings
     for (uint32_t i = 0; i < parameterCount; i++) {

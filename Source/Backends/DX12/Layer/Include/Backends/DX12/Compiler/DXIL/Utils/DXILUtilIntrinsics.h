@@ -47,26 +47,26 @@ public:
     const DXILFunctionDeclaration* GetIntrinsic(const DXILIntrinsicSpec& spec);
 
     /// Data types
-    const Backend::IL::VoidType *voidType{nullptr};
-    const Backend::IL::BoolType *i1Type{nullptr};
-    const Backend::IL::IntType *i8Type{nullptr};
-    const Backend::IL::IntType *i32Type{nullptr};
-    const Backend::IL::FPType *f32Type{nullptr};
-    const Backend::IL::FPType *f16Type{nullptr};
-    const Backend::IL::StructType *handleType{nullptr};
-    const Backend::IL::StructType *dimensionsType{nullptr};
-    const Backend::IL::StructType *resRetI32{nullptr};
-    const Backend::IL::StructType *resRetF32{nullptr};
-    const Backend::IL::StructType *cbufRetI32{nullptr};
-    const Backend::IL::StructType *cbufRetF32{nullptr};
-    const Backend::IL::StructType *resBind{nullptr};
-    const Backend::IL::StructType *resourceProperties{nullptr};
+    const IL::VoidType *voidType{nullptr};
+    const IL::BoolType *i1Type{nullptr};
+    const IL::IntType *i8Type{nullptr};
+    const IL::IntType *i32Type{nullptr};
+    const IL::FPType *f32Type{nullptr};
+    const IL::FPType *f16Type{nullptr};
+    const IL::StructType *handleType{nullptr};
+    const IL::StructType *dimensionsType{nullptr};
+    const IL::StructType *resRetI32{nullptr};
+    const IL::StructType *resRetF32{nullptr};
+    const IL::StructType *cbufRetI32{nullptr};
+    const IL::StructType *cbufRetF32{nullptr};
+    const IL::StructType *resBind{nullptr};
+    const IL::StructType *resourceProperties{nullptr};
 
 private:
     /// Get an IL type from spec type
     /// \param type spec type
     /// \return IL type
-    const Backend::IL::Type* GetType(const DXILIntrinsicTypeSpec& type);
+    const IL::Type* GetType(const DXILIntrinsicTypeSpec& type);
 
 private:
     struct IntrinsicEntry {

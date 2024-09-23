@@ -38,7 +38,7 @@ struct DXParseJob;
 
 /// Debug block
 struct DXBCPhysicalBlockDebug : public DXBCPhysicalBlockSection {
-    DXBCPhysicalBlockDebug(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
+    DXBCPhysicalBlockDebug(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table);
 
     /// Parse all instructions
     bool Parse(const DXParseJob& job);

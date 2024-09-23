@@ -37,6 +37,7 @@
 #include <Common/Containers/BitArray.h>
 #include <Common/Containers/TrivialStackVector.h>
 #include <Common/FileSystem.h>
+#include <Common/System.h>
 
 // Std
 #include <unordered_set>
@@ -44,12 +45,6 @@
 #include <sstream>
 #include <fstream>
 #include <mutex>
-#endif
-
-// System
-#if defined(_MSC_VER)
-#   include <Windows.h>
-#   undef max
 #endif
 
 bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
@@ -84,7 +79,7 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
 
             // Get termination control flow
             BranchControlFlow controlFlow;
-            Backend::IL::GetControlFlow(basicBlock->GetTerminator(), controlFlow);
+            IL::GetControlFlow(basicBlock->GetTerminator(), controlFlow);
 
             // Merge must be evaluated after all successors within the construct has been evaluated
             if (controlFlow._continue != IL::InvalidID && blockAcquiredArray.Acquire(controlFlow._continue)) {

@@ -42,7 +42,7 @@ struct SpvPhysicalBlockTable;
 
 /// Shader PRMT utilities
 struct SpvUtilShaderPRMT {
-    SpvUtilShaderPRMT(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable& table);
+    SpvUtilShaderPRMT(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable& table);
 
     /// Compile the records
     /// \param job source job being compiled against
@@ -71,7 +71,7 @@ public:
     IL::ID CreatePRMControl(const SpvJob& job, SpvStream& stream, IL::ID function, IL::ID resource);
 
     /// Get the PRM control type
-    const Backend::IL::Type *GetPRMControlType() const {
+    const IL::Type *GetPRMControlType() const {
         return prmControl;
     }
 
@@ -124,7 +124,7 @@ private:
     Allocators allocators;
 
     /// Backend program
-    Backend::IL::Program &program;
+    IL::Program &program;
 
     /// Parent table
     SpvPhysicalBlockTable& table;
@@ -133,7 +133,7 @@ private:
     uint32_t prmTableId{0};
 
     /// Type map
-    const Backend::IL::Type *buffer32UIPtr{nullptr};
-    const Backend::IL::Type *buffer32UI{nullptr};
-    const Backend::IL::Type *prmControl{nullptr};
+    const IL::Type *buffer32UIPtr{nullptr};
+    const IL::Type *buffer32UI{nullptr};
+    const IL::Type *prmControl{nullptr};
 };

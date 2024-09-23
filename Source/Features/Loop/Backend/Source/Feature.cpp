@@ -91,7 +91,7 @@ bool LoopFeature::Install() {
     // Allocate termination buffer
     terminationBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo{
         .elementCount = kMaxTrackedSubmissions,
-        .format = Backend::IL::Format::R32UInt
+        .format = IL::Format::R32UInt
     });
 
     // Allocate allocation data
@@ -174,7 +174,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
             IL::BranchControlFlow controlFlow;
 
             // Must have a continue based, i.e. loop styled, control flow
-            if (!Backend::IL::GetControlFlow(it, controlFlow) || controlFlow._continue == IL::InvalidID) {
+            if (!IL::GetControlFlow(it, controlFlow) || controlFlow._continue == IL::InvalidID) {
                 return it;
             }
 
@@ -314,11 +314,11 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 term.Export(exportID, msg);
 
                 // Expected function type
-                const Backend::IL::Type *returnType = context.function.GetFunctionType()->returnType;
+                const IL::Type *returnType = context.function.GetFunctionType()->returnType;
 
                 // If there's something to return, assume null
                 IL::ID returnValue = IL::InvalidID;
-                if (!returnType->Is<Backend::IL::VoidType>()) {
+                if (!returnType->Is<IL::VoidType>()) {
                     returnValue = program.GetConstants().FindConstantOrAdd(returnType, IL::NullConstant {})->id;
                 }
                 
@@ -424,7 +424,7 @@ void LoopFeature::InjectLoopCounters(IL::Program &program, LoopCounterMap &map) 
         IL::Emitter emitter(program, *entryPoint, entryPoint->begin());
 
         // Allocate UInt32
-        IL::ID addr = emitter.Alloca(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {
+        IL::ID addr = emitter.Alloca(program.GetTypeMap().FindTypeOrAdd(IL::IntType {
             .bitWidth = 32,
             .signedness = false
         }));

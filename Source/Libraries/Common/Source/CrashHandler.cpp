@@ -26,6 +26,7 @@
 
 #include <Common/CrashHandler.h>
 #include <Common/Sink.h>
+#include <Common/System.h>
 
 // Std
 #include <mutex>
@@ -35,7 +36,6 @@
 #   ifndef NDEBUG
 #       define WIN32_EXCEPTION_HANDLER
 #       include <iostream>
-#       include <Windows.h>
 #       include <dbghelp.h>
 #   endif
 #endif

@@ -38,7 +38,7 @@ struct ShaderDataBufferInfo {
     size_t elementCount{0};
 
     /// Format of each element
-    Backend::IL::Format format{Backend::IL::Format::None};
+    IL::Format format{IL::Format::None};
 
     /// All buffer flags
     ShaderDataBufferFlagSet flagSet{};

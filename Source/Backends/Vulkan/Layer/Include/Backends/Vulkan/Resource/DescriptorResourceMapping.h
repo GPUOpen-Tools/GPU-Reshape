@@ -54,7 +54,7 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
                 mapping = table->states_sampler.Get(info.sampler)->virtualMapping;
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.token.puid = IL::kResourceTokenPUIDReservedNullSampler;
-                mapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
+                mapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Sampler);
             }
             break;
         }
@@ -63,7 +63,7 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
                 mapping = table->states_imageView.Get(info.imageView)->virtualMapping;
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.token.puid = IL::kResourceTokenPUIDReservedNullTexture;
-                mapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+                mapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Texture);
             }
             break;
         }
@@ -73,7 +73,7 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
                 mapping = table->states_imageView.Get(info.imageView)->virtualMapping;
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.token.puid = IL::kResourceTokenPUIDReservedNullTexture;
-                mapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+                mapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Texture);
             }
             break;
         }
@@ -102,7 +102,7 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
                 mapping = table->states_bufferView.Get(info)->virtualMapping;
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.token.puid = IL::kResourceTokenPUIDReservedNullBuffer;
-                mapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+                mapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Buffer);
             }
             break;
         }
@@ -133,7 +133,7 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
                 mapping = table->states_buffer.Get(info.buffer)->virtualMapping;
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.token.puid = IL::kResourceTokenPUIDReservedNullCBuffer;
-                mapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::CBuffer);
+                mapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::CBuffer);
             }
             break;
         }
@@ -171,7 +171,7 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
                 mapping = table->states_bufferView.Get(write.pTexelBufferView[descriptorIndex])->virtualMapping;
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.token.puid = IL::kResourceTokenPUIDReservedNullBuffer;
-                mapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+                mapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::Buffer);
             }
             break;
         }
@@ -183,7 +183,7 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
                 mapping = table->states_buffer.Get(write.pBufferInfo[descriptorIndex].buffer)->virtualMapping;
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.token.puid = IL::kResourceTokenPUIDReservedNullCBuffer;
-                mapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::CBuffer);
+                mapping.token.type = static_cast<uint32_t>(IL::ResourceTokenType::CBuffer);
             }
             break;
         }

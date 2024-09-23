@@ -273,12 +273,12 @@ void FeatureHook_CopyResource::operator()(CommandListState *object, CommandConte
     ResourceState* srcState = GetState(pSrcResource);
 
     // Handle type
-    switch (static_cast<Backend::IL::ResourceTokenType>(dstState->virtualMapping.token.type)) {
+    switch (static_cast<IL::ResourceTokenType>(dstState->virtualMapping.token.type)) {
         default: {
             ASSERT(false, "Unexpected type");
             break;
         }
-        case Backend::IL::ResourceTokenType::Texture: {
+        case IL::ResourceTokenType::Texture: {
             // Setup source descriptor
             TextureDescriptor srcDescriptor{
                 .region = TextureRegion {
@@ -309,7 +309,7 @@ void FeatureHook_CopyResource::operator()(CommandListState *object, CommandConte
             );
             break;
         }
-        case Backend::IL::ResourceTokenType::Buffer: {
+        case IL::ResourceTokenType::Buffer: {
             // Setup source descriptor
             BufferDescriptor srcDescriptor{
                 .offset = 0u,
@@ -491,7 +491,7 @@ void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *obje
 
         // Create resource info
         ResourceInfo info;
-        if (token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+        if (token.GetType() == IL::ResourceTokenType::Buffer) {
             info = ResourceInfo::Buffer(token, BufferDescriptor{
                 .offset = 0u,
                 .width = token.width,
@@ -542,7 +542,7 @@ void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *obj
         
         // Create resource info
         ResourceInfo info;
-        if (token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+        if (token.GetType() == IL::ResourceTokenType::Buffer) {
             info = ResourceInfo::Buffer(token, BufferDescriptor{
                 .offset = 0u,
                 .width = token.width,
@@ -616,7 +616,7 @@ void FeatureHook_DiscardResource::operator()(CommandListState *object, CommandCo
 
     // Create resource info
     ResourceInfo info;
-    if (state->virtualMapping.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+    if (state->virtualMapping.token.GetType() == IL::ResourceTokenType::Buffer) {
         info = ResourceInfo::Buffer(state->virtualMapping.token, BufferDescriptor{});
     } else {
         info = ResourceInfo::Texture(state->virtualMapping.token, IsVolumetric(state), TextureDescriptor{});

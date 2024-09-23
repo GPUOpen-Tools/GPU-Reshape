@@ -192,8 +192,8 @@ void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, const VirtualRe
     std::lock_guard guard(mutex);
 
     // Validate type
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.token.type)) {
-        case Backend::IL::ResourceTokenType::Texture:
+    switch (static_cast<IL::ResourceTokenType>(mapping.token.type)) {
+        case IL::ResourceTokenType::Texture:
             ASSERT(
                 type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||
                 type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV ||
@@ -201,11 +201,11 @@ void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, const VirtualRe
                 "Invalid heap type" 
             );
             break;
-        case Backend::IL::ResourceTokenType::Buffer:
-        case Backend::IL::ResourceTokenType::CBuffer:
+        case IL::ResourceTokenType::Buffer:
+        case IL::ResourceTokenType::CBuffer:
             ASSERT(type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Invalid heap type");
             break;
-        case Backend::IL::ResourceTokenType::Sampler:
+        case IL::ResourceTokenType::Sampler:
             ASSERT(type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Invalid heap type");
             break;
         default:
@@ -248,8 +248,8 @@ void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *
     std::lock_guard guard(mutex);
 
     // Validate type
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.token.type)) {
-        case Backend::IL::ResourceTokenType::Texture:
+    switch (static_cast<IL::ResourceTokenType>(mapping.token.type)) {
+        case IL::ResourceTokenType::Texture:
             ASSERT(
                 type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||
                 type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV ||
@@ -257,11 +257,11 @@ void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *
                 "Invalid heap type"
             );
             break;
-        case Backend::IL::ResourceTokenType::Buffer:
-        case Backend::IL::ResourceTokenType::CBuffer:
+        case IL::ResourceTokenType::Buffer:
+        case IL::ResourceTokenType::CBuffer:
             ASSERT(type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Invalid heap type");
             break;
-        case Backend::IL::ResourceTokenType::Sampler:
+        case IL::ResourceTokenType::Sampler:
             ASSERT(type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Invalid heap type");
             break;
         default:

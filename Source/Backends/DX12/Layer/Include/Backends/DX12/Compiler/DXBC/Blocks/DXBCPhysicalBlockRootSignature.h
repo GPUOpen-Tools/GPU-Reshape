@@ -32,7 +32,7 @@
 
 /// Shader block
 struct DXBCPhysicalBlockRootSignature : public DXBCPhysicalBlockSection {
-    DXBCPhysicalBlockRootSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
+    DXBCPhysicalBlockRootSignature(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table);
 
     /// Parse validation
     void Parse();

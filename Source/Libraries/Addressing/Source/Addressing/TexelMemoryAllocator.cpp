@@ -94,11 +94,11 @@ bool TexelMemoryAllocator::Install(size_t requestedTexels) {
     texelBlocksBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
 #if USE_TILED_RESOURCES
         .elementCount = blockCapacityAlignPow2,
-        .format = Backend::IL::Format::R32UInt,
+        .format = IL::Format::R32UInt,
         .flagSet = ShaderDataBufferFlag::Tiled
 #else // USE_TILED_RESOURCES 
         .elementCount = 512'000'000,
-        .format = Backend::IL::Format::R32UInt
+        .format = IL::Format::R32UInt
 #endif // USE_TILED_RESOURCES
     });
 

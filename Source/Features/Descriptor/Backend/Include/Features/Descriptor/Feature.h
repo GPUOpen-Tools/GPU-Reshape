@@ -83,7 +83,7 @@ private:
     /// \param compileTypeLiteral expected compile type value
     /// \param config instrumentation configuration
     /// \return moved iterator
-    IL::BasicBlock::Iterator InjectForResource(IL::Program& program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, Backend::IL::ResourceTokenType compileTypeLiteral, const struct SetInstrumentationConfigMessage& config);
+    IL::BasicBlock::Iterator InjectForResource(IL::Program& program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, IL::ResourceTokenType compileTypeLiteral, const struct SetInstrumentationConfigMessage& config);
 
 private:
     /// Hosts

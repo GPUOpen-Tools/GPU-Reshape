@@ -86,8 +86,8 @@ bool TexelAddressingConcurrencyFeature::Install() {
 
     // Allocate puid mapping buffer
     puidMemoryBaseBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
-        .format = Backend::IL::Format::R32UInt
+        .elementCount = 1u << IL::kResourceTokenPUIDBitCount,
+        .format = IL::Format::R32UInt
     });
 
     // Try to install texel allocator
@@ -196,10 +196,10 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
                 IL::ID resource = it->As<IL::LoadTextureInstruction>()->texture;
 
                 // Get type
-                auto type = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+                auto type = program.GetTypeMap().GetType(resource)->As<IL::TextureType>();
 
                 // Sub-pass inputs are not validated
-                if (type->dimension == Backend::IL::TextureDimension::SubPass) {
+                if (type->dimension == IL::TextureDimension::SubPass) {
                     return it;
                 }
                 break;
@@ -208,14 +208,14 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
                 auto _instr = it->As<IL::LoadInstruction>();
     
                 // Quick check, if the address space isn't resource related, ignore it
-                auto type = program.GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                auto type = program.GetTypeMap().GetType(_instr->address)->As<IL::PointerType>();
                 if (!IsGenericResourceAddressSpace(type)) {
                     return it;
                 }
 
                 // Try to find the resource being addressed,
                 // if this either fails, or we're just loading the resource itself, ignore it
-                IL::ID resourceAddress = Backend::IL::GetResourceFromAddressChain(program, _instr->address);
+                IL::ID resourceAddress = IL::GetResourceFromAddressChain(program, _instr->address);
                 if (resourceAddress == IL::InvalidID || resourceAddress == _instr->address) {
                     return it;
                 }
@@ -227,14 +227,14 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
                 auto _instr = it->As<IL::StoreInstruction>();
                 
                 // Quick check, if the address space isn't resource related, ignore it
-                auto type = program.GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                auto type = program.GetTypeMap().GetType(_instr->address)->As<IL::PointerType>();
                 if (!IsGenericResourceAddressSpace(type)) {
                     return it;
                 }
 
                 // Try to find the resource being addressed,
                 // if this either fails, or we're just loading the resource itself, ignore it
-                IL::ID resourceAddress = Backend::IL::GetResourceFromAddressChain(program, _instr->address);
+                IL::ID resourceAddress = IL::GetResourceFromAddressChain(program, _instr->address);
                 if (resourceAddress == IL::InvalidID || resourceAddress == _instr->address) {
                     return it;
                 }
@@ -260,7 +260,7 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
         IL::Emitter<> pre(program, context.basicBlock);
 
         // Get the texel address
-        Backend::IL::TexelPropertiesEmitter propertiesEmitter(pre, texelAllocator, puidMemoryBaseBufferDataID);
+        IL::TexelPropertiesEmitter propertiesEmitter(pre, texelAllocator, puidMemoryBaseBufferDataID);
         TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(IL::InstructionRef(instr));
 
         // If untracked, don't write or read any bits

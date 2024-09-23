@@ -42,7 +42,7 @@
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/DXIL.rst
  */
 
-DXILPhysicalBlockMetadata::DXILPhysicalBlockMetadata(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table) :
+DXILPhysicalBlockMetadata::DXILPhysicalBlockMetadata(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table) :
     DXILPhysicalBlockSection(allocators.Tag(kAllocModuleDXILMetadata), program, table),
     registerClasses(allocators.Tag(kAllocModuleDXILMetadata)),
     registerSpaces(allocators.Tag(kAllocModuleDXILMetadata)),
@@ -293,28 +293,28 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         const IL::Constant *constantPointer = GetOperandConstant(metadataBlock, resource.Op32(1));
 
         // Get pointer
-        auto* constantPointerType = constantPointer->type->As<Backend::IL::PointerType>();
+        auto* constantPointerType = constantPointer->type->As<IL::PointerType>();
 
         // Contained texel type
-        const Backend::IL::Type* containedType{nullptr};
+        const IL::Type* containedType{nullptr};
 
         // Handle contained
         switch (constantPointerType->pointee->kind) {
             default: {
                 break;
             }
-            case Backend::IL::TypeKind::Struct: {
-                auto* constantStruct = constantPointerType->pointee->As<Backend::IL::StructType>();
+            case IL::TypeKind::Struct: {
+                auto* constantStruct = constantPointerType->pointee->As<IL::StructType>();
 
                 // Get resource types
                 ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
                 containedType = constantStruct->memberTypes[0];
                 break;
             }
-            case Backend::IL::TypeKind::Array: {
+            case IL::TypeKind::Array: {
                 // Must be array of struct of
-                auto* constantArray = constantPointerType->pointee->As<Backend::IL::ArrayType>();
-                auto* constantStruct = constantArray->elementType->As<Backend::IL::StructType>();
+                auto* constantArray = constantPointerType->pointee->As<IL::ArrayType>();
+                auto* constantStruct = constantArray->elementType->As<IL::StructType>();
 
                 // Get resource types
                 ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
@@ -360,10 +360,10 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 GRS_SINK(sampleCount);
 
                 // Optional element type
-                const Backend::IL::Type* elementType{nullptr};
+                const IL::Type* elementType{nullptr};
 
                 // Optional texel format
-                Backend::IL::Format format{Backend::IL::Format::None};
+                IL::Format format{IL::Format::None};
 
                 // Has extended metadata?
                 if (uint32_t extendedMetadataId = resource.Op32(8)) {
@@ -398,53 +398,53 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                 // Buffer shape?
                 if (IsBuffer(shape)) {
-                    Backend::IL::BufferType buffer{};
-                    buffer.samplerMode = Backend::IL::ResourceSamplerMode::RuntimeOnly;
+                    IL::BufferType buffer{};
+                    buffer.samplerMode = IL::ResourceSamplerMode::RuntimeOnly;
                     buffer.elementType = containedType;
                     buffer.texelType = format;
                     buffer.byteAddressing = shape == DXILShaderResourceShape::RawBuffer;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
-                    Backend::IL::TextureType texture{};
-                    texture.samplerMode = Backend::IL::ResourceSamplerMode::RuntimeOnly;
+                    IL::TextureType texture{};
+                    texture.samplerMode = IL::ResourceSamplerMode::RuntimeOnly;
                     texture.sampledType = containedType;
                     texture.format = format;
 
                     // Translate shape
                     switch (shape) {
                         default:
-                            texture.dimension = Backend::IL::TextureDimension::Unexposed;
+                            texture.dimension = IL::TextureDimension::Unexposed;
                             break;
                         case DXILShaderResourceShape::Invalid:
                             break;
                         case DXILShaderResourceShape::Texture1D:
-                            texture.dimension = Backend::IL::TextureDimension::Texture1D;
+                            texture.dimension = IL::TextureDimension::Texture1D;
                             break;
                         case DXILShaderResourceShape::Texture2D:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2D;
+                            texture.dimension = IL::TextureDimension::Texture2D;
                             break;
                         case DXILShaderResourceShape::Texture2DMS:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2D;
+                            texture.dimension = IL::TextureDimension::Texture2D;
                             texture.multisampled = true;
                             break;
                         case DXILShaderResourceShape::Texture3D:
-                            texture.dimension = Backend::IL::TextureDimension::Texture3D;
+                            texture.dimension = IL::TextureDimension::Texture3D;
                             break;
                         case DXILShaderResourceShape::TextureCube:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2DCube;
+                            texture.dimension = IL::TextureDimension::Texture2DCube;
                             break;
                         case DXILShaderResourceShape::Texture1DArray:
-                            texture.dimension = Backend::IL::TextureDimension::Texture1DArray;
+                            texture.dimension = IL::TextureDimension::Texture1DArray;
                             break;
                         case DXILShaderResourceShape::Texture2DArray:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            texture.dimension = IL::TextureDimension::Texture2DArray;
                             break;
                         case DXILShaderResourceShape::Texture2DMSArray:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            texture.dimension = IL::TextureDimension::Texture2DArray;
                             texture.multisampled = true;
                             break;
                         case DXILShaderResourceShape::TextureCubeArray:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2DCubeArray;
+                            texture.dimension = IL::TextureDimension::Texture2DCubeArray;
                             break;
                     }
                     entry.type = program.GetTypeMap().FindTypeOrAdd(texture);
@@ -464,10 +464,10 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 GRS_SINK(rasterizerOrderedView);
 
                 // Optional element type
-                const Backend::IL::Type *elementType{nullptr};
+                const IL::Type *elementType{nullptr};
 
                 // Optional texel format
-                Backend::IL::Format format{Backend::IL::Format::None};
+                IL::Format format{IL::Format::None};
 
                 // Has extended metadata?
                 if (uint32_t extendedMetadataId = resource.Op32(10)) {
@@ -503,53 +503,53 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                 // Buffer shape?
                 if (IsBuffer(shape)) {
-                    Backend::IL::BufferType buffer{};
-                    buffer.samplerMode = Backend::IL::ResourceSamplerMode::Writable;
+                    IL::BufferType buffer{};
+                    buffer.samplerMode = IL::ResourceSamplerMode::Writable;
                     buffer.elementType = containedType;
                     buffer.texelType = format;
                     buffer.byteAddressing = shape == DXILShaderResourceShape::RawBuffer;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
-                    Backend::IL::TextureType texture{};
-                    texture.samplerMode = Backend::IL::ResourceSamplerMode::Writable;
+                    IL::TextureType texture{};
+                    texture.samplerMode = IL::ResourceSamplerMode::Writable;
                     texture.sampledType = containedType;
                     texture.format = format;
 
                     // Translate shape
                     switch (shape) {
                         default:
-                            texture.dimension = Backend::IL::TextureDimension::Unexposed;
+                            texture.dimension = IL::TextureDimension::Unexposed;
                             break;
                         case DXILShaderResourceShape::Invalid:
                             break;
                         case DXILShaderResourceShape::Texture1D:
-                            texture.dimension = Backend::IL::TextureDimension::Texture1D;
+                            texture.dimension = IL::TextureDimension::Texture1D;
                             break;
                         case DXILShaderResourceShape::Texture2D:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2D;
+                            texture.dimension = IL::TextureDimension::Texture2D;
                             break;
                         case DXILShaderResourceShape::Texture2DMS:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2D;
+                            texture.dimension = IL::TextureDimension::Texture2D;
                             texture.multisampled = true;
                             break;
                         case DXILShaderResourceShape::Texture3D:
-                            texture.dimension = Backend::IL::TextureDimension::Texture3D;
+                            texture.dimension = IL::TextureDimension::Texture3D;
                             break;
                         case DXILShaderResourceShape::TextureCube:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2DCube;
+                            texture.dimension = IL::TextureDimension::Texture2DCube;
                             break;
                         case DXILShaderResourceShape::Texture1DArray:
-                            texture.dimension = Backend::IL::TextureDimension::Texture1DArray;
+                            texture.dimension = IL::TextureDimension::Texture1DArray;
                             break;
                         case DXILShaderResourceShape::Texture2DArray:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            texture.dimension = IL::TextureDimension::Texture2DArray;
                             break;
                         case DXILShaderResourceShape::Texture2DMSArray:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            texture.dimension = IL::TextureDimension::Texture2DArray;
                             texture.multisampled = true;
                             break;
                         case DXILShaderResourceShape::TextureCubeArray:
-                            texture.dimension = Backend::IL::TextureDimension::Texture2DCubeArray;
+                            texture.dimension = IL::TextureDimension::Texture2DCubeArray;
                             break;
                     }
 
@@ -571,7 +571,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                     GRS_SINK(extendedMetadata);
                 }
 
-                Backend::IL::CBufferType cbuffer{};
+                IL::CBufferType cbuffer{};
                 entry.type = program.GetTypeMap().FindTypeOrAdd(cbuffer);
                 break;
             }
@@ -589,7 +589,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                     GRS_SINK(extendedMetadata);
                 }
 
-                Backend::IL::SamplerType sampler{};
+                IL::SamplerType sampler{};
                 entry.type = program.GetTypeMap().FindTypeOrAdd(sampler);
                 break;
             }
@@ -613,7 +613,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
     }
 }
 
-const Backend::IL::Type *DXILPhysicalBlockMetadata::GetHandleType(DXILShaderResourceClass _class, uint32_t handleID) {
+const IL::Type *DXILPhysicalBlockMetadata::GetHandleType(DXILShaderResourceClass _class, uint32_t handleID) {
     const DXILMetadataHandleEntry* handle = GetHandle(_class, handleID);
     if (!handle) {
         return nullptr;
@@ -622,18 +622,18 @@ const Backend::IL::Type *DXILPhysicalBlockMetadata::GetHandleType(DXILShaderReso
     return handle->type;
 }
 
-IL::ID DXILPhysicalBlockMetadata::GetTypeSymbolicBindingGroup(const Backend::IL::Type *type) {
+IL::ID DXILPhysicalBlockMetadata::GetTypeSymbolicBindingGroup(const IL::Type *type) {
     switch (type->kind) {
         default:
             ASSERT(false, "Invalid handle type");
         return IL::InvalidID;
-        case Backend::IL::TypeKind::Texture:
+        case IL::TypeKind::Texture:
             return symbolicTextureBindings;
-        case Backend::IL::TypeKind::Sampler:
+        case IL::TypeKind::Sampler:
             return symbolicSamplerBindings;
-        case Backend::IL::TypeKind::Buffer:
+        case IL::TypeKind::Buffer:
             return symbolicBufferBindings;
-        case Backend::IL::TypeKind::CBuffer:
+        case IL::TypeKind::CBuffer:
             return symbolicCBufferBindings;
     }
 }
@@ -681,50 +681,50 @@ const DXILMetadataHandleEntry * DXILPhysicalBlockMetadata::GetHandle(DXILShaderR
     return nullptr;
 }
 
-const Backend::IL::Type *DXILPhysicalBlockMetadata::GetComponentType(ComponentType type) {
+const IL::Type *DXILPhysicalBlockMetadata::GetComponentType(ComponentType type) {
     switch (type) {
         default:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::UnexposedType{});
+            return program.GetTypeMap().FindTypeOrAdd(IL::UnexposedType{});
         case ComponentType::Int16:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::IntType{
                 .bitWidth = 16,
                 .signedness = true
             });
         case ComponentType::UInt16:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::IntType{
                 .bitWidth = 16,
                 .signedness = false
             });
         case ComponentType::Int32:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::IntType{
                 .bitWidth = 32,
                 .signedness = true
             });
         case ComponentType::UInt32:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::IntType{
                 .bitWidth = 32,
                 .signedness = false
             });
         case ComponentType::Int64:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::IntType{
                 .bitWidth = 64,
                 .signedness = true
             });
         case ComponentType::UInt64:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::IntType{
                 .bitWidth = 64,
                 .signedness = false
             });
         case ComponentType::FP16:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::FPType{
                 .bitWidth = 16,
             });
         case ComponentType::FP32:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::FPType{
                 .bitWidth = 32,
             });
         case ComponentType::FP64:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::FPType{
                 .bitWidth = 64,
             });
         case ComponentType::UNormFP16:
@@ -733,144 +733,144 @@ const Backend::IL::Type *DXILPhysicalBlockMetadata::GetComponentType(ComponentTy
         case ComponentType::SNormFP64:
         case ComponentType::UNormFP64:
         case ComponentType::SNormFP16:
-            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+            return program.GetTypeMap().FindTypeOrAdd(IL::FPType{
                 .bitWidth = 16,
             });
             break;
     }
 }
 
-Backend::IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType type) {
+IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType type) {
     switch (type) {
         default:
-            return Backend::IL::Format::Unexposed;
+            return IL::Format::Unexposed;
         case ComponentType::None:
-            return Backend::IL::Format::None;
+            return IL::Format::None;
         case ComponentType::Int16:
-            return Backend::IL::Format::R16Int;
+            return IL::Format::R16Int;
         case ComponentType::UInt16:
-            return Backend::IL::Format::R16UInt;
+            return IL::Format::R16UInt;
         case ComponentType::Int32:
-            return Backend::IL::Format::R32Int;
+            return IL::Format::R32Int;
         case ComponentType::UInt32:
-            return Backend::IL::Format::R32UInt;
+            return IL::Format::R32UInt;
         case ComponentType::Int64:
-            return Backend::IL::Format::Unexposed;
+            return IL::Format::Unexposed;
         case ComponentType::UInt64:
-            return Backend::IL::Format::Unexposed;
+            return IL::Format::Unexposed;
         case ComponentType::FP16:
-            return Backend::IL::Format::R16Float;
+            return IL::Format::R16Float;
         case ComponentType::FP32:
-            return Backend::IL::Format::R32Float;
+            return IL::Format::R32Float;
         case ComponentType::FP64:
-            return Backend::IL::Format::Unexposed;
+            return IL::Format::Unexposed;
         case ComponentType::SNormFP16:
-            return Backend::IL::Format::R16Snorm;
+            return IL::Format::R16Snorm;
         case ComponentType::UNormFP16:
-            return Backend::IL::Format::R16Unorm;
+            return IL::Format::R16Unorm;
         case ComponentType::SNormFP32:
-            return Backend::IL::Format::R32Snorm;
+            return IL::Format::R32Snorm;
         case ComponentType::UNormFP32:
-            return Backend::IL::Format::R32Unorm;
+            return IL::Format::R32Unorm;
         case ComponentType::SNormFP64:
-            return Backend::IL::Format::Unexposed;
+            return IL::Format::Unexposed;
         case ComponentType::UNormFP64:
-            return Backend::IL::Format::Unexposed;
+            return IL::Format::Unexposed;
         case ComponentType::PackedS8x32:
-            return Backend::IL::Format::Unexposed;
+            return IL::Format::Unexposed;
         case ComponentType::PackedU8x32:
-            return Backend::IL::Format::Unexposed;
+            return IL::Format::Unexposed;
     }
 }
 
-ComponentType DXILPhysicalBlockMetadata::GetFormatComponent(Backend::IL::Format format) {
+ComponentType DXILPhysicalBlockMetadata::GetFormatComponent(IL::Format format) {
     switch (format) {
         default:
             ASSERT(false, "Invalid value");
             return ComponentType::None;
-        case Backend::IL::Format::RGBA32Float:
+        case IL::Format::RGBA32Float:
             return ComponentType::FP32;
-        case Backend::IL::Format::RGBA16Float:
+        case IL::Format::RGBA16Float:
             return ComponentType::FP16;
-        case Backend::IL::Format::R32Float:
+        case IL::Format::R32Float:
             return ComponentType::FP32;
-        case Backend::IL::Format::R32Snorm:
+        case IL::Format::R32Snorm:
             return ComponentType::SNormFP32;
-        case Backend::IL::Format::R32Unorm:
+        case IL::Format::R32Unorm:
             return ComponentType::UNormFP32;
-        case Backend::IL::Format::RGBA8:
+        case IL::Format::RGBA8:
             return ComponentType::FP32;
-        case Backend::IL::Format::RGBA8Snorm:
+        case IL::Format::RGBA8Snorm:
             return ComponentType::SNormFP32;
-        case Backend::IL::Format::RG32Float:
+        case IL::Format::RG32Float:
             return ComponentType::FP32;
-        case Backend::IL::Format::RG16Float:
+        case IL::Format::RG16Float:
             return ComponentType::FP16;
-        case Backend::IL::Format::R11G11B10Float:
+        case IL::Format::R11G11B10Float:
             return ComponentType::FP32;
-        case Backend::IL::Format::R16Float:
+        case IL::Format::R16Float:
             return ComponentType::FP16;
-        case Backend::IL::Format::RGBA16:
+        case IL::Format::RGBA16:
             return ComponentType::FP16;
-        case Backend::IL::Format::RGB10A2:
+        case IL::Format::RGB10A2:
             return ComponentType::FP32;
-        case Backend::IL::Format::RG16:
+        case IL::Format::RG16:
             return ComponentType::FP16;
-        case Backend::IL::Format::RG8:
+        case IL::Format::RG8:
             return ComponentType::FP32;
-        case Backend::IL::Format::R16:
+        case IL::Format::R16:
             return ComponentType::FP16;
-        case Backend::IL::Format::R8:
+        case IL::Format::R8:
             return ComponentType::FP32;
-        case Backend::IL::Format::RGBA16Snorm:
+        case IL::Format::RGBA16Snorm:
             return ComponentType::SNormFP16;
-        case Backend::IL::Format::RG16Snorm:
+        case IL::Format::RG16Snorm:
             return ComponentType::SNormFP16;
-        case Backend::IL::Format::RG8Snorm:
+        case IL::Format::RG8Snorm:
             return ComponentType::SNormFP32;
-        case Backend::IL::Format::R16Snorm:
+        case IL::Format::R16Snorm:
             return ComponentType::SNormFP16;
-        case Backend::IL::Format::R16Unorm:
+        case IL::Format::R16Unorm:
             return ComponentType::UNormFP16;
-        case Backend::IL::Format::R8Snorm:
+        case IL::Format::R8Snorm:
             return ComponentType::SNormFP16;
-        case Backend::IL::Format::RGBA32Int:
+        case IL::Format::RGBA32Int:
             return ComponentType::Int32;
-        case Backend::IL::Format::RGBA16Int:
+        case IL::Format::RGBA16Int:
             return ComponentType::Int16;
-        case Backend::IL::Format::RGBA8Int:
+        case IL::Format::RGBA8Int:
             return ComponentType::Int32;
-        case Backend::IL::Format::R32Int:
+        case IL::Format::R32Int:
             return ComponentType::Int32;
-        case Backend::IL::Format::RG32Int:
+        case IL::Format::RG32Int:
             return ComponentType::Int32;
-        case Backend::IL::Format::RG16Int:
+        case IL::Format::RG16Int:
             return ComponentType::Int16;
-        case Backend::IL::Format::RG8Int:
+        case IL::Format::RG8Int:
             return ComponentType::Int32;
-        case Backend::IL::Format::R16Int:
+        case IL::Format::R16Int:
             return ComponentType::Int16;
-        case Backend::IL::Format::R8Int:
+        case IL::Format::R8Int:
             return ComponentType::Int32;
-        case Backend::IL::Format::RGBA32UInt:
+        case IL::Format::RGBA32UInt:
             return ComponentType::UInt32;
-        case Backend::IL::Format::RGBA16UInt:
+        case IL::Format::RGBA16UInt:
             return ComponentType::UInt16;
-        case Backend::IL::Format::RGBA8UInt:
+        case IL::Format::RGBA8UInt:
             return ComponentType::UInt32;
-        case Backend::IL::Format::R32UInt:
+        case IL::Format::R32UInt:
             return ComponentType::UInt32;
-        case Backend::IL::Format::RGB10a2UInt:
+        case IL::Format::RGB10a2UInt:
             return ComponentType::UInt32;
-        case Backend::IL::Format::RG32UInt:
+        case IL::Format::RG32UInt:
             return ComponentType::UInt32;
-        case Backend::IL::Format::RG16UInt:
+        case IL::Format::RG16UInt:
             return ComponentType::UInt16;
-        case Backend::IL::Format::RG8UInt:
+        case IL::Format::RG8UInt:
             return ComponentType::UInt32;
-        case Backend::IL::Format::R16UInt:
+        case IL::Format::R16UInt:
             return ComponentType::UInt16;
-        case Backend::IL::Format::R8UInt:
+        case IL::Format::R8UInt:
             return ComponentType::UInt32;
     }
 }
@@ -1084,7 +1084,7 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddString(DXILPhysicalBlockMetadata::M
     return static_cast<uint32_t>(metadata.metadata.size());
 }
 
-uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMetadata::MetadataBlock &metadata, LLVMBlock *block, const Backend::IL::Constant *constant) {
+uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMetadata::MetadataBlock &metadata, LLVMBlock *block, const IL::Constant *constant) {
     // Check if exists
     for (uint32_t i = 0; i < metadata.metadata.size(); i++) {
         if (metadata.metadata[i].value.constant == constant) {
@@ -1204,15 +1204,15 @@ void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXCompileJob& job) {
 
 void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job) {
     // i32
-    const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
+    const IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32,.signedness=true});
 
     // {i32}
-    const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
+    const IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(IL::StructType {
         .memberTypes = { i32 }
     });
 
     // {i32}[count]
-    const Backend::IL::Type* retArrayTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType{
+    const IL::Type* retArrayTy = program.GetTypeMap().FindTypeOrAdd(IL::ArrayType{
         .elementType = retTy,
         .count = job.instrumentationKey.bindingInfo.shaderExportCount
     });
@@ -1221,9 +1221,9 @@ void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job
     table.type.typeMap.CompileNamedType(retTy, "class.RWBuffer<unsigned int>");
 
     // {i32}*
-    const Backend::IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+    const IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(IL::PointerType{
         .pointee = retArrayTy,
-        .addressSpace = Backend::IL::AddressSpace::Function
+        .addressSpace = IL::AddressSpace::Function
     });
 
     // Create handle
@@ -1246,10 +1246,10 @@ void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job
 
 void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
     // i32
-    const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
+    const IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32,.signedness=true});
 
     // {i32}
-    const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
+    const IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(IL::StructType {
         .memberTypes = { i32 }
     });
 
@@ -1257,9 +1257,9 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
     table.type.typeMap.CompileNamedType(retTy, "class.Buffer<unsigned int>");
 
     // {i32}*
-    const Backend::IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+    const IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(IL::PointerType{
         .pointee = retTy,
-        .addressSpace = Backend::IL::AddressSpace::Function
+        .addressSpace = IL::AddressSpace::Function
     });
 
     // Resource PRMT
@@ -1305,14 +1305,14 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
 
 void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) {
     // i32
-    const Backend::IL::Type *i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true});
-    const Backend::IL::Type *i32x4 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{.containedType=i32, .dimension=4});
+    const IL::Type *i32 = program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32, .signedness=true});
+    const IL::Type *i32x4 = program.GetTypeMap().FindTypeOrAdd(IL::VectorType{.containedType=i32, .dimension=4});
 
     // {[i32 x 4]}
-    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
+    const IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(IL::StructType {
         .memberTypes = {
             // [i32 x 4]
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType {
+            program.GetTypeMap().FindTypeOrAdd(IL::ArrayType {
                 .elementType = i32x4,
                 .count = (job.instrumentationKey.physicalMapping->rootDWordCount + 3) / 4u
             })
@@ -1323,9 +1323,9 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
     table.type.typeMap.CompileNamedType(cbufferType, "CBufferDescriptorData");
 
     // {[i32 x 4]}*
-    const Backend::IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+    const IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(IL::PointerType{
         .pointee = cbufferType,
-        .addressSpace = Backend::IL::AddressSpace::Function
+        .addressSpace = IL::AddressSpace::Function
     });
 
     // Create handle
@@ -1358,15 +1358,15 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXCompileJob &job) {
     }
 
     // i32
-    const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=false});
+    const IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32,.signedness=false});
 
     // Determine number of dwords
     uint32_t alignedDWords = dwordCount / 4;
 
     // Emit aligned data
-    Backend::IL::StructType eventStruct;
+    IL::StructType eventStruct;
     for (uint32_t i = 0; i < alignedDWords; i++) {
-        eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+        eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(IL::VectorType {
             .containedType = i32,
             .dimension = 4
         }));
@@ -1381,7 +1381,7 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXCompileJob &job) {
         if (unalignedDWords == 1) {
             eventStruct.memberTypes.push_back(i32);
         } else {
-            eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+            eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(IL::VectorType {
                 .containedType = i32,
                 .dimension = static_cast<uint8_t>(unalignedDWords)
             }));
@@ -1389,15 +1389,15 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXCompileJob &job) {
     }
 
     // {[4xN] N-1}
-    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(eventStruct);
+    const IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(eventStruct);
 
     // Compile as named
     table.type.typeMap.CompileNamedType(cbufferType, "CBufferEventData");
 
     // {...}*
-    const Backend::IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+    const IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(IL::PointerType{
         .pointee = cbufferType,
-        .addressSpace = Backend::IL::AddressSpace::Function
+        .addressSpace = IL::AddressSpace::Function
     });
 
     // Create handle
@@ -1433,15 +1433,15 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     }
 
     // i32
-    const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=false});
+    const IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(IL::IntType{.bitWidth=32,.signedness=false});
 
     // Determine number of dwords
     uint32_t alignedDWords = dwordCount / 4;
 
     // Emit aligned data
-    Backend::IL::StructType constantStruct;
+    IL::StructType constantStruct;
     for (uint32_t i = 0; i < alignedDWords; i++) {
-        constantStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+        constantStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(IL::VectorType {
             .containedType = i32,
             .dimension = 4
         }));
@@ -1456,7 +1456,7 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
         if (unalignedDWords == 1) {
             constantStruct.memberTypes.push_back(i32);
         } else {
-            constantStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+            constantStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(IL::VectorType {
                 .containedType = i32,
                 .dimension = static_cast<uint8_t>(unalignedDWords)
             }));
@@ -1464,15 +1464,15 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     }
 
     // {[4xN] N-1}
-    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(constantStruct);
+    const IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(constantStruct);
 
     // Compile as named
     table.type.typeMap.CompileNamedType(cbufferType, "CBufferConstantData");
 
     // {...}*
-    const Backend::IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+    const IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(IL::PointerType{
         .pointee = cbufferType,
-        .addressSpace = Backend::IL::AddressSpace::Function
+        .addressSpace = IL::AddressSpace::Function
     });
 
     // Create handle
@@ -1513,24 +1513,24 @@ void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXCompileJob& job)
         ASSERT(info.type == ShaderDataType::Buffer, "Only buffers are implemented for now");
 
         // Get mapped id
-        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+        const IL::Variable* variable = shaderDataMap.Get(info.id);
         ASSERT(variable, "Failed to match variable to shader Data");
 
         // Variables always pointer to
-        const auto* pointerType = variable->type->As<Backend::IL::PointerType>();
+        const auto* pointerType = variable->type->As<IL::PointerType>();
 
         // {format}
-        const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
-            .memberTypes = { pointerType->pointee->As<Backend::IL::BufferType>()->elementType }
+        const IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(IL::StructType {
+            .memberTypes = { pointerType->pointee->As<IL::BufferType>()->elementType }
         });
 
         // Compile as named
         table.type.typeMap.CompileNamedType(retTy, "class.Buffer<Format>");
 
         // {format}*
-        const Backend::IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+        const IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(IL::PointerType{
             .pointee = retTy,
-            .addressSpace = Backend::IL::AddressSpace::Function
+            .addressSpace = IL::AddressSpace::Function
         });
 
         // Create handle
@@ -1650,7 +1650,7 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXCompileJob &job)
         resource.opCount = 9;
         resource.ops = table.recordAllocator.AllocateArray<uint64_t>(resource.opCount);
         resource.ops[0] = FindOrAddOperandU32Constant(*metadataBlock, block, i);
-        resource.ops[1] = FindOrAddOperandConstant(*metadataBlock, block, program.GetConstants().FindConstantOrAdd(handle.type, Backend::IL::UndefConstant{}));
+        resource.ops[1] = FindOrAddOperandConstant(*metadataBlock, block, program.GetConstants().FindConstantOrAdd(handle.type, IL::UndefConstant{}));
         resource.ops[2] = FindOrAddString(*metadataBlock, block, handle.name);
         resource.ops[3] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.bindSpace);
         resource.ops[4] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerBase);
@@ -1750,7 +1750,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXCompileJob &job)
         resource.opCount = 11;
         resource.ops = table.recordAllocator.AllocateArray<uint64_t>(resource.opCount);
         resource.ops[0] = FindOrAddOperandU32Constant(*metadataBlock, block, i);
-        resource.ops[1] = FindOrAddOperandConstant(*metadataBlock, block, program.GetConstants().FindConstantOrAdd(handle.type, Backend::IL::UndefConstant{}));
+        resource.ops[1] = FindOrAddOperandConstant(*metadataBlock, block, program.GetConstants().FindConstantOrAdd(handle.type, IL::UndefConstant{}));
         resource.ops[2] = FindOrAddString(*metadataBlock, block, handle.name);
         resource.ops[3] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.bindSpace);
         resource.ops[4] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerBase);
@@ -1804,12 +1804,12 @@ void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXCompileJob &job)
         resource.opCount = 8;
         resource.ops = table.recordAllocator.AllocateArray<uint64_t>(resource.opCount);
         resource.ops[0] = FindOrAddOperandU32Constant(*metadataBlock, block, i);
-        resource.ops[1] = FindOrAddOperandConstant(*metadataBlock, block, program.GetConstants().FindConstantOrAdd(handle.type, Backend::IL::UndefConstant{}));
+        resource.ops[1] = FindOrAddOperandConstant(*metadataBlock, block, program.GetConstants().FindConstantOrAdd(handle.type, IL::UndefConstant{}));
         resource.ops[2] = FindOrAddString(*metadataBlock, block, handle.name);
         resource.ops[3] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.bindSpace);
         resource.ops[4] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerBase);
         resource.ops[5] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerRange);
-        resource.ops[6] = FindOrAddOperandU32Constant(*metadataBlock, block, static_cast<uint32_t>(GetPODNonAlignedTypeByteSize(handle.type->As<Backend::IL::PointerType>()->pointee)));
+        resource.ops[6] = FindOrAddOperandU32Constant(*metadataBlock, block, static_cast<uint32_t>(GetPODNonAlignedTypeByteSize(handle.type->As<IL::PointerType>()->pointee)));
         resource.ops[7] = 0u;
         block->AddRecord(resource);
 
@@ -1823,7 +1823,7 @@ void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXCompileJob &job)
 }
 
 void DXILPhysicalBlockMetadata::CreateSymbolicBindings() {
-    Backend::IL::TypeMap& typeMap = program.GetTypeMap();
+    IL::TypeMap& typeMap = program.GetTypeMap();
 
     // Allocate counters, no actual backing
     symbolicTextureBindings = program.GetIdentifierMap().AllocID();
@@ -1835,39 +1835,39 @@ void DXILPhysicalBlockMetadata::CreateSymbolicBindings() {
     // This will suffice for now, until a more complete representation is needed in the future
 
     // General array of incomplete textures
-    typeMap.SetType(symbolicTextureBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
-        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
-            .elementType = typeMap.FindTypeOrAdd(Backend::IL::TextureType { }),
+    typeMap.SetType(symbolicTextureBindings, typeMap.FindTypeOrAdd(IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(IL::TextureType { }),
             .count = UINT32_MAX - 1
         }),
-        .addressSpace = Backend::IL::AddressSpace::Resource
+        .addressSpace = IL::AddressSpace::Resource
     }));
 
     // General array of incomplete samplers
-    typeMap.SetType(symbolicSamplerBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
-        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
-            .elementType = typeMap.FindTypeOrAdd(Backend::IL::SamplerType { }),
+    typeMap.SetType(symbolicSamplerBindings, typeMap.FindTypeOrAdd(IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(IL::SamplerType { }),
             .count = UINT32_MAX - 1
         }),
-        .addressSpace = Backend::IL::AddressSpace::Resource
+        .addressSpace = IL::AddressSpace::Resource
     }));
 
     // General array of incomplete buffers
-    typeMap.SetType(symbolicBufferBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
-        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
-            .elementType = typeMap.FindTypeOrAdd(Backend::IL::BufferType { }),
+    typeMap.SetType(symbolicBufferBindings, typeMap.FindTypeOrAdd(IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(IL::BufferType { }),
             .count = UINT32_MAX - 1
         }),
-        .addressSpace = Backend::IL::AddressSpace::Resource
+        .addressSpace = IL::AddressSpace::Resource
     }));
 
     // General array of incomplete cbuffers
-    typeMap.SetType(symbolicCBufferBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
-        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
-            .elementType = typeMap.FindTypeOrAdd(Backend::IL::CBufferType { }),
+    typeMap.SetType(symbolicCBufferBindings, typeMap.FindTypeOrAdd(IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(IL::CBufferType { }),
             .count = UINT32_MAX - 1
         }),
-        .addressSpace = Backend::IL::AddressSpace::Constant
+        .addressSpace = IL::AddressSpace::Constant
     }));
 }
 

@@ -32,7 +32,7 @@
 // Std
 #include <bit>
 
-namespace Backend::IL {
+namespace IL {
     enum class ResourceTokenType {
         Texture,
         Buffer,
@@ -42,5 +42,5 @@ namespace Backend::IL {
     };
 
     // Validation
-    static_assert(std::bit_width(static_cast<uint32_t>(ResourceTokenType::Count)) <= ::IL::kResourceTokenTypeBitCount, "Exceeded token bit-width");
+    static_assert(std::bit_width(static_cast<uint32_t>(ResourceTokenType::Count)) <= kResourceTokenTypeBitCount, "Exceeded token bit-width");
 }

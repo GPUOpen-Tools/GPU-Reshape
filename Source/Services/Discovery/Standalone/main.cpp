@@ -36,6 +36,7 @@
 
 // Common
 #include <Common/Console/ConsoleDevice.h>
+#include <Common/System.h>
 
 // Bridge
 #include <Bridge/RemoteClientBridge.h>
@@ -49,9 +50,6 @@
 
 // Services
 #include <Services/HostResolver/HostResolverService.h>
-
-// System
-#include <Windows.h>
 
 /// Console ping pong
 class PingPongConsole : public TComponent<PingPongConsole>, public IBridgeListener {

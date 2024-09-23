@@ -111,15 +111,15 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
         }
 
         // Get type
-        const Backend::IL::Type* valueType = program.GetTypeMap().GetType(value);
+        const IL::Type* valueType = program.GetTypeMap().GetType(value);
 
         // Stability only instrumented against floating point
-        if (!Backend::IL::IsComponentType<Backend::IL::FPType>(valueType)) {
+        if (!IL::IsComponentType<IL::FPType>(valueType)) {
             return it;
         }
 
         // TODO: Matrix types not handled (for now)
-        if (valueType->Is<Backend::IL::MatrixType>()) {
+        if (valueType->Is<IL::MatrixType>()) {
             return it;
         }
 

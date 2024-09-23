@@ -127,7 +127,7 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
         IL::Emitter<> pre(program, context.basicBlock);
 
         // Failure conditions: output index is not thread ID
-        IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.KernelValue(Backend::IL::KernelValue::FlattenedLocalThreadID));
+        IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.KernelValue(IL::KernelValue::FlattenedLocalThreadID));
 
         // isNotThreadIndex block
         IL::Emitter<> noTid(program, *context.function.GetBasicBlocks().AllocBlock());

@@ -81,7 +81,7 @@ struct InlineSubresourceEmitter {
     /// \param slice target slice
     /// \param mip target mip level
     /// \return offset data
-    Backend::IL::PhysicalMipData<uint32_t> SlicedOffset(uint32_t slice, uint32_t mip) {
+    IL::PhysicalMipData<uint32_t> SlicedOffset(uint32_t slice, uint32_t mip) {
         IL::ExtendedEmitter extended(emitter);
 
         // Calculate the subresource index, mipCount * slice + mip
@@ -92,17 +92,17 @@ struct InlineSubresourceEmitter {
         IL::ID subresourceOffset      = emitter.Extract(emitter.LoadBuffer(buffer, subresourceMemoryIndex), emitter.GetProgram()->GetConstants().UInt(0)->id);
 
         // Setup the mip data
-        Backend::IL::PhysicalMipData<uint32_t> out;
+        IL::PhysicalMipData<uint32_t> out;
         out.offset = subresourceOffset;
-        out.mipWidth = Backend::IL::GetLogicalMipDimension(emitter, tokenEmitter.GetWidth(), mip);
-        out.mipHeight = Backend::IL::GetLogicalMipDimension(emitter, tokenEmitter.GetHeight(), mip);
+        out.mipWidth = IL::GetLogicalMipDimension(emitter, tokenEmitter.GetWidth(), mip);
+        out.mipHeight = IL::GetLogicalMipDimension(emitter, tokenEmitter.GetHeight(), mip);
         return out;
     }
 
     /// Get the subresource offset of a mip major resource
     /// \param mip target mip level
     /// \return offset data
-    Backend::IL::PhysicalMipData<uint32_t> VolumetricOffset(uint32_t mip) {
+    IL::PhysicalMipData<uint32_t> VolumetricOffset(uint32_t mip) {
         IL::ExtendedEmitter extended(emitter);
 
         // Load the subresource offset
@@ -110,11 +110,11 @@ struct InlineSubresourceEmitter {
         IL::ID subresourceOffset      = emitter.Extract(emitter.LoadBuffer(buffer, subresourceMemoryIndex), emitter.GetProgram()->GetConstants().UInt(0)->id);
 
         // Setup the mip data
-        Backend::IL::PhysicalMipData<uint32_t> out;
+        IL::PhysicalMipData<uint32_t> out;
         out.offset = subresourceOffset;
-        out.mipWidth = Backend::IL::GetLogicalMipDimension(emitter, tokenEmitter.GetWidth(), mip);
-        out.mipHeight = Backend::IL::GetLogicalMipDimension(emitter, tokenEmitter.GetHeight(), mip);
-        out.mipDepth = Backend::IL::GetLogicalMipDimension(emitter, tokenEmitter.GetDepthOrSliceCount(), mip);
+        out.mipWidth = IL::GetLogicalMipDimension(emitter, tokenEmitter.GetWidth(), mip);
+        out.mipHeight = IL::GetLogicalMipDimension(emitter, tokenEmitter.GetHeight(), mip);
+        out.mipDepth = IL::GetLogicalMipDimension(emitter, tokenEmitter.GetDepthOrSliceCount(), mip);
         return out;
     }
 

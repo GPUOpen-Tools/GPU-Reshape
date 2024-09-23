@@ -26,7 +26,7 @@
 
 #pragma once
 
-namespace Backend::IL {
+namespace IL {
     enum class KernelValue {
         DispatchThreadID,
         FlattenedLocalThreadID

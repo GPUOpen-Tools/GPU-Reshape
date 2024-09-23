@@ -43,7 +43,7 @@ void SpvUtilShaderConstantData::CompileRecords(const SpvJob &job) {
     table.capability.Add(SpvCapabilityImageBuffer);
 
     // IL type map
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Number of dwords
     uint32_t dwordCount = 0;
@@ -58,14 +58,14 @@ void SpvUtilShaderConstantData::CompileRecords(const SpvJob &job) {
     }
 
     // UInt32
-    const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+    const IL::Type *intType = ilTypeMap.FindTypeOrAdd(IL::IntType{
         .bitWidth = 32,
         .signedness = false
     });
 
     // <UInt32, 4>[N]
-    const Backend::IL::ArrayType* arrayType = ilTypeMap.FindTypeOrAdd(Backend::IL::ArrayType{
-        .elementType = ilTypeMap.FindTypeOrAdd(Backend::IL::VectorType{
+    const IL::ArrayType* arrayType = ilTypeMap.FindTypeOrAdd(IL::ArrayType{
+        .elementType = ilTypeMap.FindTypeOrAdd(IL::VectorType{
             .containedType = intType,
             .dimension = 4
         }),
@@ -75,13 +75,13 @@ void SpvUtilShaderConstantData::CompileRecords(const SpvJob &job) {
     });
 
     // { <UInt32, 4>[N] }*
-    const Backend::IL::PointerType *int4DataTypeStructPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
-        .pointee = ilTypeMap.FindTypeOrAdd(Backend::IL::StructType{
+    const IL::PointerType *int4DataTypeStructPtr = ilTypeMap.FindTypeOrAdd(IL::PointerType{
+        .pointee = ilTypeMap.FindTypeOrAdd(IL::StructType{
             .memberTypes = {
                 arrayType
             }
         }),
-        .addressSpace = Backend::IL::AddressSpace::Constant
+        .addressSpace = IL::AddressSpace::Constant
     });
 
     // Id allocations
@@ -132,19 +132,19 @@ void SpvUtilShaderConstantData::CompileRecords(const SpvJob &job) {
     table.entryPoint.AddInterface(SpvStorageClassUniform, constantId);
 }
 
-IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, const Backend::IL::Type* type, uint32_t dwordOffset, uint32_t dwordCount) {
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, const IL::Type* type, uint32_t dwordOffset, uint32_t dwordCount) {
+    IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // UInt32
-    Backend::IL::IntType typeInt;
+    IL::IntType typeInt;
     typeInt.bitWidth = 32;
     typeInt.signedness = false;
-    const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(typeInt);
+    const IL::Type *uintType = ilTypeMap.FindTypeOrAdd(typeInt);
 
     // UInt32*
-    const Backend::IL::Type *uintTypePtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
+    const IL::Type *uintTypePtr = ilTypeMap.FindTypeOrAdd(IL::PointerType {
         .pointee = uintType,
-        .addressSpace = Backend::IL::AddressSpace::Constant
+        .addressSpace = IL::AddressSpace::Constant
     });
 
     // Constant identifiers
@@ -207,7 +207,7 @@ IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, const Backe
 
     // If a single dword, just return it directly
     if (dwordCount == 1) {
-        ASSERT(type->Is<Backend::IL::IntType>(), "Unexpected type");
+        ASSERT(type->Is<IL::IntType>(), "Unexpected type");
         return dwords[0];
     }
     

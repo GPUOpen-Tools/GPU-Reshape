@@ -24,12 +24,12 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-// System
-#include <Windows.h>
-
 // Layer
 #include <Backends/DX12/DXGIFactory.h>
 #include <Backends/DX12/Device.h>
+
+// Common
+#include <Common/System.h>
 
 // Detour
 #include <Detour/detours.h>
