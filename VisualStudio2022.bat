@@ -40,7 +40,6 @@ echo:
 cmake^
     -G "Visual Studio 17"^
     -DCMAKE_CONFIGURATION_TYPES:STRING="Debug;Release;MinSizeRel;RelWithDebInfo"^
-    -DINSTALL_THIRD_PARTY:BOOL="1"^
     -B "cmake-build-vs2022"^
     %*
 	
