@@ -54,6 +54,9 @@ add_library(
     Detour/src/modules.cpp
 )
 
+# Unity build breaks Detour
+set_target_properties(Detour PROPERTIES UNITY_BUILD OFF)
+
 # Get all includes
 file(GLOB Includes Detour/src/*.h)
 

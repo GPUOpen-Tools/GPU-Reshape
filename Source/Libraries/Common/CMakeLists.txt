@@ -62,6 +62,14 @@ add_library(
     ${CommonX64Sources}
 )
 
+# Linking
+target_link_libraries(
+    GRS.Libraries.Common PUBLIC
+
+    # Win32
+    $<$<PLATFORM_ID:Windows>:Dbghelp>
+)
+
 # Include directories
 target_include_directories(GRS.Libraries.Common PUBLIC Include)
 

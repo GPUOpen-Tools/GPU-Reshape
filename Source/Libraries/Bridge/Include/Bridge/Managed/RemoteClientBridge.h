@@ -92,13 +92,13 @@ namespace Bridge::CLR {
         };
 
         /// Message id to entry key
-        using MIDKey = Collections::Generic::KeyValuePair<uint32_t, IBridgeListener^>;
+        using MIDKey = System::Collections::Generic::KeyValuePair<uint32_t, IBridgeListener^>;
 
         /// Ordered interop lookups
-        Collections::Generic::Dictionary<IBridgeListener^, InteropEntry^> remoteInteropLookup;
+        System::Collections::Generic::Dictionary<IBridgeListener^, InteropEntry^> remoteInteropLookup;
 
         /// Static / dynamic interop lookups
-        Collections::Generic::Dictionary<MIDKey, InteropEntry^> remoteKeyedInteropLookup;
+        System::Collections::Generic::Dictionary<MIDKey, InteropEntry^> remoteKeyedInteropLookup;
         
     private:
         /// Native data

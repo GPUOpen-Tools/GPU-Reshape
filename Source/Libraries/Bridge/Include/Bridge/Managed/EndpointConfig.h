@@ -26,8 +26,6 @@
 
 #pragma once
 
-using namespace System;
-
 // Bridge
 #include <Bridge/EndpointConfig.h>
 
@@ -35,7 +33,7 @@ namespace Bridge::CLR {
     public ref class EndpointConfig {
     public:
         /// Shared port
-        UInt32 sharedPort = kBridgeSharedPort;
+        System::UInt32 sharedPort = kBridgeSharedPort;
     };
 
     public ref class EndpointResolve {
@@ -44,6 +42,6 @@ namespace Bridge::CLR {
         EndpointConfig^ config;
 
         /// Endpoint address
-        String^ ipvxAddress = "";
+        System::String^ ipvxAddress = "";
     };
 }

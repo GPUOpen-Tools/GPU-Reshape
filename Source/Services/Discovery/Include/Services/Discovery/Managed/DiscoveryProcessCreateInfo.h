@@ -26,25 +26,23 @@
 
 #pragma once
 
-using namespace System;
-
 namespace Discovery::CLR {
     public ref class DiscoveryProcessCreateInfo {
     public:
         /// Path of the application
-        String^ applicationPath = "";
+        System::String^ applicationPath = "";
 
         /// Working directory of the application
-        String^ workingDirectoryPath = "";
+        System::String^ workingDirectoryPath = "";
 
         /// All command line arguments given to the application
-        String^ arguments = "";
+        System::String^ arguments = "";
 
         /// All environment key value pairs
-        Collections::Generic::List<Tuple<String^, String^>^>^ environment;
+        System::Collections::Generic::List<System::Tuple<System::String^, System::String^>^>^ environment;
 
         /// Optional, reserved token
-        String^ reservedToken = "";
+        System::String^ reservedToken = "";
 
         /// Should all child processes be captured?
         bool captureChildProcesses = true;
