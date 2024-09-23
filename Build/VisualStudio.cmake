@@ -55,13 +55,16 @@ function(VisualStudioProjectPostfix NAME)
     get_target_property(SourceDir ${NAME} SOURCE_DIR)
     get_target_property(BinaryDir ${NAME} BINARY_DIR)
     get_target_property(SourceList ${NAME} SOURCES)
+	get_target_property(ExcludeFromAll ${NAME} EXCLUDE_FROM_ALL)
 
     # Apply directory structure to given source files
     VisualStudioSourceStructure(${SourceDir} ${BinaryDir} ${SourceList})
 
     # Folder structure and label
-    if ("${RELATIVE_PATH}" MATCHES "ThirdParty")
-        set_target_properties(Backends.Vulkan.Generator PROPERTIES FOLDER ThirdParty/${NAME})
+    if (${ExcludeFromAll})
+        set_target_properties(${NAME} PROPERTIES FOLDER Internal)
+	elseif("${CMAKE_CURRENT_SOURCE_DIR}" MATCHES "ThirdParty")
+        set_target_properties(${NAME} PROPERTIES FOLDER ExternalProjectTargets)
     else()
         string(FIND "${NAME}" "." NameBegin REVERSE)
         if (NOT ${NameBegin} STREQUAL "-1")

@@ -118,7 +118,7 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
 
         # Generate the schema
         add_custom_command(
-            OUTPUT ${OutputPath}.gen
+            OUTPUT ${OutputPath}
             DEPENDS
                 GRS.Libraries.Message.Generator
                 ${LIBS}

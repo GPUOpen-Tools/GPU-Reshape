@@ -50,25 +50,21 @@ endfunction()
 # Add a .NET merge target for generated files
 #  ! Must be called in the same CMakeLists.txt as the custom commands
 function(Project_AddDotNetGeneratedMerge NAME GENERATED_SOURCES)
-	set(Command "")
+    # .Net style projects may not have targets whose inputs are
+    # created from custom commands. So create a dummy target to
+    # pull them in. Both interface and custom targets do not work,
+    # the former doesn't pull in the dependencies, the latter
+    # always rebuilds. So, bite the bullet and create a dummy one
+    
+	# Create dummy target
+	set(MergeStamp ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.cpp)
+	add_library(${NAME} STATIC EXCLUDE_FROM_ALL ${MergeStamp})
 	
-	# Copy each schema target
-	foreach(File ${${GENERATED_SOURCES}})
-		list(APPEND Command COMMAND "${CMAKE_COMMAND}" -E copy "${File}.gen" "${File}")
-		
-		# Generated project / MSBUILD does not check that if inbound file originates from
-		# another target.
-		if (NOT EXISTS ${File})
-			file(WRITE "${File}" "Generation target file")
-		endif()
-	endforeach()
-	
-	# Schema Gen -> Schema
-	add_custom_target(
-		${NAME}
-		DEPENDS ${${GENERATED_SOURCES}_Gen}
-		BYPRODUCTS ${${GENERATED_SOURCES}}
-		${Command}
+	# Create a dummy command that references all dependencies and generates the stamp file
+	add_custom_command(
+		OUTPUT  ${MergeStamp}
+		COMMAND ${CMAKE_COMMAND} -E echo "/* Merge Stamp File */" > ${MergeStamp}
+		DEPENDS ${${GENERATED_SOURCES}}
 	)
 endfunction()
 
@@ -118,7 +114,7 @@ function(Project_AddDotNetEx)
 		VS_GLOBAL_AppendTargetFrameworkToOutputPath "false"
 		VS_GLOBAL_AppendRuntimeIdentifierToOutputPath "false"
         VS_GLOBAL_ROOTNAMESPACE "${ARGS_NAME}"
-        VS_DOTNET_REFERENCES "${ARGS_ASSEMBLIES};${ARGS_LIBS}"
+        VS_DOTNET_REFERENCES "${ARGS_LIBS}"
         VS_USER_PROPS "${CMAKE_SOURCE_DIR}/Build/cs.configuration.props"
     )
 
