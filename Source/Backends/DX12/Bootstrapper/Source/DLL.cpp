@@ -534,7 +534,7 @@ void BootstrapLayer(const char* invoker) {
     }
 }
 
-void WINAPI D3D12GetGPUOpenBootstrapperInfo(D3D12GPUOpenBootstrapperInfo* out) {
+extern "C" __declspec(dllexport) void WINAPI D3D12GetGPUOpenBootstrapperInfo(D3D12GPUOpenBootstrapperInfo* out) {
     out->version = 1;
 }
 

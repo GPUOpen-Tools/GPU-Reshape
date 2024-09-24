@@ -47,7 +47,16 @@ bool IsBootstrappedOnAttach = false;
 /// Check if the process is already bootstrapped, the boostrapper performs its own detouring of calls
 /// \return true if bootstrapped
 static bool IsBootstrapped() {
+    // Try the hooked GPA first
     auto* gpaBootstrapperInfo = reinterpret_cast<PFN_D3D12_GET_GPUOPEN_BOOTSTRAPPER_INFO>(GetProcAddress((HINSTANCE)&__ImageBase, "D3D12GetGPUOpenBootstrapperInfo"));
+
+    // Otherwise, check the known bootstrapper handle
+    // SysWow64 will not get in here, so just check the 64 bit module
+    if (HMODULE bootstrapperHandle; GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, "GRS.Backends.DX12.BootstrapperX64.dll", &bootstrapperHandle) && bootstrapperHandle) {
+        gpaBootstrapperInfo = reinterpret_cast<PFN_D3D12_GET_GPUOPEN_BOOTSTRAPPER_INFO>(GetProcAddress(bootstrapperHandle, "D3D12GetGPUOpenBootstrapperInfo"));
+    }
+
+    // None found?
     if (!gpaBootstrapperInfo) {
         return false;
     }
