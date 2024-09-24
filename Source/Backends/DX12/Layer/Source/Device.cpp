@@ -504,7 +504,7 @@ void ConditionallyEnableExperimentalMode() {
 }
 
 static std::filesystem::path GetD3D12CorePath() {
-    return GetCurrentModuleDirectory() / "Dependencies" / "D3D12";
+    return GetBaseModuleDirectory() / "Dependencies" / "D3D12";
 }
 
 void ConditionallyCreateDeviceFactory() {
