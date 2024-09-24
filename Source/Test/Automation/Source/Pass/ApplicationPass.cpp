@@ -52,7 +52,7 @@ ApplicationPass::ApplicationPass(const ApplicationInfo& info, ComRef<ITestPass> 
 }
 
 bool ApplicationPass::Run() {
-    DiagnosticScope log(registry, "Application {0}", info.identifier);
+    DiagnosticScope log(registry, "Application {0} ({1})", info.identifier, info.processName);
 
     // Enabled at all?
     if (!info.enabled) {
@@ -83,8 +83,8 @@ bool ApplicationPass::Run() {
         return false;
     }
 
-    // Conditionally enable discovery
-    ConditionalDiscovery discoveryGuard(discovery, info.requiresDiscovery);
+    // Discovery disabled before actually needed
+    ConditionalDiscovery discoveryGuard(discovery, false);
 
     // Get all identifiers
     std::vector<FilterEntry> filterEntries;
@@ -105,6 +105,9 @@ bool ApplicationPass::Run() {
             Log(registry, "Known good (history)");
             continue;
         }
+        
+        // Conditionally start discovery
+        discoveryGuard.Start(info.requiresDiscovery);
         
         // Run application
         bool result = false;

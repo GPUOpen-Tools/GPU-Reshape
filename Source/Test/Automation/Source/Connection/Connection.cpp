@@ -96,7 +96,7 @@ bool Connection::CreateConnection(const std::string_view& processName) {
 
     // Keep pooling until a connection is requested or time threshold is reached
     for (;;) {
-        if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - stamp).count() >= 30) {
+        if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - stamp).count() >= 180) {
             return false;
         }
 

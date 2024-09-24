@@ -35,13 +35,7 @@ public:
     /// \param discovery discovery service to start
     /// \param condition start on condition
     ConditionalDiscovery(ComRef<DiscoveryService> discovery, bool condition) : discovery(discovery), condition(condition) {
-        if (condition) {
-            discovery->Start();
-
-            // Let the service catch up
-            // TODO: Future me, please, there has to be a better way
-            std::this_thread::sleep_for(std::chrono::milliseconds(2500));
-        }
+        Start(condition);
     }
 
     /// Deconstructor
@@ -53,6 +47,22 @@ public:
             // TODO: Future me, please, there has to be a better way
             std::this_thread::sleep_for(std::chrono::milliseconds(2500));
         }
+    }
+
+    /// Start this conditional
+    /// @param conditionRetry condition to retry
+    void Start(bool conditionRetry = true) {
+        if (condition || !conditionRetry) {
+            return;
+        }
+
+        // Start discovery
+        condition = true;
+        discovery->Start();
+
+        // Let the service catch up
+        // TODO: Future me, please, there has to be a better way
+        std::this_thread::sleep_for(std::chrono::milliseconds(2500));
     }
 
 private:
