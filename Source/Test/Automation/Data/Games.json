@@ -17,6 +17,15 @@
 			"SteamID": "780310",
 			"Process": "riftbreaker_win_release.exe",
 			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "730",
+			"Process": "cs2.exe",
+			"SteamPath": "game/bin/win64/cs2.exe",
+			"Arguments": "-vulkan",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
 			"Discovery": true
 		},
 		{
@@ -36,6 +45,13 @@
 		{
 			"SteamID": "1016800",
 			"Process": "ChernobylGame-Win64-Shipping.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "534380",
+			"Process": "DyingLightGame_x64_rwdi.exe",
 			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
 			"Arguments": "-dx12",
 			"Discovery": true
@@ -105,6 +121,7 @@
 			"Process": "victoria3.exe",
 			"SteamPath": "binaries/victoria3.exe",
 			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-vulkan",
 			"Discovery": true
 		},
 		{
