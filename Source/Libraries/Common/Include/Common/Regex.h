@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,22 +26,45 @@
 
 #pragma once
 
-// Common
-#include <Common/IComponent.h>
+// Std
+#include <regex>
 
-class TestData : public TComponent<TestData> {
-public:
-    COMPONENT(TestData);
+/// Get the regex for a given wildcard notation
+/// \param wildcard wildcard notation
+/// \return regex
+static inline std::regex GetWildcardRegex(const std::string& wildcard) {
+    std::string regex;
+    regex.reserve(wildcard.size() + 32);
 
-    /// Application identifier filter
-    std::string applicationFilter;
+    // Handle wildcards and escaped characters
+    for (char character : wildcard) {
+        switch (character) {
+            default: {
+                regex.push_back(character);
+                break;
+            }
+            case '*': {
+                regex.append(".*");
+                break;
+            }
+            case '?': {
+                regex.push_back('.');
+                break;
+            }
+            case '\\':
+            case '.':
+            case '^':
+            case '|':
+            case '[':
+            case ']':
+            case '{':
+            case '}': {
+                regex.push_back('\\');
+                regex.push_back(character);
+                break;
+            }
+        }
+    }
 
-    /// Total test count
-    uint32_t testCount{0};
-
-    /// Number of tests that passed
-    uint32_t testPassedCount{0};
-
-    /// Number of tests that failed
-    uint32_t testFailedCount{0};
-};
+    return std::regex(regex);
+}

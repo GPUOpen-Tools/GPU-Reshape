@@ -46,6 +46,7 @@
 #include <Common/RegistryScope.h>
 #include <Common/FileSystem.h>
 #include <Common/String.h>
+#include <Common/Regex.h>
 
 // Std
 #include <regex>
@@ -63,21 +64,20 @@ bool ApplicationPass::Run() {
         return true;
     }
 
-    // Apply name filter
-    if (ComRef testData = registry->Get<TestData>()) {
-        if (!testData->applicationFilter.empty() &&
-            !std::icontains(info.identifier, testData->applicationFilter) &&
-            !std::icontains(info.processName, testData->applicationFilter)) {
-            Log(registry, "Disabled by filter");
-            return true;
-        }
+    // Get test data
+    ComRef testData = registry->Get<TestData>();
+    if (!testData) {
+        Log(registry, "Missing test data");
+        return false;
     }
-
-    // Data for all sub-passes
-    RegistryScope data(registry, registry->New<ApplicationData>());
-
-    // Shared history
-    ComRef history = registry->Get<HistoryData>();
+    
+    // Apply name filter
+    if (!testData->applicationFilter.empty() &&
+        !std::icontains(info.identifier, testData->applicationFilter) &&
+        !std::icontains(info.processName, testData->applicationFilter)) {
+        Log(registry, "Disabled by filter");
+        return true;
+    }
     
     // Find discovery
     discovery = registry->Get<DiscoveryService>();
@@ -104,89 +104,102 @@ bool ApplicationPass::Run() {
 
         // Run against all arguments
         for (const std::string& arguments : info.arguments) {
-            DiagnosticScope argumentScope(registry, "Running with: {0}", arguments.empty() ? "[none]" : arguments);
-            
-            // Check history
-            uint64_t historyTag = StringCRC32Short(Format("Application:{0} Arguments:{1}", filterEntry.identifier, arguments).c_str());
-            if (history && history->IsCompleted(historyTag)) {
-                Log(registry, "Known good (history)");
-                continue;
-            }
-            
-            // Conditionally start discovery
-            discoveryGuard.Start(info.requiresDiscovery);
-            
-            // Run application
-            bool result = false;
-            switch (info.type) {
-                default:
-                    ASSERT(false, "Invalid type");
-                    break;
-                case ApplicationLaunchType::Executable:
-                case ApplicationLaunchType::ExecutableFilter:
-                    result = RunExecutable(filterEntry.identifier, arguments);
-                    break;
-                case ApplicationLaunchType::Steam:
-                    result = RunSteam(filterEntry.identifier, arguments);
-                    break;
-            }
+            // Increment known tests
+            testData->testCount++;
 
-            // OK?
-            if (!result) {
-                Log(registry, "Failed to launch");
-                
+            // Try to run the instance
+            if (RunInstance(discoveryGuard, filterEntry, arguments)) {
+                testData->testPassedCount++;
+            } else {
+                testData->testFailedCount++;
                 anyFailed = true;
-                continue;
-            }
-
-            // Create connection
-            RegistryScope connection(registry, registry->New<Connection>());
-            connection->SetObjectThreshold(info.connectionObjectThreshold);
-
-            // Try to install connection on localhost
-            if (!connection->Install(EndpointResolve {
-                .ipvxAddress = "127.0.0.1"
-            }, filterEntry.processName)) {
-                TerminateApplication(connection->GetProcessID());
-                Log(registry, "Failed to connect to application");
-                
-                anyFailed = true;
-                continue;
-            }
-
-            // Keep local PID
-            data->processID = connection->GetProcessID();
-
-            // Run all tests
-            bool testResult = subPass->Run();
-            if (!testResult) {
-                anyFailed = true;
-            }
-
-            // Let the application run for a bit, validate its stability
-            std::this_thread::sleep_for(std::chrono::milliseconds(2500));
-
-            // Check if the application didn't crash somewhere
-            if (!data->IsAlive()) {
-                Log(registry, "Application crashed during tests");
-
-                anyFailed = true;
-                continue;
-            }
-
-            // Tests done, terminate
-            Log(registry, "Terminating");
-            TerminateApplication(data->processID);
-            
-            // Check history
-            if (history && testResult) {
-                history->Complete(historyTag);
             }
         }
     } 
     
     // OK?
     return !anyFailed;
+}
+
+bool ApplicationPass::RunInstance(ConditionalDiscovery &discoveryGuard, const FilterEntry& filterEntry, const std::string &arguments) {
+    DiagnosticScope argumentScope(registry, "Running with: {0}", arguments.empty() ? "[none]" : arguments);
+
+    // Shared history
+    ComRef history = registry->Get<HistoryData>();
+    
+    // Check history
+    uint64_t historyTag = StringCRC32Short(Format("Application:{0} Arguments:{1}", filterEntry.identifier, arguments).c_str());
+    if (history && history->IsCompleted(historyTag)) {
+        Log(registry, "Known good (history)");
+        return true;
+    }
+    
+    // Conditionally start discovery
+    discoveryGuard.Start(info.requiresDiscovery);
+    
+    // Run application
+    bool result = false;
+    switch (info.type) {
+        default:
+            ASSERT(false, "Invalid type");
+            break;
+        case ApplicationLaunchType::Executable:
+        case ApplicationLaunchType::ExecutableFilter:
+            result = RunExecutable(filterEntry.identifier, arguments);
+            break;
+        case ApplicationLaunchType::Steam:
+            result = RunSteam(filterEntry.identifier, arguments);
+            break;
+    }
+
+    // OK?
+    if (!result) {
+        Log(registry, "Failed to launch");
+        return false;
+    }
+
+    // Create connection
+    RegistryScope connection(registry, registry->New<Connection>());
+    connection->SetObjectThreshold(info.connectionObjectThreshold);
+
+    // Try to install connection on localhost
+    if (!connection->Install(EndpointResolve {
+        .ipvxAddress = "127.0.0.1"
+    }, filterEntry.processName)) {
+        TerminateApplication(connection->GetProcessID());
+        Log(registry, "Failed to connect to application");
+        return false;
+    }
+
+    // Data for all sub-passes
+    RegistryScope data(registry, registry->New<ApplicationData>());
+
+    // Keep local PID
+    data->processID = connection->GetProcessID();
+
+    // Run all tests
+    bool testResult = subPass->Run();
+
+    // Let the application run for a bit, validate its stability
+    std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+
+    // Check if the application didn't crash somewhere
+    if (!data->IsAlive()) {
+        Log(registry, "Application crashed during tests");
+        return false;
+    }
+
+    // Tests done, terminate
+    Log(registry, "Terminating");
+    TerminateApplication(data->processID);
+    
+    // Check history
+    if (history && testResult) {
+        history->Complete(historyTag);
+    }
+
+    // OK
+    return testResult;
 }
 
 bool ApplicationPass::RunExecutable(const std::string& identifier, const std::string& arguments) {
@@ -453,43 +466,6 @@ void ApplicationPass::FilterPaths(std::vector<FilterEntry> &identifiers) {
             FilterExecutables(identifiers);
             break;
     }
-}
-
-static std::regex GetWildcardRegex(const std::string& wildcard) {
-    std::string regex;
-    regex.reserve(wildcard.size() + 32);
-
-    // Handle wildcards and escaped characters
-    for (char character : wildcard) {
-        switch (character) {
-            default: {
-                regex.push_back(character);
-                break;
-            }
-            case '*': {
-                regex.append(".*");
-                break;
-            }
-            case '?': {
-                regex.push_back('.');
-                break;
-            }
-            case '\\':
-            case '.':
-            case '^':
-            case '|':
-            case '[':
-            case ']':
-            case '{':
-            case '}': {
-                regex.push_back('\\');
-                regex.push_back(character);
-                break;
-            }
-        }
-    }
-    
-    return std::regex(regex);
 }
 
 void ApplicationPass::FilterExecutables(std::vector<FilterEntry> &identifiers) {

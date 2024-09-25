@@ -38,6 +38,7 @@
 #include <vector>
 
 // Forward declarations
+class ConditionalDiscovery;
 class DiscoveryService;
 
 class ApplicationPass : public ITestPass {
@@ -51,6 +52,16 @@ public:
 
     /// Overrides
     bool Run() override;
+
+private:
+    /// Filter entry data
+    struct FilterEntry {
+        std::string identifier;
+        std::string processName;
+    };
+    
+    /// Run a test instance
+    bool RunInstance(ConditionalDiscovery &discoveryGuard, const FilterEntry& filterEntry, const std::string& arguments);
 
 private:
     /// Run as an executable
@@ -82,12 +93,6 @@ private:
     bool GetSteamAppManifest(VDFArena& arena, const std::string& libraryPath, const std::string& identifier, VDFDictionaryNode** out);
 
 private:
-    /// Filter entry data
-    struct FilterEntry {
-        std::string identifier;
-        std::string processName;
-    };
-
     /// Filter all paths
     void FilterPaths(std::vector<FilterEntry>& identifiers);
 
