@@ -107,8 +107,22 @@ bool Parser::ParseApplication(const nlohmann::json &json, ComRef<ITestPass>& out
     // Parse attributes
     info.enabled = json.value("Enabled", true);
     info.requiresDiscovery = json.value("Discovery", false);
-    info.arguments = json.value("Arguments", "");
     info.workingDirectory = ExpandPath(json.value("WorkingDirectory", "")).string();
+    info.connectionObjectThreshold = json.value("ConnectionObjectThreshold", 15u);
+
+    // Arguments may be strings or arrays of strings
+    if (auto it = json.find("Arguments"); it != json.end()) {
+        if (it->is_array()) {
+            for (auto&& argumentIt : *it) {
+                info.arguments.push_back(argumentIt.get<std::string>());
+            }
+        } else {
+            info.arguments.push_back(it->get<std::string>());
+        }
+    } else {
+        // Keep at least one invocation going
+        info.arguments.push_back("");
+    }
 
     // Determine type
     if (json.contains("Path")) {

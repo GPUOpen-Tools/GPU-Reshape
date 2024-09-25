@@ -9,13 +9,161 @@
 			"PathFilter": "%TEST_SUITE%\\Samples\\AMD\\GLTFSample\\bin\\*.exe",
 			"Passes": [{ "Type": "WaitForPipelines" }]
 		},
+        {
+            "PathFilter": "%TEST_SUITE%\\Samples\\AMD\\TressFX\\bin\\*.exe",
+            "Passes": [{ "Type": "WaitForPipelines" }]
+        },
+        {
+            "Path": "%TEST_SUITE%\\Samples\\Khronos\\Vulkan-Samples\\cmake-build\\app\\bin\\relwithdebinfo\\AMD64\\vulkan_samples.exe",
+			"WorkingDirectory": "%TEST_SUITE%\\Samples\\Khronos\\Vulkan-Samples",
+			"ConnectionObjectThreshold": 1,
+            "Arguments": [
+				"sample compute_nbody",
+				"sample dynamic_uniform_buffers",
+				"sample hpp_hdr",
+				"sample hpp_hello_triangle",
+				"sample hpp_hlsl_shaders",
+				"sample hpp_instancing",
+				"sample hpp_oit_depth_peeling",
+				"sample hpp_oit_linked_lists",
+				"sample hpp_separate_image_sampler",
+				"sample hpp_terrain_tessellation",
+				"sample hpp_texture_loading",
+				"sample hpp_texture_mipmap_generation",
+				"sample hpp_timestamp_queries",
+				"sample hdr",
+				"sample hello_triangle",
+				"sample hlsl_shaders",
+				"sample instancing",
+				"sample oit_depth_peeling",
+				"sample oit_linked_lists",
+				"sample separate_image_sampler",
+				"sample terrain_tessellation",
+				"sample texture_loading",
+				"sample texture_mipmap_generation",
+				"sample timestamp_queries",
+				"sample buffer_device_address",
+				"sample calibrated_timestamps",
+				"sample color_write_enable",
+				"sample conditional_rendering",
+				"sample conservative_rasterization",
+				"sample debug_utils",
+				"sample descriptor_buffer_basic",
+				"sample descriptor_indexing",
+				"sample dynamic_primitive_clipping",
+				"sample dynamic_rendering",
+				"sample fragment_shader_barycentric",
+				"sample fragment_shading_rate",
+				"sample fragment_shading_rate_dynamic",
+				"sample full_screen_exclusive",
+				"sample graphics_pipeline_library",
+				"sample gshader_to_mshader",
+				"sample hpp_mesh_shading",
+				"sample memory_budget",
+				"sample mesh_shading",
+				"sample open_cl_interop",
+				"sample open_gl_interop",
+				"sample portability",
+				"sample push_descriptors",
+				"sample ray_queries",
+				"sample ray_tracing_basic",
+				"sample ray_tracing_extended",
+				"sample ray_tracing_position_fetch",
+				"sample ray_tracing_reflection",
+				"sample sparse_image",
+				"sample synchronization_2",
+				"sample vertex_dynamic_state",
+				"sample 16bit_arithmetic",
+				"sample 16bit_storage_input_output",
+				"sample afbc",
+				"sample async_compute",
+				"sample command_buffer_usage",
+				"sample constant_data",
+				"sample descriptor_management",
+				"sample hpp_pipeline_cache",
+				"sample hpp_swapchain_images",
+				"sample image_compression_control",
+				"sample layout_transitions",
+				"sample msaa",
+				"sample multi_draw_indirect",
+				"sample multithreading_render_passes",
+				"sample pipeline_barriers",
+				"sample pipeline_cache",
+				"sample render_passes",
+				"sample specialization_constants",
+				"sample subpasses",
+				"sample surface_rotation",
+				"sample swapchain_images",
+				"sample texture_compression_basisu",
+				"sample texture_compression_comparison",
+				"sample wait_idle"
+			],
+			"Comment": {
+				"Removed-ext-missing": [
+					"sample dynamic_line_rasterization",
+					"sample logic_op_dynamic_state",
+					"sample extended_dynamic_state2",
+					"sample patch_control_points",
+					"sample mesh_shader_culling",
+					"sample dynamic_blending"
+				],
+				"Removed-issue": [
+					"sample shader_debugprintf",
+					"sample shader_object"
+				]
+			},
+            "Passes": [{ "Type": "WaitForPipelines" }]
+        },
 		{
-			"Path": "%TEST_SUITE%\\Samples\\DeferredTexturing\\BindlessDeferred\\x64\\Debug\\BindlessDeferred.exe",
+			"Path": "%TEST_SUITE%\\Samples\\Users\\MJP\\DeferredTexturing\\BindlessDeferred\\x64\\Debug\\BindlessDeferred.exe",
 			"WorkingDirectory": "%TEST_SUITE%\\Samples\\DeferredTexturing\\BindlessDeferred",
 			"Passes": [{ "Type": "WaitForPipelines" }]
 		},
 		{
+			"Path": "%TEST_SUITE%\\Samples\\Users\\MJP\\Private0\\Private\\x64\\Debug\\Private.exe",
+			"WorkingDirectory": "%TEST_SUITE%\\Samples\\Users\\MJP\\Private0\\Private",
+			"Passes": [{ "Type": "WaitForPipelines" }]
+		},
+		{
 			"Path": "%TEST_SUITE%\\Samples\\Microsoft\\DirectX-Graphics-Samples\\MiniEngine\\Build\\x64\\Debug\\Output\\ModelViewer\\ModelViewer.exe",
+			"Passes": [{ "Type": "WaitForPipelines" }]
+		},
+		{
+			"Path": "%TEST_SUITE%\\Samples\\Microsoft\\D3D12MeshShaderSamples\\MeshletRender\\bin\\x64\\Debug\\MeshletRenderer.exe",
+			"WorkingDirectory": "%TEST_SUITE%\\Samples\\Microsoft\\D3D12MeshShaderSamples\\MeshletRender",
+			"Passes": [{ "Type": "WaitForPipelines" }]
+		},
+		{
+			"Path": "%TEST_SUITE%\\Samples\\wgpu-trunk\\target\\debug\\deps\\wgpu_examples.exe",
+			"ConnectionObjectThreshold": 1,
+			"Arguments": [
+				"boids",
+				"bunnymark",
+				"conservative_raster",
+				"cube",
+				"hello_triangle",
+				"mipmap",
+				"msaa_line",
+				"shadow",
+				"skybox",
+				"srgb_blend",
+				"stencil_triangles",
+				"texture_arrays",
+				"water"
+			],
+			"Comment": {
+				"Removed-NoSingleWindow": [
+					"hello_compute",
+					"hello_windows",
+					"hello_workgroups",
+					"hello_synchronization",
+					"render_to_texture",
+					"repeated_compute",
+					"storage_texture",
+					"timestamp_queries",
+					"uniform_values"
+				]
+			},
 			"Passes": [{ "Type": "WaitForPipelines" }]
 		}
 	]

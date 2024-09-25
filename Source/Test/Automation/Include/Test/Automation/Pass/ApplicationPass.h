@@ -54,16 +54,16 @@ public:
 
 private:
     /// Run as an executable
-    bool RunExecutable(const std::string& identifier);
+    bool RunExecutable(const std::string& identifier, const std::string& arguments);
 
     /// Run as a steam application
-    bool RunSteam(const std::string& identifier);
+    bool RunSteam(const std::string& identifier, const std::string& arguments);
 
     /// Run from a local steam path
-    bool RunSteamPath(const std::string_view& libraryPath, VDFDictionaryNode* manifest, const std::string& identifier);
+    bool RunSteamPath(const std::string_view& libraryPath, VDFDictionaryNode* manifest, const std::string& identifier, const std::string& arguments);
 
     /// Run from a steam id
-    bool RunSteamID(const std::string& steamPath, VDFDictionaryNode* manifest, const std::string& identifier);
+    bool RunSteamID(const std::string& steamPath, VDFDictionaryNode* manifest, const std::string& identifier, const std::string& arguments);
 
     /// Terminate the application
     void TerminateApplication(uint32_t processID);

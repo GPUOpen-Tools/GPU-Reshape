@@ -30,6 +30,7 @@
 #include <Test/Automation/Pass/ApplicationLaunchType.h>
 
 // Std
+#include <vector>
 #include <string>
 
 struct ApplicationInfo {
@@ -49,8 +50,11 @@ struct ApplicationInfo {
     /// Launch identifier, see launch type for details
     std::string identifier;
 
+    /// Threshold before the connection kicks in
+    uint32_t connectionObjectThreshold{1u};
+
     /// All command line arguments passed to the application
-    std::string arguments;
+    std::vector<std::string> arguments;
 
     /// Optional, working directory
     std::string workingDirectory;

@@ -88,6 +88,11 @@ public:
         return featureMap.at(std::string(name));
     }
 
+    /// Set the object threshold before a connection kicks in
+    void SetObjectThreshold(uint32_t value) {
+        objectThreshold = value;
+    }
+
     /// Get the attached process id
     uint32_t GetProcessID() const {
         return processID;
@@ -142,4 +147,7 @@ private:
 
     /// Attached process id
     uint32_t processID{UINT32_MAX};
+
+    /// Threshold before connection kicks in
+    uint32_t objectThreshold{1u};
 };

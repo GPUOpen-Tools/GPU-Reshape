@@ -127,7 +127,7 @@ bool Connection::PoolHostServers(const std::string_view& processName, PooledMess
             auto* info = it.Get<HostServerInfoMessage>();
 
             // Matches process?
-            if (processName != info->process.View() || info->deviceObjects < 15) {
+            if (processName != info->process.View() || info->deviceObjects < objectThreshold) {
                 continue;
             }
 

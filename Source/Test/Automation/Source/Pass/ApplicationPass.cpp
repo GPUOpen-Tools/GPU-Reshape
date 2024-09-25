@@ -102,80 +102,86 @@ bool ApplicationPass::Run() {
             Log(registry, "Filter: {0}", filterEntry.identifier);
         }
 
-        // Check history
-        uint64_t historyTag = StringCRC32Short(Format("Application:{0}", filterEntry.identifier).c_str());
-        if (history && history->IsCompleted(historyTag)) {
-            Log(registry, "Known good (history)");
-            continue;
-        }
-        
-        // Conditionally start discovery
-        discoveryGuard.Start(info.requiresDiscovery);
-        
-        // Run application
-        bool result = false;
-        switch (info.type) {
-            default:
-                ASSERT(false, "Invalid type");
-                break;
-            case ApplicationLaunchType::Executable:
-            case ApplicationLaunchType::ExecutableFilter:
-                result = RunExecutable(filterEntry.identifier);
-                break;
-            case ApplicationLaunchType::Steam:
-                result = RunSteam(filterEntry.identifier);
-                break;
-        }
-
-        // OK?
-        if (!result) {
-            Log(registry, "Failed to launch");
+        // Run against all arguments
+        for (const std::string& arguments : info.arguments) {
+            Log(registry, "Running with: {0}", arguments.empty() ? "[none]" : arguments);
             
-            anyFailed = true;
-            continue;
-        }
-
-        // Create connection
-        RegistryScope connection(registry, registry->New<Connection>());
-
-        // Try to install connection on localhost
-        if (!connection->Install(EndpointResolve {
-            .ipvxAddress = "127.0.0.1"
-        }, filterEntry.processName)) {
-            TerminateApplication(connection->GetProcessID());
-            Log(registry, "Failed to connect to application");
+            // Check history
+            uint64_t historyTag = StringCRC32Short(Format("Application:{0} Arguments:{1}", filterEntry.identifier, arguments).c_str());
+            if (history && history->IsCompleted(historyTag)) {
+                Log(registry, "Known good (history)");
+                continue;
+            }
             
-            anyFailed = true;
-            continue;
-        }
+            // Conditionally start discovery
+            discoveryGuard.Start(info.requiresDiscovery);
+            
+            // Run application
+            bool result = false;
+            switch (info.type) {
+                default:
+                    ASSERT(false, "Invalid type");
+                    break;
+                case ApplicationLaunchType::Executable:
+                case ApplicationLaunchType::ExecutableFilter:
+                    result = RunExecutable(filterEntry.identifier, arguments);
+                    break;
+                case ApplicationLaunchType::Steam:
+                    result = RunSteam(filterEntry.identifier, arguments);
+                    break;
+            }
 
-        // Keep local PID
-        data->processID = connection->GetProcessID();
+            // OK?
+            if (!result) {
+                Log(registry, "Failed to launch");
+                
+                anyFailed = true;
+                continue;
+            }
 
-        // Run all tests
-        bool testResult = subPass->Run();
-        if (!testResult) {
-            anyFailed = true;
-        }
+            // Create connection
+            RegistryScope connection(registry, registry->New<Connection>());
+            connection->SetObjectThreshold(info.connectionObjectThreshold);
 
-        // Let the application run for a bit, validate its stability
-        std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+            // Try to install connection on localhost
+            if (!connection->Install(EndpointResolve {
+                .ipvxAddress = "127.0.0.1"
+            }, filterEntry.processName)) {
+                TerminateApplication(connection->GetProcessID());
+                Log(registry, "Failed to connect to application");
+                
+                anyFailed = true;
+                continue;
+            }
 
-        // Check if the application didn't crash somewhere
-        if (!data->IsAlive()) {
-            Log(registry, "Application crashed during tests");
+            // Keep local PID
+            data->processID = connection->GetProcessID();
 
-            anyFailed = true;
-            continue;
-        }
+            // Run all tests
+            bool testResult = subPass->Run();
+            if (!testResult) {
+                anyFailed = true;
+            }
 
-        // Tests done, terminate
-        Log(registry, "Terminating");
-        TerminateApplication(data->processID);
-        
-        // Check history
-        if (history && testResult) {
-            history->Complete(historyTag);
+            // Let the application run for a bit, validate its stability
+            std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+
+            // Check if the application didn't crash somewhere
+            if (!data->IsAlive()) {
+                Log(registry, "Application crashed during tests");
+
+                anyFailed = true;
+                continue;
+            }
+
+            // Tests done, terminate
+            Log(registry, "Terminating");
+            TerminateApplication(data->processID);
+            
+            // Check history
+            if (history && testResult) {
+                history->Complete(historyTag);
+            }
         }
     } 
     
@@ -183,7 +189,7 @@ bool ApplicationPass::Run() {
     return !anyFailed;
 }
 
-bool ApplicationPass::RunExecutable(const std::string& identifier) {
+bool ApplicationPass::RunExecutable(const std::string& identifier, const std::string& arguments) {
     // Convert to absolute
     std::string path = std::filesystem::absolute(identifier).string();
 
@@ -200,7 +206,7 @@ bool ApplicationPass::RunExecutable(const std::string& identifier) {
     DiscoveryProcessCreateInfo createInfo{};
     createInfo.applicationPath = path.c_str();
     createInfo.workingDirectoryPath = workingDirectory.c_str();
-    createInfo.arguments = info.arguments.c_str();
+    createInfo.arguments = arguments.c_str();
     return discovery->StartBootstrappedProcess(createInfo, stream, processInfo);
 }
 
@@ -247,7 +253,7 @@ bool ApplicationPass::GetSteamAppLibraryPath(VDFArena& arena, const std::string 
     return false;
 }
 
-bool ApplicationPass::RunSteam(const std::string& identifier) {
+bool ApplicationPass::RunSteam(const std::string& identifier, const std::string& arguments) {
     VDFArena vdfArena;
     
     // Assume steam path from environment
@@ -273,11 +279,11 @@ bool ApplicationPass::RunSteam(const std::string& identifier) {
 
     // If there's a local path, do that
     if (!info.steam.path.empty()) {
-        return RunSteamPath(libraryPath, manifest, identifier);
+        return RunSteamPath(libraryPath, manifest, identifier, arguments);
     }
 
     // Otherwise launch from steam id
-    return RunSteamID(steamPath, manifest, identifier);
+    return RunSteamID(steamPath, manifest, identifier, arguments);
 }
 
 bool ApplicationPass::GetSteamLibraryFolders(VDFArena& arena, const std::string &steamPath, const std::string &identifier, VDFDictionaryNode** out) {
@@ -346,7 +352,7 @@ bool ApplicationPass::GetSteamAppManifest(VDFArena& arena, const std::string& li
     return true;
 }
 
-bool ApplicationPass::RunSteamPath(const std::string_view& libraryPath, VDFDictionaryNode* manifest, const std::string &identifier) {
+bool ApplicationPass::RunSteamPath(const std::string_view& libraryPath, VDFDictionaryNode* manifest, const std::string &identifier, const std::string& arguments) {
     auto* installDir = manifest->Find<VDFString>("installdir");
     if (!installDir) {
         Log(registry, "Steam manifest missing installation directory");
@@ -361,10 +367,10 @@ bool ApplicationPass::RunSteamPath(const std::string_view& libraryPath, VDFDicti
     }
 
     // Run as regular executable
-    return RunExecutable(appPath.string());
+    return RunExecutable(appPath.string(), arguments);
 }
 
-bool ApplicationPass::RunSteamID(const std::string& steamPath, VDFDictionaryNode* manifest, const std::string &identifier) {
+bool ApplicationPass::RunSteamID(const std::string& steamPath, VDFDictionaryNode* manifest, const std::string &identifier, const std::string& arguments) {
     // Find steam executable
     std::filesystem::path exePath = std::filesystem::path(steamPath) / "steam.exe";
     if (!exists(exePath)) {
@@ -373,15 +379,15 @@ bool ApplicationPass::RunSteamID(const std::string& steamPath, VDFDictionaryNode
     }
     
     // Launch string
-    std::string arguments = "-applaunch " + identifier;
+    std::string shellArguments = "-applaunch " + identifier;
 
     // Append arguments if any
     if (!info.arguments.empty()) {
-        arguments += " " + info.arguments;
+        shellArguments += " " + arguments;
     }
 
     // Launch as shell command
-    ShellExecuteA(nullptr, "open", exePath.string().data(), arguments.c_str(), nullptr, SW_SHOWMINIMIZED);
+    ShellExecuteA(nullptr, "open", exePath.string().data(), shellArguments.c_str(), nullptr, SW_SHOWMINIMIZED);
     return true;
 }
 
