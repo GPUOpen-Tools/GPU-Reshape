@@ -68,6 +68,13 @@ submitted applications. For a full list, please see the [Testing Suite](Document
 
 - Raytracing shaders are currently pass-through, no instrumentation is done on them. This is scheduled for the next release.
 
+DX12 features pending support:
+- Work Graphs
+
+Vulkan extensions pending support:
+- Descriptor Buffers
+- Shader Objects
+
 ## Credit
 
 GPU Reshape was initially developed as a prototype tool by Miguel Petersen at Avalanche Studios Group, extending validation tools to shader side operations.
