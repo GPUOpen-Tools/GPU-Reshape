@@ -122,6 +122,7 @@ bool Parser::ParseApplication(const nlohmann::json &json, ComRef<ITestPass>& out
         info.type = ApplicationLaunchType::Steam;
         info.identifier = json["SteamID"].get<std::string>();
         info.processName = json.value("Process", "NoName");
+        info.steam.path = json.value("SteamPath", "");
     } else if (json.contains("PathFilter")) {
         std::filesystem::path filter = ExpandPath(json["PathFilter"].get<std::string>());
 

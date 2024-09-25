@@ -104,6 +104,30 @@ namespace std {
         return isearch(a, b) != a.end();
     }
 
+    static inline std::string replace_all(const std::string_view& str, const std::string_view& search, const std::string_view& replacement) {
+        std::string replaced;
+
+        std::string_view::const_iterator current = str.begin();
+        for (;;) {
+            // Find next instance
+            auto next = std::search(current, str.end(), search.begin(), search.end());
+            if (next == str.end()) {
+                break;
+            }
+
+            // Append until with replacement
+            replaced.append(current, next);
+            replaced.append(replacement);
+
+            // Skip instance
+            current = next + search.size();
+        }
+
+        // Append remaining
+        replaced.append(current, str.end());
+        return replaced;
+    }
+
     inline bool ends_with(std::string_view const &value, std::string_view const &ending) {
         if (ending.length() > value.length()) {
             return false;

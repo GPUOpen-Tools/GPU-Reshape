@@ -54,4 +54,10 @@ struct ApplicationInfo {
 
     /// Optional, working directory
     std::string workingDirectory;
+
+    /// Steam payload
+    struct {
+        /// Local path to execute within the application path
+        std::string path;
+    } steam;
 };

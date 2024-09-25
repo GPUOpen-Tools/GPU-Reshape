@@ -29,6 +29,7 @@
 // Automation
 #include <Test/Automation/Pass/ApplicationInfo.h>
 #include <Test/Automation/Pass/ITestPass.h>
+#include <Test/Automation/Steam/VDFHeader.h>
 
 // Common
 #include <Common/ComRef.h>
@@ -58,8 +59,27 @@ private:
     /// Run as a steam application
     bool RunSteam(const std::string& identifier);
 
+    /// Run from a local steam path
+    bool RunSteamPath(const std::string_view& libraryPath, VDFDictionaryNode* manifest, const std::string& identifier);
+
+    /// Run from a steam id
+    bool RunSteamID(const std::string& steamPath, VDFDictionaryNode* manifest, const std::string& identifier);
+
     /// Terminate the application
     void TerminateApplication(uint32_t processID);
+
+private:
+    /// Get the path of steam
+    bool GetSteamPath(std::string& out);
+    
+    /// Try to get the steam library folders
+    bool GetSteamLibraryFolders(VDFArena& arena, const std::string& steamPath, const std::string& identifier, VDFDictionaryNode** out);
+    
+    /// Try to find the application library path
+    bool GetSteamAppLibraryPath(VDFArena& arena, const std::string& steamPath, const std::string& identifier, std::string& libraryPath);
+    
+    /// Try to get the application manifest
+    bool GetSteamAppManifest(VDFArena& arena, const std::string& libraryPath, const std::string& identifier, VDFDictionaryNode** out);
 
 private:
     /// Filter entry data

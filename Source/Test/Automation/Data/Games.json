@@ -103,6 +103,7 @@
 		{
 			"SteamID": "529340",
 			"Process": "victoria3.exe",
+			"SteamPath": "binaries/victoria3.exe",
 			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
 			"Discovery": true
 		},

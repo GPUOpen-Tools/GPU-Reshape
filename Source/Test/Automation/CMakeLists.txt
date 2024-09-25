@@ -43,6 +43,7 @@ add_library(
     Source/Data/ApplicationData.cpp
     Source/Data/HistoryData.cpp
     Source/Win32/Window.cpp
+    Source/Steam/VDFParser.cpp
     Source/TestContainer.cpp
     Source/Parser.cpp
 )
