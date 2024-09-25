@@ -104,7 +104,7 @@ bool ApplicationPass::Run() {
 
         // Run against all arguments
         for (const std::string& arguments : info.arguments) {
-            Log(registry, "Running with: {0}", arguments.empty() ? "[none]" : arguments);
+            DiagnosticScope argumentScope(registry, "Running with: {0}", arguments.empty() ? "[none]" : arguments);
             
             // Check history
             uint64_t historyTag = StringCRC32Short(Format("Application:{0} Arguments:{1}", filterEntry.identifier, arguments).c_str());

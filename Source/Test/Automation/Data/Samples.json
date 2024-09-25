@@ -116,7 +116,7 @@
         },
 		{
 			"Path": "%TEST_SUITE%\\Samples\\Users\\MJP\\DeferredTexturing\\BindlessDeferred\\x64\\Debug\\BindlessDeferred.exe",
-			"WorkingDirectory": "%TEST_SUITE%\\Samples\\DeferredTexturing\\BindlessDeferred",
+			"WorkingDirectory": "%TEST_SUITE%\\Samples\\Users\\MJP\\DeferredTexturing\\BindlessDeferred",
 			"Passes": [{ "Type": "WaitForPipelines" }]
 		},
 		{
@@ -130,6 +130,7 @@
 		},
 		{
 			"Path": "%TEST_SUITE%\\Samples\\Microsoft\\D3D12MeshShaderSamples\\MeshletRender\\bin\\x64\\Debug\\MeshletRenderer.exe",
+			"ConnectionObjectThreshold": 1,
 			"WorkingDirectory": "%TEST_SUITE%\\Samples\\Microsoft\\D3D12MeshShaderSamples\\MeshletRender",
 			"Passes": [{ "Type": "WaitForPipelines" }]
 		},
