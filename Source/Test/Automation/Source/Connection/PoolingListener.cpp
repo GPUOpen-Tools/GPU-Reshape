@@ -91,17 +91,12 @@ void PoolingListener::Commit(MessageSchema schema, const void* ptr, size_t lengt
 }
 
 void PoolingListener::Commit(TaskBucket& bucket, const void* ptr, size_t length, size_t count) {
-    for (MessageTask* task : bucket.tasks) {
-        Commit(task, ptr, length, count);
+    for (int64_t i = static_cast<int64_t>(bucket.tasks.Size()) - 1; i >= 0; i--) {
+        Commit(bucket, bucket.tasks[i], ptr, length, count);
     }
-
-    // Cleanup dead tasks
-    bucket.tasks.RemoveIf([&](MessageTask* task) {
-        return task->controller->pendingRelease;
-    });
 }
 
-void PoolingListener::Commit(MessageTask* task, const void* ptr, size_t length, size_t count) {
+void PoolingListener::Commit(TaskBucket& bucket, MessageTask* task, const void* ptr, size_t length, size_t count) {
     std::lock_guard guard(task->controller->mutex);
 
     // Move all dadta
@@ -109,6 +104,10 @@ void PoolingListener::Commit(MessageTask* task, const void* ptr, size_t length, 
 
     // Mark for pending release if needed
     if (task->ShouldReleaseOnAcquire()) {
+        // Always remove before waking the dependencies
+        bucket.tasks.Remove(task);
+
+        // Recycle controller
         task->controller->pendingRelease = true;
         controllerPool.Push(task->controller);
     }

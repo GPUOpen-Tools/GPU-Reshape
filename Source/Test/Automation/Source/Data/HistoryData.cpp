@@ -30,11 +30,15 @@
 // Common
 #include <Common/FileSystem.h>
 
+// Json
+#include <nlohmann/json.hpp>
+
 // Std
+#include <iostream>
 #include <fstream>
 
 void HistoryData::Restore() {
-    std::filesystem::path path = GetIntermediatePath("Tests") / "History.blob";
+    std::filesystem::path path = GetIntermediatePath("Tests") / "History.json";
 
     // Try to open history
     std::ifstream stream(path, std::ios_base::binary);
@@ -42,21 +46,23 @@ void HistoryData::Restore() {
         return;
     }
 
-    // Read number of tags
-    uint64_t count;
-    stream.read(reinterpret_cast<char*>(&count), sizeof(count));
+    // Parse json
+    nlohmann::json json;
+    try {
+        stream >> json;
 
-    // Read all tags
-    for (uint64_t i = 0; i < count; i++) {
-        uint64_t tag;
-        stream.read(reinterpret_cast<char*>(&tag), sizeof(tag));
-
-        completedTags.insert(tag);
+        // Get all tags
+        completedTags.clear();
+        for (auto obj : json["CompletedTags"]) {
+            completedTags.insert(obj.get<std::string>());
+        }
+    } catch(nlohmann::json::exception& ex) {
+        std::cerr << "Failed to deserialize json file: " << path << ", " << ex.what() << std::endl;
     }
 }
 
 void HistoryData::Flush() {
-    std::filesystem::path path = GetIntermediatePath("Tests") / "History.blob";
+    std::filesystem::path path = GetIntermediatePath("Tests") / "History.json";
     
     // Try to open history
     std::ofstream stream(path, std::ios_base::binary);
@@ -64,12 +70,14 @@ void HistoryData::Flush() {
         return;
     }
 
-    // Write number of tags
-    uint64_t count = completedTags.size();
-    stream.write(reinterpret_cast<const char*>(&count), sizeof(count));
+    // Create objects
+    nlohmann::json json;
+    json["CompletedTags"] = completedTags;
 
-    // Write all tags
-    for (uint64_t tag : completedTags) {
-        stream.write(reinterpret_cast<const char*>(&tag), sizeof(tag));
+    // Serialize history
+    try {
+        stream << json.dump(4);
+    } catch(nlohmann::json::exception& ex) {
+        std::cerr << "Failed to serialize json file: " << path << ", " << ex.what() << std::endl;
     }
 }

@@ -98,7 +98,8 @@ int main(int argc, char *const argv[]) {
 
     // Setup parameters
     argParser.add_argument("-test").help("Test json file").default_value(std::string(""));
-    argParser.add_argument("-filter").help("Application filter").default_value(std::string(""));
+    argParser.add_argument("-include").help("Application inclusion filter").default_value(std::string(""));
+    argParser.add_argument("-exclude").help("Application exclusion filter").default_value(std::string(""));
 
     // Attempt to parse the input
     try {
@@ -111,14 +112,16 @@ int main(int argc, char *const argv[]) {
 
     // Arguments
     auto &&testFilter = argParser.get<std::string>("-test");
-    auto &&filter = argParser.get<std::string>("-filter");
+    auto &&includeFilter = argParser.get<std::string>("-include");
+    auto &&excludeFilter = argParser.get<std::string>("-exclude");
 
     // Local registry
     Registry registry;
 
     // Set test data
     ComRef data = registry.AddNew<TestData>();
-    data->applicationFilter = filter;
+    data->applicationIncludeFilter = includeFilter;
+    data->applicationExcludeFilter = excludeFilter;
 
     // Set history data
     ComRef history = registry.AddNew<HistoryData>();
@@ -145,7 +148,7 @@ int main(int argc, char *const argv[]) {
     // Report result
     std::cout << "\nTest container " << (result ? "passed" : "failed") << std::endl;
     std::cout << "\t" << data->testPassedCount << " passed" << std::endl;
-    std::cout << "\t " << data->testFailedCount << " failed" << std::endl;
+    std::cout << "\t" << data->testFailedCount << " failed" << std::endl;
 
     // OK (1 is error)
     return !result;

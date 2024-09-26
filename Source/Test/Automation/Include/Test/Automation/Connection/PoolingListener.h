@@ -84,11 +84,12 @@ private:
     void Commit(TaskBucket& bucket, const void* ptr, size_t length, size_t count);
 
     /// Commit all pending tasks for a task
+    /// \param bucket bucket to apply for
     /// \param task task to apply for
     /// \param ptr data begin
     /// \param length byte length of data
     /// \param count number of messages
-    void Commit(MessageTask* task, const void* ptr, size_t length, size_t count);
+    void Commit(TaskBucket& bucket, MessageTask* task, const void* ptr, size_t length, size_t count);
 
 private:
     struct SchemaComparator {

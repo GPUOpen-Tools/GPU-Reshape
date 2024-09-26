@@ -34,7 +34,10 @@ public:
     COMPONENT(TestData);
 
     /// Application identifier filter
-    std::string applicationFilter;
+    std::string applicationIncludeFilter;
+
+    /// Application identifier filter
+    std::string applicationExcludeFilter;
 
     /// Total test count
     uint32_t testCount{0};

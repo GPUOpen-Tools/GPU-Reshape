@@ -43,19 +43,19 @@ public:
     void Flush();
 
     /// Mark a tag as completed
-    void Complete(uint64_t tag) {
-        completedTags.insert(tag);
+    void Complete(const std::string_view& tag) {
+        completedTags.insert(std::string(tag));
         Flush();
     }
 
     /// Check if a tag is completed
-    bool IsCompleted(uint64_t tag) const {
-        return completedTags.contains(tag);
+    bool IsCompleted(const std::string_view& tag) const {
+        return completedTags.contains(std::string(tag));
     }
 
     /// Check if a tag is completed, or add it
     /// \return true if tag was already completed
-    bool IsCompletedOrAdd(uint64_t tag) {
+    bool IsCompletedOrAdd(const std::string_view& tag) {
         bool completed = IsCompleted(tag);
         Complete(tag);
         return completed;
@@ -63,5 +63,5 @@ public:
 
 private:
     /// All opaque tags that have been completed
-    std::set<uint64_t> completedTags;
+    std::set<std::string> completedTags;
 };

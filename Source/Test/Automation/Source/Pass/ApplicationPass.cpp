@@ -72,10 +72,19 @@ bool ApplicationPass::Run() {
     }
     
     // Apply name filter
-    if (!testData->applicationFilter.empty() &&
-        !std::icontains(info.identifier, testData->applicationFilter) &&
-        !std::icontains(info.processName, testData->applicationFilter)) {
-        Log(registry, "Disabled by filter");
+    if (!testData->applicationIncludeFilter.empty() &&
+        !std::icontains(info.identifier, testData->applicationIncludeFilter) &&
+        !std::icontains(info.processName, testData->applicationIncludeFilter)) {
+        Log(registry, "Disabled by (inclusion) filter");
+        return true;
+    }
+    
+    // Apply name filter
+    if (!testData->applicationExcludeFilter.empty() && (
+        std::icontains(info.identifier, testData->applicationExcludeFilter) ||
+        std::icontains(info.processName, testData->applicationExcludeFilter)
+    )) {
+        Log(registry, "Disabled by (exclusion) filter");
         return true;
     }
     
@@ -128,7 +137,7 @@ bool ApplicationPass::RunInstance(ConditionalDiscovery &discoveryGuard, const Fi
     ComRef history = registry->Get<HistoryData>();
     
     // Check history
-    uint64_t historyTag = StringCRC32Short(Format("Application:{0} Arguments:{1}", filterEntry.identifier, arguments).c_str());
+    std::string historyTag = Format("Application:{0} Arguments:{1}", filterEntry.identifier, arguments).c_str();
     if (history && history->IsCompleted(historyTag)) {
         Log(registry, "Known good (history)");
         return true;
