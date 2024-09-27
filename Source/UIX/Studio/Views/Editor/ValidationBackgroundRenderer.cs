@@ -33,6 +33,7 @@ using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -85,10 +86,28 @@ namespace Studio.Views.Editor
                 uint width = 15;
                 
                 // Line wise segment
-                drawingContext.DrawRectangle(_validationBrush, null, new Rect(
+                drawingContext.DrawRectangle(GetBrushForObject(validationObject), null, new Rect(
                     textView.Bounds.Width - width - 2.5, y,
                     width, 2.5
                 ));
+            }
+        }
+
+        /// <summary>
+        /// Get the brush for a given validation object
+        /// </summary>
+        private IBrush GetBrushForObject(ValidationObject obj)
+        {
+            switch (obj.Severity)
+            {
+                case ValidationSeverity.Info:
+                    return _validationBrushInfo;
+                case ValidationSeverity.Warning:
+                    return _validationBrushWarning;
+                case ValidationSeverity.Error:
+                    return _validationBrushError;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
@@ -114,9 +133,11 @@ namespace Studio.Views.Editor
         private List<ValidationObject> _validationObjects = new();
 
         /// <summary>
-        /// Default validation brush
+        /// Default validation brushes
         /// </summary>
-        private IBrush _validationBrush = ResourceLocator.GetBrush("ErrorDefaultBrush") ?? new SolidColorBrush(Colors.Red);
+        private IBrush _validationBrushInfo = ResourceLocator.GetBrush("InfoMediumLowForeground") ?? new SolidColorBrush(Colors.White);
+        private IBrush _validationBrushWarning = ResourceLocator.GetBrush("WarningLowBrush") ?? new SolidColorBrush(Colors.Yellow);
+        private IBrush _validationBrushError = ResourceLocator.GetBrush("ErrorDefaultBrush") ?? new SolidColorBrush(Colors.Red);
 
         /// <summary>
         /// Underlying layer

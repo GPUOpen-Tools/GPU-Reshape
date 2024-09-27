@@ -168,7 +168,7 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Brushes
         /// </summary>
-        private IBrush _validationBrushInfo = ResourceLocator.GetBrush("InfoMediumForeground") ?? new SolidColorBrush(Colors.White);
+        private IBrush _validationBrushInfo = ResourceLocator.GetBrush("InfoMediumLowForeground") ?? new SolidColorBrush(Colors.White);
         private IBrush _validationBrushWarning = ResourceLocator.GetBrush("WarningLowBrush") ?? new SolidColorBrush(Colors.Yellow);
         private IBrush _validationBrushError = ResourceLocator.GetBrush("ErrorDefaultBrush") ?? new SolidColorBrush(Colors.Red);
 

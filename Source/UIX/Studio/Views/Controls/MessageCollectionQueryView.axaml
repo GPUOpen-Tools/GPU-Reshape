@@ -45,6 +45,7 @@
             x:Name="QueryBox"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
+            BorderBrush="{StaticResource BorderColor}"
             Height="27"
             Text="{Binding QueryString}" />
         
@@ -54,7 +55,7 @@
             VerticalAlignment="Top"
             Width="25"
             Height="25"
-            Margin="0 0 0 0">
+            Margin="0 1 1 0">
             <PathIcon 
                 ToolTip.Tip="{x:Static r:Resources.Help_Tooltip}" 
                 Data="{StaticResource Question}" Width="13" />

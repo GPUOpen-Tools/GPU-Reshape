@@ -55,7 +55,7 @@ namespace Studio.ValueConverters
             switch (_object.Severity)
             {
                 case ValidationSeverity.Info:
-                    return ResourceLocator.GetBrush("InfoMediumForeground");
+                    return ResourceLocator.GetBrush("InfoMediumLowForeground");
                 case ValidationSeverity.Warning:
                     return ResourceLocator.GetBrush("WarningDefaultBrush");
                 case ValidationSeverity.Error:

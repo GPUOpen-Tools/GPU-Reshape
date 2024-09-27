@@ -87,6 +87,7 @@
         <!-- Info -->
         <SolidColorBrush x:Key="InfoMediumBackground">#27282C</SolidColorBrush>
         <SolidColorBrush x:Key="InfoMediumForeground">#B1B3B5</SolidColorBrush>
+        <SolidColorBrush x:Key="InfoMediumLowForeground">#737577</SolidColorBrush>
 
         <!-- Special brushes -->
         <SolidColorBrush x:Key="TabSelectedBrush">#4A4D51</SolidColorBrush>
