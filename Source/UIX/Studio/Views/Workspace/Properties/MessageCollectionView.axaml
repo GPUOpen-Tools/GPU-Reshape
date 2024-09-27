@@ -37,6 +37,7 @@
              xmlns:message="clr-namespace:Studio.ViewModels.Workspace.Message"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              xmlns:objects="clr-namespace:Studio.Models.Workspace.Objects;assembly=UIX.Studio.Runtime"
+             xmlns:queryControls="clr-namespace:Studio.Views.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Workspace.Properties.MessageCollectionView"
              x:DataType="properties:MessageCollectionViewModel">
@@ -84,207 +85,216 @@
     </UserControl.Resources>
     
     <Grid>
-        <StackPanel Margin="0 1 0 0" Orientation="Vertical" HorizontalAlignment="Left">
-            <Button ToolTip.Tip="{x:Static r:Resources.MessageCollection_Filter_Tooltip}" Classes="Icon" Width="20" Height="22">
-                <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
-
-                <Button.Flyout>
-                    <MenuFlyout Placement="RightEdgeAlignedTop">
-                        <MenuItem Command="{Binding ToggleMode}" CommandParameter="{x:Static message:HierarchicalMode.FilterByType}">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal">
-                                    <PathIcon 
-                                        Data="{StaticResource Check}" 
-                                        Width="15" 
-                                        IsVisible="{
-                                            Binding HierarchicalMessageFilterViewModel.Mode,
-                                            Converter={StaticResource EnumFlagConverter},
-                                            ConverterParameter={x:Static message:HierarchicalMode.FilterByType} 
-                                        }" />
-                                    <TextBlock Text="Group By Type" Margin="5,0,0,0" />
-                                </StackPanel>
-                            </MenuItem.Header>
-                        </MenuItem>
-                        
-                        <MenuItem Command="{Binding ToggleMode}" CommandParameter="{x:Static message:HierarchicalMode.FilterByShader}">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal">
-                                    <PathIcon 
-                                        Data="{StaticResource Check}" 
-                                        Width="15" 
-                                        IsVisible="{
-                                            Binding HierarchicalMessageFilterViewModel.Mode,
-                                            Converter={StaticResource EnumFlagConverter},
-                                            ConverterParameter={x:Static message:HierarchicalMode.FilterByShader} 
-                                        }" />
-                                    <TextBlock Text="Group By Shader" Margin="5,0,0,0" />
-                                </StackPanel>
-                            </MenuItem.Header>
-                        </MenuItem>
-                        
-                        <MenuItem Header="-"/>
-                        
-                        <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Info}">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal">
-                                    <PathIcon 
-                                        Data="{StaticResource Check}" 
-                                        Width="15" 
-                                        IsVisible="{
-                                            Binding HierarchicalMessageFilterViewModel.Severity,
-                                            Converter={StaticResource EnumFlagConverter},
-                                            ConverterParameter={x:Static objects:ValidationSeverity.Info} 
-                                        }" />
-                                    <TextBlock Text="Show Info" Margin="5,0,0,0" />
-                                </StackPanel>
-                            </MenuItem.Header>
-                        </MenuItem>
-                        
-                        <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Warning}">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal">
-                                    <PathIcon 
-                                        Data="{StaticResource Check}" 
-                                        Width="15" 
-                                        IsVisible="{
-                                            Binding HierarchicalMessageFilterViewModel.Severity,
-                                            Converter={StaticResource EnumFlagConverter},
-                                            ConverterParameter={x:Static objects:ValidationSeverity.Warning} 
-                                        }" />
-                                    <TextBlock Text="Show Warning" Margin="5,0,0,0" />
-                                </StackPanel>
-                            </MenuItem.Header>
-                        </MenuItem>
-                        
-                        <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Error}">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal">
-                                    <PathIcon 
-                                        Data="{StaticResource Check}" 
-                                        Width="15" 
-                                        IsVisible="{
-                                            Binding HierarchicalMessageFilterViewModel.Severity,
-                                            Converter={StaticResource EnumFlagConverter},
-                                            ConverterParameter={x:Static objects:ValidationSeverity.Error} 
-                                        }" />
-                                    <TextBlock Text="Show Error" Margin="5,0,0,0" />
-                                </StackPanel>
-                            </MenuItem.Header>
-                        </MenuItem>
-                        
-                        <MenuItem Header="-"/>
-                        
-                        <MenuItem Command="{Binding ToggleHideMissingSymbols}">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal">
-                                    <PathIcon Data="{StaticResource Check}" Width="15" IsVisible="{Binding HierarchicalMessageFilterViewModel.HideMissingSymbols}" />
-                                    <TextBlock Text="Hide Missing Symbols" Margin="5,0,0,0" />
-                                </StackPanel>
-                            </MenuItem.Header>
-                        </MenuItem>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
-            
-            <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.Tree_Expand_Tooltip}" Command="{Binding Expand}">
-                <PathIcon Data="{StaticResource Expand}" Width="13" />
-            </Button>
-            
-            <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}" Command="{Binding Collapse}">
-                <PathIcon Data="{StaticResource Collapse}" Width="13" />
-            </Button>
-
-            <Separator
-                Margin="2,2,2,2"
-                Background="{StaticResource DockThemeBorderLowBrush}"
-                HorizontalAlignment="Stretch" Height="1" Width="NaN" />
-
-            <Button Classes="Icon" Width="20" Height="22" Command="{Binding Clear}">
-                <PathIcon ToolTip.Tip="{x:Static r:Resources.MessageCollection_Clear_Tooltip}" Data="{StaticResource Close}" Width="12" />
-            </Button>
-        </StackPanel>
+        <queryControls:MessageCollectionQueryView
+            x:Name="CollectionQueryView"
+            Width="200"
+            HorizontalAlignment="Right"
+            Margin="0 5 5 0"/>
         
-        <TreeView 
-            x:Name="MessageTree"
-            Margin="20 0 0 0"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch"
-            AutoScrollToSelectedItem="False"
-            ItemsSource="{Binding HierarchicalMessageFilterViewModel.Root.Items}">
-            <TreeView.Styles>
-                <Style Selector="TreeViewItem">
-                    <Setter Property="IsExpanded" x:DataType="controls:IObservableTreeItem" Value="{Binding Path=IsExpanded}"/>
-                </Style>
-            </TreeView.Styles>
-            <TreeView.DataTemplates>
-                <TreeDataTemplate x:DataType="message:ObservableCategoryItem" ItemsSource="{Binding Items}">
-                    <StackPanel Orientation="Horizontal">
-                        <PathIcon 
-                            Data="{CompiledBinding Icon}"
-                            Foreground="{CompiledBinding StatusColor}"
-                            Margin=" 7 3 3 3"
-                            Width="10" Height="10" /> 
-                        
-                        <TextBlock Text="{Binding Text}"/>
-                    </StackPanel>
-                </TreeDataTemplate>
-                <TreeDataTemplate x:DataType="message:ObservableMessageItem" ItemsSource="{Binding Items}">
-                    <Grid HorizontalAlignment="Stretch">
-                        <Grid.ColumnDefinitions>
-                            <StaticResource ResourceKey="SharedColumnSeverity" />
-                            <StaticResource ResourceKey="SharedColumnContent" />
-                            <StaticResource ResourceKey="SharedColumnShader" />
-                            <StaticResource ResourceKey="SharedColumnExtract" />
-                            <StaticResource ResourceKey="SharedColumnCount" />
-                        </Grid.ColumnDefinitions>
-                        
-                        <PathIcon 
-                            Grid.Column="0"
-                            Margin="0 -2 0 0"
-                            Data="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
-                            Foreground="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
-                            Width="10" Height="10" 
-                            IsVisible="{
-                                Binding $parent[UserControl].((properties:MessageCollectionViewModel)DataContext).HierarchicalMessageFilterViewModel.Mode,
-                                Converter={StaticResource EnumFlagConverter},
-                                ConverterParameter={x:Static message:HierarchicalMode.FilterByTypeNegated} 
-                            }"/>
-                        
-                        <TextBlock 
-                            Grid.Column="1" 
-                            HorizontalAlignment="Left"
-                            TextTrimming="CharacterEllipsis"
-                            TextWrapping="NoWrap"
-                            Text="{Binding ValidationObject.Content}"/>
-                        
-                        <TextBlock 
-                            Grid.Column="2"
-                            HorizontalAlignment="Left"
-                            Margin="0 0 15 0"
-                            TextTrimming="CharacterEllipsis"
-                            TextWrapping="NoWrap"
-                            Text="{Binding FilenameDecoration}"
-                            IsVisible="{
-                                Binding $parent[UserControl].((properties:MessageCollectionViewModel)DataContext).HierarchicalMessageFilterViewModel.Mode,
-                                Converter={StaticResource EnumFlagConverter},
-                                ConverterParameter={x:Static message:HierarchicalMode.FilterByShaderNegated}
-                            }"/>
-                        
-                        <TextBlock 
-                            Grid.Column="3" 
-                            HorizontalAlignment="Left"
-                            Margin="0 0 15 0"
-                            TextTrimming="CharacterEllipsis"
-                            TextWrapping="NoWrap"
-                            Text="{Binding ExtractDecoration}"/>
-                        
-                        <TextBlock
-                            Grid.Column="4"
-                            HorizontalAlignment="Right"
-                            Text="{Binding ValidationObject.Count}"/>
-                    </Grid>
-                </TreeDataTemplate>
-            </TreeView.DataTemplates>
-        </TreeView>
+        <!-- Current view is an inline section view, apply margin manually -->
+        <Grid Margin="0 37.5 0 0">
+            <StackPanel Margin="0 1 0 0" Orientation="Vertical" HorizontalAlignment="Left">
+                <Button ToolTip.Tip="{x:Static r:Resources.MessageCollection_Filter_Tooltip}" Classes="Icon" Width="20" Height="22">
+                    <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
+    
+                    <Button.Flyout>
+                        <MenuFlyout Placement="RightEdgeAlignedTop">
+                            <MenuItem Command="{Binding ToggleMode}" CommandParameter="{x:Static message:HierarchicalMode.FilterByType}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <PathIcon 
+                                            Data="{StaticResource Check}" 
+                                            Width="15" 
+                                            IsVisible="{
+                                                Binding HierarchicalMessageFilterViewModel.Mode,
+                                                Converter={StaticResource EnumFlagConverter},
+                                                ConverterParameter={x:Static message:HierarchicalMode.FilterByType} 
+                                            }" />
+                                        <TextBlock Text="Group By Type" Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            
+                            <MenuItem Command="{Binding ToggleMode}" CommandParameter="{x:Static message:HierarchicalMode.FilterByShader}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <PathIcon 
+                                            Data="{StaticResource Check}" 
+                                            Width="15" 
+                                            IsVisible="{
+                                                Binding HierarchicalMessageFilterViewModel.Mode,
+                                                Converter={StaticResource EnumFlagConverter},
+                                                ConverterParameter={x:Static message:HierarchicalMode.FilterByShader} 
+                                            }" />
+                                        <TextBlock Text="Group By Shader" Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            
+                            <MenuItem Header="-"/>
+                            
+                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Info}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <PathIcon 
+                                            Data="{StaticResource Check}" 
+                                            Width="15" 
+                                            IsVisible="{
+                                                Binding HierarchicalMessageFilterViewModel.Severity,
+                                                Converter={StaticResource EnumFlagConverter},
+                                                ConverterParameter={x:Static objects:ValidationSeverity.Info} 
+                                            }" />
+                                        <TextBlock Text="Show Info" Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            
+                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Warning}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <PathIcon 
+                                            Data="{StaticResource Check}" 
+                                            Width="15" 
+                                            IsVisible="{
+                                                Binding HierarchicalMessageFilterViewModel.Severity,
+                                                Converter={StaticResource EnumFlagConverter},
+                                                ConverterParameter={x:Static objects:ValidationSeverity.Warning} 
+                                            }" />
+                                        <TextBlock Text="Show Warning" Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            
+                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Error}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <PathIcon 
+                                            Data="{StaticResource Check}" 
+                                            Width="15" 
+                                            IsVisible="{
+                                                Binding HierarchicalMessageFilterViewModel.Severity,
+                                                Converter={StaticResource EnumFlagConverter},
+                                                ConverterParameter={x:Static objects:ValidationSeverity.Error} 
+                                            }" />
+                                        <TextBlock Text="Show Error" Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            
+                            <MenuItem Header="-"/>
+                            
+                            <MenuItem Command="{Binding ToggleHideMissingSymbols}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <PathIcon Data="{StaticResource Check}" Width="15" IsVisible="{Binding HierarchicalMessageFilterViewModel.HideMissingSymbols}" />
+                                        <TextBlock Text="Hide Missing Symbols" Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+                
+                <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.Tree_Expand_Tooltip}" Command="{Binding Expand}">
+                    <PathIcon Data="{StaticResource Expand}" Width="13" />
+                </Button>
+                
+                <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}" Command="{Binding Collapse}">
+                    <PathIcon Data="{StaticResource Collapse}" Width="13" />
+                </Button>
+    
+                <Separator
+                    Margin="2,2,2,2"
+                    Background="{StaticResource DockThemeBorderLowBrush}"
+                    HorizontalAlignment="Stretch" Height="1" Width="NaN" />
+    
+                <Button Classes="Icon" Width="20" Height="22" Command="{Binding Clear}">
+                    <PathIcon ToolTip.Tip="{x:Static r:Resources.MessageCollection_Clear_Tooltip}" Data="{StaticResource Close}" Width="12" />
+                </Button>
+            </StackPanel>
+            
+            <TreeView 
+                x:Name="MessageTree"
+                Margin="20 0 0 0"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                AutoScrollToSelectedItem="False"
+                ItemsSource="{Binding HierarchicalMessageFilterViewModel.Root.Items}">
+                <TreeView.Styles>
+                    <Style Selector="TreeViewItem">
+                        <Setter Property="IsExpanded" x:DataType="controls:IObservableTreeItem" Value="{Binding Path=IsExpanded}"/>
+                    </Style>
+                </TreeView.Styles>
+                <TreeView.DataTemplates>
+                    <TreeDataTemplate x:DataType="message:ObservableCategoryItem" ItemsSource="{Binding Items}">
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon 
+                                Data="{CompiledBinding Icon}"
+                                Foreground="{CompiledBinding StatusColor}"
+                                Margin=" 7 3 3 3"
+                                Width="10" Height="10" /> 
+                            
+                            <TextBlock Text="{Binding Text}"/>
+                        </StackPanel>
+                    </TreeDataTemplate>
+                    <TreeDataTemplate x:DataType="message:ObservableMessageItem" ItemsSource="{Binding Items}">
+                        <Grid HorizontalAlignment="Stretch">
+                            <Grid.ColumnDefinitions>
+                                <StaticResource ResourceKey="SharedColumnSeverity" />
+                                <StaticResource ResourceKey="SharedColumnContent" />
+                                <StaticResource ResourceKey="SharedColumnShader" />
+                                <StaticResource ResourceKey="SharedColumnExtract" />
+                                <StaticResource ResourceKey="SharedColumnCount" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <PathIcon 
+                                Grid.Column="0"
+                                Margin="0 -2 0 0"
+                                Data="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
+                                Foreground="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
+                                Width="10" Height="10" 
+                                IsVisible="{
+                                    Binding $parent[UserControl].((properties:MessageCollectionViewModel)DataContext).HierarchicalMessageFilterViewModel.Mode,
+                                    Converter={StaticResource EnumFlagConverter},
+                                    ConverterParameter={x:Static message:HierarchicalMode.FilterByTypeNegated} 
+                                }"/>
+                            
+                            <TextBlock 
+                                Grid.Column="1" 
+                                HorizontalAlignment="Left"
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="NoWrap"
+                                Text="{Binding ValidationObject.Content}"/>
+                            
+                            <TextBlock 
+                                Grid.Column="2"
+                                HorizontalAlignment="Left"
+                                Margin="0 0 15 0"
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="NoWrap"
+                                Text="{Binding FilenameDecoration}"
+                                IsVisible="{
+                                    Binding $parent[UserControl].((properties:MessageCollectionViewModel)DataContext).HierarchicalMessageFilterViewModel.Mode,
+                                    Converter={StaticResource EnumFlagConverter},
+                                    ConverterParameter={x:Static message:HierarchicalMode.FilterByShaderNegated}
+                                }"/>
+                            
+                            <TextBlock 
+                                Grid.Column="3" 
+                                HorizontalAlignment="Left"
+                                Margin="0 0 15 0"
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="NoWrap"
+                                Text="{Binding ExtractDecoration}"/>
+                            
+                            <TextBlock
+                                Grid.Column="4"
+                                HorizontalAlignment="Right"
+                                Text="{Binding ValidationObject.Count}"/>
+                        </Grid>
+                    </TreeDataTemplate>
+                </TreeView.DataTemplates>
+            </TreeView>
+        </Grid>
     </Grid>
 </UserControl>

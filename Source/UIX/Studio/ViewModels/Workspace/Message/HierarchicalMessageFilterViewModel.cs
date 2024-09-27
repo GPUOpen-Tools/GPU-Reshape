@@ -53,6 +53,19 @@ namespace Studio.ViewModels.Workspace.Message
         public ObservableCategoryItem Root { get; } = new();
 
         /// <summary>
+        /// Optional, query filtering
+        /// </summary>
+        public HierarchicalMessageQueryFilterViewModel? QueryFilterViewModel
+        {
+            get => _queryFilterViewModel;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _queryFilterViewModel, value);
+                OnQueryFilterViewModelChanged();
+            }
+        }
+
+        /// <summary>
         /// Workspace collection property
         /// </summary>
         public IPropertyViewModel? PropertyViewModel
@@ -114,6 +127,17 @@ namespace Studio.ViewModels.Workspace.Message
                 .OnItemAdded(OnValidationItemAdded)
                 .OnItemRemoved(OnValidationItemRemoved)
                 .Subscribe();
+        }
+
+        /// <summary>
+        /// Invoked on filter changes
+        /// </summary>
+        private void OnQueryFilterViewModelChanged()
+        {
+            // Resummarize on query changes
+            QueryFilterViewModel?
+                .WhenAnyValue(x => x.QueryViewModel)
+                .Subscribe(_ => ResummarizeValidationObjects());
         }
 
         /// <summary>
@@ -216,11 +240,15 @@ namespace Studio.ViewModels.Workspace.Message
             }
 
             // Remove from parent
-            _parents[item].Items.Remove(item);
+            IObservableTreeItem parent = _parents[item];
+            parent.Items.Remove(item);
             
             // Remove associations
             _objects.Remove(obj, item);
             _parents.Remove(item);
+            
+            // Parent may now be empty
+            Prune(parent);
         }
 
         /// <summary>
@@ -268,11 +296,19 @@ namespace Studio.ViewModels.Workspace.Message
             {
                 item = GetOrCreateNoCategory();
             }
+
+            // Check if the query matches the object
+            if (!IsQueryMatch(item, observable))
+            {
+                Prune(item);
+                return;
+            }
             
             // If there's already a matching message, ignore this
             // Effectively merging it
             if (FindMergeCandidate(item, observable) is {})
             {
+                Prune(item);
                 return;
             }
             
@@ -282,6 +318,95 @@ namespace Studio.ViewModels.Workspace.Message
             
             // OK
             item.Items.Add(observable);
+        }
+
+        /// <summary>
+        /// Prune a tree
+        /// </summary>
+        private void Prune(IObservableTreeItem item)
+        {
+            // Ignore roots
+            if (item == Root || item.Items.Count > 0)
+            {
+                return;
+            }
+
+            // Parent must exist
+            IObservableTreeItem parent = _parents[item];
+            
+            // Remove from parent
+            parent.Items.Remove(item);
+            _parents.Remove(item);
+            
+            // Parent itself may also need pruning
+            Prune(parent);
+        }
+
+        /// <summary>
+        /// Check if a query matches an observable
+        /// </summary>
+        private bool IsQueryMatch(IObservableTreeItem item, ObservableMessageItem observable)
+        {
+            // No filter?
+            if (QueryFilterViewModel is not { QueryViewModel: {} query })
+            {
+                return true;
+            }
+
+            // Assume matching
+            bool match = true;
+
+            // Test general query
+            if (!string.IsNullOrWhiteSpace(query.GeneralQuery))
+            {
+                // First, match the observable decorations
+                match = observable.FilenameDecoration.Contains(query.GeneralQuery, StringComparison.InvariantCultureIgnoreCase) ||
+                        (observable.ValidationObject?.Content.Contains(query.GeneralQuery, StringComparison.InvariantCultureIgnoreCase) ?? false) ||
+                        observable.ExtractDecoration.Contains(query.GeneralQuery, StringComparison.InvariantCultureIgnoreCase);
+                
+                // Then, match the parent tree
+                // If any of the parent exists, so must the child
+                match = match || IsQueryGeneralMatch(item, query.GeneralQuery);
+            }
+
+            // Test shader
+            if (!string.IsNullOrWhiteSpace(query.Shader))
+            {
+                match = match && observable.FilenameDecoration.Contains(query.Shader, StringComparison.InvariantCultureIgnoreCase);
+            }
+
+            // Test message
+            if (!string.IsNullOrWhiteSpace(query.Message) && observable.ValidationObject != null)
+            {
+                match = match && observable.ValidationObject.Content.Contains(query.Message, StringComparison.InvariantCultureIgnoreCase);
+            }
+
+            // Test code
+            if (!string.IsNullOrWhiteSpace(query.Code))
+            {
+                match = match && observable.ExtractDecoration.Contains(query.Code, StringComparison.InvariantCultureIgnoreCase);
+            }
+
+            // OK
+            return match;
+        }
+
+        /// <summary>
+        /// Check if there's a general match for an item tree
+        /// </summary>
+        private bool IsQueryGeneralMatch(IObservableTreeItem item, string query)
+        {
+            // Check the general text
+            bool match = item.Text.Contains(query, StringComparison.InvariantCultureIgnoreCase);
+
+            // Check parents
+            if (_parents.TryGetValue(item, out IObservableTreeItem? parent))
+            {
+                match = match || IsQueryGeneralMatch(parent, query);
+            }
+
+            // OK
+            return match;
         }
 
         /// <summary>
@@ -497,6 +622,7 @@ namespace Studio.ViewModels.Workspace.Message
         private ObservableCategoryItem AddCategory(IObservableTreeItem item, ObservableCategoryItem observableCategory)
         {
             item.Items.Add(observableCategory);
+            _parents.Add(observableCategory, item);
             return observableCategory;
         }
 
@@ -518,7 +644,7 @@ namespace Studio.ViewModels.Workspace.Message
         /// <summary>
         /// Internal parent association
         /// </summary>
-        private Dictionary<ObservableMessageItem, IObservableTreeItem> _parents = new();
+        private Dictionary<IObservableTreeItem, IObservableTreeItem> _parents = new();
 
         /// <summary>
         /// Internal workspace collection property
@@ -559,6 +685,11 @@ namespace Studio.ViewModels.Workspace.Message
         /// Shared disposer when resummarizing
         /// </summary>
         private CompositeDisposable _filterDisposable = new();
+
+        /// <summary>
+        /// Internal query filter view model
+        /// </summary>
+        private HierarchicalMessageQueryFilterViewModel? _queryFilterViewModel;
         
         /// <summary>
         /// Internal severity mask

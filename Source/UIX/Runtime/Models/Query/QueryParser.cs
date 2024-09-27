@@ -34,6 +34,11 @@ namespace Runtime.Models.Query
     public class QueryParser
     {
         /// <summary>
+        /// General key for untyped queries
+        /// </summary>
+        public const string UntypedKey = "untyped";
+        
+        /// <summary>
         /// Standardized query pattern
         /// </summary>
         public static readonly string QueryPattern = "([A-Za-z]+):([^\\s@:+!\"]+|\"([^\"]*)\")";
@@ -42,8 +47,9 @@ namespace Runtime.Models.Query
         /// Parse all attributes from a given query
         /// </summary>
         /// <param name="query">string query</param>
+        /// <param name="allowUntypedAttributes">if true, prefixed untyped queries are kept</param>
         /// <returns>null if failed</returns>
-        public static QueryAttribute[]? GetAttributes(string query)
+        public static QueryAttribute[]? GetAttributes(string query, bool allowUntypedAttributes = false)
         {
             // Remove endpoints
             query = query.Trim();
@@ -57,10 +63,49 @@ namespace Runtime.Models.Query
             // Try to match
             MatchCollection collection = Regex.Matches(query, QueryPattern);
 
+            // Optional, untyped data
+            QueryAttribute? untyped = null;
+            
+            // Check for untyped?
+            if (allowUntypedAttributes)
+            {
+                string trimmedQuery = query.Trim();
+                
+                // If there's a valid collection check from the front to the first
+                if (collection.Count > 0)
+                {
+                    string queryPrefix = query.Substring(0, collection.First().Index).Trim();
+                    
+                    // Contains any valid query?
+                    if (!string.IsNullOrWhiteSpace(queryPrefix))
+                    {
+                        untyped = new QueryAttribute()
+                        {
+                            Offset = 0,
+                            Length = collection.First().Index,
+                            Key = UntypedKey,
+                            Value = queryPrefix
+                        };
+                    }
+                }
+                
+                // Otherwise, check the entire query for valid characters
+                else if (!string.IsNullOrWhiteSpace(trimmedQuery))
+                {
+                    untyped = new QueryAttribute()
+                    {
+                        Offset = 0,
+                        Length = query.Length,
+                        Key = UntypedKey,
+                        Value = trimmedQuery
+                    };
+                }
+            }
+            
             // Must have at least one match if there's a single character
             if (collection.Count == 0)
             {
-                return null;
+                return untyped != null ? [untyped.Value] : null;
             }
 
             // Get last group for length test
@@ -73,13 +118,22 @@ namespace Runtime.Models.Query
             }
 
             // To attribute list
-            return collection.Select(x => new QueryAttribute()
+            var attributes = collection.Select(x => new QueryAttribute()
             {
                 Offset = x.Index,
                 Length = x.Length,
                 Key = x.Groups[1].Value,
                 Value = x.Groups[2].Value
-            }).ToArray();
+            }).ToList();
+
+            // Prepend untyped if valid
+            if (untyped != null)
+            {
+                attributes.Insert(0, untyped.Value);
+            }
+
+            // OK
+            return attributes.ToArray();
         }
 
         /// <summary>

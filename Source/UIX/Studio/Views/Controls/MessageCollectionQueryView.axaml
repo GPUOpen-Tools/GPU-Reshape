@@ -1,0 +1,100 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2024 Advanced Micro Devices, Inc.,
+  Fatalist Development AB (Avalanche Studio Group),
+  and Miguel Petersen.
+  
+  All Rights Reserved.
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:message="clr-namespace:Studio.ViewModels.Workspace.Message"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
+             xmlns:r="clr-namespace:Studio.Resources"
+             mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="250"
+             x:Class="Studio.Views.Controls.MessageCollectionQueryView"
+             x:DataType="message:HierarchicalMessageQueryFilterViewModel">
+    <UserControl.DataContext>
+        <message:HierarchicalMessageQueryFilterViewModel/>
+    </UserControl.DataContext>
+    
+    <Grid>
+        <AutoCompleteBox 
+            x:Name="QueryBox"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top"
+            Height="27"
+            Text="{Binding QueryString}" />
+        
+        <Button 
+            Classes="Icon"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Width="25"
+            Height="25"
+            Margin="0 0 0 0">
+            <PathIcon 
+                ToolTip.Tip="{x:Static r:Resources.Help_Tooltip}" 
+                Data="{StaticResource Question}" Width="13" />
+            
+            <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                    <StackPanel Orientation="Vertical" Width="350">
+                        <TextBlock TextWrapping="Wrap">
+General search, specialize with name:value pair attributes:
+                        </TextBlock>
+                        <Grid Margin="25 0 0 0" ColumnDefinitions="50,*">
+                            <TextBlock TextWrapping="Wrap" Grid.Column="0">
+shader   <LineBreak />
+code <LineBreak />
+message  <LineBreak />
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Grid.Column="1">
+- Shader name search        <LineBreak />
+- Code extract search       <LineBreak />
+- Validation message search <LineBreak />
+                            </TextBlock>
+                        </Grid>
+                        
+                        <TextBlock TextWrapping="Wrap">
+                            Examples:
+                        </TextBlock>
+                        <TextBlock Margin="25 0 0 0" TextWrapping="Wrap">
+TAABuffer[pixelPos]                 <LineBreak />
+TAABuffer[pixelPos] shader:TAAClear <LineBreak />
+TAABuffer[pixelPos] message:write
+                        </TextBlock>
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+        
+        <controls:QueryAttributeSegments 
+            x:Name="AttributeSegments"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Margin="0 26 0 0"/>
+    </Grid>
+</UserControl>

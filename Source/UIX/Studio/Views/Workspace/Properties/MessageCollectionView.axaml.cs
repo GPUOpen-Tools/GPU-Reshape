@@ -32,6 +32,7 @@ using Avalonia.Interactivity;
 using ReactiveUI;
 using Studio.Extensions;
 using Studio.ViewModels.Controls;
+using Studio.ViewModels.Workspace.Message;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -47,11 +48,15 @@ namespace Studio.Views.Workspace.Properties
         public MessageCollectionView()
         {
             InitializeComponent();
-
+            
+            // On data context
             this.WhenAnyValue(x => x.DataContext)
                 .CastNullable<MessageCollectionViewModel>()
                 .Subscribe(viewModel =>
                 {
+                    // Set query filter
+                    viewModel.HierarchicalMessageQueryFilterViewModel = CollectionQueryView.DataContext as HierarchicalMessageQueryFilterViewModel;
+                    
                     // Bind signals
                     MessageTree.AddHandler(InputElement.PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
                 });

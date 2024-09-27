@@ -42,6 +42,7 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <valueConverters:PropertyVisibilityConverter x:Key="PropertyVisibilityConverter" />
+            <valueConverters:EnumFlagConverter x:Key="EnumFlagConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
     
@@ -91,6 +92,7 @@
                                 
                                 <controls:SectionView
                                     Title="{Binding Name, FallbackValue=[PropertyName]}"
+                                    InlineContent="{Binding Visibility, Converter={StaticResource EnumFlagConverter}, ConverterParameter={x:Static properties:PropertyVisibility.InlineSection}}"
                                     IsExpanded="{Binding Visibility, Mode=OneTime, Converter={StaticResource PropertyVisibilityConverter}}">
                                     <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
                                 </controls:SectionView>

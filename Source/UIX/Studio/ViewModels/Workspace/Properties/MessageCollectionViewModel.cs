@@ -57,7 +57,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Visibility of this property
         /// </summary>
-        public PropertyVisibility Visibility => PropertyVisibility.WorkspaceOverview;
+        public PropertyVisibility Visibility => PropertyVisibility.WorkspaceOverview | PropertyVisibility.InlineSection;
 
         /// <summary>
         /// Parent property
@@ -78,6 +78,15 @@ namespace Studio.ViewModels.Workspace.Properties
         /// All condensed messages
         /// </summary>
         public ObservableCollection<Objects.ValidationObject> ValidationObjects { get; } = new();
+
+        /// <summary>
+        /// Hierarchical query filter
+        /// </summary>
+        public HierarchicalMessageQueryFilterViewModel? HierarchicalMessageQueryFilterViewModel
+        {
+            get => HierarchicalMessageFilterViewModel.QueryFilterViewModel;
+            set => HierarchicalMessageFilterViewModel.QueryFilterViewModel = value;
+        }
 
         /// <summary>
         /// Hierarchical message representation

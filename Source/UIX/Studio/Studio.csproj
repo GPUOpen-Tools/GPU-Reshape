@@ -266,6 +266,10 @@
       <AvaloniaResource Include="Resources\WhatsNew\Images\waterfall-feature-code-only.png" />
       <None Remove="Resources\WhatsNew\Images\waterfall-feature-with-code.png" />
       <AvaloniaResource Include="Resources\WhatsNew\Images\waterfall-feature-with-code.png" />
+      <Compile Update="Views\Controls\MessageCollectionQueryView.axaml.cs">
+        <DependentUpon>MessageCollectionQueryView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

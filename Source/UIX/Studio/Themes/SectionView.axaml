@@ -61,7 +61,7 @@
                         </Button>
 
                         <ContentPresenter
-                            Margin="0,35,0,0"
+                            Margin="{TemplateBinding ContentMargin}"
                             IsVisible="{TemplateBinding IsExpanded}"
                             Content="{TemplateBinding Content}" />
                     </Grid>
