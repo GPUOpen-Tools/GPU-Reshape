@@ -209,6 +209,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         response->native = true;
         response->language.Set(language);
         response->fileCount = 0;
+        response->poolCode = message.poolCode;
         return;
     }
 
@@ -222,6 +223,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     response->native = false;
     response->language.Set(language);
     response->fileCount = fileCount;
+    response->poolCode = message.poolCode;
 
     // Add file responses
     for (uint32_t i = 0; i < fileCount; i++) {
@@ -231,6 +233,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         });
         file->shaderUID = message.shaderUID;
         file->fileUID = i;
+        file->poolCode = message.poolCode;
 
         // Fill filename
         file->filename.Set(sourceMap->GetSourceFilename(i));

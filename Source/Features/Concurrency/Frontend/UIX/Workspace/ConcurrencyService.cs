@@ -125,6 +125,7 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Content = $"Potential race condition detected",
+                        Severity = ValidationSeverity.Warning,
                         Count = 1u
                     };
                     

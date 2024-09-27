@@ -158,8 +158,8 @@ namespace GRS.Features.Waterfall.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Content = $"Addressing requires scalarization",
+                        Severity = ValidationSeverity.Info,
                         Count = kv.Value,
-                        Severity = ValidationSeverity.Warning,
                         DetailViewModel = detailViewModel
                     };
 
@@ -233,8 +233,8 @@ namespace GRS.Features.Waterfall.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Content = $"Divergent resource addressing",
-                        Count = kv.Value,
                         Severity = ValidationSeverity.Error,
+                        Count = kv.Value,
                         DetailViewModel = _divergentResourceAddressingDetailViewModel
                     };
 

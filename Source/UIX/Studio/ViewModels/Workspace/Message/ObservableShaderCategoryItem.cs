@@ -24,65 +24,25 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.Generic;
+using ReactiveUI;
+using ShaderViewModel = Studio.ViewModels.Workspace.Objects.ShaderViewModel;
 
-namespace Studio.ViewModels.Controls
+namespace Studio.ViewModels.Workspace.Message
 {
-    public class ObjectDictionary<KEY, VALUE> 
-        where KEY : class 
-        where VALUE : class
+    public class ObservableShaderCategoryItem : ObservableCategoryItem
     {
         /// <summary>
-        /// Add a new bidirectional pair
+        /// Shader view model this category represents
         /// </summary>
-        public void Add(KEY key, VALUE value)
+        public ShaderViewModel? ShaderViewModel
         {
-            Forward.Add(key, value);
-            Backward.Add(value, key);
+            get { return _shaderViewModel; }
+            set { this.RaiseAndSetIfChanged(ref _shaderViewModel, value); }
         }
 
         /// <summary>
-        /// Remove a bidirectional pair
+        /// Internal shader view model
         /// </summary>
-        public void Remove(KEY key, VALUE value)
-        {
-            Forward.Remove(key);
-            Backward.Remove(value);
-        }
-
-        /// <summary>
-        /// Get the forward value
-        /// </summary>
-        public VALUE Get(KEY key)
-        {
-            return Forward[key];
-        }
-
-        /// <summary>
-        /// Get the backward value
-        /// </summary>
-        public KEY Get(VALUE key)
-        {
-            return Backward[key];
-        }
-
-        /// <summary>
-        /// Clear this dictionary
-        /// </summary>
-        public void Clear()
-        {
-            Forward.Clear();
-            Backward.Clear();
-        }
-        
-        /// <summary>
-        /// All forward items
-        /// </summary>
-        public Dictionary<KEY, VALUE> Forward { get; } = new();
-        
-        /// <summary>
-        /// All backward items
-        /// </summary>
-        public Dictionary<VALUE, KEY> Backward { get; } = new();
+        private ShaderViewModel? _shaderViewModel;
     }
 }

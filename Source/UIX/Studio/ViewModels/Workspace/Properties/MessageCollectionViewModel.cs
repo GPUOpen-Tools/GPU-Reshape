@@ -29,16 +29,19 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Threading;
 using DynamicData;
 using DynamicData.Binding;
 using Message.CLR;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Shader;
+using Studio.ViewModels.Workspace.Message;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -77,18 +80,9 @@ namespace Studio.ViewModels.Workspace.Properties
         public ObservableCollection<Objects.ValidationObject> ValidationObjects { get; } = new();
 
         /// <summary>
-        /// Filtered condensed messages
+        /// Hierarchical message representation
         /// </summary>
-        public ObservableCollection<Objects.ValidationObject> FilteredValidationObjects { get; } = new();
-
-        /// <summary>
-        /// Hide all validation objects with missing symbols?
-        /// </summary>
-        public bool HideMissingSymbols
-        {
-            get => _hideMissingSymbols;
-            set => this.RaiseAndSetIfChanged(ref _hideMissingSymbols, value);
-        }
+        public HierarchicalMessageFilterViewModel HierarchicalMessageFilterViewModel { get; } = new();
 
         /// <summary>
         /// Opens a given shader document from view model
@@ -101,9 +95,29 @@ namespace Studio.ViewModels.Workspace.Properties
         public ICommand ToggleHideMissingSymbols { get; }
 
         /// <summary>
+        /// Toggle hierarhical mode
+        /// </summary>
+        public ICommand ToggleMode { get; }
+
+        /// <summary>
+        /// Toggle message severity
+        /// </summary>
+        public ICommand ToggleSeverity { get; }
+
+        /// <summary>
         /// Clear all messages
         /// </summary>
         public ICommand Clear { get; }
+        
+        /// <summary>
+        /// Expand all items
+        /// </summary>
+        public ICommand Expand { get; }
+        
+        /// <summary>
+        /// Collapse all items
+        /// </summary>
+        public ICommand Collapse { get; }
 
         /// <summary>
         /// View model associated with this property
@@ -124,14 +138,71 @@ namespace Studio.ViewModels.Workspace.Properties
             // Create commands
             OpenShaderDocument = ReactiveCommand.Create<object>(OnOpenShaderDocument);
             ToggleHideMissingSymbols = ReactiveCommand.Create(OnToggleHideMissingSymbols);
+            ToggleMode = ReactiveCommand.Create<HierarchicalMode>(OnToggleMode);
+            ToggleSeverity = ReactiveCommand.Create<ValidationSeverity>(OnToggleSeverity);
+            Expand = ReactiveCommand.Create(OnExpand);
+            Collapse = ReactiveCommand.Create(OnCollapse);
             Clear = ReactiveCommand.Create(OnClear);
 
             // Bind objects for filtering
-            ValidationObjects
-                .ToObservableChangeSet()
-                .OnItemAdded(OnValidationItemAdded)
-                .OnItemRemoved(OnValidationItemRemoved)
-                .Subscribe();
+            HierarchicalMessageFilterViewModel.Bind(ValidationObjects);
+
+            // If design time, create some dummy items for testing
+            if (Design.IsDesignMode)
+            {
+                ValidationObjects.AddRange(new []
+                {
+                    new ValidationObject()
+                    {
+                        Content = "Failure A",
+                        Severity = ValidationSeverity.Info,
+                        Count = 5,
+                        Segment = new ShaderSourceSegment()
+                        {
+                            Extract = "Extract A",
+                            Location = new ShaderLocation()
+                        }
+                    },
+                    new ValidationObject()
+                    {
+                        Content = "Failure B - XXXXXXX",
+                        Severity = ValidationSeverity.Warning,
+                        Count = 5,
+                        Segment = new ShaderSourceSegment()
+                        {
+                            Extract = "Extract B",
+                            Location = new ShaderLocation()
+                        }
+                    },
+                    new ValidationObject()
+                    {
+                        Content = "Failure C - YYYY",
+                        Severity = ValidationSeverity.Error,
+                        Count = 5,
+                        Segment = new ShaderSourceSegment()
+                        {
+                            Extract = "Extract C",
+                            Location = new ShaderLocation()
+                        }
+                    }
+                });
+            }
+        }
+
+        /// <summary>
+        /// On mode toggles
+        /// </summary>
+        private void OnToggleMode(HierarchicalMode mode)
+        {
+            HierarchicalMessageFilterViewModel.Mode ^= mode;
+        }
+
+        /// <summary>
+        /// On severity toggles
+        /// </summary>
+        private void OnToggleSeverity(ValidationSeverity severity)
+        {
+            HierarchicalMessageFilterViewModel.Severity ^= severity;
         }
 
         /// <summary>
@@ -139,24 +210,23 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         private void OnToggleHideMissingSymbols()
         {
-            HideMissingSymbols = !HideMissingSymbols;
-            ResummarizeFilter();
+            HierarchicalMessageFilterViewModel.HideMissingSymbols = !HierarchicalMessageFilterViewModel.HideMissingSymbols;
         }
 
         /// <summary>
-        /// Invoked when an object was added
+        /// On expand all items
         /// </summary>
-        private void OnValidationItemAdded(ValidationObject obj)
+        private void OnExpand()
         {
-            FilterMessageChained(obj);
+            HierarchicalMessageFilterViewModel.Expand();
         }
 
         /// <summary>
-        /// Invoked when an object was removed
+        /// On collapse all times
         /// </summary>
-        private void OnValidationItemRemoved(ValidationObject obj)
+        private void OnCollapse()
         {
-            FilteredValidationObjects.Remove(obj);
+            HierarchicalMessageFilterViewModel.Collapse();
         }
 
         /// <summary>
@@ -165,48 +235,8 @@ namespace Studio.ViewModels.Workspace.Properties
         private void OnClear()
         {
             // Flush both
+            HierarchicalMessageFilterViewModel.Clear();
             ValidationObjects.Clear();
-            FilteredValidationObjects.Clear();
-        }
-
-        /// <summary>
-        /// Resummarize all validation objects
-        /// </summary>
-        private void ResummarizeFilter()
-        {
-            // Force flush
-            FilteredValidationObjects.Clear();
-
-            // Filter all messages
-            foreach (ValidationObject validationObject in ValidationObjects)
-            {
-                FilterMessageChained(validationObject);
-            }
-        }
-        
-        /// <summary>
-        /// Filter a validation object
-        /// </summary>
-        private void FilterMessageChained(ValidationObject validationObject)
-        {
-            // Filter by symbols?
-            if (HideMissingSymbols && string.IsNullOrEmpty(validationObject.Extract))
-            {
-                // Bind on segment, re-queue filter when successful
-                validationObject.WhenAnyValue(x => x.Segment).Subscribe(x =>
-                {
-                    if (!string.IsNullOrEmpty(validationObject.Extract))
-                    {
-                        FilterMessageChained(validationObject);
-                    }
-                });
-                
-                // Chain down
-                return;
-            }
-            
-            // Passed
-            FilteredValidationObjects.Add(validationObject);
         }
 
         /// <summary>
@@ -215,10 +245,31 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <param name="viewModel">must be ValidationObject</param>
         private void OnOpenShaderDocument(object viewModel)
         {
-            var validationObject = (ValidationObject)viewModel;
+            IDescriptor? descriptor = null;
+            
+            // Valid shader category?
+            if (viewModel is ObservableShaderCategoryItem { ShaderViewModel: { } } shaderCategoryItem)
+            {
+                descriptor = new ShaderDescriptor()
+                {
+                    PropertyCollection = Parent,
+                    GUID = shaderCategoryItem.ShaderViewModel.GUID
+                };
+            }
+            
+            // Valid message?
+            else if (viewModel is ObservableMessageItem { ValidationObject.Segment: { } } observableMessageItem)
+            {
+                descriptor = new ShaderDescriptor()
+                {
+                    PropertyCollection = Parent,
+                    StartupLocation = NavigationLocation.FromObject(observableMessageItem.ValidationObject),
+                    GUID = observableMessageItem.ValidationObject.Segment.Location.SGUID
+                };
+            }
 
-            // May not be ready yet
-            if (validationObject.Segment == null)
+            // No descriptor deduced?
+            if (descriptor == null)
             {
                 return;
             }
@@ -226,12 +277,7 @@ namespace Studio.ViewModels.Workspace.Properties
             // Create document
             if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                layoutViewModel.DocumentLayout?.OpenDocument(new ShaderDescriptor()
-                {
-                    PropertyCollection = Parent,
-                    StartupLocation = NavigationLocation.FromObject(validationObject),
-                    GUID = validationObject.Segment.Location.SGUID
-                });
+                layoutViewModel.DocumentLayout?.OpenDocument(descriptor);
             }
         }
 
@@ -248,6 +294,9 @@ namespace Studio.ViewModels.Workspace.Properties
             
             // Register internal listeners
             _connectionViewModel?.Bridge?.Register(ShaderSourceMappingMessage.ID, _shaderMappingService);
+
+            // Assign workspace collection to filter
+            HierarchicalMessageFilterViewModel.PropertyViewModel = this.GetWorkspaceCollection();
 
             // Create all properties
             CreateProperties();
@@ -284,10 +333,5 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Internal view model
         /// </summary>
         private IConnectionViewModel? _connectionViewModel;
-
-        /// <summary>
-        /// Internal missing symbol state
-        /// </summary>
-        private bool _hideMissingSymbols = false;
     }
 }

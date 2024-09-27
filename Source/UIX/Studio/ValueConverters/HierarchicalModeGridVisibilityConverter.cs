@@ -24,65 +24,53 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.Generic;
+using System;
+using System.Globalization;
+using Avalonia.Controls;
+using Avalonia.Data.Converters;
+using Studio.ViewModels.Workspace.Message;
 
-namespace Studio.ViewModels.Controls
+namespace Studio.ValueConverters
 {
-    public class ObjectDictionary<KEY, VALUE> 
-        where KEY : class 
-        where VALUE : class
+    public class HierarchicalModeGridVisibilityConverter : IValueConverter
     {
         /// <summary>
-        /// Add a new bidirectional pair
+        /// Shared length for icons
         /// </summary>
-        public void Add(KEY key, VALUE value)
-        {
-            Forward.Add(key, value);
-            Backward.Add(value, key);
-        }
-
-        /// <summary>
-        /// Remove a bidirectional pair
-        /// </summary>
-        public void Remove(KEY key, VALUE value)
-        {
-            Forward.Remove(key);
-            Backward.Remove(value);
-        }
-
-        /// <summary>
-        /// Get the forward value
-        /// </summary>
-        public VALUE Get(KEY key)
-        {
-            return Forward[key];
-        }
-
-        /// <summary>
-        /// Get the backward value
-        /// </summary>
-        public KEY Get(VALUE key)
-        {
-            return Backward[key];
-        }
-
-        /// <summary>
-        /// Clear this dictionary
-        /// </summary>
-        public void Clear()
-        {
-            Forward.Clear();
-            Backward.Clear();
-        }
+        public static GridLength Icon => new GridLength(25);
         
         /// <summary>
-        /// All forward items
+        /// Shared length for shader decorations
         /// </summary>
-        public Dictionary<KEY, VALUE> Forward { get; } = new();
+        public static GridLength Shader => new GridLength(200);
         
         /// <summary>
-        /// All backward items
+        /// Convert the value
         /// </summary>
-        public Dictionary<VALUE, KEY> Backward { get; } = new();
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            HierarchicalMode mode   = (HierarchicalMode)(value ?? HierarchicalMode.None);
+            HierarchicalMode target = (HierarchicalMode)(parameter ?? HierarchicalMode.None);
+
+            // Test without negation
+            bool test = mode.HasFlag(target & ~HierarchicalMode.Negate);
+
+            // Apply negation
+            if (target.HasFlag(HierarchicalMode.Negate))
+            {
+                test = !test;
+            }
+            
+            // If passed, use the fallback value with <null>
+            return test ? null : new GridLength(0.0);
+        }
+
+        /// <summary>
+        /// Convert the value back
+        /// </summary>
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

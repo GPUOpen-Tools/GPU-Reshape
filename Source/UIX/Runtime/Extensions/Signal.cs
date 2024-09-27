@@ -57,6 +57,16 @@ namespace Studio.Extensions
         {
             return source.WhereNotNull().Cast<T>().WhereNotNull();
         }
+
+        /// <summary>
+        /// Check for nullability and empty strings
+        /// </summary>
+        /// <param name="source">source observable</param>
+        /// <returns>always valid</returns>
+        public static IObservable<string> WhereNotNullOrEmpty(this IObservable<string?> source)
+        {
+            return source.Where(x => !string.IsNullOrEmpty(x))!;
+        }
         
         /// <summary>
         /// Dispose with a composite disposable with a pre-clear

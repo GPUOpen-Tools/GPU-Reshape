@@ -24,20 +24,39 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
+using Studio.Models.IL;
+using Studio.Models.Workspace.Objects;
 
-namespace Studio.Models.Workspace.Objects
+namespace Runtime.ViewModels.IL
 {
-    [Flags]
-    public enum ValidationSeverity
+    public static class AssemblerUtils
     {
-        Info = 1,
-        Warning = 2,
-        Error = 4,
-        
         /// <summary>
-        /// All flags
+        /// Assemble a single line in a program
         /// </summary>
-        All = Info | Warning | Error
+        /// <param name="program">source program</param>
+        /// <param name="location">location, must point to program</param>
+        /// <returns>null if failed</returns>
+        public static string? AssembleSingle(Program program, ShaderLocation location)
+        {
+            // Try to get basic block
+            if (!program.Lookup.TryGetValue(location.BasicBlockId, out object? valueObject) || valueObject is not BasicBlock block)
+            {
+                return null;
+            }
+
+            // Validate instruction
+            if (block.Instructions.Length < location.InstructionIndex)
+            {
+                return null;
+            }
+
+            // Create assembler
+            var assembler = new Assembler(program);
+
+            // Assemble the instruction
+            Instruction instr = block.Instructions[location.InstructionIndex];
+            return assembler.AssembleInstruction(instr);
+        }
     }
 }

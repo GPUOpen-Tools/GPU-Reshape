@@ -126,6 +126,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Traits = _traits,
+                        Severity = ValidationSeverity.Warning,
                         Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds",
                         Count = 1u
                     };

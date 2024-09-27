@@ -24,20 +24,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-
-namespace Studio.Models.Workspace.Objects
+namespace Studio.Utils
 {
-    [Flags]
-    public enum ValidationSeverity
+    public static class EnumUtils
     {
-        Info = 1,
-        Warning = 2,
-        Error = 4,
-        
         /// <summary>
-        /// All flags
+        /// Shared negation constant, useful for bindings
         /// </summary>
-        All = Info | Warning | Error
-    }
+        public const int NegateConstant = 1 << 30;
+    }   
 }

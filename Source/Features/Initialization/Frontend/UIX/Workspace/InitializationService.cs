@@ -132,6 +132,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Content = GetFailureCodeString((InitializationFailureCode)message.failureCode),
+                        Severity = ValidationSeverity.Warning,
                         Count = 1u
                     };
 

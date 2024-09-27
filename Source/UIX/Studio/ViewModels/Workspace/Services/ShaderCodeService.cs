@@ -69,6 +69,12 @@ namespace Studio.ViewModels.Workspace.Services
                         {
                             var shaderCode = message.Get<ShaderCodeMessage>();
 
+                            // Ignore non-pooling requests
+                            if (shaderCode.poolCode == 0)
+                            {
+                                continue;
+                            }
+
                             // Try to get the view model
                             if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry) || entry.ShaderViewModel == null)
                             {
@@ -104,6 +110,12 @@ namespace Studio.ViewModels.Workspace.Services
                         {
                             var shaderCode = message.Get<ShaderCodeFileMessage>();
 
+                            // Ignore non-pooling requests
+                            if (shaderCode.poolCode == 0)
+                            {
+                                continue;
+                            }
+                            
                             // Try to get the view model
                             if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry) || entry.ShaderViewModel == null)
                             {

@@ -27,8 +27,11 @@
 using System;
 using System.Reactive.Linq;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using ReactiveUI;
 using Studio.Extensions;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -50,11 +53,31 @@ namespace Studio.Views.Workspace.Properties
                 .Subscribe(viewModel =>
                 {
                     // Bind signals
-                    MessageDataGrid.Events().DoubleTapped
-                        .Select(_ => MessageDataGrid.SelectedItem as ValidationObject)
-                        .WhereNotNull()
-                        .Subscribe(x => viewModel.OpenShaderDocument.Execute(x));
+                    MessageTree.AddHandler(InputElement.PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
                 });
+        }
+
+        /// <summary>
+        /// Invoked on pointer presses
+        /// </summary>
+        private void OnTreePointerPressed(object? sender, PointerPressedEventArgs _event)
+        {
+            // Get contexts
+            if (DataContext is not MessageCollectionViewModel {} viewModel ||
+                MessageTree.SelectedItem is not IObservableTreeItem { } item)
+            {
+                return;
+            }
+
+            // Double click?
+            if (_event.ClickCount < 2)
+            {
+                return;
+            }
+
+            // Open document for item
+            viewModel.OpenShaderDocument.Execute(item);
+            _event.Handled = true;
         }
     }
 }

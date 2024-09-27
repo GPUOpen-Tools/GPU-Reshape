@@ -64,6 +64,7 @@
         <field name="found"     type="bool"/>
         <field name="native"    type="bool"/>
         <field name="fileCount" type="uint32"/>
+        <field name="poolCode"  type="bool"/>
     </message>
 
     <message name="ShaderCodeFile">
@@ -71,6 +72,7 @@
         <field name="fileUID"   type="uint32"/>
         <field name="filename"  type="string"/>
         <field name="code"      type="string"/>
+        <field name="poolCode"  type="bool"/>
     </message>
 
     <message name="ShaderIL">

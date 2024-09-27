@@ -24,65 +24,42 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.Generic;
+using System;
+using System.Globalization;
+using Avalonia.Data.Converters;
+using Studio.Utils;
 
-namespace Studio.ViewModels.Controls
+namespace Studio.ValueConverters
 {
-    public class ObjectDictionary<KEY, VALUE> 
-        where KEY : class 
-        where VALUE : class
+    public class EnumFlagConverter : IValueConverter
     {
         /// <summary>
-        /// Add a new bidirectional pair
+        /// Convert the value
         /// </summary>
-        public void Add(KEY key, VALUE value)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            Forward.Add(key, value);
-            Backward.Add(value, key);
+            var source = System.Convert.ToInt32(value as Enum ?? throw new Exception("Invalid source"));
+            var target = System.Convert.ToInt32(parameter as Enum ?? throw new Exception("Invalid source"));
+
+            // Test without negation
+            bool test = (source & (target & ~EnumUtils.NegateConstant)) != 0;
+
+            // Apply negation
+            if ((target & EnumUtils.NegateConstant) != 0)
+            {
+                test = !test;
+            }
+            
+            // OK
+            return test;
         }
 
         /// <summary>
-        /// Remove a bidirectional pair
+        /// Convert the value back
         /// </summary>
-        public void Remove(KEY key, VALUE value)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            Forward.Remove(key);
-            Backward.Remove(value);
+            throw new NotImplementedException();
         }
-
-        /// <summary>
-        /// Get the forward value
-        /// </summary>
-        public VALUE Get(KEY key)
-        {
-            return Forward[key];
-        }
-
-        /// <summary>
-        /// Get the backward value
-        /// </summary>
-        public KEY Get(VALUE key)
-        {
-            return Backward[key];
-        }
-
-        /// <summary>
-        /// Clear this dictionary
-        /// </summary>
-        public void Clear()
-        {
-            Forward.Clear();
-            Backward.Clear();
-        }
-        
-        /// <summary>
-        /// All forward items
-        /// </summary>
-        public Dictionary<KEY, VALUE> Forward { get; } = new();
-        
-        /// <summary>
-        /// All backward items
-        /// </summary>
-        public Dictionary<VALUE, KEY> Backward { get; } = new();
     }
 }
