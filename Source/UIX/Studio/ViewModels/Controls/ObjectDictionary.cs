@@ -59,6 +59,15 @@ namespace Studio.ViewModels.Controls
         }
 
         /// <summary>
+        /// Get the forward value if it exists, otherwise null
+        /// </summary>
+        public VALUE? GetOrNull(KEY key)
+        {
+            Forward.TryGetValue(key, out VALUE? value);
+            return value;
+        }
+
+        /// <summary>
         /// Get the backward value
         /// </summary>
         public KEY Get(VALUE key)

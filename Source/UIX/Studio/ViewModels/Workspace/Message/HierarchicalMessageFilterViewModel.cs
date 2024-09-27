@@ -208,8 +208,12 @@ namespace Studio.ViewModels.Workspace.Message
         /// Remove a validation object entirely
         /// </summary>
         private void RemoveValidationObject(ValidationObject obj)
-        { 
-            ObservableMessageItem item = _objects.Get(obj);
+        {
+            // Association may not exist if it was merged
+            if (_objects.GetOrNull(obj) is not { } item)
+            {
+                return;
+            }
 
             // Remove from parent
             _parents[item].Items.Remove(item);
@@ -265,12 +269,59 @@ namespace Studio.ViewModels.Workspace.Message
                 item = GetOrCreateNoCategory();
             }
             
+            // If there's already a matching message, ignore this
+            // Effectively merging it
+            if (FindMergeCandidate(item, observable) is {})
+            {
+                return;
+            }
+            
             // Create lookups
             _objects.Add(obj, observable);
             _parents.Add(observable, item);
             
             // OK
             item.Items.Add(observable);
+        }
+
+        /// <summary>
+        /// Check if an item has a matching message
+        /// </summary>
+        private ObservableMessageItem? FindMergeCandidate(IObservableTreeItem item, ObservableMessageItem observable)
+        {
+            foreach (IObservableTreeItem observableTreeItem in item.Items)
+            {
+                if (observableTreeItem is not ObservableMessageItem messageItem)
+                {
+                    continue;
+                }
+                
+                // Only merge from same shader
+                if (messageItem.ShaderViewModel != observable.ShaderViewModel)
+                {
+                    continue;
+                }
+
+                // Only merge matching messages
+                if (messageItem.ValidationObject?.Content != observable.ValidationObject?.Content)
+                {
+                    continue;
+                }
+
+                // Do a rough match between the decorations
+                // This should guarantee some "uniqueness"
+                if (messageItem.ExtractDecoration != observable.ExtractDecoration ||
+                    messageItem.FilenameDecoration != observable.FilenameDecoration)
+                {
+                    continue;
+                }
+
+                // Matching item
+                return messageItem;
+            }
+
+            // No match found
+            return null;
         }
 
         /// <summary>
