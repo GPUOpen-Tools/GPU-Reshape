@@ -36,10 +36,6 @@
              mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="250"
              x:Class="Studio.Views.Controls.MessageCollectionQueryView"
              x:DataType="message:HierarchicalMessageQueryFilterViewModel">
-    <UserControl.DataContext>
-        <message:HierarchicalMessageQueryFilterViewModel/>
-    </UserControl.DataContext>
-    
     <Grid>
         <AutoCompleteBox 
             x:Name="QueryBox"

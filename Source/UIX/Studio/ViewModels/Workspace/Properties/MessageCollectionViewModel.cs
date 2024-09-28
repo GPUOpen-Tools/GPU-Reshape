@@ -39,6 +39,7 @@ using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Message;
@@ -82,16 +83,30 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Hierarchical query filter
         /// </summary>
-        public HierarchicalMessageQueryFilterViewModel? HierarchicalMessageQueryFilterViewModel
-        {
-            get => HierarchicalMessageFilterViewModel.QueryFilterViewModel;
-            set => HierarchicalMessageFilterViewModel.QueryFilterViewModel = value;
-        }
+        public HierarchicalMessageQueryFilterViewModel? HierarchicalMessageQueryFilterViewModel { get; } = new();
 
         /// <summary>
         /// Hierarchical message representation
         /// </summary>
         public HierarchicalMessageFilterViewModel HierarchicalMessageFilterViewModel { get; } = new();
+
+        /// <summary>
+        /// Currently selected item
+        /// </summary>
+        public IObservableTreeItem? SelectedItem
+        {
+            get => _selectedItem;
+            set => this.RaiseAndSetIfChanged(ref _selectedItem, value);
+        }
+
+        /// <summary>
+        /// Current scrolling offset
+        /// </summary>
+        public Vector ScrollAmount
+        {
+            get => _scrollAmount;
+            set => this.RaiseAndSetIfChanged(ref _scrollAmount, value);
+        }
 
         /// <summary>
         /// Opens a given shader document from view model
@@ -154,6 +169,7 @@ namespace Studio.ViewModels.Workspace.Properties
             Clear = ReactiveCommand.Create(OnClear);
 
             // Bind objects for filtering
+            HierarchicalMessageFilterViewModel.QueryFilterViewModel = HierarchicalMessageQueryFilterViewModel;
             HierarchicalMessageFilterViewModel.Bind(ValidationObjects);
 
             // If design time, create some dummy items for testing
@@ -342,5 +358,15 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Internal view model
         /// </summary>
         private IConnectionViewModel? _connectionViewModel;
+
+        /// <summary>
+        /// Internal selection
+        /// </summary>
+        private IObservableTreeItem? _selectedItem;
+        
+        /// <summary>
+        /// Internal scroll
+        /// </summary>
+        private Vector _scrollAmount = Vector.Zero;
     }
 }

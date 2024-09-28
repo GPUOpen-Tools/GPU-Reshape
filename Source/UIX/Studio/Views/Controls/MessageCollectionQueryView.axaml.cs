@@ -68,8 +68,6 @@ namespace Studio.Views.Controls
         /// <returns></returns>
         private bool QueryTextFilter(string search, string item)
         {
-            VM?.RefreshQuery();
-            
             // Do not suggest items already decorated
             if (VM?.QueryDecorators.Items.Any(x => x.Attribute.Key == item.Substring(0, item.Length - 1)) ?? false)
             {

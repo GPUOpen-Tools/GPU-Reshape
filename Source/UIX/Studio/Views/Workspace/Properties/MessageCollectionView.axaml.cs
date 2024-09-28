@@ -25,15 +25,15 @@
 // 
 
 using System;
-using System.Reactive.Linq;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using ReactiveUI;
 using Studio.Extensions;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace.Message;
-using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Views.Workspace.Properties
@@ -55,11 +55,28 @@ namespace Studio.Views.Workspace.Properties
                 .Subscribe(viewModel =>
                 {
                     // Set query filter
-                    viewModel.HierarchicalMessageQueryFilterViewModel = CollectionQueryView.DataContext as HierarchicalMessageQueryFilterViewModel;
+                    CollectionQueryView.DataContext = viewModel.HierarchicalMessageQueryFilterViewModel;
                     
                     // Bind signals
                     MessageTree.AddHandler(InputElement.PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
                 });
+            
+            
+            // Bind activation
+            this.WhenActivated(_ =>
+            {
+                if (DataContext is not MessageCollectionViewModel vm)
+                {
+                    return;
+                }
+                
+                // Reconstruct and bind scroll events
+                if (MessageTree.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is { } scrollViewer)
+                {
+                    scrollViewer.Offset = vm.ScrollAmount;
+                    scrollViewer.Events().ScrollChanged.Subscribe(x => vm.ScrollAmount = scrollViewer.Offset);
+                }
+            });
         }
 
         /// <summary>
