@@ -48,8 +48,8 @@
     
     <Grid Focusable="True" Background="{DynamicResource DockApplicationAccentBrushLow}">
         <ScrollViewer>
-            <StackPanel Orientation="Vertical" Margin="2.5">
-                <controls:SectionView Title="Workspace">
+            <DockPanel Margin="2.5">
+                <controls:SectionView Title="Workspace" DockPanel.Dock="Top">
                     <Grid>
                         <Grid ColumnDefinitions="100,*" HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Vertical" Grid.Column="0">
@@ -81,26 +81,39 @@
                 <ItemsControl
                     VerticalAlignment="Stretch"
                     HorizontalAlignment="Stretch"
-                    ItemsSource="{Binding Properties}">
+                    ItemsSource="{Binding Properties}"
+                    DockPanel.Dock="Top">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <DockPanel LastChildFill="True"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.Styles>
+                        <Style Selector="ItemsControl > ContentPresenter">
+                            <Setter Property="DockPanel.Dock" Value="Top"/>
+                        </Style>
+                    </ItemsControl.Styles>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="properties:IPropertyViewModel">
-                            <StackPanel Orientation="Vertical">
+                            <Grid>
                                 <Separator 
                                     Background="{DynamicResource BorderColor}" 
+                                    VerticalAlignment="Top"
                                     HorizontalAlignment="Stretch"
                                     Height="2" Width="NaN"/>
                                 
                                 <controls:SectionView
+                                    Margin="0 2 0 0"
                                     Title="{Binding Name, FallbackValue=[PropertyName]}"
                                     InlineContent="{Binding Visibility, Converter={StaticResource EnumFlagConverter}, ConverterParameter={x:Static properties:PropertyVisibility.InlineSection}}"
                                     IsExpanded="{Binding Visibility, Mode=OneTime, Converter={StaticResource PropertyVisibilityConverter}}">
                                     <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
                                 </controls:SectionView>
-                            </StackPanel>
+                            </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </StackPanel>
+            </DockPanel>
         </ScrollViewer>
     </Grid>
 </UserControl>
