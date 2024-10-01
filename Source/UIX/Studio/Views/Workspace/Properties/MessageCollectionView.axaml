@@ -50,6 +50,8 @@
             <valueConverters:ValidationSeverityToIconConverter x:Key="ValidationSeverityToIconConverter" />
             <valueConverters:HierarchicalModeGridVisibilityConverter x:Key="HierarchicalModeGridVisibilityConverter"/>
             <valueConverters:EnumFlagConverter x:Key="EnumFlagConverter"/>
+            <valueConverters:VirtualizationIndentationConverter x:Key="VirtualizationIndentationConverter"/>
+            <valueConverters:VirtualizationExpansionConverter x:Key="VirtualizationExpansionConverter"/>
         </ResourceDictionary>
         
         <ColumnDefinition 
@@ -227,33 +229,61 @@
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
                     VerticalScrollBarVisibility="Auto">
-                    <TreeView 
-                        x:Name="MessageTree"
+                    <ListBox
+                        x:Name="MessageList"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
-                        AutoScrollToSelectedItem="False"
+                        AutoScrollToSelectedItem="True"
                         BorderBrush="Transparent"
                         SelectedItem="{Binding SelectedItem}"
-                        ItemsSource="{Binding HierarchicalMessageFilterViewModel.Root.Items}">
-                        <TreeView.Styles>
-                            <Style Selector="TreeViewItem">
-                                <Setter Property="IsExpanded" x:DataType="controls:IObservableTreeItem" Value="{Binding Path=IsExpanded}"/>
+                        ItemsSource="{Binding HierarchicalMessageFilterViewModel.Virtualization.Items}">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem > Grid">
+                                <Setter Property="Height" Value="18"/>
+                                <Setter Property="Margin" x:DataType="controls:IVirtualizedObservableTreeItem" Value="{Binding Path=Indentation, Converter={StaticResource VirtualizationIndentationConverter}}"/>
                             </Style>
-                        </TreeView.Styles>
-                        <TreeView.DataTemplates>
-                            <TreeDataTemplate x:DataType="message:ObservableCategoryItem" ItemsSource="{Binding Items}">
-                                <StackPanel Orientation="Horizontal">
-                                    <PathIcon 
-                                        Data="{CompiledBinding Icon}"
-                                        Foreground="{CompiledBinding StatusColor}"
-                                        Margin=" 7 3 3 3"
-                                        Width="10" Height="10" /> 
-                                    
-                                    <TextBlock Text="{Binding Text}"/>
-                                </StackPanel>
-                            </TreeDataTemplate>
-                            <TreeDataTemplate x:DataType="message:ObservableMessageItem" ItemsSource="{Binding Items}">
-                                <Grid HorizontalAlignment="Stretch">
+                        </ListBox.Styles>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.DataTemplates>
+                            <DataTemplate x:DataType="message:ObservableCategoryItem">
+                                <Grid VerticalAlignment="Center">
+                                    <StackPanel 
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                        <Button 
+                                            Classes="Icon IconNoResponse" 
+                                            Width="15" Height="15"
+                                            Command="{Binding ToggleExpansion}">
+                                            <PathIcon 
+                                                Data="M 0 2 L 4 6 L 0 10 Z"
+                                                Margin="0 5 0 0"
+                                                Width="10" Height="10">
+                                                <PathIcon.Styles>
+                                                    <Style Selector="PathIcon">
+                                                        <Setter Property="RenderTransform">
+                                                            <RotateTransform Angle="{Binding IsExpanded, Converter={StaticResource VirtualizationExpansionConverter}}" />
+                                                        </Setter>
+                                                    </Style>
+                                                </PathIcon.Styles>
+                                            </PathIcon>
+                                        </Button>
+                                        
+                                        <PathIcon 
+                                            Data="{CompiledBinding Icon}"
+                                            Foreground="{CompiledBinding StatusColor}"
+                                            Margin=" 7.5 3 3 3"
+                                            Width="10" Height="10" /> 
+                                        
+                                        <TextBlock Text="{Binding Text}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                            <DataTemplate x:DataType="message:ObservableMessageItem">
+                                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
                                     <Grid.ColumnDefinitions>
                                         <StaticResource ResourceKey="SharedColumnSeverity" />
                                         <StaticResource ResourceKey="SharedColumnContent" />
@@ -265,6 +295,7 @@
                                     <PathIcon 
                                         Grid.Column="0"
                                         Margin="0 -2 0 0"
+                                        VerticalAlignment="Center"
                                         Data="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
                                         Foreground="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
                                         Width="10" Height="10" 
@@ -275,15 +306,17 @@
                                         }"/>
                                     
                                     <TextBlock 
-                                        Grid.Column="1" 
+                                        Grid.Column="1"
                                         HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
                                         TextTrimming="CharacterEllipsis"
                                         TextWrapping="NoWrap"
                                         Text="{Binding ValidationObject.Content}"/>
                                     
                                     <TextBlock 
-                                        Grid.Column="2"
+                                        Grid.Column="2" 
                                         HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
                                         Margin="0 0 15 0"
                                         TextTrimming="CharacterEllipsis"
                                         TextWrapping="NoWrap"
@@ -297,6 +330,7 @@
                                     <TextBlock 
                                         Grid.Column="3" 
                                         HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
                                         Margin="0 0 15 0"
                                         TextTrimming="CharacterEllipsis"
                                         TextWrapping="NoWrap"
@@ -307,9 +341,9 @@
                                         HorizontalAlignment="Right"
                                         Text="{Binding ValidationObject.Count}"/>
                                 </Grid>
-                            </TreeDataTemplate>
-                        </TreeView.DataTemplates>
-                    </TreeView>
+                            </DataTemplate>
+                        </ListBox.DataTemplates>
+                    </ListBox>
                 </ScrollViewer>
             </queryControls:FreeMeasureControl>
         </Grid>

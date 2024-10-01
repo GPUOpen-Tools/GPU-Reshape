@@ -26,13 +26,14 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
 using Studio.ViewModels.Controls;
 
 namespace Studio.ViewModels.Workspace.Message
 {
-    public class ObservableCategoryItem : ReactiveObject, IObservableTreeItem
+    public class ObservableCategoryItem : ReactiveObject, IVirtualizedObservableTreeItem
     {
         /// <summary>
         /// Display text of this item
@@ -80,9 +81,36 @@ namespace Studio.ViewModels.Workspace.Message
         }
 
         /// <summary>
+        /// The virtual indentation
+        /// </summary>
+        public int Indentation
+        {
+            get => _indentation;
+            set => this.RaiseAndSetIfChanged(ref _indentation, value);
+        }
+        
+        /// <summary>
+        /// Toggle the expansion state
+        /// </summary>
+        public ICommand ToggleExpansion { get; }
+
+        /// <summary>
         /// All child items
         /// </summary>
         public ObservableCollection<IObservableTreeItem> Items { get; } = new();
+
+        public ObservableCategoryItem()
+        {
+            ToggleExpansion = ReactiveCommand.Create(OnToggleExpansion);
+        }
+
+        /// <summary>
+        /// Invoked on expansion
+        /// </summary>
+        private void OnToggleExpansion()
+        {
+            IsExpanded = !IsExpanded;
+        }
 
         /// <summary>
         /// Internal text state
@@ -108,5 +136,10 @@ namespace Studio.ViewModels.Workspace.Message
         /// Internal expansion state
         /// </summary>
         private bool _isExpanded = true;
+
+        /// <summary>
+        /// Internal indentation
+        /// </summary>
+        private int _indentation = 0;
     }
 }

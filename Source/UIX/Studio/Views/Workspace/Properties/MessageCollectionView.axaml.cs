@@ -58,7 +58,7 @@ namespace Studio.Views.Workspace.Properties
                     CollectionQueryView.DataContext = viewModel.HierarchicalMessageQueryFilterViewModel;
                     
                     // Bind signals
-                    MessageTree.AddHandler(InputElement.PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
+                    MessageList.AddHandler(InputElement.PointerPressedEvent, OnListPointerPressed, RoutingStrategies.Tunnel);
                 });
             
             
@@ -71,22 +71,24 @@ namespace Studio.Views.Workspace.Properties
                 }
                 
                 // Reconstruct and bind scroll events
+#if false
                 if (MessageTree.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is { } scrollViewer)
                 {
                     scrollViewer.Offset = vm.ScrollAmount;
                     scrollViewer.Events().ScrollChanged.Subscribe(x => vm.ScrollAmount = scrollViewer.Offset);
                 }
+#endif
             });
         }
 
         /// <summary>
         /// Invoked on pointer presses
         /// </summary>
-        private void OnTreePointerPressed(object? sender, PointerPressedEventArgs _event)
+        private void OnListPointerPressed(object? sender, PointerPressedEventArgs _event)
         {
             // Get contexts
             if (DataContext is not MessageCollectionViewModel {} viewModel ||
-                MessageTree.SelectedItem is not IObservableTreeItem { } item)
+                MessageList.SelectedItem is not IObservableTreeItem { } item)
             {
                 return;
             }

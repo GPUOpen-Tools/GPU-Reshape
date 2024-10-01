@@ -66,6 +66,11 @@ namespace Studio.ViewModels.Workspace.Message
         }
 
         /// <summary>
+        /// Virtualized hierarchy
+        /// </summary>
+        public HierarchicalMessageVirtualizationViewModel Virtualization { get; } = new();
+
+        /// <summary>
         /// Workspace collection property
         /// </summary>
         public IPropertyViewModel? PropertyViewModel
@@ -111,6 +116,12 @@ namespace Studio.ViewModels.Workspace.Message
                 this.RaiseAndSetIfChanged(ref _hideMissingSymbols, value);
                 ResummarizeValidationObjects();
             }
+        }
+
+        public HierarchicalMessageFilterViewModel()
+        {
+            // Virtualize the base range
+            Virtualization.Virtualize(Root);
         }
 
         /// <summary>
@@ -161,7 +172,11 @@ namespace Studio.ViewModels.Workspace.Message
         /// </summary>
         private void SetExpandedState(IObservableTreeItem item, bool state)
         {
-            item.IsExpanded = state;
+            if (item != Root)
+            {
+                item.IsExpanded = state;
+            }
+
             item.Items.ForEach(x => SetExpandedState(x, state));
         }
 
@@ -189,6 +204,9 @@ namespace Studio.ViewModels.Workspace.Message
             // Remove all bindings
             _filterDisposable.Clear();
             
+            // Clear the virtualization, avoids needless reactions
+            Virtualization.Clear();
+            
             // Remove items and associations
             Root.Items.Clear();
             _objects.Clear();
@@ -205,6 +223,9 @@ namespace Studio.ViewModels.Workspace.Message
 
             // Filter all items again
             _source?.ForEach(FilterValidationObject);
+
+            // Virtualize the range again
+            Virtualization.Virtualize(Root);
         }
         
         /// <summary>
@@ -566,9 +587,10 @@ namespace Studio.ViewModels.Workspace.Message
             }
 
             // Create category
-            return GetCategory(item, header) ?? AddCategory(item, new ObservableCategoryItem()
+            return GetCategory(item, header) ?? AddCategory(item, new ObservableShaderCategoryItem()
             {
                 Text = header,
+                ShaderViewModel = observable.ShaderViewModel,
                 Icon = _shaderCategoryIcon
             });
         }

@@ -34,7 +34,7 @@ using ShaderViewModel = Studio.ViewModels.Workspace.Objects.ShaderViewModel;
 
 namespace Studio.ViewModels.Workspace.Message
 {
-    public class ObservableMessageItem : ReactiveObject, IObservableTreeItem
+    public class ObservableMessageItem : ReactiveObject, IVirtualizedObservableTreeItem
     {
         /// <summary>
         /// Display text of this item
@@ -95,6 +95,15 @@ namespace Studio.ViewModels.Workspace.Message
         }
 
         /// <summary>
+        /// The virtual indentation
+        /// </summary>
+        public int Indentation
+        {
+            get => _indentation;
+            set => this.RaiseAndSetIfChanged(ref _indentation, value);
+        }
+
+        /// <summary>
         /// The decorated extract
         /// </summary>
         public string ExtractDecoration
@@ -151,5 +160,10 @@ namespace Studio.ViewModels.Workspace.Message
         /// Internal expansion state
         /// </summary>
         private bool _isExpanded = true;
+
+        /// <summary>
+        /// Internal indentation
+        /// </summary>
+        private int _indentation = 0;
     }
 }

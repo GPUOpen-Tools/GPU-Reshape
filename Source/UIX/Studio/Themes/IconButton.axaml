@@ -56,4 +56,12 @@
         <Setter Property="Background" Value="{DynamicResource IconPressedColor}" />
         <Setter Property="Padding" Value="3 " />
     </Style>
+
+    <Style Selector="Button.IconNoResponse:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    
+    <Style Selector="Button.IconNoResponse:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
 </Styles>
