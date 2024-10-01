@@ -46,7 +46,7 @@ namespace Runtime.ViewModels.IL
             }
 
             // Validate instruction
-            if (block.Instructions.Length < location.InstructionIndex)
+            if (block.Instructions.Length <= location.InstructionIndex)
             {
                 return null;
             }
