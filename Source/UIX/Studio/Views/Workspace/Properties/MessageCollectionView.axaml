@@ -198,12 +198,34 @@
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
                     VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer.Styles>
+                        <Style Selector="ScrollBar:vertical">
+                            <Setter Property="Width" Value="8"/>
+                        </Style>
+                    </ScrollViewer.Styles>
                     <TreeDataGrid
                         x:Name="MessageList"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
                         BorderBrush="Transparent"
                         Source="{Binding HierarchicalMessageFilterViewModel.HierarchicalSource}">
+                        <TreeDataGrid.Styles>
+                            <Style Selector=":is(TreeDataGridCell)">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="MinHeight" Value="20" />
+                                <Setter Property="Padding" Value="0 0 4 0" />
+                            </Style>
+                            <Style Selector=":is(TreeDataGridCell):nth-child(1n+2)">
+                                <Setter Property="Padding" Value="4 0 4 0" />
+                            </Style>
+                            <Style Selector="TreeDataGridColumnHeader:nth-last-child(1) Rectangle">
+                                <Setter Property="Width" Value="0"/>
+                            </Style>
+                            <Style Selector=":is(ToggleButton)">
+                                <Setter Property="Width" Value="10" />
+                                <Setter Property="Height" Value="10" />
+                            </Style>
+                        </TreeDataGrid.Styles>
                         <TreeDataGrid.Resources>
                             <ResourceDictionary>
                                 <!-- Template for generic "messages" -->
