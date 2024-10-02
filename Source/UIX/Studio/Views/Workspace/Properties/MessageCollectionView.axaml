@@ -53,37 +53,6 @@
             <valueConverters:VirtualizationIndentationConverter x:Key="VirtualizationIndentationConverter"/>
             <valueConverters:VirtualizationExpansionConverter x:Key="VirtualizationExpansionConverter"/>
         </ResourceDictionary>
-        
-        <ColumnDefinition 
-            x:Key="SharedColumnSeverity" 
-            Width="{
-                Binding HierarchicalMessageFilterViewModel.Mode,
-                ConverterParameter={x:Static message:HierarchicalMode.FilterByTypeNegated}, 
-                Converter={StaticResource HierarchicalModeGridVisibilityConverter},
-                FallbackValue={x:Static valueConverters:HierarchicalModeGridVisibilityConverter.Icon}
-            }" />
-        
-        <ColumnDefinition 
-            x:Key="SharedColumnContent"
-            Width="{
-                Binding HierarchicalMessageFilterViewModel.Mode,
-                ConverterParameter={x:Static message:HierarchicalMode.FilterByTypeNegated}, 
-                Converter={StaticResource HierarchicalModeGridVisibilityConverter},
-                FallbackValue={x:Static GridLength.Star}
-            }" />
-        
-        <ColumnDefinition 
-            x:Key="SharedColumnShader"
-            Width="{
-                Binding HierarchicalMessageFilterViewModel.Mode,
-                ConverterParameter={x:Static message:HierarchicalMode.FilterByShaderNegated}, 
-                Converter={StaticResource HierarchicalModeGridVisibilityConverter},
-                FallbackValue={x:Static valueConverters:HierarchicalModeGridVisibilityConverter.Shader}
-            }" />
-        
-        <ColumnDefinition x:Key="SharedColumnExtract"/>
-        
-        <ColumnDefinition x:Key="SharedColumnCount" Width="100" />
     </UserControl.Resources>
     
     <Grid>
@@ -229,92 +198,74 @@
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
                     VerticalScrollBarVisibility="Auto">
-                    <ListBox
+                    <TreeDataGrid
                         x:Name="MessageList"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
-                        AutoScrollToSelectedItem="True"
                         BorderBrush="Transparent"
-                        SelectedItem="{Binding SelectedItem}"
-                        ItemsSource="{Binding HierarchicalMessageFilterViewModel.Virtualization.Items}">
-                        <ListBox.Styles>
-                            <Style Selector="ListBoxItem > Grid">
-                                <Setter Property="Height" Value="18"/>
-                                <Setter Property="Margin" x:DataType="controls:IVirtualizedObservableTreeItem" Value="{Binding Path=Indentation, Converter={StaticResource VirtualizationIndentationConverter}}"/>
-                            </Style>
-                        </ListBox.Styles>
-                        <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <VirtualizingStackPanel />
-                            </ItemsPanelTemplate>
-                        </ListBox.ItemsPanel>
-                        <ListBox.DataTemplates>
-                            <DataTemplate x:DataType="message:ObservableCategoryItem">
-                                <Grid VerticalAlignment="Center">
-                                    <StackPanel 
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center">
-                                        <Button 
-                                            Classes="Icon IconNoResponse" 
-                                            Width="15" Height="15"
-                                            Command="{Binding ToggleExpansion}">
-                                            <PathIcon 
-                                                Data="M 0 2 L 4 6 L 0 10 Z"
-                                                Margin="0 5 0 0"
-                                                Width="10" Height="10">
-                                                <PathIcon.Styles>
-                                                    <Style Selector="PathIcon">
-                                                        <Setter Property="RenderTransform">
-                                                            <RotateTransform Angle="{Binding IsExpanded, Converter={StaticResource VirtualizationExpansionConverter}}" />
-                                                        </Setter>
-                                                    </Style>
-                                                </PathIcon.Styles>
-                                            </PathIcon>
-                                        </Button>
-                                        
-                                        <PathIcon 
-                                            Data="{CompiledBinding Icon}"
-                                            Foreground="{CompiledBinding StatusColor}"
-                                            Margin=" 7.5 3 3 3"
-                                            Width="10" Height="10" /> 
-                                        
-                                        <TextBlock Text="{Binding Text}"/>
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                            <DataTemplate x:DataType="message:ObservableMessageItem">
-                                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                                    <Grid.ColumnDefinitions>
-                                        <StaticResource ResourceKey="SharedColumnSeverity" />
-                                        <StaticResource ResourceKey="SharedColumnContent" />
-                                        <StaticResource ResourceKey="SharedColumnShader" />
-                                        <StaticResource ResourceKey="SharedColumnExtract" />
-                                        <StaticResource ResourceKey="SharedColumnCount" />
-                                    </Grid.ColumnDefinitions>
-                                    
-                                    <PathIcon 
-                                        Grid.Column="0"
-                                        Margin="0 -2 0 0"
-                                        VerticalAlignment="Center"
-                                        Data="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
-                                        Foreground="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
-                                        Width="10" Height="10" 
-                                        IsVisible="{
-                                            Binding $parent[UserControl].((properties:MessageCollectionViewModel)DataContext).HierarchicalMessageFilterViewModel.Mode,
-                                            Converter={StaticResource EnumFlagConverter},
-                                            ConverterParameter={x:Static message:HierarchicalMode.FilterByTypeNegated} 
-                                        }"/>
-                                    
+                        Source="{Binding HierarchicalMessageFilterViewModel.HierarchicalSource}">
+                        <TreeDataGrid.Resources>
+                            <ResourceDictionary>
+                                <!-- Template for generic "messages" -->
+                                <DataTemplate x:Key="MessageColumn">
+                                    <ContentControl Content="{Binding}">
+                                        <ContentControl.DataTemplates>
+                                            <!-- Category handler -->
+                                            <DataTemplate x:DataType="message:ObservableCategoryItem">
+                                                <Grid VerticalAlignment="Center">
+                                                    <Grid
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center">
+                                                        <PathIcon 
+                                                            HorizontalAlignment="Left"
+                                                            Data="{CompiledBinding Icon}"
+                                                            Foreground="{CompiledBinding StatusColor}"
+                                                            Margin=" 5 3 0 3"
+                                                            Width="10" Height="10" /> 
+                                                        
+                                                        <TextBlock 
+                                                            Margin="20 0 0 0"
+                                                            HorizontalAlignment="Left"
+                                                            Text="{Binding Text}"/>
+                                                    </Grid>
+                                                </Grid>
+                                            </DataTemplate>
+                                            
+                                            <!-- Message handler -->
+                                            <DataTemplate x:DataType="message:ObservableMessageItem">
+                                                <Grid
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center">
+                                                    <PathIcon 
+                                                        x:DataType="message:ObservableMessageItem"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center"
+                                                        Data="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
+                                                        Foreground="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
+                                                        Width="10" Height="10"
+                                                        IsVisible="{
+                                                            Binding $parent[UserControl].((properties:MessageCollectionViewModel)DataContext).HierarchicalMessageFilterViewModel.Mode,
+                                                            Converter={StaticResource EnumFlagConverter},
+                                                            ConverterParameter={x:Static message:HierarchicalMode.FilterByTypeNegated} 
+                                                        }"/>
+                                                    
+                                                    <TextBlock 
+                                                        Margin="15 0 0 0"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        TextWrapping="NoWrap"
+                                                        Text="{Binding ValidationObject.Content}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ContentControl.DataTemplates>
+                                    </ContentControl>
+                                </DataTemplate>
+                                
+                                <!-- Template for shader filenames -->
+                                <DataTemplate x:Key="ShaderColumn">
                                     <TextBlock 
-                                        Grid.Column="1"
-                                        HorizontalAlignment="Left"
-                                        VerticalAlignment="Center"
-                                        TextTrimming="CharacterEllipsis"
-                                        TextWrapping="NoWrap"
-                                        Text="{Binding ValidationObject.Content}"/>
-                                    
-                                    <TextBlock 
-                                        Grid.Column="2" 
+                                        x:DataType="message:ObservableMessageItem"
                                         HorizontalAlignment="Left"
                                         VerticalAlignment="Center"
                                         Margin="0 0 15 0"
@@ -326,24 +277,31 @@
                                             Converter={StaticResource EnumFlagConverter},
                                             ConverterParameter={x:Static message:HierarchicalMode.FilterByShaderNegated}
                                         }"/>
-                                    
+                                </DataTemplate>
+                                
+                                <!-- Template for shader extracts -->
+                                <DataTemplate x:Key="ExtractColumn">
                                     <TextBlock 
-                                        Grid.Column="3" 
+                                        x:DataType="message:ObservableMessageItem"
                                         HorizontalAlignment="Left"
                                         VerticalAlignment="Center"
                                         Margin="0 0 15 0"
                                         TextTrimming="CharacterEllipsis"
                                         TextWrapping="NoWrap"
                                         Text="{Binding ExtractDecoration}"/>
-                                    
+                                </DataTemplate>
+                                
+                                <!-- Template for validation counters -->
+                                <DataTemplate x:Key="CountColumn">
                                     <TextBlock
-                                        Grid.Column="4"
-                                        HorizontalAlignment="Right"
+                                        x:DataType="message:ObservableMessageItem"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
                                         Text="{Binding ValidationObject.Count}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.DataTemplates>
-                    </ListBox>
+                                </DataTemplate>
+                            </ResourceDictionary>
+                        </TreeDataGrid.Resources>
+                    </TreeDataGrid>
                 </ScrollViewer>
             </queryControls:FreeMeasureControl>
         </Grid>

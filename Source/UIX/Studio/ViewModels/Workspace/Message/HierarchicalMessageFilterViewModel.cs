@@ -30,6 +30,8 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Reactive.Disposables;
+using Avalonia.Controls;
+using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Media;
 using DynamicData;
 using DynamicData.Binding;
@@ -69,6 +71,20 @@ namespace Studio.ViewModels.Workspace.Message
         /// Virtualized hierarchy
         /// </summary>
         public HierarchicalMessageVirtualizationViewModel Virtualization { get; } = new();
+
+        /// <summary>
+        /// The filtered hierarchical source
+        /// </summary>
+        public HierarchicalTreeDataGridSource<IObservableTreeItem> HierarchicalSource
+        {
+            get => _hierarchicalSource;
+            set => this.RaiseAndSetIfChanged(ref _hierarchicalSource, value);
+        }
+
+        /// <summary>
+        /// If true, uses inbuilt / native virtualization
+        /// </summary>
+        public bool UseInbuiltVirtualization { get; } = false;
 
         /// <summary>
         /// Workspace collection property
@@ -121,7 +137,137 @@ namespace Studio.ViewModels.Workspace.Message
         public HierarchicalMessageFilterViewModel()
         {
             // Virtualize the base range
-            Virtualization.Virtualize(Root);
+            if (UseInbuiltVirtualization)
+            {
+                Virtualization.Virtualize(Root);
+            }
+
+            // Initial source
+            CreateHierarchicalSource();
+        }
+
+        /// <summary>
+        /// Create a new source
+        /// </summary>
+        private void CreateHierarchicalSource()
+        {
+            // Create new source
+            // ! Must not actually bind it yet, "dynamically" creating columns results in a heap of issues
+            //   Definitely a bug on Avalonia's end.
+            var source = new HierarchicalTreeDataGridSource<IObservableTreeItem>(Root.Items);
+            
+            // Generic message column, expandable
+            source.Columns.Add(new HierarchicalExpanderColumn<IObservableTreeItem>(
+                new TemplateColumn<IObservableTreeItem>(
+                    "Message",
+                    "MessageColumn",
+                    width: new GridLength(25, GridUnitType.Star),
+                    options: new TemplateColumnOptions<IObservableTreeItem>()
+                    {
+                        CompareAscending = (x, y) => HierarchicalCompareMessage(x, y),
+                        CompareDescending = (x, y) => HierarchicalCompareMessage(y, x)
+                    }
+                ),
+                x => x.Items,
+                x => x.Items.Count > 0,
+                x => x.IsExpanded
+            ));
+            
+            // Shader column, hidden if already categorized
+            if (!Mode.HasFlag(HierarchicalMode.FilterByShader))
+            {
+                source.Columns.Add(new TemplateColumn<IObservableTreeItem>(
+                    "Shader",
+                    "ShaderColumn",
+                    width: new GridLength(37, GridUnitType.Star),
+                    options: new TemplateColumnOptions<IObservableTreeItem>()
+                    {
+                        CompareAscending = (x, y) => HierarchicalCompareShader(x, y),
+                        CompareDescending = (x, y) => HierarchicalCompareShader(y, x)
+                    }
+                ));
+            }
+            
+            // Extraction column
+            source.Columns.Add(new TemplateColumn<IObservableTreeItem>(
+                "Extract", 
+                "ExtractColumn",
+                width: new GridLength(37, GridUnitType.Star),
+                options: new TemplateColumnOptions<IObservableTreeItem>()
+                {
+                    CompareAscending = (x, y) => HierarchicalCompareExtract(x, y),
+                    CompareDescending = (x, y) => HierarchicalCompareExtract(y, x)
+                }
+            ));
+            
+            // Count column
+            source.Columns.Add(new TemplateColumn<IObservableTreeItem>(
+                "Count",
+                "CountColumn",
+                width: new GridLength(55, GridUnitType.Pixel),
+                options: new TemplateColumnOptions<IObservableTreeItem>()
+                {
+                    CompareAscending = (x, y) => HierarchicalCompareCount(x, y),
+                    CompareDescending = (x, y) => HierarchicalCompareCount(y, x)
+                }
+            ));
+
+            // Finally, assign it
+            HierarchicalSource = source;
+        }
+
+        /// <summary>
+        /// Get the decoration for an item
+        /// </summary>
+        private string GetObservableDecoration(IObservableTreeItem? item)
+        {
+            // Use validation contents if possible
+            if (item is ObservableMessageItem message)
+            {
+                return message.ValidationObject?.Content ?? "";
+            }
+            
+            return item?.Text ?? "";
+        }
+
+        /// <summary>
+        /// General comparator for messages
+        /// </summary>
+        private int HierarchicalCompareMessage(IObservableTreeItem? x, IObservableTreeItem? y)
+        {
+            string lhs = GetObservableDecoration(x);
+            string rhs = GetObservableDecoration(y);
+            return String.Compare(lhs, rhs, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// General comparator for shader filenames
+        /// </summary>
+        private int HierarchicalCompareShader(IObservableTreeItem? x, IObservableTreeItem? y)
+        {
+            string lhs = (x as ObservableMessageItem)?.FilenameDecoration ?? "";
+            string rhs = (y as ObservableMessageItem)?.FilenameDecoration ?? "";
+            return String.Compare(lhs, rhs, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// General comparator for shader extracts
+        /// </summary>
+        private int HierarchicalCompareExtract(IObservableTreeItem? x, IObservableTreeItem? y)
+        {
+            string lhs = (x as ObservableMessageItem)?.ExtractDecoration ?? "";
+            string rhs = (y as ObservableMessageItem)?.ExtractDecoration ?? "";
+            return String.Compare(lhs, rhs, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// General comparator for validation counters
+        /// </summary>
+        private int HierarchicalCompareCount(IObservableTreeItem? x, IObservableTreeItem? y)
+        {
+            uint lhs = (x as ObservableMessageItem)?.ValidationObject?.Count ?? 0;
+            uint rhs = (y as ObservableMessageItem)?.ValidationObject?.Count ?? 0;
+            return (int)lhs - (int)rhs;
         }
 
         /// <summary>
@@ -157,6 +303,9 @@ namespace Studio.ViewModels.Workspace.Message
         public void Expand()
         {
             SetExpandedState(Root, true);
+            
+            // Hierarchical source doesn't bind, so handle separately
+            HierarchicalSource.ExpandAll();
         }
 
         /// <summary>
@@ -165,6 +314,9 @@ namespace Studio.ViewModels.Workspace.Message
         public void Collapse()
         {
             SetExpandedState(Root, false);
+            
+            // Hierarchical source doesn't bind, so handle separately
+            HierarchicalSource.CollapseAll();
         }
 
         /// <summary>
@@ -205,8 +357,11 @@ namespace Studio.ViewModels.Workspace.Message
             _filterDisposable.Clear();
             
             // Clear the virtualization, avoids needless reactions
-            Virtualization.Clear();
-            
+            if (UseInbuiltVirtualization)
+            {
+                Virtualization.Clear();
+            }
+
             // Remove items and associations
             Root.Items.Clear();
             _objects.Clear();
@@ -225,7 +380,13 @@ namespace Studio.ViewModels.Workspace.Message
             _source?.ForEach(FilterValidationObject);
 
             // Virtualize the range again
-            Virtualization.Virtualize(Root);
+            if (UseInbuiltVirtualization)
+            {
+                Virtualization.Virtualize(Root);
+            }
+
+            // Recreate the hierarchical source entirely
+            CreateHierarchicalSource();
         }
         
         /// <summary>
@@ -717,5 +878,10 @@ namespace Studio.ViewModels.Workspace.Message
         /// Internal severity mask
         /// </summary>
         private ValidationSeverity _severity = ValidationSeverity.All;
+        
+        /// <summary>
+        /// Internal source
+        /// </summary>
+        private HierarchicalTreeDataGridSource<IObservableTreeItem> _hierarchicalSource;
     }   
 }

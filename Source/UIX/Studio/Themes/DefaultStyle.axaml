@@ -129,6 +129,7 @@
 
     <!-- Base style -->
     <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
+    <StyleInclude Source="avares://Avalonia.Controls.TreeDataGrid/Themes/Generic.axaml"/>
     <StyleInclude Source="avares://Dock.Avalonia/Themes/DockSimpleTheme.axaml" />
     <StyleInclude Source="avares://AvaloniaEdit/Themes/Simple/AvaloniaEdit.xaml" />
 
@@ -232,6 +233,7 @@
     <StyleInclude Source="avares://GPUReshape/Themes/ComboBox.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/AutoCompleteBox.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/DataGrid.axaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/TreeDataGrid.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/ListBox.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/TreeView.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/ValidationButton.axaml" />

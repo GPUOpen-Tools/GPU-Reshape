@@ -88,7 +88,7 @@ namespace Studio.Views.Workspace.Properties
         {
             // Get contexts
             if (DataContext is not MessageCollectionViewModel {} viewModel ||
-                MessageList.SelectedItem is not IObservableTreeItem { } item)
+                MessageList.RowSelection?.SelectedItem is not IObservableTreeItem { } item)
             {
                 return;
             }

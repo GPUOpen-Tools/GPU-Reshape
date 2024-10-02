@@ -192,7 +192,7 @@ namespace Studio.ViewModels.Workspace.Properties
                     {
                         Content = "Failure B - XXXXXXX",
                         Severity = ValidationSeverity.Warning,
-                        Count = 5,
+                        Count = 10,
                         Segment = new ShaderSourceSegment()
                         {
                             Extract = "Extract B",
