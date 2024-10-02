@@ -277,7 +277,7 @@
                                                         VerticalAlignment="Center"
                                                         TextTrimming="CharacterEllipsis"
                                                         TextWrapping="NoWrap"
-                                                        Text="{Binding ValidationObject.Content}"/>
+                                                        Text="{Binding Text}"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </ContentControl.DataTemplates>

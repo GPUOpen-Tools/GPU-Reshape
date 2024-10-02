@@ -188,18 +188,21 @@ namespace Studio.ViewModels.Workspace.Message
                 ));
             }
             
-            // Extraction column
-            source.Columns.Add(new TemplateColumn<IObservableTreeItem>(
-                "Extract", 
-                "ExtractColumn",
-                width: new GridLength(37, GridUnitType.Star),
-                options: new TemplateColumnOptions<IObservableTreeItem>()
-                {
-                    CompareAscending = (x, y) => HierarchicalCompareExtract(x, y),
-                    CompareDescending = (x, y) => HierarchicalCompareExtract(y, x)
-                }
-            ));
-            
+            // Extraction column, inlined into message if categorized
+            if (!Mode.HasFlag(HierarchicalMode.FilterByType))
+            {
+                source.Columns.Add(new TemplateColumn<IObservableTreeItem>(
+                    "Extract",
+                    "ExtractColumn",
+                    width: new GridLength(37, GridUnitType.Star),
+                    options: new TemplateColumnOptions<IObservableTreeItem>()
+                    {
+                        CompareAscending = (x, y) => HierarchicalCompareExtract(x, y),
+                        CompareDescending = (x, y) => HierarchicalCompareExtract(y, x)
+                    }
+                ));
+            }
+
             // Count column
             source.Columns.Add(new TemplateColumn<IObservableTreeItem>(
                 "Count",
@@ -460,6 +463,7 @@ namespace Studio.ViewModels.Workspace.Message
             // Create the decorations
             observable.FilenameDecoration = CompositeFilename(obj, observable);
             observable.ExtractDecoration = CompositeExtract(obj, observable);
+            observable.Text = CompositeMessage(obj, observable);
 
             // Nested by type?
             if (_mode.HasFlag(HierarchicalMode.FilterByType))
@@ -629,6 +633,21 @@ namespace Studio.ViewModels.Workspace.Message
 
             // No match found
             return null;
+        }
+
+        /// <summary>
+        /// Composite the item message
+        /// </summary>
+        private string CompositeMessage(ValidationObject obj, ObservableMessageItem observable)
+        {
+            // If already filtering by type, just display the extract
+            if (Mode.HasFlag(HierarchicalMode.FilterByType))
+            {
+                return observable.ExtractDecoration;
+            }
+
+            // Otherwise content
+            return obj.Content;
         }
 
         /// <summary>
