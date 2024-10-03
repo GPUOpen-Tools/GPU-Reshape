@@ -34,6 +34,7 @@
 #include <Backend/IShaderFeature.h>
 #include <Backend/ShaderExport.h>
 #include <Backend/IL/BasicBlock.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -88,7 +89,10 @@ private:
     
     /// Inject waterfall checks to address chains
     IL::BasicBlock::Iterator InjectAddressChain(IL::Program& program, const ComRef<SharedData>& data, const SetInstrumentationConfigMessage& config, IL::VisitContext& context, IL::BasicBlock::Iterator it);
-    
+
+    /// Inject the divergence checks
+    IL::ID InjectRuntimeDivergenceVisitor(IL::Program& program, IL::Emitter<>& pre, const IL::AddressChainInstruction* splitInstr);
+
     /// Inject waterfall checks to composite extraction
     IL::BasicBlock::Iterator InjectExtract(IL::Program& program, const ComRef<SharedData>& data, IL::VisitContext& context, IL::BasicBlock::Iterator it);
 

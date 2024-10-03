@@ -271,20 +271,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         IL::Emitter<> pre(program, context.basicBlock);
         {
             // Validate each chain index
-            IL::ID anyRuntimeDivergent = IL::InvalidID;
-            for (uint32_t i = 0; i < splitInstr->chains.count; i++) {
-                const IL::AddressChain& chain = splitInstr->chains[i];
-
-                // Invalid if any lanes have a different values
-                IL::ID anyRuntimeChainDivergent = pre.Not(pre.WaveAllEqual(chain.index));
-
-                // Combine with last
-                if (anyRuntimeDivergent != IL::InvalidID) {
-                    anyRuntimeDivergent = pre.Or(anyRuntimeDivergent, anyRuntimeChainDivergent);
-                } else {
-                    anyRuntimeDivergent = anyRuntimeChainDivergent;
-                }
-            }
+            IL::ID anyRuntimeDivergent = InjectRuntimeDivergenceVisitor(program, pre, splitInstr);
         
             // If so, branch to failure, otherwise resume
             pre.BranchConditional(anyRuntimeDivergent, divergentBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
@@ -307,6 +294,40 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         
         return splitIt;
     }
+}
+
+IL::ID WaterfallFeature::InjectRuntimeDivergenceVisitor(IL::Program& program, IL::Emitter<>& pre, const IL::AddressChainInstruction* splitInstr) {
+    IL::ID anyRuntimeDivergent = IL::InvalidID;
+
+    // Get the composite type
+    const Backend::IL::Type* type = program.GetTypeMap().GetType(splitInstr->composite);
+
+    // Collect divergence across the chains until we meet the resource
+    for (uint32_t i = 0; i < splitInstr->chains.count; i++) {
+        const IL::AddressChain& chain = splitInstr->chains[i];
+
+        // Invalid if any lanes have a different values
+        IL::ID anyRuntimeChainDivergent = pre.Not(pre.WaveAllEqual(chain.index));
+
+        // Combine with last
+        if (anyRuntimeDivergent != IL::InvalidID) {
+            anyRuntimeDivergent = pre.Or(anyRuntimeDivergent, anyRuntimeChainDivergent);
+        } else {
+            anyRuntimeDivergent = anyRuntimeChainDivergent;
+        }
+
+        // If we've reached the resource itself, the next addressing is structural
+        // or texel addressing, where variant indexing is completely fine
+        if (IsResourceType(type)) {
+            break;
+        }
+
+        // Get next type
+        type = GetValueType(type);
+    }
+
+    // OK
+    return anyRuntimeDivergent;
 }
 
 IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, const ComRef<SharedData>& data, IL::VisitContext &context, IL::BasicBlock::Iterator it) {
