@@ -684,10 +684,10 @@ namespace Studio.ViewModels.Workspace.Message
                 return observable.ValidationObject.Extract;
             }
 
-            // This shouldn't happen
+            // May not be resolved yet
             if (observable.ShaderViewModel == null || obj.Segment == null)
             {
-                return "[Null]";
+                return "Resolving...";
             }
             
             // Inform the code pooler
