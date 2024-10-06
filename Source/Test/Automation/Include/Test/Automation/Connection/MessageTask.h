@@ -99,6 +99,19 @@ public:
         WaitForAcquire(lock);
     }
 
+    /// Wait for the final release or pending acquire
+    template<typename R, typename P>
+    bool WaitForNextAcquire(const std::chrono::duration<R, P>& timeout) {
+        // If released, early out
+        if (IsReleased()) {
+            return true;
+        }
+
+        // Just assume acquire
+        std::unique_lock lock(controller->mutex);
+        return WaitForAcquire(lock, timeout);
+    }
+
     /// Pool for acquisition without waiting
     /// \param clear if true, clears current (non-release) data before pooling
     /// \return true if acquired
@@ -184,6 +197,22 @@ private:
 
         // Handle acuisition
         OnAcquisition();
+    }
+
+    /// Wait for acquisition
+    template<typename R, typename P>
+    bool WaitForAcquire(std::unique_lock<std::mutex>& lock, const std::chrono::duration<R, P>& timeout) {
+        // Hold until the controller moves ahead of the local commit
+        if (!controller->wakeCondition.wait_for(lock, timeout, [&] {
+            return controller->commitId > acquiredId;
+        })) {
+            // Timeout!
+            return false;
+        }
+
+        // Handle acuisition
+        OnAcquisition();
+        return true;
     }
 
     /// Update acquisition states

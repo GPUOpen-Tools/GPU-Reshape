@@ -111,6 +111,11 @@ bool Connection::CreateConnection(const std::string_view& processName) {
             break;
         }
     }
+    
+    // Wait for connection
+    if (!accepted.Wait(std::chrono::seconds(60))) {
+        return false;
+    }
 
     // A connection was made, pool for success
     return accepted->accepted;

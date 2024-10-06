@@ -55,7 +55,13 @@ bool WaitForPipelinesPass::Run() {
         connection->AddAndCommit<GetObjectStatesMessage>();
 
         // Wait for objects
-        objects.Wait();
+        while (!objects.Wait(std::chrono::seconds(5))) {
+            // Check if the application didn't crash somewhere
+            if (!data->IsAlive()) {
+                Log(registry, "Application crashed during tests");
+                return false;
+            }
+        }
 
         // Stable?
         if (lastPipelineCount == objects->pipelineCount) {
