@@ -172,7 +172,8 @@ namespace Intrinsics {
         .parameterTypes = {
             DXILIntrinsicTypeSpec::I32,     // opcode
             DXILIntrinsicTypeSpec::Handle,  // resource handle
-            DXILIntrinsicTypeSpec::I32,     // coordinate
+            DXILIntrinsicTypeSpec::I32,     // coordinate c0 (index)
+            DXILIntrinsicTypeSpec::I32,     // coordinate c1 (elementOffset)
             DXILIntrinsicTypeSpec::I8,      // mask
             DXILIntrinsicTypeSpec::I32      // alignment
         }
@@ -185,7 +186,8 @@ namespace Intrinsics {
         .parameterTypes = {
             DXILIntrinsicTypeSpec::I32,     // opcode
             DXILIntrinsicTypeSpec::Handle,  // resource handle
-            DXILIntrinsicTypeSpec::I32,     // coordinate
+            DXILIntrinsicTypeSpec::I32,     // coordinate c0 (index)
+            DXILIntrinsicTypeSpec::I32,     // coordinate c1 (elementOffset)
             DXILIntrinsicTypeSpec::I8,     // mask
             DXILIntrinsicTypeSpec::I32      // alignment
         }
@@ -198,7 +200,8 @@ namespace Intrinsics {
         .parameterTypes = {
             DXILIntrinsicTypeSpec::I32,     // opcode
             DXILIntrinsicTypeSpec::Handle,  // resource handle
-            DXILIntrinsicTypeSpec::I32,     // coordinate
+            DXILIntrinsicTypeSpec::I32,     // coordinate c0 (index)
+            DXILIntrinsicTypeSpec::I32,     // coordinate c1 (elementOffset)
             DXILIntrinsicTypeSpec::I8,      // mask
             DXILIntrinsicTypeSpec::I32      // alignment
         }
@@ -211,7 +214,8 @@ namespace Intrinsics {
         .parameterTypes = {
             DXILIntrinsicTypeSpec::I32,     // opcode
             DXILIntrinsicTypeSpec::Handle,  // resource handle
-            DXILIntrinsicTypeSpec::I32,     // coordinate
+            DXILIntrinsicTypeSpec::I32,     // coordinate c0 (index)
+            DXILIntrinsicTypeSpec::I32,     // coordinate c1 (elementOffset)
             DXILIntrinsicTypeSpec::I8,      // mask
             DXILIntrinsicTypeSpec::I32      // alignment
         }
