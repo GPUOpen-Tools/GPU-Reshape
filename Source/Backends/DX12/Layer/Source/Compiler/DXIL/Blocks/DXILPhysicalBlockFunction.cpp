@@ -4490,25 +4490,20 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::LoadBufferRaw: {
                     auto _instr = instr->As<IL::LoadBufferRawInstruction>();
 
-                    // Get type
-                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+                    // Get the result type
+                    const Backend::IL::Type* resultType = typeMap.GetType(_instr->result);
 
-                    // Type used for intrinsic
-                    const Backend::IL::Type* elementType = bufferType->elementType;
+                    // Target component type
+                    const Backend::IL::Type *componentType{nullptr};
 
-                    // Mutate element type on structured
-                    if (auto _struct = elementType->Cast<Backend::IL::StructType>()) {
-                        ASSERT(_instr->offset != IL::InvalidID, "Offset on non-structured type");
-
-                        // Get offset
-                        auto offset = program.GetConstants().GetConstant(_instr->offset)->As<Backend::IL::IntConstant>();
-
-                        // Get the element type
-                        elementType = Backend::IL::GetStructuredTypeAtOffset(_struct, offset->value);
-                        ASSERT(elementType, "Failed to deduce element type from offset");
+                    // Infer the target intrinsic from the result type
+                    // Raw loads can reinterpret the data, so we can't infer it from walking the POD type by its byte offsets
+                    // This also preserves the original intrinsic
+                    if (auto _struct = resultType->Cast<Backend::IL::StructType>()) {
+                        componentType = _struct->memberTypes[0];
+                    } else {
+                        componentType = Backend::IL::GetComponentType(resultType);
                     }
-
-                    const Backend::IL::Type *componentType = Backend::IL::GetComponentType(elementType);
 
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
@@ -4630,10 +4625,20 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::StoreBufferRaw: {
                     auto _instr = instr->As<IL::StoreBufferRawInstruction>();
 
-                    // Get type
-                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+                    // Get the result type
+                    const Backend::IL::Type* resultType = typeMap.GetType(_instr->result);
 
-                    const Backend::IL::Type *componentType = Backend::IL::GetComponentType(bufferType->elementType);
+                    // Target component type
+                    const Backend::IL::Type *componentType{nullptr};
+
+                    // Infer the target intrinsic from the result type
+                    // Raw loads can reinterpret the data, so we can't infer it from walking the POD type by its byte offsets
+                    // This also preserves the original intrinsic
+                    if (auto _struct = resultType->Cast<Backend::IL::StructType>()) {
+                        componentType = _struct->memberTypes[0];
+                    } else {
+                        componentType = Backend::IL::GetComponentType(resultType);
+                    }
 
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
