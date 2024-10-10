@@ -4798,13 +4798,24 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                 case IL::OpCode::LoadTexture: {
                     auto _instr = instr->As<IL::LoadTextureInstruction>();
+                    
+                    // Get the result type
+                    const Backend::IL::Type* resultType = typeMap.GetType(_instr->result);
 
                     // Get type
                     const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
 
-                    // Get component type
-                    const Backend::IL::Type* componentType = Backend::IL::GetComponentType(textureType->sampledType);
-
+                    // Target component type
+                    const Backend::IL::Type *componentType{nullptr};
+                    
+                    // Infer the target intrinsic from the result type, otherwise assume from the sampled type
+                    // 32 bit intrinsics can "sample" from 16-bit data, it's just expanded behind the scenes
+                    if (auto _struct = resultType->Cast<Backend::IL::StructType>()) {
+                        componentType = _struct->memberTypes[0];
+                    } else {
+                        componentType = Backend::IL::GetComponentType(textureType->sampledType);
+                    }
+                    
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
                     switch (componentType->kind) {
@@ -4890,11 +4901,22 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::SampleTexture: {
                     auto _instr = instr->As<IL::SampleTextureInstruction>();
 
+                    // Get the result type
+                    const Backend::IL::Type* resultType = typeMap.GetType(_instr->result);
+                    
                     // Get type
                     const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
 
-                    // Get bit-width
-                    uint32_t bitWidth = Backend::IL::GetComponentType(textureType->sampledType)->As<Backend::IL::FPType>()->bitWidth;
+                    // Infer the target intrinsic from the result type, otherwise assume from the sampled type
+                    // 32 bit intrinsics can "sample" from 16-bit data, it's just expanded behind the scenes
+                    uint32_t bitWidth;
+                    if (auto _struct = resultType->Cast<Backend::IL::StructType>()) {
+                        bitWidth = _struct->memberTypes[0]->As<Backend::IL::FPType>()->bitWidth;
+                    } else {
+                        bitWidth = Backend::IL::GetComponentType(textureType->sampledType)->As<Backend::IL::FPType>()->bitWidth;
+                    }
+
+                    // Only support 16/32
                     ASSERT(bitWidth == 16 || bitWidth == 32, "Unsupported sampling operation");
 
                     // Final op code
