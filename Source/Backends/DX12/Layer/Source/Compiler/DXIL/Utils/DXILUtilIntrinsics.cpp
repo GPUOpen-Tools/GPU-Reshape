@@ -37,6 +37,7 @@ void DXILUtilIntrinsics::Compile() {
     // Numeric
     i1Type = typeMap.FindTypeOrAdd(Backend::IL::BoolType{});
     i8Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
+    i16Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 16, .signedness = true});
     i32Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
     f32Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 32});
     f16Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 16});
@@ -72,6 +73,17 @@ void DXILUtilIntrinsics::Compile() {
         }
     }, "dx.types.ResRet.i32");
 
+    // Resource return I16
+    resRetI16 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+        .memberTypes {
+            i16Type,
+            i16Type,
+            i16Type,
+            i16Type,
+            i32Type
+        }
+    }, "dx.types.ResRet.i16");
+
     // Resource return F32
     resRetF32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
         .memberTypes {
@@ -82,6 +94,17 @@ void DXILUtilIntrinsics::Compile() {
             i32Type
         }
     }, "dx.types.ResRet.f32");
+
+    // Resource return F16
+    resRetF16 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+        .memberTypes {
+            f16Type,
+            f16Type,
+            f16Type,
+            f16Type,
+            i32Type
+        }
+    }, "dx.types.ResRet.f16");
 
     // Resource return I32
     cbufRetI32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
@@ -246,8 +269,12 @@ const Backend::IL::Type *DXILUtilIntrinsics::GetType(const DXILIntrinsicTypeSpec
             return dimensionsType;
         case DXILIntrinsicTypeSpec::ResRetI32:
             return resRetI32;
+        case DXILIntrinsicTypeSpec::ResRetI16:
+            return resRetI16;
         case DXILIntrinsicTypeSpec::ResRetF32:
             return resRetF32;
+        case DXILIntrinsicTypeSpec::ResRetF16:
+            return resRetF16;
         case DXILIntrinsicTypeSpec::CBufRetI32:
             return cbufRetI32;
         case DXILIntrinsicTypeSpec::CBufRetF32:

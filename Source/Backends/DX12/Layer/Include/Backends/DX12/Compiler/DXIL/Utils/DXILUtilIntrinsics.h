@@ -50,13 +50,16 @@ public:
     const Backend::IL::VoidType *voidType{nullptr};
     const Backend::IL::BoolType *i1Type{nullptr};
     const Backend::IL::IntType *i8Type{nullptr};
+    const Backend::IL::IntType *i16Type{nullptr};
     const Backend::IL::IntType *i32Type{nullptr};
     const Backend::IL::FPType *f32Type{nullptr};
     const Backend::IL::FPType *f16Type{nullptr};
     const Backend::IL::StructType *handleType{nullptr};
     const Backend::IL::StructType *dimensionsType{nullptr};
     const Backend::IL::StructType *resRetI32{nullptr};
+    const Backend::IL::StructType *resRetI16{nullptr};
     const Backend::IL::StructType *resRetF32{nullptr};
+    const Backend::IL::StructType *resRetF16{nullptr};
     const Backend::IL::StructType *cbufRetI32{nullptr};
     const Backend::IL::StructType *cbufRetF32{nullptr};
     const Backend::IL::StructType *resBind{nullptr};

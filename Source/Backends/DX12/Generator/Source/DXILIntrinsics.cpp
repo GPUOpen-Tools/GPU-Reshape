@@ -48,19 +48,11 @@ namespace {
 /// \return empty if failed
 static std::string TranslateType(const std::string_view& type, std::string_view prefix = "") {
     if (std::starts_with(prefix, "DXILIntrinsicTypeSpec::ResRet")) {
-        if (type[0] == 'i') {
-            return "DXILIntrinsicTypeSpec::ResRetI32";
-        } else {
-            return "DXILIntrinsicTypeSpec::ResRetF32";
-        }
+        return "DXILIntrinsicTypeSpec::ResRet" + std::uppercase(std::string(type));
     }
 
     if (std::starts_with(prefix, "DXILIntrinsicTypeSpec::CBufRet")) {
-        if (type[0] == 'i') {
-            return "DXILIntrinsicTypeSpec::CBufRetI32";
-        } else {
-            return "DXILIntrinsicTypeSpec::CBufRetF32";
-        }
+        return "DXILIntrinsicTypeSpec::CBufRetI32" + std::uppercase(std::string(type));
     }
 
     if (prefix.empty()) {
@@ -112,7 +104,7 @@ bool Generators::DXILIntrinsics(const GeneratorInfo &info, TemplateEngine &templ
     // Regex patterns
     std::regex declarePattern("(\\:\\:)((\\s|(;.*$))*)declare (%?[A-Za-z.0-9]+) @([A-Za-z.0-9]+)\\(");
     std::regex parameterPattern("\\s*(%?[A-Za-z0-9\\.]+)(,|\\))(\\s+; (.*))?$");
-    std::regex overloadPattern("(f16|f32|f64|i1|i8|i16|i32|i64)");
+    std::regex overloadPattern("(f64|f32|f16|i64|i32|i16|i8|i1)");
 
     // For all declarations
     for(std::sregex_iterator m = std::sregex_iterator(info.dxilRST.begin(), info.dxilRST.end(), declarePattern); m != std::sregex_iterator(); m++) {
