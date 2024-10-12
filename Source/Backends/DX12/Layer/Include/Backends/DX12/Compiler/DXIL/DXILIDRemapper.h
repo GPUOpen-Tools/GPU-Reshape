@@ -664,6 +664,14 @@ public:
         std::memcpy(compileSegment.userRedirects.data() + remote.head.userRedirectsOffset, remote.userRedirects.data(), sizeof(uint32_t) * remote.userRedirects.size());
     }
 
+    /// Revert all source mappings
+    /// \param segment all mappings after this segment are invalidated
+    void RevertSourceMappings(DXILIDMap::Segment& segment) {
+        for (uint32_t i = segment.head.allocationOffset; i < stitchSegment.sourceMappings.size(); i++) {
+            stitchSegment.sourceMappings[i] = ~0u;
+        }
+    }
+
     /// Merge a branch
     /// \param remote branch to be merged from, heads must match
     void Merge(const StitchSegment& remote) {

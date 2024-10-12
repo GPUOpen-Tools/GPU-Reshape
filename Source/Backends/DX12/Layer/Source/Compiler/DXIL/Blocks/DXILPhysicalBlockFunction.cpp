@@ -5441,6 +5441,9 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
 
         // Create id map segment
         declaration->segments.idRemapperStitchSegment = table.idRemapper.Branch(idRemapperSnapshot);
+
+        // Remove all the source mappings created in this function
+        table.idRemapper.RevertSourceMappings(declaration->segments.idSegment);
     }
 }
 
