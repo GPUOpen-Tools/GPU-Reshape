@@ -4828,6 +4828,9 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
                                     break;
+                                case 16:
+                                    intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpTextureLoadI16);
+                                    break;
                                 case 32:
                                     intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpTextureLoadI32);
                                     break;
