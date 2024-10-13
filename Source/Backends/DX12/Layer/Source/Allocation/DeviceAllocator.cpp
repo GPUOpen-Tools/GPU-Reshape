@@ -26,6 +26,9 @@
 
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 
+// Backend
+#include <Backend/Diagnostic/DiagnosticFatal.h>
+
 DeviceAllocator::~DeviceAllocator() {
     if (wcHostPool) {
         wcHostPool->Release();
@@ -94,6 +97,15 @@ Allocation DeviceAllocator::Allocate(const D3D12_RESOURCE_DESC& desc, Allocation
     // Attempt to allocate the resource
     HRESULT hr = allocator->CreateResource(&allocDesc, &filteredDesc, state, nullptr, &allocation.allocation, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&allocation.resource));
     if (FAILED(hr)) {
+        // Display friendly message
+        Backend::DiagnosticFatal(
+            "Out Of Memory",
+            "GPU Reshape has run out of {} memory. Please consider decreasing the workload "
+            "or simplifying instrumentation (e.g., disabling texel addressing)",
+            residency == AllocationResidency::Device ? "device-local" : "system"
+        );
+
+        // Unreachable
         return {};
     }
 
@@ -139,6 +151,14 @@ D3D12MA::Allocation* DeviceAllocator::AllocateMemory(uint32_t alignment, uint64_
     // Try to allocate
     D3D12MA::Allocation* allocation{nullptr};
     if (FAILED(allocator->AllocateMemory(&desc, &info, &allocation))) {
+        // Display friendly message
+        Backend::DiagnosticFatal(
+            "Out Of Memory",
+            "GPU Reshape has run out of virtual backing memory. Please consider decreasing the workload "
+            "or disabling texel addressing."
+        );
+
+        // Unreachable
         return nullptr;
     }
 

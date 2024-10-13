@@ -28,6 +28,9 @@
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 
+// Backend
+#include <Backend/Diagnostic/DiagnosticFatal.h>
+
 DeviceAllocator::~DeviceAllocator() {
     if (allocator) {
         vmaDestroyAllocator(allocator);
@@ -93,6 +96,15 @@ Allocation DeviceAllocator::Allocate(const VkMemoryRequirements& requirements, A
     // Attempt to allocate the memory
     VkResult result = vmaAllocateMemory(allocator, &requirements, &createInfo, &allocation.allocation, &allocation.info);
     if (result != VK_SUCCESS) {
+        // Display friendly message
+        Backend::DiagnosticFatal(
+            "Out Of Memory",
+            "GPU Reshape has run out of {} memory. Please consider decreasing the workload "
+            "or simplifying instrumentation (e.g., disabling texel addressing)",
+            residency == AllocationResidency::Device ? "device-local" : "system"
+        );
+
+        // Unreachable
         return {};
     }
 
@@ -134,6 +146,14 @@ VmaAllocation DeviceAllocator::AllocateMemory(const VkMemoryRequirements& requir
         &allocation,
         nullptr
     ) != VK_SUCCESS) {
+        // Display friendly message
+        Backend::DiagnosticFatal(
+            "Out Of Memory",
+            "GPU Reshape has run out of virtual backing memory. Please consider decreasing the workload "
+            "or disabling texel addressing."
+        );
+
+        // Unreachable
         return nullptr;
     }
 
