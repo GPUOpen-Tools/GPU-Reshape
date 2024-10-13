@@ -79,8 +79,22 @@ bool Connection::Install(const EndpointResolve& resolve, const std::string_view&
 }
 
 PooledMessage<InstrumentationDiagnosticMessage> Connection::InstrumentGlobal(const InstrumentationConfig& config) {
-    auto* global = view.Add<SetGlobalInstrumentationMessage>();
+    // Specialization stream
+    MessageStream specializationStream;
+
+    // Set instrumentation config
+    auto setConfig = MessageStreamView<>(specializationStream).Add<SetInstrumentationConfigMessage>();
+    setConfig->detail = config.detailed;
+    setConfig->safeGuard = config.safeGuarded;
+
+    // Setup global instrumentation
+    auto *global = view.Add<SetGlobalInstrumentationMessage>(SetGlobalInstrumentationMessage::AllocationInfo {
+        .specializationByteSize = specializationStream.GetByteSize()
+    });
+
+    // Set features and specs
     global->featureBitSet = config.featureBitSet;
+    global->specialization.Set(specializationStream);
     Commit();
 
     // Pool the result

@@ -55,6 +55,13 @@ bool StandardInstrumentPass::Run() {
     config.featureBitSet |= connection->GetFeatureBit("Descriptor");
     config.featureBitSet |= connection->GetFeatureBit("Concurrency");
 
+    // Additional features for coverage
+    config.featureBitSet |= connection->GetFeatureBit("Waterfall");
+
+    // Enable all optionals
+    config.detailed = true;
+    config.safeGuarded = true;
+    
     // Pool all job diagnostics
     PooledMessage jobs = connection->Pool<JobDiagnosticMessage>(PoolingMode::Replace);
 
