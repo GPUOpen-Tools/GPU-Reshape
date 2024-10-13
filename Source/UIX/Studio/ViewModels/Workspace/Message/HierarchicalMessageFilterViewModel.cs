@@ -203,11 +203,15 @@ namespace Studio.ViewModels.Workspace.Message
                 ));
             }
 
+            // Disable any resize prior to the count column
+            // The data grid header doesn't maintain horizontal stretching otherwise
+            DisableColumnResize(source.Columns[^1]);
+
             // Count column
             source.Columns.Add(new TemplateColumn<IObservableTreeItem>(
                 "Count",
                 "CountColumn",
-                width: new GridLength(55, GridUnitType.Pixel),
+                width: new GridLength(75, GridUnitType.Pixel),
                 options: new TemplateColumnOptions<IObservableTreeItem>()
                 {
                     CompareAscending = (x, y) => HierarchicalCompareCount(x, y),
@@ -217,6 +221,24 @@ namespace Studio.ViewModels.Workspace.Message
 
             // Finally, assign it
             HierarchicalSource = source;
+        }
+
+        /// <summary>
+        /// Helper, disables resizes on a column
+        /// </summary>
+        private void DisableColumnResize(IColumn column)
+        {
+            // If expander, just use the templated inner
+            if (column is HierarchicalExpanderColumn<IObservableTreeItem> columnExpander)
+            {
+                column = columnExpander.Inner;
+            }
+            
+            // Disable resize
+            if (column is ColumnBase<IObservableTreeItem> columnBase)
+            {
+                columnBase.Options.CanUserResizeColumn = false;
+            }
         }
 
         /// <summary>
