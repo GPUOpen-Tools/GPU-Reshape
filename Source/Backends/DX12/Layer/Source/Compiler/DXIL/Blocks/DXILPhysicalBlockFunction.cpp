@@ -4423,22 +4423,35 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::LoadBuffer: {
                     auto _instr = instr->As<IL::LoadBufferInstruction>();
 
-                    // Get type
-                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+                    // Get the result type
+                    const Backend::IL::Type* resultType = typeMap.GetType(_instr->result);
 
-                    // Type used for intrinsic
-                    const Backend::IL::Type* elementType = bufferType->elementType;
+                    // Target component type
+                    const Backend::IL::Type *elementType{nullptr};
+                    
+                    // Infer the target intrinsic from the result type
+                    // Loads can reinterpret the data, so we can't infer it from walking the POD type by its byte offsets
+                    // This also preserves the original intrinsic
+                    if (auto _struct = resultType->Cast<Backend::IL::StructType>()) {
+                        elementType = _struct->memberTypes[0];
+                    } else {
+                        // Get type
+                        const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
 
-                    // Mutate element type on structured
-                    if (auto _struct = elementType->Cast<Backend::IL::StructType>()) {
-                        ASSERT(_instr->offset != IL::InvalidID, "Offset on non-structured type");
+                        // Type used for intrinsic
+                        elementType = bufferType->elementType;
 
-                        // Get offset
-                        auto offset = program.GetConstants().GetConstant(_instr->offset)->As<Backend::IL::IntConstant>();
+                        // Mutate element type on structured
+                        if (auto _structured = elementType->Cast<Backend::IL::StructType>()) {
+                            ASSERT(_instr->offset != IL::InvalidID, "Offset on non-structured type");
 
-                        // Get the element type
-                        elementType = Backend::IL::GetStructuredTypeAtOffset(_struct, offset->value);
-                        ASSERT(elementType, "Failed to deduce element type from offset");
+                            // Get offset
+                            auto offset = program.GetConstants().GetConstant(_instr->offset)->As<Backend::IL::IntConstant>();
+
+                            // Get the element type
+                            elementType = Backend::IL::GetStructuredTypeAtOffset(_structured, offset->value);
+                            ASSERT(elementType, "Failed to deduce element type from offset");
+                        }
                     }
 
                     // Get intrinsic
