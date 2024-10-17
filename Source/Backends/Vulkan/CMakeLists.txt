@@ -35,10 +35,14 @@ add_executable(
     Generator/Source/DeepCopyObjects.cpp
     Generator/Source/DeepCopy.cpp
     Generator/Source/Spv.cpp
+    Generator/Source/Filter.cpp
 )
 
 # IDE source discovery
 SetSourceDiscovery(GRS.Backends.Vulkan.Generator CXX Generator)
+
+# Include directories
+target_include_directories(GRS.Backends.Vulkan.Generator PRIVATE Generator/Include)
 
 # Local links
 target_link_libraries(GRS.Backends.Vulkan.Generator PUBLIC GRS.Libraries.Common)
@@ -76,7 +80,9 @@ set(
     vkCmdCopyImage
     vkCmdBlitImage
     vkCmdCopyBufferToImage
+    vkCmdCopyBufferToImage2
     vkCmdCopyImageToBuffer
+    vkCmdCopyImageToBuffer2
     vkCmdUpdateBuffer
     vkCmdFillBuffer
     vkCmdClearColorImage
@@ -84,9 +90,14 @@ set(
     vkCmdClearAttachments
     vkCmdResolveImage
     vkCmdBeginRenderPass
+    vkCmdBeginRenderPass2
+    vkCmdBeginRenderPass2KHR
     vkCmdEndRenderPass
+    vkCmdBeginRendering
     vkCmdBeginRenderingKHR
+    vkCmdEndRendering
     vkCmdEndRenderingKHR
+    vkCmdDrawMeshTasksEXT
 )
 
 # White list
@@ -120,6 +131,9 @@ set(
     vkCmdSetEvent2
     vkCmdWaitEvents2
     vkCmdPipelineBarrier2
+    vkCmdDrawMeshTasksEXT
+    vkCmdDrawMeshTasksIndirectEXT
+    vkCmdDrawMeshTasksIndirectCountEXT
 )
 
 # Join lists
@@ -241,6 +255,7 @@ add_library(
     Layer/Source/Compiler/SpvSourceMap.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockAnnotation.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockCapability.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockExtensionImport.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockEntryPoint.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockDebugStringSource.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockFunction.cpp
@@ -249,12 +264,14 @@ add_library(
     Layer/Source/Compiler/Utils/SpvUtilShaderPRMT.cpp
     Layer/Source/Compiler/Utils/SpvUtilShaderDescriptorConstantData.cpp
     Layer/Source/Compiler/Utils/SpvUtilShaderConstantData.cpp
+    Layer/Source/Compiler/Utils/SpvUtilShaderDebug.cpp
     Layer/Source/Compiler/SpvPhysicalBlockScan.cpp
     Layer/Source/Compiler/SpvPhysicalBlockTable.cpp
     Layer/Source/ShaderData/ShaderDataHost.cpp
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
     Layer/Source/Resource/PhysicalResourceMappingTablePersistentVersion.cpp
     Layer/Source/Resource.cpp
+    Layer/Source/Memory.cpp
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp
     Layer/Source/Debug.cpp

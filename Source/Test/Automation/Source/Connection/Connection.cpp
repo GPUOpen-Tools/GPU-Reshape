@@ -79,8 +79,22 @@ bool Connection::Install(const EndpointResolve& resolve, const std::string_view&
 }
 
 PooledMessage<InstrumentationDiagnosticMessage> Connection::InstrumentGlobal(const InstrumentationConfig& config) {
-    auto* global = view.Add<SetGlobalInstrumentationMessage>();
+    // Specialization stream
+    MessageStream specializationStream;
+
+    // Set instrumentation config
+    auto setConfig = MessageStreamView<>(specializationStream).Add<SetInstrumentationConfigMessage>();
+    setConfig->detail = config.detailed;
+    setConfig->safeGuard = config.safeGuarded;
+
+    // Setup global instrumentation
+    auto *global = view.Add<SetGlobalInstrumentationMessage>(SetGlobalInstrumentationMessage::AllocationInfo {
+        .specializationByteSize = specializationStream.GetByteSize()
+    });
+
+    // Set features and specs
     global->featureBitSet = config.featureBitSet;
+    global->specialization.Set(specializationStream);
     Commit();
 
     // Pool the result
@@ -96,7 +110,7 @@ bool Connection::CreateConnection(const std::string_view& processName) {
 
     // Keep pooling until a connection is requested or time threshold is reached
     for (;;) {
-        if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - stamp).count() >= 30) {
+        if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - stamp).count() >= 180) {
             return false;
         }
 
@@ -110,6 +124,11 @@ bool Connection::CreateConnection(const std::string_view& processName) {
         if (PoolHostServers(processName, discovery)) {
             break;
         }
+    }
+    
+    // Wait for connection
+    if (!accepted.Wait(std::chrono::seconds(60))) {
+        return false;
     }
 
     // A connection was made, pool for success
@@ -127,7 +146,7 @@ bool Connection::PoolHostServers(const std::string_view& processName, PooledMess
             auto* info = it.Get<HostServerInfoMessage>();
 
             // Matches process?
-            if (processName != info->process.View() || info->deviceObjects < 15) {
+            if (processName != info->process.View() || info->deviceObjects < objectThreshold) {
                 continue;
             }
 

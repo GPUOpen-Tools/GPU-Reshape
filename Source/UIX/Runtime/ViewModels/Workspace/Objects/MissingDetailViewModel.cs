@@ -24,11 +24,12 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using DynamicData;
+using System;
 using ReactiveUI;
-using Runtime.Models.Objects;
+using Runtime.Resources;
+using Runtime.ViewModels.Workspace.Properties.Bus;
+using Studio.Models.Instrumentation;
 using Studio.ViewModels.Workspace.Properties;
-using Studio.ViewModels.Workspace.Properties.Config;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
@@ -51,7 +52,89 @@ namespace Studio.ViewModels.Workspace.Objects
             get => _object;
             set => this.RaiseAndSetIfChanged(ref _object, value);
         }
+
+        /// <summary>
+        /// Version this view model is waiting for
+        /// </summary>
+        public InstrumentationVersion? Version
+        {
+            get => _version;
+            set => this.RaiseAndSetIfChanged(ref _version, value);
+        }
         
+        /// <summary>
+        /// Current status message
+        /// </summary>
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
+        }
+
+        /// <summary>
+        /// Current status info, may be empty
+        /// </summary>
+        public string StatusInfo
+        {
+            get => _statusInfo;
+            set => this.RaiseAndSetIfChanged(ref _statusInfo, value);
+        }
+
+        /// <summary>
+        /// Any status info to show?
+        /// </summary>
+        public bool HasStatus
+        {
+            get => _hasStatus;
+            set => this.RaiseAndSetIfChanged(ref _hasStatus, value);
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public MissingDetailViewModel()
+        {
+            StatusMessage = Resources.Detail_Waiting_Compilation;
+
+            // Bind to version changes
+            this.WhenAnyValue(x => x.Version).Subscribe(_ => OnVersionChange());
+        }
+
+        /// <summary>
+        /// Invoked on version changes
+        /// </summary>
+        private void OnVersionChange()
+        {
+            if (_version == null)
+            {
+                return;
+            }
+            
+            // Bind to committed version changes
+            _propertyCollection?
+                .GetInstrumentationVersionController()
+                .WhenAnyValue(x => x.CommittedVersionID)
+                .Subscribe(OnCommitVersionChange);
+        }
+
+        /// <summary>
+        /// Invoked on commited version changes
+        /// </summary>
+        /// <param name="commit"></param>
+        private void OnCommitVersionChange(InstrumentationVersion commit)
+        {
+            // Has the version completed?
+            if (_version == null || !InstrumentationVersion.Completed(_version.Value, commit))
+            {
+                return;
+            }
+
+            // Update status
+            StatusMessage = Resources.Detail_Waiting_Streaming;
+            StatusInfo = Resources.Detail_Waiting_Streaming_Info;
+            HasStatus = true;
+        }
+
         /// <summary>
         /// Internal object
         /// </summary>
@@ -61,5 +144,25 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Underlying view model
         /// </summary>
         private IPropertyViewModel? _propertyCollection;
+
+        /// <summary>
+        /// Internal status message
+        /// </summary>
+        private string _statusMessage;
+
+        /// <summary>
+        /// Internal status info
+        /// </summary>
+        private string _statusInfo;
+
+        /// <summary>
+        /// Internal status state
+        /// </summary>
+        private bool _hasStatus = false;
+        
+        /// <summary>
+        /// Internal version
+        /// </summary>
+        private InstrumentationVersion? _version;
     }
 }

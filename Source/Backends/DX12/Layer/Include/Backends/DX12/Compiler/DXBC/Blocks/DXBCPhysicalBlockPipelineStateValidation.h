@@ -64,5 +64,5 @@ private:
     size_t offset{};
 
     /// Runtime info, revision depends on the size
-    DXBCPSVRuntimeInfoRevision2 runtimeInfo{};
+    DXBCPSVRuntimeInfoRevision3 runtimeInfo{};
 };

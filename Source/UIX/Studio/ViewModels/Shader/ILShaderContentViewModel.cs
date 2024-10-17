@@ -29,8 +29,10 @@ using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
 using Runtime.ViewModels.IL;
+using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
+using Studio.Services;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
@@ -163,8 +165,25 @@ namespace Studio.ViewModels.Shader
 
         public ILShaderContentViewModel()
         {
+            OnSelected = ReactiveCommand.Create(OnParentSelected);
             CloseDetail = ReactiveCommand.Create(OnCloseDetail);
             ShowInSource = ReactiveCommand.Create(OnShowInSource);
+        }
+
+        /// <summary>
+        /// Invoked on parent selection
+        /// </summary>
+        private void OnParentSelected()
+        {
+            if (ServiceRegistry.Get<IWorkspaceService>() is { } service)
+            {
+                // Create navigation vm
+                service.SelectedShader = new ShaderNavigationViewModel()
+                {
+                    Shader = Object,
+                    SelectedFile = null
+                };
+            }
         }
 
         /// <summary>

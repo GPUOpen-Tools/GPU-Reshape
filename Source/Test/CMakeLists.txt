@@ -24,8 +24,8 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
+# Unified device is pulled in earlier
 add_subdirectory(Device)
-add_subdirectory(Unified)
 
 if (${ENABLE_EXPERIMENTAL})
     add_subdirectory(Automation)

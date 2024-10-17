@@ -37,11 +37,13 @@ using Avalonia.Threading;
 using Bridge.CLR;
 using Message.CLR;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace;
+using Studio.Services;
 
 namespace Studio.ViewModels.Workspace
 {
-    public class ConnectionViewModel : ReactiveObject, IConnectionViewModel
+    public class ConnectionViewModel : ReactiveObject, IConnectionViewModel, IPoolingConnection
     {
         /// <summary>
         /// Invoked during connection
@@ -84,16 +86,13 @@ namespace Studio.ViewModels.Workspace
         /// <summary>
         /// Endpoint application info
         /// </summary>
-        public ApplicationInfoViewModel? Application { get; private set; }
+        public ApplicationInfoViewModel? Application { get; set; }
 
         public ConnectionViewModel()
         {
             // Create subjects
             Connected = new Subject<Unit>();
             Refused = new Subject<Unit>();
-
-            // Create dispatcher local to the connection
-            _dispatcher = new Dispatcher(AvaloniaLocator.Current.GetService<IPlatformThreadingInterface>());
 
             // Create timer on main thread
             _timer = new DispatcherTimer(DispatcherPriority.Background)
@@ -239,11 +238,6 @@ namespace Studio.ViewModels.Workspace
                 _remote = null;
             }
         }
-
-        /// <summary>
-        /// Internal dispatcher
-        /// </summary>
-        private Dispatcher _dispatcher;
 
         /// <summary>
         /// Shared bus timer

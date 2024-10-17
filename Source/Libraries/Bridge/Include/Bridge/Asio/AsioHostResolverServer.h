@@ -162,15 +162,11 @@ protected:
     void OnAllocateRequest(AsioSocketHandler& handler, const AsioHostClientResolverAllocate* request) {
         std::lock_guard guard(mutex);
 
-        // Did the client request a reserved token?
-        if (request->reservedToken.IsValid()) {
-            handler.SetGlobalUID(request->reservedToken);
-        }
-
         // Create local client
         ClientInfo& info = clients.emplace_back();
         info.info = request->info;
         info.token = handler.GetGlobalUID();
+        info.reservedToken = request->reservedToken;
 
         // Invoke listeners
         onAllocated.Invoke(info.info);
@@ -238,6 +234,7 @@ protected:
         for (size_t i = 0; i < clients.size(); i++) {
             message->entries[i].info = clients[i].info;
             message->entries[i].token = clients[i].token;
+            message->entries[i].reservedToken = clients[i].reservedToken;
         }
 
 #if ASIO_DEBUG
@@ -282,6 +279,7 @@ protected:
 private:
     struct ClientInfo {
         AsioHostClientToken token;
+        AsioHostClientToken reservedToken;
         AsioHostClientInfo info;
     };
 

@@ -32,9 +32,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:id="using:Dock.Avalonia"
         xmlns:vm="using:Studio.ViewModels"
         xmlns:views="using:Studio.Views"
+        xmlns:controls="clr-namespace:Studio.Views.Controls"
         mc:Ignorable="d"
         d:DesignWidth="1200" d:DesignHeight="680"
         Width="1500" Height="825"
@@ -46,9 +46,10 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Icon="/Resources/Icons/Icon_Frame.ico"
         Title="GPU Reshape" 
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="PreferSystemChrome"
-        id:DockProperties.IsDragEnabled="True" id:DockProperties.IsDropEnabled="True">
+        SystemDecorations="BorderOnly"
+        DockProperties.IsDragEnabled="True" DockProperties.IsDropEnabled="True">
   <Design.DataContext>
     <vm:MainWindowViewModel />
   </Design.DataContext>
@@ -56,6 +57,10 @@
   <Panel Margin="0 0 0 0">
     <Panel>
       <Panel>
+        <controls:WindowChrome 
+          ShowIcon="False"
+          Classes="System"/>
+        
         <views:MainView />
       </Panel>
     </Panel>

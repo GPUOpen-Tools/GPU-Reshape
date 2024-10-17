@@ -31,4 +31,6 @@ namespace Backend {
     static constexpr const char* kStartupEnvironmentKey = "GPUOpen.GRS.StartupEnvironment";
     static constexpr const char* kReservedEnvironmentTokenKey = "GPUOpen.GRS.ReservedEnvironmentToken";
     static constexpr const char* kNoServiceTrapKey = "GPUOpen.GRS.NoServiceTrap";
+    static constexpr const char* kCaptureChildProcessesKey = "GPUOpen.GRS.CaptureChildProcesses";
+    static constexpr const char* kAttachAllDevicesKey = "GPUOpen.GRS.AttachAllDevices";
 }

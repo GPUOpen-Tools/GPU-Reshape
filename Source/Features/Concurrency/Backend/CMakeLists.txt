@@ -32,7 +32,9 @@ Project_AddShaderSchema(Generated Schemas/Concurrency.xml Include/Schemas/Featur
 # Create feature
 add_library(
     GRS.Features.Concurrency.Backend SHARED
-    Source/Feature.cpp
+    Source/TexelAddressingFeature.cpp
+    Source/ResourceAddressingFeature.cpp
+    Source/TexelAddressing/ValidationListener.cpp
     Source/Plugin.cpp
 
     # Generated
@@ -50,6 +52,7 @@ target_link_libraries(
     GRS.Features.Concurrency.Backend PUBLIC
     GRS.Libraries.Common
     GRS.Libraries.Backend
+    GRS.Libraries.Addressing
     GRS.Features.Descriptor.Backend
 )
 
@@ -64,6 +67,8 @@ add_custom_command(
 # Test files
 Project_AddBackendTest_Common(GeneratedTest Concurrency)
 Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencySimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyAddressingTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyExpansionTest.hlsl)
 
 Project_AddTest(
         NAME GRS.Features.Concurrency.Tests
@@ -74,5 +79,6 @@ Project_AddTest(
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(GRS.Features.Concurrency.Backend.DotNet GeneratedCS)
+    Project_AddDotNetGeneratedMerge(GRS.Features.Concurrency.Backend.DotNet.GenMerge GeneratedCS)
+    add_subdirectory(DotNet)
 endif()

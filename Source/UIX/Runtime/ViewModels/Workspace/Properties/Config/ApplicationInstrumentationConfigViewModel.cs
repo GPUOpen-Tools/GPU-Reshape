@@ -24,6 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.ComponentModel;
 using Message.CLR;
 using ReactiveUI;
 using Studio.ViewModels.Traits;
@@ -36,6 +37,8 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// Enables shader compilation stalling before use
         /// </summary>
         [PropertyField]
+        [Category("Instrumentation")]
+        [Description("Ensures all commands waits for the instrumented pipelines, large startup impact")]
         public bool SynchronousRecording
         {
             get => _synchronousRecording;

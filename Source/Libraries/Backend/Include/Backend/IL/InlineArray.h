@@ -47,6 +47,16 @@ namespace IL {
             return reinterpret_cast<const T*>(&count + 1)[i];
         }
 
+        /// Get the underlying data
+        T* Data() {
+            return reinterpret_cast<T*>(&count + 1);
+        }
+
+        /// Get the underlying data
+        const T* Data() const {
+            return reinterpret_cast<const T*>(&count + 1);
+        }
+
         /// Get element size
         /// \param count number of elements
         /// \return byte size

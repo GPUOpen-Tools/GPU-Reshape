@@ -104,7 +104,7 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlo
     const IL::Instruction* ptr = IL::ConstInstructionRef<>(instruction).Get();
 
     // Must have source
-    if (!ptr->source.IsValid()) {
+    if (!ptr->source.HasAnyCodeOffset()) {
         return InvalidShaderSGUID;
     }
 

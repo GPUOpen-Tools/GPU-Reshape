@@ -1,0 +1,9 @@
+﻿{
+  "What's New": "WhatsNew.md",
+  "Waterfall Feature": "AddressWaterfalling.md",
+  "Texel Addressing": "TexelAddressing.md",
+  "NonUniformResourceIndex": "NonUniformResourceIndex.md",
+  "Placement Allocations": "PlacementAllocations.md",
+  "Infinite Loops": "InfiniteLoops.md",
+  "Multi device/process": "MultiDeviceProcess.md"
+}

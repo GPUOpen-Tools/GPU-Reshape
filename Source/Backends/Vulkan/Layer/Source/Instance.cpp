@@ -31,9 +31,10 @@
 #include <Backends/Vulkan/Compiler/ShaderCompilerDebug.h>
 
 // Common
-#include "Common/Dispatcher/Dispatcher.h"
+#include <Common/Dispatcher/Dispatcher.h>
 #include <Common/Registry.h>
 #include <Common/CrashHandler.h>
+#include <Common/Library.h>
 
 // Backend
 #include <Backend/EnvironmentInfo.h>
@@ -83,6 +84,34 @@ VkResult VKAPI_PTR Hook_vkEnumerateInstanceExtensionProperties(uint32_t *pProper
     return VK_SUCCESS;
 }
 
+void EnumerateInstanceExtensions(InstanceDispatchTable* table) {
+    // Get the enumerator
+    auto next_enumerate = table->libraryHandle.GetProcAddr<PFN_vkEnumerateInstanceExtensionProperties>("vkEnumerateInstanceExtensionProperties");
+    if (!next_enumerate) {
+        return;
+    }
+
+    // Number of extensions
+    uint32_t count = 0;
+    next_enumerate(nullptr, &count, nullptr);
+
+    // Extension properties
+    table->supportedExtensions.resize(count);
+    next_enumerate(nullptr, &count, table->supportedExtensions.data());
+}
+
+static bool SupportsExtension(InstanceDispatchTable* table, const char* name) {
+    // Check all extension names
+    for (const VkExtensionProperties &extension: table->supportedExtensions) {
+        if (!std::strcmp(extension.extensionName, name)) {
+            return true;
+        }
+    }
+
+    // Not found
+    return false;
+}
+
 VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
     // Add crash handler for debugging
 #ifndef NDEBUG
@@ -107,14 +136,60 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     // Advance layer
     chainInfo->u.pLayerInfo = chainInfo->u.pLayerInfo->pNext;
 
+    // Create table
+    auto table = new InstanceDispatchTable{};
+    table->allocators = table->registry.GetAllocators();
+
+    // Create creation deep copy
+    table->createInfo.DeepCopy(table->allocators, *pCreateInfo, false);
+
+    // Create application info deep copy
+    if (pCreateInfo->pApplicationInfo) {
+        table->applicationInfo.DeepCopy(table->allocators, *pCreateInfo->pApplicationInfo);
+    }
+
+    // Load the library handle for proc's
+#ifdef WIN32
+    table->libraryHandle.Load("vulkan-1");
+#else  // WIN32
+#   error Not supported
+#endif // WIN32
+
+    // Get all supported extensions
+    EnumerateInstanceExtensions(table);
+    
+    // Copy layers and extensions
+    table->enabledLayers.insert(table->enabledLayers.end(), table->createInfo->ppEnabledLayerNames, table->createInfo->ppEnabledLayerNames + table->createInfo->enabledLayerCount);
+    table->enabledExtensions.insert(table->enabledExtensions.end(), table->createInfo->ppEnabledExtensionNames, table->createInfo->ppEnabledExtensionNames + table->createInfo->enabledExtensionCount);
+
+    // Enable either debug utils or report if possible
+    // Applications sometimes query if either extension is present instead of enabling them manually
+    if (SupportsExtension(table, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+        table->enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    } else if (SupportsExtension(table, VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
+        table->enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    }
+
+    // Next isn't deep-copied, but keep it for the creation
+    table->createInfo->pNext = pCreateInfo->pNext;
+    
+    // Set new layers and extensions
+    table->createInfo->ppEnabledLayerNames = table->enabledLayers.data();
+    table->createInfo->enabledLayerCount = static_cast<uint32_t>(table->enabledLayers.size());
+    table->createInfo->ppEnabledExtensionNames = table->enabledExtensions.data();
+    table->createInfo->enabledExtensionCount = static_cast<uint32_t>(table->enabledExtensions.size());
+
     // Pass down the chain
-    VkResult result = reinterpret_cast<PFN_vkCreateInstance>(getInstanceProcAddr(nullptr, "vkCreateInstance"))(pCreateInfo, pAllocator, pInstance);
+    VkResult result = reinterpret_cast<PFN_vkCreateInstance>(getInstanceProcAddr(nullptr, "vkCreateInstance"))(&table->createInfo.createInfo, pAllocator, pInstance);
     if (result != VK_SUCCESS) {
         return result;
     }
 
-    // Create dispatch table
-    auto table = InstanceDispatchTable::Add(GetInternalTable(*pInstance), new InstanceDispatchTable{});
+    // Don't keep it around to avoid accidental traversal
+    table->createInfo->pNext = nullptr;
+
+    // Create lookup
+    InstanceDispatchTable::Add(GetInternalTable(*pInstance), table);
 
     // Populate the table
     table->Populate(*pInstance, getInstanceProcAddr);
@@ -144,17 +219,6 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     // Get common components
     table->bridge = table->registry.Get<IBridge>();
 
-    // Setup the default allocators
-    table->allocators = table->registry.GetAllocators();
-
-    // Create creation deep copy
-    table->createInfo.DeepCopy(table->allocators, *pCreateInfo, false);
-
-    // Create application info deep copy
-    if (pCreateInfo->pApplicationInfo) {
-        table->applicationInfo.DeepCopy(table->allocators, *pCreateInfo->pApplicationInfo);
-    }
-
     // Install shader compiler
 #if SHADER_COMPILER_DEBUG
     auto shaderDebug = table->registry.AddNew<ShaderCompilerDebug>(table);
@@ -175,6 +239,9 @@ void VKAPI_PTR Hook_vkDestroyInstance(VkInstance instance, const VkAllocationCal
     // Copy destroy
     PFN_vkDestroyInstance next_vkDestroyInstance = table->next_vkDestroyInstance;
 
+    // Release the library handle
+    table->libraryHandle.Free();
+    
     // Release table
     //  ? Done before instance destruction for references
     delete table;

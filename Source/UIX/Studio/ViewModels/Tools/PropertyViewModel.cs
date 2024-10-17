@@ -54,10 +54,19 @@ namespace Studio.ViewModels.Tools
             set => this.RaiseAndSetIfChanged(ref _selectedPropertyConfigurations, value);
         }
 
+        /// <summary>
+        /// Current property description
+        /// </summary>
+        public string CurrentDescription
+        {
+            get => _currentDescription;
+            set => this.RaiseAndSetIfChanged(ref _currentDescription, value);
+        }
+
         public PropertyViewModel()
         {
             // Bind to selected property
-            App.Locator.GetService<IWorkspaceService>()?
+            ServiceRegistry.Get<IWorkspaceService>()?
                 .WhenAnyValue(x => x.SelectedProperty)
                 .WhereNotNull()
                 .Subscribe(x =>
@@ -71,5 +80,10 @@ namespace Studio.ViewModels.Tools
         /// Internal configurations
         /// </summary>
         private IEnumerable<IPropertyViewModel>? _selectedPropertyConfigurations;
+
+        /// <summary>
+        /// Internal description
+        /// </summary>
+        private string _currentDescription = string.Empty;
     }
 }

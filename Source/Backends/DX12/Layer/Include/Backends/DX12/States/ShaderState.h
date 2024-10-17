@@ -47,6 +47,9 @@ struct ShaderState : public ReferenceObject {
     /// Reference counted destructor
     virtual ~ShaderState();
 
+    /// Release all host resources
+    void ReleaseHost() override;
+
     /// Add an instrument to this shader
     /// \param featureBitSet the enabled feature set
     /// \param byteCode the byteCode in question
@@ -73,6 +76,11 @@ struct ShaderState : public ReferenceObject {
     /// \param instrumentationKey key to be used
     /// \return true if reserved
     bool Reserve(const ShaderInstrumentationKey& instrumentationKey);
+
+    /// Remove an existing instrument
+    /// \param key instrumentation key
+    /// \return true if removed
+    bool RemoveInstrument(const ShaderInstrumentationKey& key);
 
     /// Originating key
     ShaderStateKey key;

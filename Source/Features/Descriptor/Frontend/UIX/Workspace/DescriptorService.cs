@@ -35,6 +35,7 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
@@ -50,6 +51,16 @@ namespace GRS.Features.Descriptor.UIX.Workspace
         /// Feature name
         /// </summary>
         public string Name => "Descriptor";
+        
+        /// <summary>
+        /// Feature category
+        /// </summary>
+        public string Category => string.Empty;
+
+        /// <summary>
+        /// Feature flags
+        /// </summary>
+        public InstrumentationFlag Flags => InstrumentationFlag.Standard;
         
         /// <summary>
         /// Assigned workspace
@@ -137,6 +148,7 @@ namespace GRS.Features.Descriptor.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Content = contents,
+                        Severity = ValidationSeverity.Error,
                         Count = 1u
                     };
                     
@@ -232,6 +244,17 @@ namespace GRS.Features.Descriptor.UIX.Workspace
         }
 
         /// <summary>
+        /// Check if a target may be instrumented
+        /// </summary>
+        public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable)
+        {
+            return instrumentable
+                .GetWorkspaceCollection()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .HasFeature("Descriptor") ?? false;
+        }
+
+        /// <summary>
         /// Create an instrumentation property
         /// </summary>
         /// <param name="target"></param>
@@ -241,7 +264,7 @@ namespace GRS.Features.Descriptor.UIX.Workspace
         {
             // Get feature in parent
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Descriptor");
 

@@ -58,7 +58,7 @@
                         <DataTemplate DataType="controls:IProportionalDock">
                             <DockableControl TrackingMode="Visible"
                                              ProportionalStackPanelSplitter.Proportion="{Binding Proportion}">
-                                <ItemsControl Items="{Binding VisibleDockables}">
+                                <ItemsControl ItemsSource="{Binding VisibleDockables}">
                                     <ItemsControl.Styles>
                                         <Style Selector="ItemsControl > ContentPresenter > :is(core|IDock)"
                                                x:DataType="core:IDock">
@@ -89,7 +89,7 @@
                         <!-- Dock Dock -->
                         <DataTemplate DataType="controls:IDockDock">
                             <DockableControl TrackingMode="Visible">
-                                <ItemsControl Items="{Binding VisibleDockables}">
+                                <ItemsControl ItemsSource="{Binding VisibleDockables}">
                                     <ItemsControl.Styles>
                                         <Style Selector="ItemsControl > ContentPresenter" x:DataType="core:IDock">
                                             <Setter Property="(DockPanel.Dock)"

@@ -48,13 +48,12 @@ namespace IL {
     static constexpr uint32_t kResourceTokenPUIDReservedNullSampler = 3;
     static constexpr uint32_t kResourceTokenPUIDReservedCount       = 4;
 
-    /// Token type, texture, buffer, cbuffer or sampler (2 bits)
+    /// Token type, texture, buffer, cbuffer or sampler (5 bits)
     static constexpr uint32_t kResourceTokenTypeShift = 22u;
-    static constexpr uint32_t kResourceTokenTypeBitCount = 2u;
+    static constexpr uint32_t kResourceTokenTypeBitCount = 5u;
     static constexpr uint32_t kResourceTokenTypeMask  = (1u << kResourceTokenTypeBitCount) - 1u;
 
-    /// Token sub-resource base, base subresource offset into the designated resource (8 bits)
-    static constexpr uint32_t kResourceTokenSRBShift = 24u;
-    static constexpr uint32_t kResourceTokenSRBBitCount = 8u;
-    static constexpr uint32_t kResourceTokenSRBMask  = (1u << kResourceTokenSRBBitCount) - 1u;
+    /// Token padding
+    static constexpr uint32_t kResourceTokenPaddingShift = 27u;
+    static constexpr uint32_t kResourceTokenPaddingBitCount = 5u;
 }

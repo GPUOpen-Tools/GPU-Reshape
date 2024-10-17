@@ -30,6 +30,7 @@ using System.Linq;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Studio.ViewModels.Controls;
 
 namespace Studio.ViewModels.Setting
 {
@@ -56,6 +57,11 @@ namespace Studio.ViewModels.Setting
                 OnSettingChanged();
             }
         }
+
+        /// <summary>
+        /// Optional dictionary for association
+        /// </summary>
+        public ObjectDictionary<ISettingViewModel, SettingTreeItemViewModel>? Dictionary { get; set; }
 
         /// <summary>
         /// Items within this settings item
@@ -101,8 +107,11 @@ namespace Studio.ViewModels.Setting
             {
                 Items.Add(new SettingTreeItemViewModel()
                 {
+                    Dictionary = Dictionary,
                     Setting = obj
                 });
+                
+                Dictionary?.Add(obj, Items.Last());
             }
         }
 
@@ -112,7 +121,9 @@ namespace Studio.ViewModels.Setting
         /// <param name="obj"></param>
         private void OnItemRemoved(ISettingViewModel obj)
         {
-            Items.Remove(Items.First(x => x.Setting == obj));
+            SettingTreeItemViewModel item = Items.First(x => x.Setting == obj);
+            Dictionary?.Remove(obj, item);
+            Items.Remove(item);
         }
 
         /// <summary>

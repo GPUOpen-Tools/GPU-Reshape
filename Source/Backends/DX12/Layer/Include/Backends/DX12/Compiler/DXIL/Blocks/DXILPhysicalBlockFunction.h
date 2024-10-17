@@ -34,6 +34,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
 #include <Backends/DX12/Compiler/DXCodeOffsetTraceback.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
+#include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -101,6 +102,11 @@ private:
         IL::ID value{IL::InvalidID};
     };
 
+    /// Check if a value is svox
+    /// @param value given value to check
+    /// @return true if svox
+    bool IsSVOX(IL::ID value);
+
     /// Get the number of SVOX values
     /// \param value SVOX value
     /// \return component count
@@ -121,6 +127,13 @@ private:
     /// \param w fourth component, optional
     /// \return
     IL::ID AllocateSVOSequential(uint32_t count, IL::ID x, IL::ID y = IL::InvalidID, IL::ID z = IL::InvalidID, IL::ID w = IL::InvalidID);
+
+    /// Allocate a struct-wise sequential svox
+    /// @param type expected type
+    /// @param values all values inside the struct
+    /// @param count number of values
+    /// @return svox identifier
+    IL::ID AllocateSVOStructSequential(const Backend::IL::Type *type, const IL::ID *values, uint32_t count);
 
     /// Iterate a scalar / vector-of-x operation
     /// \param lhs lhs operand
@@ -247,10 +260,11 @@ private:
 
     /// Get the mapping of a resource
     /// \param job parent job
+    /// \param block destination block for generated instructions
     /// \param source source records
     /// \param resource resource to be fetched
     /// \return empty if not found
-    DynamicRootSignatureUserMapping GetResourceUserMapping(const DXCompileJob& job, const Vector<LLVMRecord>& source, IL::ID resource);
+    DynamicRootSignatureUserMapping GetResourceUserMapping(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, IL::ID resource);
 
     /// Get a resource type from annotation
     /// \param properties resource properties
@@ -289,20 +303,50 @@ private:
     /// Does the record have a result?
     bool HasResult(const struct LLVMRecord& record);
 
+    /// Get an operand, or, if undef, an invalid id
+    /// \param id id to check
+    /// \return id or invalid id
+    IL::ID GetOperandOrInvalid(IL::ID id);
+
     /// Try to parse an intrinsic
     /// \param basicBlock output bb
     /// \param reader record reader
     /// \param anchor instruction anchor
     /// \param called called function index
-    /// \param declaration pulled declaration
+    /// \param unexposed unexposed intrinsic
     /// \return true if recognized intrinsic
-    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
+    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, IL::UnexposedInstruction& unexposed);
 
 private:
     /// Returns true if the program requires value map segmentation, i.e. branching over value data
     bool RequiresValueMapSegmentation() const {
         return internalLinkedFunctions.Size() > 1u;
     }
+
+private:
+    struct UnresolvedSemanticInstruction {
+        /// Mutable instruction to be resolved
+        IL::InstructionRef<> instruction{};
+
+        /// Resolve payload
+        union {
+            struct {
+                DXILOpcodes opCode;
+            } intrinsic;
+        };
+
+        /// Original offset
+        LLVMRecordOffset offset;
+
+        /// Original value anchor
+        uint32_t anchor{UINT32_MAX};
+    };
+
+    /// Resolve all pending instructions
+    void ResolveSemanticInstructions();
+
+    /// All pending instructions to resolve
+    Vector<UnresolvedSemanticInstruction> unresolvedSemanticInstructions;
 
 private:
     struct FunctionBlock {

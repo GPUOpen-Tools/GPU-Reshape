@@ -111,6 +111,12 @@ struct PooledMessage {
         task.WaitForNextAcquire();
     }
 
+    /// Wait for the message
+    template<typename R, typename P>
+    bool Wait(const std::chrono::duration<R, P>& timeout) {
+        return task.WaitForNextAcquire(timeout);
+    }
+
     /// Access the message contents
     const T* operator->() {
         return Get();

@@ -30,7 +30,18 @@ bool DispatcherJobPool::PopBlocking(DispatcherJob &out) {
     // Wait for item or abort signal
     std::unique_lock lock(mutex.Get());
     var.Get().wait(lock, [this] {
-        return !pool.empty() || abortFlag;
+        // If aborted, wait is done
+        if (abortFlag) {
+            return true;
+        }
+
+        // If paused, wait for the next notify
+        if (pauseFlag) {
+            return false;
+        }
+
+        // Otherwise, check the pool
+        return !pool.empty();
     });
 
     // Abort?

@@ -24,6 +24,9 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Media;
 
@@ -42,12 +45,33 @@ namespace Studio
         {
             object? value = null;
             
-            if (!App.DefaultStyle.TryGetResource(name, out value) || value == null)
+            if (!App.DefaultStyle.TryGetResource(name, null, out value) || value == null)
             {
+#if DEBUG
+                Debug.WriteLine($"ResourceLocator - Failed to find resource '{name}'");
+#endif // DEBUG
                 return defaultValue;
             }
 
+#if DEBUG
+            if (value is not T)
+            {
+                Debug.WriteLine($"ResourceLocator - Failed to convert resource '{name}' from {value.GetType()} to {typeof(T)}");
+            }
+#endif // DEBUG
+
             return value is T ? (T)value : defaultValue;
+        }
+
+        /// <summary>
+        /// Get a brush resource
+        /// </summary>
+        /// <param name="name">key of the brush resource</param>
+        /// <param name="defaultValue">default value if not found</param>
+        /// <returns>found value or default</returns>
+        public static IBrush? GetBrush(string name, IBrush? defaultValue = default)
+        {
+            return GetResource<IBrush>(name, defaultValue);
         }
 
         /// <summary>
@@ -58,11 +82,21 @@ namespace Studio
         public static StreamGeometry? GetIcon(string name)
         {
             // May not exist
-            if (!Application.Current!.Styles.TryGetResource(name, out object? resource))
+            if (!Application.Current!.Styles.TryGetResource(name, null, out object? resource))
             {
+#if DEBUG
+                Debug.WriteLine($"ResourceLocator - Failed to find icon '{name}'");
+#endif // DEBUG
                 return null;
             }
 
+#if DEBUG
+            if (resource is not StreamGeometry)
+            {
+                Debug.WriteLine($"ResourceLocator - Failed to convert resource '{name}' from {resource?.GetType()} to StreamGeometry");
+            }
+#endif // DEBUG
+            
             return resource as StreamGeometry;
         }
     }

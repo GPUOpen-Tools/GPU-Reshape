@@ -92,6 +92,10 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetPipelineNameMessage>());
                     break;
                 }
+                case GetShaderNameMessage::kID: {
+                    OnMessage(*it.Get<GetShaderNameMessage>());
+                    break;
+                }
                 case GetShaderCodeMessage::kID: {
                     OnMessage(*it.Get<GetShaderCodeMessage>());
                     break;
@@ -153,6 +157,20 @@ void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
     }
 }
 
+void MetadataController::OnMessage(const GetShaderNameMessage &message) {
+    MessageStreamView view(stream);
+
+    // DX12 does not have named shaders, it is entirely parsed from the shader contents
+    // We could implement a fast path if the relevant strings are in the DXBC containers, however,
+    // it may be nested in the DXIL module, or even in an external PDB file. It would be a really
+    // asymmetric implementation.
+    auto&& file = view.Add<ShaderNameMessage>(ShaderNameMessage::AllocationInfo { .languageLength = 0, .nameLength = 0 });
+    file->shaderUID = message.shaderUID;
+    file->name.Set("");
+    file->language.Set("");
+    file->found = false;
+}
+
 void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     MessageStreamView view(stream);
 
@@ -187,6 +205,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         response->native = true;
         response->language.Set(language);
         response->fileCount = 0;
+        response->poolCode = message.poolCode;
         return;
     }
 
@@ -200,6 +219,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     response->native = false;
     response->language.Set(language);
     response->fileCount = fileCount;
+    response->poolCode = message.poolCode;
 
     // Add file responses
     for (uint32_t i = 0; i < fileCount; i++) {
@@ -209,6 +229,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         });
         file->shaderUID = message.shaderUID;
         file->fileUID = i;
+        file->poolCode = message.poolCode;
 
         // Fill filename
         file->filename.Set(debugModule->GetSourceFilename(i));

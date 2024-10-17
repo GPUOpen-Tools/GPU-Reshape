@@ -34,6 +34,9 @@ namespace Backend::IL {
         switch (type->kind) {
             default:
                 return type;
+            case TypeKind::Struct:
+                ASSERT(false, "Structural types require an index");
+                return nullptr;
             case TypeKind::Vector:
                 return type->As<VectorType>()->containedType;
             case TypeKind::Matrix:
@@ -44,6 +47,19 @@ namespace Backend::IL {
                 return type->As<TextureType>()->sampledType;
             case TypeKind::Buffer:
                 return type->As<BufferType>()->elementType;
+        }
+    }
+    
+    inline uint32_t GetTypeDimension(const Type* type) {
+        switch (type->kind) {
+            default:
+                return 1u;
+            case TypeKind::Vector:
+                return type->As<VectorType>()->dimension;
+            case TypeKind::Matrix:
+                return type->As<MatrixType>()->rows * type->As<MatrixType>()->columns;
+            case TypeKind::Array:
+                return type->As<ArrayType>()->count;
         }
     }
 
@@ -89,5 +105,83 @@ namespace Backend::IL {
     template<typename T>
     inline const bool IsComponentType(const Type* type) {
         return IsComponentType(type, T::kKind);
+    }
+
+    inline const Type* GetValueType(const Type* type) {
+        switch (type->kind) {
+            default:
+                return type;
+            case TypeKind::Array:
+                return type->As<ArrayType>()->elementType;
+            case TypeKind::Pointer:
+                return type->As<PointerType>()->pointee;
+        }
+    }
+
+    inline const Type* GetTerminalValueType(const Type* type) {
+        for (;;) {
+            const Type* next = GetValueType(type);
+            
+            if (next == type) {
+                return type;
+            }
+
+            type = next;
+        }
+    }
+
+    inline const bool IsResourceType(const Type* type) {
+        switch (type->kind) {
+            default:
+                return false;
+            case TypeKind::Texture:
+                return true;
+            case TypeKind::Buffer:
+                return true;
+        }
+    }
+
+    inline const bool IsPointerToResourceType(const Type* type) {
+        auto ptr = type->Cast<PointerType>();
+        if (!ptr) {
+            return false;
+        }
+
+        return IsResourceType(ptr->pointee);
+    }
+
+    inline bool IsGenericResourceAddressSpace(const PointerType* type) {
+        switch (type->addressSpace) {
+            default:
+                return false;
+            case AddressSpace::Texture:
+            case AddressSpace::Buffer:
+            case AddressSpace::Resource:
+            case AddressSpace::Constant:
+                return true;
+        }
+    }
+
+    inline const Type* GetStructuralType(const Type* type, uint32_t index) {
+        switch (type->kind) {
+            default:
+                return GetComponentType(type);
+            case TypeKind::Struct: {
+                return type->As<StructType>()->memberTypes[index];
+            }
+        }
+    }
+
+    inline const bool IsScalarType(const Type* type) {
+        switch (type->kind) {
+            default:
+                return false;
+            case TypeKind::FP:
+                return true;
+            case TypeKind::Int:
+                return true;
+            case TypeKind::Bool:
+                return true;
+        }
     }
 }

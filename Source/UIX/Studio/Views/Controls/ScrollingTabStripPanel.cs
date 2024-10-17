@@ -53,7 +53,7 @@ namespace Studio.Views.Controls
             double previousChildSize = 0.0;
             
             // Handle all children
-            foreach (IControl child in Children)
+            foreach (Control child in Children)
             {
                 // Skip?
                 if (child is not { IsVisible: true })

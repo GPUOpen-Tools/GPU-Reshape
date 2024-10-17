@@ -29,11 +29,16 @@
 // Automation
 #include <Test/Automation/Pass/ApplicationInfo.h>
 #include <Test/Automation/Pass/ITestPass.h>
+#include <Test/Automation/Steam/VDFHeader.h>
 
 // Common
 #include <Common/ComRef.h>
 
+// Std
+#include <vector>
+
 // Forward declarations
+class ConditionalDiscovery;
 class DiscoveryService;
 
 class ApplicationPass : public ITestPass {
@@ -49,14 +54,50 @@ public:
     bool Run() override;
 
 private:
+    /// Filter entry data
+    struct FilterEntry {
+        std::string identifier;
+        std::string processName;
+    };
+    
+    /// Run a test instance
+    bool RunInstance(ConditionalDiscovery &discoveryGuard, const FilterEntry& filterEntry, const std::string& arguments);
+
+private:
     /// Run as an executable
-    bool RunExecutable();
+    bool RunExecutable(const std::string& identifier, const std::string& arguments);
 
     /// Run as a steam application
-    bool RunSteam();
+    bool RunSteam(const std::string& identifier, const std::string& arguments);
+
+    /// Run from a local steam path
+    bool RunSteamPath(const std::string_view& libraryPath, VDFDictionaryNode* manifest, const std::string& identifier, const std::string& arguments);
+
+    /// Run from a steam id
+    bool RunSteamID(const std::string& steamPath, VDFDictionaryNode* manifest, const std::string& identifier, const std::string& arguments);
 
     /// Terminate the application
     void TerminateApplication(uint32_t processID);
+
+private:
+    /// Get the path of steam
+    bool GetSteamPath(std::string& out);
+    
+    /// Try to get the steam library folders
+    bool GetSteamLibraryFolders(VDFArena& arena, const std::string& steamPath, const std::string& identifier, VDFDictionaryNode** out);
+    
+    /// Try to find the application library path
+    bool GetSteamAppLibraryPath(VDFArena& arena, const std::string& steamPath, const std::string& identifier, std::string& libraryPath);
+    
+    /// Try to get the application manifest
+    bool GetSteamAppManifest(VDFArena& arena, const std::string& libraryPath, const std::string& identifier, VDFDictionaryNode** out);
+
+private:
+    /// Filter all paths
+    void FilterPaths(std::vector<FilterEntry>& identifiers);
+
+    /// Filter all executables
+    void FilterExecutables(std::vector<FilterEntry>& identifiers);
 
 private:
     /// Test sub-pass

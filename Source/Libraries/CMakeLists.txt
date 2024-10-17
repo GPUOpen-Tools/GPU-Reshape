@@ -32,6 +32,7 @@ add_subdirectory(Backend)
 add_subdirectory(Discovery)
 add_subdirectory(Analysis)
 add_subdirectory(Frontend)
+add_subdirectory(Addressing)
 
 # Experimental libraries
 if (${ENABLE_EXPERIMENTAL})

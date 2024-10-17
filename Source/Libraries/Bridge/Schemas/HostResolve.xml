@@ -30,6 +30,7 @@
 <schema>
     <message name="HostServerInfo">
         <field name="guid" type="string"/>
+        <field name="reservedGuid" type="string"/>
         <field name="process" type="string"/>
         <field name="processId" type="uint64"/>
         <field name="deviceUid" type="uint64"/>

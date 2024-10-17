@@ -37,6 +37,10 @@ enum class BasicBlockFlag : uint32_t {
 
     /// Block has been visited
     Visited = BIT(2),
+
+    /// Set of mutable flags, these flags may be changed on immutable blocks
+    /// There are no semantic implications
+    NonSemanticMask = Visited
 };
 
 BIT_SET(BasicBlockFlag);
@@ -47,8 +51,14 @@ enum class BasicBlockSplitFlag : uint32_t {
     /// Perform patching on all branch users past the split point to the new block
     RedirectBranchUsers = BIT(1),
 
+    /// Resolve and potentially split any phi edges
+    SplitPhiEdges = BIT(2),
+
+    /// Redirect any loop back-edges to the new header
+    RedirectLoopBackedge = BIT(3),
+
     /// All of the above
-    RedirectAll = RedirectBranchUsers,
+    RedirectAll = RedirectBranchUsers | SplitPhiEdges | RedirectLoopBackedge,
 };
 
 BIT_SET(BasicBlockSplitFlag);

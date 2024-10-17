@@ -43,7 +43,11 @@
         <Setter Property="Padding" Value="3" />
         <Setter Property="CornerRadius" Value="2" />
     </Style>
-    
+
+    <Style Selector="Button.Icon Path">
+        <Setter Property="Stretch" Value="Uniform" />
+    </Style>
+
     <Style Selector="Button.Icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SystemBaseMediumLowColor}" />
     </Style>
@@ -51,5 +55,13 @@
     <Style Selector="Button.Icon:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource IconPressedColor}" />
         <Setter Property="Padding" Value="3 " />
+    </Style>
+
+    <Style Selector="Button.IconNoResponse:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    
+    <Style Selector="Button.IconNoResponse:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
     </Style>
 </Styles>

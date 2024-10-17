@@ -110,10 +110,27 @@ inline T* FindStructureTypeMutableUnsafe(const void* _struct) {
     return nullptr;
 }
 
+/// Prepend an extension structure
 inline void PrependExtensionUnsafe(void* _struct, void* extension) {
     auto* structHeader = static_cast<StructureTypeMutable*>(_struct);
     auto* extensionHeader = static_cast<StructureTypeMutable*>(extension);
 
     extensionHeader->pNext = structHeader->pNext;
     structHeader->pNext = extension;
+}
+
+/// Getter stub
+template<typename T>
+inline T* GetFirstKHR() {
+    return nullptr;
+}
+
+/// Get the first KHR callable
+template<typename TA, typename... TX>
+inline auto GetFirstKHR(TA* first, TX*... args) {
+    if (first) {
+        return first;
+    }
+
+    return GetFirstKHR<TA>(args...);
 }

@@ -65,7 +65,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Foreground color of the item
         /// </summary>
-        public ISolidColorBrush? StatusColor
+        public IBrush? StatusColor
         {
             get => _statusColor;
             set => this.RaiseAndSetIfChanged(ref _statusColor, value);
@@ -84,7 +84,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Internal status color
         /// </summary>
-        private ISolidColorBrush? _statusColor = Brushes.White;
+        private IBrush? _statusColor = Brushes.White;
 
         /// <summary>
         /// Internal file

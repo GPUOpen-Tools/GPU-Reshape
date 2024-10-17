@@ -45,8 +45,9 @@ namespace Backend::IL {
         Unexposed,
     };
 
-    /// Get the dimension size / count of the mdoe
-    inline uint32_t GetDimensionSize(TextureDimension dim) {
+    /// Get the value dimension size of a texture dimension
+    /// \return number of dimensions
+    inline uint32_t GetDimensionSize(TextureDimension dim, bool isQuery) {
         switch (dim) {
             default:
                 ASSERT(false, "Invalid dimension");
@@ -65,9 +66,9 @@ namespace Backend::IL {
             case TextureDimension::Texture2DArray:
                 return 3;
             case TextureDimension::Texture2DCube:
-                return 3;
+                return isQuery ? 2 : 3;
             case TextureDimension::Texture2DCubeArray:
-                return 4;
+                return isQuery ? 3 : 4;
         }
     }
 }

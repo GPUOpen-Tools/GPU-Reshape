@@ -37,6 +37,7 @@
 #include <Common/Allocators.h>
 #include <Common/ComRef.h>
 #include <Common/Registry.h>
+#include <Common/Library.h>
 
 // Bridge
 #include <Bridge/Log/LogBuffer.h>
@@ -69,6 +70,22 @@ struct InstanceDispatchTable {
 
         std::lock_guard<std::mutex> lock(Mutex);
         return Table.at(key);
+    }
+
+    /// Get a table
+    /// \param key the dispatch key
+    /// \return the table, nullptr if not found
+    static InstanceDispatchTable *GetNullable(void *key) {
+        if (!key) {
+            return nullptr;
+        }
+
+        std::lock_guard lock(Mutex);
+        if (auto it = Table.find(key); it != Table.end()) {
+            return it->second;
+        }
+
+        return nullptr;
     }
 
     /// Populate this table
@@ -104,6 +121,13 @@ struct InstanceDispatchTable {
     /// Creation info
     VkApplicationInfoDeepCopy applicationInfo;
 
+    /// Creation extensions
+    std::vector<const char*> enabledLayers;
+    std::vector<const char*> enabledExtensions;
+
+    /// All supported extensions
+    std::vector<VkExtensionProperties> supportedExtensions;
+
     /// Callbacks
     PFN_vkGetInstanceProcAddr                    next_vkGetInstanceProcAddr;
     PFN_vkDestroyInstance                        next_vkDestroyInstance;
@@ -114,6 +138,9 @@ struct InstanceDispatchTable {
     PFN_vkEnumerateDeviceLayerProperties         next_vkEnumerateDeviceLayerProperties;
     PFN_vkEnumerateDeviceExtensionProperties     next_vkEnumerateDeviceExtensionProperties;
     PFN_vkGetPhysicalDeviceQueueFamilyProperties next_vkGetPhysicalDeviceQueueFamilyProperties;
+
+    /// Handle to the platform library
+    Library libraryHandle;
 
 private:
     /// Lookup

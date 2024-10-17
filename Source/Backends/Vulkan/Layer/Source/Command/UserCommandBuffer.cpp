@@ -28,6 +28,7 @@
 #include <Backends/Vulkan/Command/UserCommandState.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
+#include <Backends/Vulkan/States/RenderPassState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
@@ -83,10 +84,14 @@ static void ReconstructPushConstantState(DeviceDispatchTable* device, VkCommandB
 }
 
 static void ReconstructRenderPassState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState, const UserCommandState& state) {
+    // Use the reconstruction object instead of native
+    VkRenderPassBeginInfo beginInfo = streamState->renderPass.deepCopy.createInfo;
+    beginInfo.renderPass = device->states_renderPass.Get(beginInfo.renderPass)->reconstructionObject;
+    
     // Reconstruct render pass
     device->commandBufferDispatchTable.next_vkCmdBeginRenderPass(
         commandBuffer,
-        &streamState->renderPass.deepCopy.createInfo,
+        &beginInfo,
         streamState->renderPass.subpassContents
     );
 }
@@ -117,6 +122,10 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
     // Handle all commands
     for (const Command& command : buffer) {
         switch (static_cast<CommandType>(command.commandType)) {
+            default: {
+                ASSERT(false, "Invalid command for target");
+                break;
+            }
             case CommandType::SetShaderProgram: {
                 auto* cmd = command.As<SetShaderProgramCommand>();
 
@@ -177,6 +186,7 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
 
                 // Get offset
                 uint32_t dwordOffset = device->constantRemappingTable[cmd->id];
+                uint32_t length = cmd->commandSize - sizeof(SetDescriptorDataCommand);
 
                 // Shader Read -> Transfer Write
                 VkBufferMemoryBarrier barrier{};
@@ -187,7 +197,7 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                 barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                 barrier.buffer = streamState->constantShaderDataBuffer.buffer;
                 barrier.offset = sizeof(uint32_t) * dwordOffset;
-                barrier.size = sizeof(uint32_t);
+                barrier.size = length;
 
                 // Stall the pipeline
                 device->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
@@ -204,8 +214,8 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                     commandBuffer,
                     streamState->constantShaderDataBuffer.buffer,
                     sizeof(uint32_t) * dwordOffset,
-                    sizeof(uint32_t),
-                    &cmd->value
+                    length,
+                    reinterpret_cast<const uint8_t*>(cmd) + sizeof(SetDescriptorDataCommand)
                 );
 
                 // Transfer Write -> Shader Read
@@ -277,6 +287,22 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                 );
                 break;
             }
+            case CommandType::ClearBuffer: {
+                auto* cmd = command.As<ClearBufferCommand>();
+
+                // Get the data buffer
+                VkBuffer resourceBuffer = device->dataHost->GetResourceBuffer(cmd->id);
+
+                // Fill the range with zero's
+                device->commandBufferDispatchTable.next_vkCmdFillBuffer(
+                    commandBuffer,
+                    resourceBuffer,
+                    cmd->offset,
+                    cmd->length,
+                    cmd->value
+                );
+                break;
+            }
             case CommandType::Dispatch: {
                 auto* cmd = command.As<DispatchCommand>();
 
@@ -287,7 +313,9 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                     cmd->groupCountY,
                     cmd->groupCountZ
                 );
-
+                break;
+            }
+            case CommandType::UAVBarrier: {
                 // Generic shader UAV barrier
                 VkMemoryBarrier barrier{};
                 barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;

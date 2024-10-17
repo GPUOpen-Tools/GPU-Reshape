@@ -27,7 +27,7 @@
 #pragma once
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/Assert.h>
 
 // Std
@@ -45,6 +45,11 @@ struct TrivialStackVector {
     TrivialStackVector(const TrivialStackVector& other) : data(stack), fallback(other.fallback.get_allocator()) {
         Resize(other.size);
         std::memcpy(data, other.Data(), sizeof(T) * size);
+    }
+
+    /// Initialize from size
+    TrivialStackVector(uint64_t size) : TrivialStackVector() {
+        Resize(size);
     }
 
     /// Move from other
@@ -122,6 +127,7 @@ struct TrivialStackVector {
 
     /// Clear all elements
     void Clear() {
+        fallback.clear();
         size = 0;
     }
 
@@ -181,7 +187,14 @@ struct TrivialStackVector {
     /// \return 
     T PopBack() {
         ASSERT(size > 0, "Out of bounds");
-        return data[--size];
+        T value = data[--size];
+        
+        if (data != stack) {
+            fallback.pop_back();
+            data = fallback.data();
+        }
+        
+        return value;
     }
 
     /// Size of this container

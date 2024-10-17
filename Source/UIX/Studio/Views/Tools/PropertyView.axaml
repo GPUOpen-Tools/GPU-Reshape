@@ -33,21 +33,22 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="using:Studio.ViewModels.Tools"
-             xmlns:propertyGrid="https://github.com/avalonia_extendedtoolkit"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
              mc:Ignorable="d"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:PropertyViewModel" x:CompileBindings="True">
     <Grid Focusable="True">
-        <propertyGrid:PropertyGrid
+        <controls:PropertyGrid
             x:Name="PropertyGrid"
             HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch"
-            PropertyDisplayMode="All"
-            ShowAttachedProperties="True"
-            ShowReadOnlyProperties="True">
-            <propertyGrid:PropertyGrid.Layout>
-                <propertyGrid:CategorizedLayout />
-            </propertyGrid:PropertyGrid.Layout>
-        </propertyGrid:PropertyGrid>
+            VerticalAlignment="Stretch"/>
+        
+        <TextBlock
+            VerticalAlignment="Bottom"
+            HorizontalAlignment="Stretch"
+            Foreground="{DynamicResource StatusForeground}"
+            Margin="5 0 0 5 "
+            TextWrapping="Wrap"
+            Text="{Binding CurrentDescription}"/>
     </Grid>
 </UserControl>

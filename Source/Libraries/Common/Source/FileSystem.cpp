@@ -130,6 +130,9 @@ std::filesystem::path GetIntermediateCachePath() {
 
 std::string ReadAllText(const std::filesystem::path &path) {
     std::ifstream stream(path);
+    if (!stream.good()) {
+        return "";
+    }
 
     // Determine size
     stream.seekg(0, std::ios::end);

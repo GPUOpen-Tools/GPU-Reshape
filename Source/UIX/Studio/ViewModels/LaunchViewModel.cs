@@ -40,9 +40,11 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Environment;
 using Studio.Models.Workspace;
 using Studio.Services;
 using Studio.Services.Suspension;
+using Studio.Utils.Workspace;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
@@ -57,6 +59,11 @@ namespace Studio.ViewModels
         /// Connect to selected application
         /// </summary>
         public ICommand Start { get; }
+        
+        /// <summary>
+        /// Open application settings
+        /// </summary>
+        public ICommand Settings { get; }
 
         /// <summary>
         /// Current connection string
@@ -77,7 +84,7 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
-        /// Current connection string
+        /// Application working directory
         /// </summary>
         [DataMember]
         public string WorkingDirectoryPath
@@ -87,13 +94,43 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
-        /// Current connection string
+        /// Application launch arguments
         /// </summary>
         [DataMember]
         public string Arguments
         {
             get => _arguments;
             set => this.RaiseAndSetIfChanged(ref _arguments, value);
+        }
+
+        /// <summary>
+        /// Application environment strings
+        /// </summary>
+        [DataMember]
+        public string Environment
+        {
+            get => _environment;
+            set => this.RaiseAndSetIfChanged(ref _environment, value);
+        }
+
+        /// <summary>
+        /// Should the configuration safe guard?
+        /// </summary>
+        [DataMember]
+        public bool CaptureChildProcesses
+        {
+            get => _captureChildProcesses;
+            set => this.RaiseAndSetIfChanged(ref _captureChildProcesses, value);
+        }
+
+        /// <summary>
+        /// Should the configuration safe guard?
+        /// </summary>
+        [DataMember]
+        public bool AttachAllDevices
+        {
+            get => _attachAllDevices;
+            set => this.RaiseAndSetIfChanged(ref _attachAllDevices, value);
         }
 
         /// <summary>
@@ -161,6 +198,16 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
+        /// Should the configuration synchronously record?
+        /// </summary>
+        [DataMember]
+        public bool TexelAddressing
+        {
+            get => _texelAddressing;
+            set => this.RaiseAndSetIfChanged(ref _texelAddressing, value);
+        }
+
+        /// <summary>
         /// Name of the configuration, kept for suspension purposes
         /// </summary>
         [DataMember]
@@ -225,6 +272,15 @@ namespace Studio.ViewModels
             get => _canLaunch;
             set => this.RaiseAndSetIfChanged(ref _canLaunch, value);
         }
+
+        /// <summary>
+        /// Is the application name valid?
+        /// </summary>
+        public bool ValidApplicationPath
+        {
+            get => _validApplicationPath;
+            set => this.RaiseAndSetIfChanged(ref _validApplicationPath, value);
+        }
         
         /// <summary>
         /// Constructor
@@ -233,6 +289,7 @@ namespace Studio.ViewModels
         {
             // Create commands
             Start = ReactiveCommand.Create(OnStart);
+            Settings = ReactiveCommand.Create(OnSettings);
 
             // Create interactions
             AcceptLaunch = new();
@@ -246,6 +303,12 @@ namespace Studio.ViewModels
                     SelectedPropertyConfigurations = x.Properties.Items.Where(p => p.Visibility == PropertyVisibility.Configuration);
                 });
 
+            // Bind to application path
+            this.WhenAnyValue(x => x.ApplicationPath).Subscribe(x =>
+            {
+                ValidApplicationPath = File.Exists(x);
+            });
+
             // Create the initial workspace
             CreateVirtualWorkspace();
 
@@ -253,7 +316,7 @@ namespace Studio.ViewModels
             _connectionViewModel.Connected.Subscribe(_ => OnRemoteConnected());
             
             // Bind configurations
-            App.Locator.GetService<IWorkspaceService>()?.Configurations.Connect()
+            ServiceRegistry.Get<IWorkspaceService>()?.Configurations.Connect()
                 .OnItemAdded(x => Configurations.Add(x))
                 .OnItemRemoved(x => Configurations.Remove(x))
                 .Subscribe();
@@ -264,7 +327,7 @@ namespace Studio.ViewModels
             // Try getting configuration from suspension
             if (!string.IsNullOrEmpty(SelectedConfigurationName))
             {
-                SelectedConfiguration = Configurations.First(x => x.Name == SelectedConfigurationName);
+                SelectedConfiguration = Configurations.FirstOrDefault(x => x.Name == SelectedConfigurationName);
             }
             
             // Default selection
@@ -280,7 +343,7 @@ namespace Studio.ViewModels
         private void CreateVirtualWorkspace()
         {
             // Must have service
-            if (App.Locator.GetService<IWorkspaceService>() is not { } service)
+            if (ServiceRegistry.Get<IWorkspaceService>() is not { } service)
             {
                 return;
             }
@@ -408,11 +471,21 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
+        /// Append all global settings
+        /// Not exposed as properties as their value may not change during a program
+        /// </summary>
+        private void AppendGlobalConfig(OrderedMessageView<ReadWriteMessageStream> view)
+        {
+            var texelMessage = view.Add<SetTexelAddressingMessage>();
+            texelMessage.enabled = TexelAddressing ? 1 : 0;
+        }
+
+        /// <summary>
         /// Invoked on start
         /// </summary>
         private async void OnStart()
         {
-            if (App.Locator.GetService<IBackendDiscoveryService>()?.Service is not { } service)
+            if (ServiceRegistry.Get<IBackendDiscoveryService>()?.Service is not { } service)
             {
                 return;
             }
@@ -424,11 +497,16 @@ namespace Studio.ViewModels
             _pendingReservedToken = $"{{{Guid.NewGuid()}}}";
 
             // Setup process info
-            var processInfo = new DiscoveryProcessInfo();
+            var processInfo = new DiscoveryProcessCreateInfo();
             processInfo.applicationPath = _applicationPath;
             processInfo.workingDirectoryPath = _workingDirectoryPath;
             processInfo.arguments = _arguments;
             processInfo.reservedToken = _pendingReservedToken;
+            processInfo.captureChildProcesses = _captureChildProcesses;
+            processInfo.attachAllDevices = _attachAllDevices;
+
+            // Parse environment
+            processInfo.environment = new(EnvironmentParser.Parse(_environment).Select(kv => Tuple.Create(kv.Key, kv.Value)));
 
             // If no working directory has been specified, default to the executable
             if (string.IsNullOrWhiteSpace(processInfo.workingDirectoryPath))
@@ -457,9 +535,12 @@ namespace Studio.ViewModels
             {
                 busPropertyService.CommitRedirect(view, false);
             }
+
+            // Add all global options
+            AppendGlobalConfig(view);
             
             // Start process
-            service.StartBootstrappedProcess(processInfo, view.Storage);
+            service.StartBootstrappedProcess(processInfo, view.Storage, ref _discoveryProcessInfo);
             
             // Start connection
             _connectionViewModel.Connect("127.0.0.1", null);
@@ -469,10 +550,27 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
+        /// Invoked on settings
+        /// </summary>
+        private void OnSettings()
+        {
+            SettingsUtils.OpenWorkspaceSettingsFor(new[]
+            {
+                Path.GetFileName(_applicationPath)
+            });
+        }
+
+        /// <summary>
         /// Invoked when the remote endpoint has connected
         /// </summary>
         private void OnRemoteConnected()
         {
+            if (AttachAllDevices)
+            {
+                Dispatcher.UIThread.InvokeAsync(CreateProcessWorkspace);
+                return;
+            }
+            
             // Register handler
             _connectionViewModel.Bridge?.Register(this);
 
@@ -497,6 +595,37 @@ namespace Studio.ViewModels
                 // Must call start manually (a little vague)
                 _timer.Start();
             });
+        }
+
+        /// <summary>
+        /// Create a process workspace
+        /// </summary>
+        private async void CreateProcessWorkspace()
+        {
+            // Get provider
+            var provider = ServiceRegistry.Get<IWorkspaceService>();
+
+            // Create process workspace
+            var workspace = new ProcessWorkspaceViewModel(_pendingReservedToken)
+            {
+                Connection = _connectionViewModel
+            };
+
+            // Assume application info from paths
+            _connectionViewModel.Application = new ApplicationInfoViewModel()
+            {
+                Guid = Guid.NewGuid(),
+                Pid = _discoveryProcessInfo.processId,
+                Process = Path.GetFileName(_applicationPath),
+                DecorationMode = ApplicationDecorationMode.ProcessOnly
+            };
+
+            // Configure and register workspace
+            provider?.Install(workspace);
+            provider?.Add(workspace, false);
+
+            // Handle as accepted
+            await AcceptLaunch.Handle(Unit.Default);
         }
 
         /// <summary>
@@ -569,7 +698,7 @@ namespace Studio.ViewModels
                 }
 
                 // Get provider
-                var provider = App.Locator.GetService<Services.IWorkspaceService>();
+                var provider = ServiceRegistry.Get<Services.IWorkspaceService>();
 
                 // Create workspace
                 var workspace = new ViewModels.Workspace.WorkspaceViewModel()
@@ -579,7 +708,7 @@ namespace Studio.ViewModels
                 
                 // Configure and register workspace
                 provider?.Install(workspace);
-                provider?.Add(workspace);
+                provider?.Add(workspace, true);
             });
         }
 
@@ -611,6 +740,12 @@ namespace Studio.ViewModels
         /// <param name="discovery">message</param>
         private void Handle(HostDiscoveryMessage discovery)
         {
+            // Ignore if unassigned?
+            if (string.IsNullOrEmpty(_pendingReservedToken))
+            {
+                return;
+            }
+            
             // Assigned to reserved application
             ApplicationInfoViewModel? applicationInfo = null;
 
@@ -624,7 +759,7 @@ namespace Studio.ViewModels
                         var info = message.Get<HostServerInfoMessage>();
                         
                         // Matched against pending?
-                        if (info.guid.String.Equals(_pendingReservedToken, StringComparison.InvariantCultureIgnoreCase))
+                        if (info.reservedGuid.String.Equals(_pendingReservedToken, StringComparison.InvariantCultureIgnoreCase))
                         {
                             applicationInfo = new ApplicationInfoViewModel
                             {
@@ -693,6 +828,11 @@ namespace Studio.ViewModels
         private string _arguments = string.Empty;
 
         /// <summary>
+        /// Internal environment
+        /// </summary>
+        private string _environment = string.Empty;
+
+        /// <summary>
         /// Pending token for discovery matching
         /// </summary>
         private string _pendingReservedToken;
@@ -711,6 +851,11 @@ namespace Studio.ViewModels
         /// Internal launch state
         /// </summary>
         private bool _canLaunch = true;
+
+        /// <summary>
+        /// Internal valid path state
+        /// </summary>
+        private bool _validApplicationPath = true;
         
         /// <summary>
         /// Internal virtual mappings
@@ -728,6 +873,16 @@ namespace Studio.ViewModels
         private string _selectedConfigurationDescription;
         
         /// <summary>
+        /// Internal capture child processes state
+        /// </summary>
+        private bool _captureChildProcesses;
+        
+        /// <summary>
+        /// Internal attach all devices state
+        /// </summary>
+        private bool _attachAllDevices;
+        
+        /// <summary>
         /// Internal safe guard state
         /// </summary>
         private bool _safeGuard;
@@ -743,8 +898,18 @@ namespace Studio.ViewModels
         private bool _synchronousRecording;
         
         /// <summary>
+        /// Internal texel addressing state
+        /// </summary>
+        private bool _texelAddressing = true;
+        
+        /// <summary>
         /// Internal name state
         /// </summary>
         private string _selectedConfigurationName;
+
+        /// <summary>
+        /// Instantiated process info
+        /// </summary>
+        private DiscoveryProcessInfo _discoveryProcessInfo = new();
     }
 }

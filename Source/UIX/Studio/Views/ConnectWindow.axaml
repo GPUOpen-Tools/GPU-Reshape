@@ -47,8 +47,9 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Icon="/Resources/Icons/Icon_Frame.ico"
         Title="Create Workspace Connection"
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome">
+        SystemDecorations="BorderOnly">
     <Window.Resources>
         <ResourceDictionary>
             <vc:ConnectionStatusToProgressConverter x:Key="ConnectionStatusToProgressConverter" />
@@ -76,7 +77,7 @@
                     HorizontalAlignment="Right"
                     Width="25"
                     Height="25"
-                    Margin="0 0 0 0">
+                    Margin="0 -1 1 0">
                     <PathIcon ToolTip.Tip="{x:Static r:Resources.Help_Tooltip}" Data="{StaticResource Question}" Width="13" />
                     
                     <Button.Flyout>
@@ -89,18 +90,18 @@ Valid attributes:
                                 </TextBlock>
                                 <Grid Margin="25 0 0 0" ColumnDefinitions="35,*">
                                     <TextBlock TextWrapping="Wrap" Grid.Column="0">
-ip
-port
-app 
-pid 
-api 
+ip   <LineBreak />
+port <LineBreak />
+app  <LineBreak />
+pid  <LineBreak />
+api  <LineBreak />
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" Grid.Column="1">
-- Endpoint hostname or ipv4/6 string
-- Endpoint host resolver port, leave default if unknown
-- Application name filter
-- Application process id
-- Application backend API filter
+- Endpoint hostname or ipv4/6 string                    <LineBreak />
+- Endpoint host resolver port, leave default if unknown <LineBreak />
+- Application name filter                               <LineBreak />
+- Application process id                                <LineBreak />
+- Application backend API filter                        <LineBreak />
                                     </TextBlock>
                                 </Grid>
                                 
@@ -125,7 +126,7 @@ Examples:
                     CanUserResizeColumns="True"
                     AutoGenerateColumns="False"
                     SelectedItem="{Binding SelectedApplication}"
-                    Items="{Binding ResolvedApplications}">
+                    ItemsSource="{Binding ResolvedApplications}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Process" Width="*" Binding="{Binding Process}" />
                         <DataGridTextColumn Header="Name" Width="*" Binding="{Binding Name}" />

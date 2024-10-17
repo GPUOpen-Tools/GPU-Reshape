@@ -34,10 +34,12 @@
 #include <Backends/Vulkan/Compiler/Diagnostic/ShaderCompilerDiagnostic.h>
 #include <Backends/Vulkan/Compiler/Diagnostic/PipelineCompilerDiagnostic.h>
 #include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticType.h>
+#include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 
 // Common
 #include <Common/Dispatcher/EventCounter.h>
 #include <Common/Dispatcher/RelaxedAtomic.h>
+#include <Common/Containers/Vector.h>
 #include <Common/ComRef.h>
 
 // Bridge
@@ -110,8 +112,11 @@ public:
 
 protected:
     void CommitShaders(DispatcherBucket* bucket, void *data);
+    void CommitPipelineLibraries(DispatcherBucket* bucket, void *data);
     void CommitPipelines(DispatcherBucket* bucket, void *data);
+    void CommitOpaquePipelines(DispatcherBucket* bucket, PipelineState** pipelineStates, uint32_t count, InstrumentationStage stage, void *data);
     void CommitTable(DispatcherBucket* bucket, void *data);
+    void CommitFeatureMessages();
 
     /// Message handler
     void OnMessage(const ConstMessageStreamView<>::ConstIterator &it);
@@ -134,6 +139,11 @@ protected:
     /// Propagate instrumentation states
     /// \param state destination shader
     void PropagateInstrumentationInfo(ShaderModuleState* state);
+
+    /// Activate all relevant features and commit them
+    /// \param featureBitSet enabled feature set
+    /// \param previousFeatureBitSet previously enabled feature set
+    void ActivateAndCommitFeatures(uint64_t featureBitSet, uint64_t previousFeatureBitSet);
     
 private:
     struct FilterEntry {
@@ -191,8 +201,12 @@ private:
             uint64_t combinedHash{0};
         };
         
-        /// Given feature set
-        uint64_t featureBitSet;
+        /// Given feature sets
+        uint64_t previousFeatureBitSet{0};
+        uint64_t featureBitSet{0};
+
+        /// Current version id
+        uint64_t versionID{0};
 
         /// Compiler diagnostics
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
@@ -212,6 +226,7 @@ private:
         /// Dirty objects
         std::set<ReferenceObject*> dirtyObjects;
         std::vector<ShaderModuleState*> dirtyShaderModules;
+        std::vector<PipelineState*> dirtyPipelineLibraries;
         std::vector<PipelineState*> dirtyPipelines;
 
         /// Current stage
@@ -224,6 +239,14 @@ private:
         DispatcherBucket* bucket{nullptr};
     };
 
+    /// Commit a pipeline for instrumentation
+    /// \param batch parent batch
+    /// \param state state being compiled
+    /// \param dependentObject dependent state for the expected instrumentation keys
+    /// \param jobs destination job queue
+    /// \return success state
+    bool CommitPipeline(Batch* batch, PipelineState* state, PipelineState* dependentObject, Vector<PipelineJob>& jobs);
+    
     /// Dirty states
     Batch immediateBatch;
 
@@ -248,6 +271,13 @@ private:
 
     /// Pending compilation bucket?
     bool hasPendingBucket{false};
+
+    /// Current version id
+    uint64_t versionID{0};
+
+private:
+    /// The previous feature set during summarization
+    uint64_t previousFeatureBitSet{0};
 
 private:
     bool synchronousRecording{false};

@@ -31,7 +31,7 @@
 
 class StandardInstrumentPass : public ITestPass {
 public:
-    COMPONENT(ClickPass);
+    COMPONENT(StandardInstrumentPass);
 
     /// Overrides
     bool Run() override;

@@ -37,6 +37,7 @@
 
 // Backend
 #include <Backend/CommandContextHandle.h>
+#include <Backend/CommandContext.h>
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
@@ -147,6 +148,32 @@ struct ShaderExportStreamBindState {
 #endif // NDEBUG
 };
 
+struct ShaderExportRenderPassState {
+    /// Number of render passes bound
+    uint32_t renderTargetCount{0};
+
+    /// All render pass data
+    D3D12_RENDER_PASS_RENDER_TARGET_DESC renderTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
+
+    /// Optional depth stencil data
+    D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthStencil;
+
+    /// All flags
+    D3D12_RENDER_PASS_FLAGS flags;
+    
+    /// Are we inside a render pass
+    bool insideRenderPass{false};
+};
+
+struct ShaderExportSegmentDescriptorEntry {
+    /// The heaps that was referenced
+    DescriptorHeapState* resourceHeap{nullptr};
+    DescriptorHeapState* samplerHeap{nullptr};
+
+    /// The allocated segment
+    ShaderExportSegmentDescriptorAllocation segment{};
+};
+
 /// Single stream state
 struct ShaderExportStreamState {
     ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators), referencedHeaps(allocators) {
@@ -155,6 +182,9 @@ struct ShaderExportStreamState {
 
     /// Is this state pending?
     bool pending{false};
+
+    /// Does this state have any descriptor data?
+    bool hasDescriptorState{false};
     
     /// Currently bound heaps
     DescriptorHeapState* resourceHeap{nullptr};
@@ -169,6 +199,9 @@ struct ShaderExportStreamState {
     /// Bind states
     ShaderExportStreamBindState bindStates[static_cast<uint32_t>(PipelineType::Count)];
 
+    /// Graphics render pass
+    ShaderExportRenderPassState renderPass;
+
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};
 
@@ -179,7 +212,7 @@ struct ShaderExportStreamState {
     bool isInstrumented{false};
 
     /// All segment descriptors, lifetime bound to deferred segment
-    Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
+    Vector<ShaderExportSegmentDescriptorEntry> segmentDescriptors;
 
     /// All references heaps
     Vector<DescriptorHeapState*> referencedHeaps;
@@ -194,14 +227,18 @@ struct ShaderExportStreamState {
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
 };
 
+struct ShaderExportStreamSegmentUserContext {
+    /// Segment context
+    CommandContext commandContext;
+
+    /// Streaming state
+    ShaderExportStreamState* streamState{nullptr};
+};
+
 /// Single stream segment, i.e. submission
 struct ShaderExportStreamSegment {
     ShaderExportStreamSegment(const Allocators& allocators) :
-        segmentDescriptors(allocators),
         referencedHeaps(allocators),
-        descriptorDataSegments(allocators),
-        constantShaderDataBuffers(allocators),
-        constantAllocator(allocators),
         commandContextHandles(allocators) {
         
     }
@@ -217,23 +254,15 @@ struct ShaderExportStreamSegment {
     ShaderExportSegmentDescriptorInfo patchDeviceCPUDescriptor;
     ShaderExportSegmentDescriptorInfo patchDeviceGPUDescriptor;
 
-    /// Combined segment descriptors, lifetime bound to this segment
-    Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
-
     /// All references heaps
     Vector<DescriptorHeapState*> referencedHeaps;
 
-    /// Combined descriptor data segments, lifetime bound to this segment
-    Vector<DescriptorDataSegment> descriptorDataSegments;
-
-    /// Combined context handles
-    Vector<ConstantShaderDataBuffer> constantShaderDataBuffers;
-
-    /// Combined constant allocators
-    Vector<ShaderExportConstantAllocator> constantAllocator;
-
     /// Combined context handles
     Vector<CommandContextHandle> commandContextHandles;
+
+    /// Optional contexts for user command buffers
+    ShaderExportStreamSegmentUserContext userPreContext;
+    ShaderExportStreamSegmentUserContext userPostContext;
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{UINT64_MAX};

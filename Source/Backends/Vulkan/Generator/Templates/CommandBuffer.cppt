@@ -26,7 +26,7 @@ $POPULATE
 $HOOKS
 
 // Registration
-PFN_vkVoidFunction CommandBufferDispatchTable::GetHookAddress(const char* name) {
+PFN_vkVoidFunction CommandBufferDispatchTable::GetHookAddress(CommandBufferDispatchTable* table, const char* name) {
 $GETHOOKADDRESS
 
     // No hook

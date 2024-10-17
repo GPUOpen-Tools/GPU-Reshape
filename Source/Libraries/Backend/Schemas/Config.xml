@@ -38,6 +38,10 @@
         <field name="enabled" type="bool"/>
     </message>
 
+    <message name="SetTexelAddressing">
+        <field name="enabled" type="bool"/>
+    </message>
+
     <message name="GetState">
         <field name="uuid" type="uint64"/>
     </message>

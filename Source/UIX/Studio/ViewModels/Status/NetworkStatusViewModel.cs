@@ -117,7 +117,7 @@ namespace Studio.ViewModels.Status
         /// <summary>
         /// Network service
         /// </summary>
-        private NetworkDiagnosticService? _networkDiagnosticService = App.Locator.GetService<NetworkDiagnosticService>();
+        private NetworkDiagnosticService? _networkDiagnosticService = ServiceRegistry.Get<NetworkDiagnosticService>();
 
         /// <summary>
         /// Internal read amount

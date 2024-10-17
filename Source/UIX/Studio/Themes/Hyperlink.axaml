@@ -30,7 +30,9 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Design.PreviewWith>
-        <Button Classes="Link" Width="100" Height="25" Content="Click me!" />
+        <Grid Width="200" Height="200">
+            <Button Classes="Link" Width="100" Height="25" Content="Click me!" />
+        </Grid>
     </Design.PreviewWith>
 
     <!-- Simple hyperlink -->
@@ -47,8 +49,6 @@
                         <Style Selector="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Center"/>
                             <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="Foreground" Value="{TemplateBinding Foreground}"/>
-                            <Setter Property="FontSize" Value="{TemplateBinding FontSize}"/>
                         </Style>
                     </ContentPresenter.Styles>
                 </ContentPresenter>
@@ -66,5 +66,6 @@
     
     <Style Selector="Button.Link:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
     </Style>
 </Styles>

@@ -37,7 +37,7 @@ namespace Studio
         /// <summary>
         /// View model getter
         /// </summary>
-        public static ILoggingViewModel? ViewModel => App.Locator.GetService<ILoggingService>()?.ViewModel;
+        public static ILoggingViewModel? ViewModel => ServiceRegistry.Get<ILoggingService>()?.ViewModel;
 
         /// <summary>
         /// Add a new event log

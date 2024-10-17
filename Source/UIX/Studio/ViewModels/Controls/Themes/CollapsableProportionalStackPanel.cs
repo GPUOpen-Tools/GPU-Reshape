@@ -32,10 +32,10 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Dock.Avalonia.Controls;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.ReactiveUI.Controls;
-using Dock.ProportionalStackPanel;
 using ReactiveUI;
 using Orientation = Avalonia.Layout.Orientation;
 
@@ -82,7 +82,7 @@ namespace Studio.ViewModels.Controls.Themes
                 {
                     if (e.NewItems is not null)
                     {
-                        foreach (var item in e.NewItems.OfType<IControl>())
+                        foreach (var item in e.NewItems.OfType<Control>())
                         {
                             if (item.DataContext is IProportionalDock dock)
                             {
@@ -107,18 +107,18 @@ namespace Studio.ViewModels.Controls.Themes
         /// <summary>
         /// FInd the closest target from a given element
         /// </summary>
-        IControl? FindClosestTarget(IList<IControl> children, IControl element)
+        Control? FindClosestTarget(IList<Control> children, Control element)
         {
             int distance = int.MaxValue;
 
             int offset = children.IndexOf(element);
 
-            IControl? target = null;
+            Control? target = null;
 
             for (int j = offset + 1; j < children.Count; j++)
             {
                 int dist = j - offset;
-                if (dist < distance && children[j] is not ProportionalStackPanelSplitter)
+                if (dist < distance && !IsSplitter(children[j]))
                 {
                     distance = dist;
                     target = children[j];
@@ -129,7 +129,7 @@ namespace Studio.ViewModels.Controls.Themes
             for (int j = offset - 1; j >= 0; j--)
             {
                 int dist = offset - j;
-                if (dist < distance && children[j] is not ProportionalStackPanelSplitter)
+                if (dist < distance && !IsSplitter(children[j]))
                 {
                     distance = dist;
                     target = children[j];
@@ -141,12 +141,102 @@ namespace Studio.ViewModels.Controls.Themes
         }
 
         /// <summary>
+        /// Get the owning splitter
+        /// </summary>
+        private static ProportionalStackPanelSplitter? GetSplitter(Control? control)
+        {
+            if (control is ContentPresenter contentPresenter)
+            {
+                if (contentPresenter.Child is null)
+                {
+                    contentPresenter.UpdateChild();
+                }
+
+                control = contentPresenter.Child;
+            }
+
+            return control as ProportionalStackPanelSplitter;
+        }
+
+        /// <summary>
+        /// Check if a control is a splitter
+        /// </summary>
+        private static bool IsSplitter(Control? control)
+        {
+            if (control is ContentPresenter contentPresenter)
+            {
+                if (contentPresenter.Child is null)
+                {
+                    contentPresenter.UpdateChild();
+                }
+
+                control = contentPresenter.Child;
+            }
+
+            return control is ProportionalStackPanelSplitter;
+        }
+
+        /// <summary>
+        /// Set the proportion of a control
+        /// </summary>
+        private static void SetControlProportion(Control? control, double proportion)
+        {
+            if (control is ContentPresenter contentPresenter)
+            {
+                if (contentPresenter.Child is null)
+                {
+                    contentPresenter.UpdateChild();
+                }
+
+                if (contentPresenter.Child is not null)
+                {
+                    ProportionalStackPanelSplitter.SetProportion(contentPresenter.Child, proportion);
+                }
+            }
+            else
+            {
+                if (control is not null)
+                {
+                    ProportionalStackPanelSplitter.SetProportion(control, proportion);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get the proportion of a control
+        /// </summary>
+        private static double GetControlProportion(Control? control)
+        {
+            if (control is ContentPresenter contentPresenter)
+            {
+                if (contentPresenter.Child is null)
+                {
+                    contentPresenter.UpdateChild();
+                }
+
+                if (contentPresenter.Child is not null)
+                {
+                    return ProportionalStackPanelSplitter.GetProportion(contentPresenter.Child);
+                }
+
+                return double.NaN;
+            }
+
+            if (control is not null)
+            {
+                return ProportionalStackPanelSplitter.GetProportion(control);
+            }
+
+            return double.NaN;
+        }
+
+        /// <summary>
         /// Assign all proportions
         /// </summary>
-        private void AssignProportions(IList<IControl> children, Size size)
+        private void AssignProportions(Avalonia.Controls.Controls children, Size size)
         {
             // Handle expansion ranges
-            foreach (IControl control in children.Where(x => x is not ProportionalStackPanelSplitter))
+            foreach (Control control in children.Where(x => !IsSplitter(x)))
             {
                 bool isExpanded = IsExpanded(control);
 
@@ -157,7 +247,7 @@ namespace Studio.ViewModels.Controls.Themes
                     state = new ExpansionState()
                     {
                         IsExpanded = isExpanded,
-                        Proportion = ProportionalStackPanelSplitter.GetProportion(control)
+                        Proportion = GetControlProportion(control)
                     };
 
                     _expansionStates.Add(control, state);
@@ -166,7 +256,7 @@ namespace Studio.ViewModels.Controls.Themes
                 // New expansion state?
                 if (state.IsExpanded != isExpanded)
                 {
-                    IControl? target = FindClosestTarget(children, control);
+                    Control? target = FindClosestTarget(children, control);
 
                     // Was previously expanded?
                     if (state.IsExpanded)
@@ -192,19 +282,19 @@ namespace Studio.ViewModels.Controls.Themes
 
                         // Set new proportion
                         Debug.Assert(!double.IsNaN(proportion));
-                        ProportionalStackPanelSplitter.SetProportion(control, proportion);
+                        SetControlProportion(control, proportion);
                     }
                     else
                     {
                         // Set cached proportion
                         Debug.Assert(!double.IsNaN(state.Proportion));
-                        ProportionalStackPanelSplitter.SetProportion(control, state.Proportion);
+                        SetControlProportion(control, state.Proportion);
                     }
 
                     // If there's a target, mark for distribution
                     if (target != null)
                     {
-                        ProportionalStackPanelSplitter.SetProportion(target, double.NaN);
+                        SetControlProportion(target, double.NaN);
                     }
 
                     // Set new expansion state
@@ -216,20 +306,20 @@ namespace Studio.ViewModels.Controls.Themes
             var assignedProportion = 0.0;
             
             // All unassigned ranges
-            List<Tuple<IControl, double>> unassigned = new();
+            List<Tuple<Control, double>> unassigned = new();
 
             // Summarize range
             for (var i = 0; i < children.Count; i++)
             {
                 var element = (Control)children[i];
 
-                if (element is not ProportionalStackPanelSplitter)
+                if (!IsSplitter(element))
                 {
-                    var proportion = ProportionalStackPanelSplitter.GetProportion(element);
+                    var proportion = GetControlProportion(element);
 
                     if (double.IsNaN(proportion))
                     {
-                        unassigned.Add(new Tuple<IControl, double>(element, 0));
+                        unassigned.Add(new Tuple<Control, double>(element, 0));
                     }
                     else
                     {
@@ -244,11 +334,11 @@ namespace Studio.ViewModels.Controls.Themes
                 foreach (var control in unassigned)
                 {
                     var element = (Control)control.Item1;
-                    if (element is not ProportionalStackPanelSplitter)
+                    if (!IsSplitter(element))
                     {
                         var proportion = (1.0 - toAssign) / unassigned.Count;
                         Debug.Assert(!double.IsNaN(proportion + control.Item2));
-                        ProportionalStackPanelSplitter.SetProportion(element, proportion + control.Item2);
+                        SetControlProportion(element, proportion + control.Item2);
                         assignedProportion += (1.0 - toAssign) / unassigned.Count;
                     }
                 }
@@ -257,26 +347,26 @@ namespace Studio.ViewModels.Controls.Themes
             // Expansion or contraction?
             if (assignedProportion < 1)
             {
-                var numChildren = (double)children.Count(c => c is not ProportionalStackPanelSplitter);
+                var numChildren = (double)children.Count(c => !IsSplitter(c));
 
                 var toAdd = (1.0 - assignedProportion) / numChildren;
 
-                foreach (var child in children.Where(c => c is not ProportionalStackPanelSplitter))
+                foreach (var child in children.Where(c => !IsSplitter(c)))
                 {
-                    var proportion = ProportionalStackPanelSplitter.GetProportion(child) + toAdd;
-                    ProportionalStackPanelSplitter.SetProportion(child, proportion);
+                    var proportion = GetControlProportion(child) + toAdd;
+                    SetControlProportion(child, proportion);
                 }
             }
             else if (assignedProportion > 1)
             {
-                var numChildren = (double)children.Count(c => c is not ProportionalStackPanelSplitter);
+                var numChildren = (double)children.Count(c => !IsSplitter(c));
 
                 var toRemove = (assignedProportion - 1.0) / numChildren;
 
-                foreach (var child in children.Where(c => c is not ProportionalStackPanelSplitter))
+                foreach (var child in children.Where(c => !IsSplitter(c)))
                 {
-                    var proportion = ProportionalStackPanelSplitter.GetProportion(child) - toRemove;
-                    ProportionalStackPanelSplitter.SetProportion(child, proportion);
+                    var proportion = GetControlProportion(child) - toRemove;
+                    SetControlProportion(child, proportion);
                 }
             }
         }
@@ -284,9 +374,9 @@ namespace Studio.ViewModels.Controls.Themes
         /// <summary>
         /// Get the default splitter thickness
         /// </summary>
-        private double GetTotalSplitterThickness(IList<IControl> children)
+        private double GetTotalSplitterThickness(IList<Control> children)
         {
-            return 0;
+            return 0.0;
         }
 
         /// <summary>
@@ -294,7 +384,7 @@ namespace Studio.ViewModels.Controls.Themes
         /// </summary>
         /// <param name="control"></param>
         /// <returns></returns>
-        private bool IsExpanded(IControl control)
+        private bool IsExpanded(Control control)
         {
             if (control.DataContext is ProportionalDock dock)
             {
@@ -325,13 +415,12 @@ namespace Studio.ViewModels.Controls.Themes
             var usedHeight = 0.0;
             var maximumWidth = 0.0;
             var maximumHeight = 0.0;
-            var children = GetChildren();
-            var splitterThickness = GetTotalSplitterThickness(children);
+            var splitterThickness = GetTotalSplitterThickness(Children);
 
-            AssignProportions(children, constraint);
+            AssignProportions(Children, constraint);
 
             // Measure each of the Children
-            foreach (var control in children)
+            foreach (var control in Children)
             {
                 var element = (Control)control;
                 // Get the child's desired size
@@ -339,11 +428,11 @@ namespace Studio.ViewModels.Controls.Themes
                     Math.Max(0.0, constraint.Width - usedWidth - splitterThickness),
                     Math.Max(0.0, constraint.Height - usedHeight - splitterThickness));
 
-                var proportion = ProportionalStackPanelSplitter.GetProportion(element);
+                var proportion = GetControlProportion(element);
 
                 bool isExpanded = IsExpanded(element);
 
-                if (element is not ProportionalStackPanelSplitter && isExpanded)
+                if (!IsSplitter(element) && isExpanded)
                 {
                     if (isExpanded)
                     {
@@ -380,7 +469,7 @@ namespace Studio.ViewModels.Controls.Themes
                     case Orientation.Horizontal:
                         maximumHeight = Math.Max(maximumHeight, usedHeight + desiredSize.Height);
 
-                        if (element is not ProportionalStackPanelSplitter)
+                        if (!IsSplitter(element))
                         {
                             if (!isExpanded)
                             {
@@ -396,7 +485,7 @@ namespace Studio.ViewModels.Controls.Themes
                     case Orientation.Vertical:
                         maximumWidth = Math.Max(maximumWidth, usedWidth + desiredSize.Width);
 
-                        if (element is not ProportionalStackPanelSplitter)
+                        if (!IsSplitter(element))
                         {
                             if (!isExpanded)
                             {
@@ -429,13 +518,12 @@ namespace Studio.ViewModels.Controls.Themes
             var bottom = 0.0;
 
             // Arrange each of the Children
-            var children = GetChildren();
-            var splitterThickness = GetTotalSplitterThickness(children);
+            var splitterThickness = GetTotalSplitterThickness(Children);
             var index = 0;
 
-            AssignProportions(children, arrangeSize);
+            AssignProportions(Children, arrangeSize);
 
-            foreach (var element in children)
+            foreach (var element in Children)
             {
                 // Determine the remaining space left to arrange the element
                 var remainingRect = new Rect(
@@ -447,10 +535,10 @@ namespace Studio.ViewModels.Controls.Themes
                 // Trim the remaining Rect to the docked size of the element
                 // (unless the element should fill the remaining space because
                 // of LastChildFill)
-                if (index < children.Count())
+                if (index < Children.Count())
                 {
                     var desiredSize = element.DesiredSize;
-                    var proportion = ProportionalStackPanelSplitter.GetProportion(element);
+                    var proportion = GetControlProportion(element);
 
                     bool isExpanded = IsExpanded(element);
 
@@ -458,9 +546,9 @@ namespace Studio.ViewModels.Controls.Themes
                     {
                         case Orientation.Horizontal:
                         {
-                            if (element is not ProportionalStackPanelSplitter splitter)
+                            if (GetSplitter(element) is not {} splitter)
                             {
-                                if (element is ProportionalStackPanelSplitter || !isExpanded)
+                                if (IsSplitter(element) || !isExpanded)
                                 {
                                     left += desiredSize.Width;
                                     remainingRect = remainingRect.WithWidth(desiredSize.Width);
@@ -482,9 +570,9 @@ namespace Studio.ViewModels.Controls.Themes
                         }
                         case Orientation.Vertical:
                         {
-                            if (element is not ProportionalStackPanelSplitter splitter)
+                            if (GetSplitter(element) is not {} splitter)
                             {
-                                if (element is ProportionalStackPanelSplitter || !isExpanded)
+                                if (IsSplitter(element) || !isExpanded)
                                 {
                                     top += desiredSize.Height;
                                     remainingRect = remainingRect.WithHeight(desiredSize.Height);
@@ -514,21 +602,14 @@ namespace Studio.ViewModels.Controls.Themes
             return arrangeSize;
         }
 
-        /// <summary>
-        /// Get all children
-        /// </summary>
-        internal IList<IControl> GetChildren()
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
-            return Children.Select(c =>
-            {
-                if (c is ContentPresenter cp)
-                {
-                    cp.UpdateChild();
-                    return cp.Child;
-                }
+            base.OnPropertyChanged(change);
 
-                return c;
-            }).ToList();
+            if (change.Property == OrientationProperty)
+            {
+                InvalidateMeasure();
+            }
         }
 
         class ExpansionState
@@ -537,6 +618,6 @@ namespace Studio.ViewModels.Controls.Themes
             public double Proportion;
         }
 
-        private Dictionary<IControl, ExpansionState> _expansionStates = new();
+        private Dictionary<Control, ExpansionState> _expansionStates = new();
     }
 }

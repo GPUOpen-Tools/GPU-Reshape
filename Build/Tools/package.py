@@ -27,6 +27,7 @@
 import os
 import sys
 import shutil
+import subprocess
 
 # Paths
 root_dir     = os.path.join("../", "../")
@@ -39,12 +40,21 @@ ignore_list = [
     # Mostly unit testing, build time tooling
     ".exe",
     
+    # All configuration json, handled through required files
+    ".json",
+    
     # Build time tooling dependencies
     "libclang.dll",
     
     # Test dependencies
-    "VK_GPUOpen_Test_UserDataLayer.json",
+    "GRS.Libraries.Message.Benchmark.DotNet.dll",
+    "GRS.Backends.Vulkan.Tests.UserDataLayer.dll",
     "vulkan-1.dll"
+]
+
+publish_projects = [
+    # "Source/UIX/Studio/Studio.csproj",
+    # "Source/Services/Discovery/DotNet/NotifyIcon/NotifyIcon.csproj"
 ]
 
 # All required files
@@ -52,22 +62,26 @@ require_list = [
     # <The> GPU Reshape
     "GPUReshape.exe",
     
-    # Dependencies
-    "GPUReshape.NotifyIcon.exe",
-    "GRS.Backends.DX12.Service.exe",
-    "GRS.Backends.DX12.Service.RelFunTBL.exe",
-    "GRS.Services.HostResolver.Standalone.exe",
-    "GRS.Services.Discovery.Cleanup.exe",
-    "XamlColorSchemeGenerator.exe",
+    # Executable dependencies
+    "GPUReshape.NotifyIcon.exe",                 # Task bar notification icon
+    "GRS.Backends.DX12.Service.exe",             # Handles project detouring for D3D12 objects
+    "GRS.Backends.DX12.Service.RelFunTBL.exe",   # Relative function table generator for x86
+    "GRS.Services.HostResolver.Standalone.exe",  # Host resolver tool for discovery
+    "GRS.Services.Discovery.Cleanup.exe",        # General cleanup tool for discovery
+    "XamlColorSchemeGenerator.exe",              # UIX dependency
+    
+    # UIX runtime dependency json
+    "GPUReshape.deps.json",
+    "GPUReshape.runtimeconfig.json",
+    "GPUReshape.NotifyIcon.deps.json",
+    "GPUReshape.NotifyIcon.runtimeconfig.json",
+    "VK_LAYER_GPUOPEN_GRS.json"
 ]
 
 # All required folders
 require_folders = [
     "Plugins",
-    "runtimes/win",
-    "runtimes/win-x64",
-    "runtimes/win-arm64",
-    "runtimes/win7-x64"
+    "Dependencies"
 ]
 
 # All extra folders
@@ -155,3 +169,15 @@ for package in packages:
         # Copy all contents
         sys.stdout.write(f"\tPackaging {folder[0]}\n")
         shutil.copytree(src_folder_dir, pck_folder_dir)
+        
+    # Package all relevant projects
+    for project in publish_projects:
+        subprocess.run([
+            "dotnet",
+            "publish",
+            os.path.join(root_dir, project),
+            "-c", package.split('/')[-1],
+            "-o", pck_dir,
+            "--self-contained",
+            "-r", "win-x64"
+        ])

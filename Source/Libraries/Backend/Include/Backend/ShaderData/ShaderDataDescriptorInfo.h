@@ -30,6 +30,16 @@
 #include <cstdint>
 
 struct ShaderDataDescriptorInfo {
+    /// Create a descriptor info from a structure
+    /// Must be standard layout and dword aligned
+    /// \return given info
+    template<typename T>
+    static ShaderDataDescriptorInfo FromStruct() {
+        static_assert(std::is_standard_layout_v<T>, "Descriptor data must be trivially constructible");
+        static_assert(std::alignment_of_v<T> == sizeof(uint32_t) && sizeof(T) % sizeof(uint32_t) == 0, "Descriptor data must be dword aligned");
+        return ShaderDataDescriptorInfo { .dwordCount = sizeof(T) / sizeof(uint32_t) };
+    }
+    
     /// Number of dwords within this descriptor data
     uint32_t dwordCount{0};
 };

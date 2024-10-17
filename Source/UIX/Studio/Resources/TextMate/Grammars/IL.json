@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "IL",
   "scopeName": "IL",
   "patterns": [
@@ -64,7 +64,7 @@
     },
     {
       "name": "keyword.op.register",
-      "match": "\\b(Alloca|Load|Store|StoreOutput)\\b"
+      "match": "\\b(Alloca|Load|Store|StoreOutput|StoreVertexOutput|StorePrimitiveOutput)\\b"
     },
     {
       "name": "keyword.op.resource",

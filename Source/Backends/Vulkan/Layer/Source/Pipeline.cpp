@@ -31,6 +31,30 @@
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
 
+static ShaderModuleState* GetPipelineStageShaderModule(DeviceDispatchTable* table, const VkPipelineShaderStageCreateInfo& createInfo) {
+    // If there's a stage, just return it
+    if (createInfo.module) {
+        return table->states_shaderModule.Get(createInfo.module);
+    }
+
+    // Pipeline stages may supply the module info by extension
+    // Create a dummy internal state without an actual module handle
+    if (auto* moduleCreateInfo = FindStructureTypeSafe<VkShaderModuleCreateInfo>(&createInfo, VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)) {
+        // Allocate state, reference added externally
+        auto state = new (table->allocators) ShaderModuleState;
+        state->table = table;
+        state->object = nullptr;
+        state->createInfoDeepCopy.DeepCopy(table->allocators, *moduleCreateInfo);
+
+        // Keep track of it
+        table->states_shaderModule.Add(nullptr, state);
+        return state;
+    }
+
+    ASSERT(false, "Unsupported path");
+    return nullptr;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo *pCreateInfos, const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
@@ -49,14 +73,19 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
         state->type = PipelineType::Graphics;
         state->table = table;
         state->object = pipelines[i];
+        state->isLibrary = (pCreateInfos[i].flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR);
         state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
 
         // External user
         state->AddUser();
 
         // Add a reference to the layout
-        state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
-        state->layout->AddUser();
+        if (pCreateInfos[i].layout) {
+            state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
+            state->layout->AddUser();
+        } else {
+            ASSERT(state->isLibrary, "Expected pipeline layout on non-library pipelines");
+        }
 
         // Add reference to the render pass
         if (pCreateInfos[i].renderPass) {
@@ -69,11 +98,29 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
             const VkPipelineShaderStageCreateInfo& stageInfo = state->createInfoDeepCopy.createInfo.pStages[stageIndex];
 
             // Get the proxied state
-            ShaderModuleState* shaderModuleState = table->states_shaderModule.Get(stageInfo.module);
+            ShaderModuleState* shaderModuleState = GetPipelineStageShaderModule(table, stageInfo);
 
             // Add reference
             shaderModuleState->AddUser();
-            state->shaderModules.push_back(shaderModuleState);
+            state->ownedShaderModules.push_back(shaderModuleState);
+            state->referencedShaderModules.push_back(shaderModuleState);
+        }
+
+        // Collect all pipeline libraries
+        if (auto* libraryCreateInfo = FindStructureTypeSafe<VkPipelineLibraryCreateInfoKHR>(&pCreateInfos[i], VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR)) {
+            for (uint32_t libraryIndex = 0; libraryIndex < libraryCreateInfo->libraryCount; libraryIndex++) {
+                PipelineState* libraryState = table->states_pipeline.Get(libraryCreateInfo->pLibraries[libraryIndex]);
+                ASSERT(libraryState->ownedShaderModules.size() == libraryState->referencedShaderModules.size(), "Recursive libraries not supported");
+
+                // Add all the shader modules of this library as referenced
+                for (ShaderModuleState* shaderModuleState : libraryState->ownedShaderModules) {
+                    state->referencedShaderModules.push_back(shaderModuleState);
+                }
+                
+                // Add reference
+                libraryState->AddUser();
+                state->pipelineLibraries.push_back(libraryState);
+            }
         }
 
         // Inform the controller
@@ -105,7 +152,76 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
         state->type = PipelineType::Compute;
         state->table = table;
         state->object = pipelines[i];
+        state->isLibrary = (pCreateInfos[i].flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR);
         state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
+
+        // External user
+        state->AddUser();
+
+        // Add a reference to the layout
+        if (pCreateInfos[i].layout) {
+            state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
+            state->layout->AddUser();
+        } else {
+            ASSERT(state->isLibrary, "Expected pipeline layout on non-library pipelines");
+        }
+
+        // Optional with libraries
+        if (state->createInfoDeepCopy.createInfo.stage.module) {
+            // Get the proxied shader state
+            ShaderModuleState* shaderModuleState = GetPipelineStageShaderModule(table, state->createInfoDeepCopy.createInfo.stage);
+
+            // Add reference
+            shaderModuleState->AddUser();
+            state->ownedShaderModules.push_back(shaderModuleState);
+            state->referencedShaderModules.push_back(shaderModuleState);
+        }
+
+        // Collect all pipeline libraries
+        if (auto* libraryCreateInfo = FindStructureTypeSafe<VkPipelineLibraryCreateInfoKHR>(&pCreateInfos[i], VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR)) {
+            for (uint32_t libraryIndex = 0; libraryIndex < libraryCreateInfo->libraryCount; libraryIndex++) {
+                PipelineState* libraryState = table->states_pipeline.Get(libraryCreateInfo->pLibraries[libraryIndex]);
+
+                // Add all the shader modules of this library as referenced
+                for (ShaderModuleState* shaderModuleState : libraryState->ownedShaderModules) {
+                    state->referencedShaderModules.push_back(shaderModuleState);
+                }
+
+                // Add reference
+                libraryState->AddUser();
+                state->pipelineLibraries.push_back(libraryState);
+            }
+        }
+
+        // Inform the controller
+        table->instrumentationController->CreatePipelineAndAdd(state);
+    }
+
+    // Writeout
+    std::memcpy(pPipelines, pipelines, sizeof(VkPipeline) * createInfoCount);
+
+    // OK
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice device, VkDeferredOperationKHR deferredOperation, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkRayTracingPipelineCreateInfoKHR* pCreateInfos, const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines) {
+    DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Delay writeout
+    auto pipelines = ALLOCA_ARRAY(VkPipeline, createInfoCount);
+
+    // Pass down callchain
+    VkResult result = table->next_vkCreateRayTracingPipelinesKHR(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pipelines);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Allocate states
+    for (uint32_t i = 0; i < createInfoCount; i++) {
+        auto state = new (table->allocators) RaytracingPipelineState;
+        state->type = PipelineType::Compute;
+        state->table = table;
+        state->object = pipelines[i];
 
         // External user
         state->AddUser();
@@ -113,13 +229,6 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
         // Add a reference to the layout
         state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
         state->layout->AddUser();
-
-        // Get the proxied shader state
-        ShaderModuleState* shaderModuleState = table->states_shaderModule.Get(state->createInfoDeepCopy.createInfo.stage.module);
-
-        // Add reference
-        shaderModuleState->AddUser();
-        state->shaderModules.push_back(shaderModuleState);
 
         // Inform the controller
         table->instrumentationController->CreatePipelineAndAdd(state);
@@ -159,9 +268,6 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
 }
 
 PipelineState::~PipelineState() {
-    // Remove state lookup
-    table->states_pipeline.RemoveState(this);
-
     // Type specific info
     switch (type) {
         default:
@@ -182,15 +288,40 @@ PipelineState::~PipelineState() {
         table->next_vkDestroyPipeline(table->object, kv.second, nullptr);
     }
 
-    // Release all references to the shader modules
-    for (ShaderModuleState* module : shaderModules) {
-        // Release dependency
+    // Release all dependencies to the shader modules
+    // All referenced modules are added as dependencies
+    for (ShaderModuleState* module : referencedShaderModules) {
         table->dependencies_shaderModulesPipelines.Remove(module, this);
+    }
 
-        // Release ref
+    // Release all references to the shader modules
+    // We only own those used during creation
+    for (ShaderModuleState* module : ownedShaderModules) {
         destroyRef(module, table->allocators);
     }
 
+    // Release all references to the pipeline libraries
+    for (PipelineState* library : pipelineLibraries) {
+        // Release dependency
+        table->dependencies_pipelineLibraries.Remove(library, this);
+
+        // Release ref
+        destroyRef(library, table->allocators);
+    }
+
     // Free the layout
-    destroyRef(layout, table->allocators);
+    if (layout) {
+        destroyRef(layout, table->allocators);
+    }
+
+    // Release debug name
+    if (debugName) {
+        destroy(debugName, table->allocators);
+    }
+}
+
+void PipelineState::ReleaseHost() {
+    // Remove state lookup
+    // Reference host has locked this
+    table->states_pipeline.RemoveStateNoLock(this);
 }

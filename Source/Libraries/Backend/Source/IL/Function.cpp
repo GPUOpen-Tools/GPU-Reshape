@@ -27,8 +27,11 @@
 #include <Backend/IL/Function.h>
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/PrettyPrint.h>
-#include <Backend/IL/CFG/DominatorTree.h>
+#include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
 #include <Backend/IL/InstructionCommon.h>
+#ifndef NDEBUG
+#include <Backend/IL/PrettyGraph.h>
+#endif // NDEBUG
 
 // Common
 #include <Common/Containers/BitArray.h>
@@ -53,8 +56,8 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
     IL::BasicBlock* entryPoint = basicBlocks.GetEntryPoint();
 
     // Construct dominance tree from current basic blocks
-    DominatorTree dominatorTree(GetBasicBlocks());
-    dominatorTree.Compute();
+    DominatorAnalysis dominatorAnalysis(*this);
+    dominatorAnalysis.Compute();
 
     // Block acquisition lookup
     BitArray blockAcquiredArray(basicBlocks.GetBlockBound());
@@ -85,16 +88,16 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
 
             // Merge must be evaluated after all successors within the construct has been evaluated
             if (controlFlow._continue != IL::InvalidID && blockAcquiredArray.Acquire(controlFlow._continue)) {
-                ENSURE(traversalStack.Add(dominatorTree.GetBlock(controlFlow._continue)), "Failed to push block");
+                ENSURE(traversalStack.Add(dominatorAnalysis.GetBlock(controlFlow._continue)), "Failed to push block");
             }
             
             // Continue must be evaluated after all successors within the construct has been evaluated
             if (controlFlow.merge != IL::InvalidID && blockAcquiredArray.Acquire(controlFlow.merge)) {
-                ENSURE(traversalStack.Add(dominatorTree.GetBlock(controlFlow.merge)), "Failed to push block");
+                ENSURE(traversalStack.Add(dominatorAnalysis.GetBlock(controlFlow.merge)), "Failed to push block");
             }
 
             // Visit all successors
-            for (BasicBlock* successor : dominatorTree.GetSuccessors(basicBlock)) {
+            for (BasicBlock* successor : dominatorAnalysis.GetSuccessors(basicBlock)) {
                 if (blockAcquiredArray.Acquire(successor->GetID())) {
                     ENSURE(traversalStack.Add(successor), "Failed to push block");
                 }
@@ -108,10 +111,10 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
             }
 
             // If truly unreachable, there's no predecessors
-            ASSERT(dominatorTree.GetPredecessors(basicBlock).empty(), "Unappended block was reachable");
+            ASSERT(dominatorAnalysis.GetPredecessors(basicBlock).empty(), "Unappended block was reachable");
 
             // If truly unreachable, and by SPIRV standard, the successors are already present
-            for (BasicBlock* successor : dominatorTree.GetSuccessors(basicBlock)) {
+            for (BasicBlock* successor : dominatorAnalysis.GetSuccessors(basicBlock)) {
                 ASSERT(!blockAcquiredArray[successor->GetID()], "Successor to unreachable not appended");
             }
             
@@ -134,7 +137,7 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
                 }
 
                 // If the immediate dominator has been pushed, or there's none available (unreachable)
-                BasicBlock* immediateDominator = dominatorTree.GetImmediateDominator(basicBlock);
+                BasicBlock* immediateDominator = dominatorAnalysis.GetImmediateDominator(basicBlock);
                 if (immediateDominator && !blockAcquiredArray[immediateDominator->GetID()]) {
                     continue;
                 }
@@ -176,7 +179,7 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
         {
             // Pretty print the blocks
             std::stringstream ss;
-            IL::PrettyPrint(*this, IL::PrettyPrintContext(ss));
+            IL::PrettyPrint(nullptr, *this, IL::PrettyPrintContext(ss));
 
 #ifdef _MSC_VER
             OutputDebugString(ss.str().c_str());
@@ -187,68 +190,17 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
 #endif
 
 #ifndef NDEBUG
-        {
-            std::filesystem::path path = GetIntermediatePath("Crash");
+        // Pretty graph the function
+        std::filesystem::path path = GetIntermediatePath("Crash");
+        PrettyDotGraph(*this, path / "fn.graph.txt", path / "fn.graph.png");
 
-            // Pretty print the graph
-            std::ofstream out(path / "fn.graph.txt");
-            IL::PrettyPrintBlockDotGraph(*this, IL::PrettyPrintContext(out));
-            out.close();
+        // Pretty print the blocks
+        std::ofstream outIL(path / "fn.il.txt");
+        IL::PrettyPrint(nullptr, *this, IL::PrettyPrintContext(outIL));
+        outIL.close();
+#endif // NDEBUG
 
-            // Pretty print the graph
-            std::ofstream outIL(path / "fn.il.txt");
-            IL::PrettyPrint(*this, IL::PrettyPrintContext(outIL));
-            outIL.close();
-
-            // Toolset path
-            std::filesystem::path graphVizDir = GetBaseModuleDirectory() / "GraphViz";
-
-            // Check if the toolset is available
-            if (std::filesystem::exists(graphVizDir)) {
-#ifdef _MSC_VER
-                // Startup information
-                STARTUPINFO startupInfo;
-                ZeroMemory(&startupInfo, sizeof(startupInfo));
-
-                // Populate
-                startupInfo.cb = sizeof(startupInfo);
-
-                // Process information
-                PROCESS_INFORMATION processInfo;
-                ZeroMemory(&processInfo, sizeof(processInfo));
-
-                // Executable
-                std::string dotPath = (graphVizDir / "dot.exe").string();
-                std::string arg     = "";
-
-                // Output
-                arg += " -Tpng";
-                arg += " -o" + (path / "fn.graph.png").string();
-
-                // Input
-                arg += " " + (path / "fn.graph.txt").string();
-
-                // Run graph viz
-                CreateProcess(
-                    dotPath.c_str(),
-                    arg.data(),
-                    NULL,
-                    NULL,
-                    FALSE,
-                    0,
-                    NULL,
-                    NULL,
-                    &startupInfo,
-                    &processInfo
-                );
-
-                CloseHandle(processInfo.hProcess);
-                CloseHandle(processInfo.hThread);
-#endif
-            }
-        };
-#endif
-
+        // Fault
         ASSERT(false, "Failed to reorder dominant blocks");
         return false;
     }

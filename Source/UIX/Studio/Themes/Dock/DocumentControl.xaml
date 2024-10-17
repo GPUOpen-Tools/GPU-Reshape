@@ -27,84 +27,110 @@
         </Setter>
         <Setter Property="Template">
             <ControlTemplate>
-                <DockPanel x:Name="PART_DockPanel"
-                           DockProperties.IsDropArea="True"
-                           DockProperties.IsDockTarget="True"
-                           Background="{DynamicResource BorderColor}"
-                           ZIndex="1"
-                           x:DataType="controls:IDocumentDock"
-                           x:CompileBindings="True">
-                    <DockTabStrip x:Name="PART_TabStrip"
-                                  Items="{Binding VisibleDockables}"
-                                  SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
-                                  CanCreateItem="{Binding CanCreateDocument}"
-                                  DockProperties.IsDropArea="True">
-                        <DockTabStrip.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <localControls:ScrollingTabStripPanel/>
-                            </ItemsPanelTemplate>
-                        </DockTabStrip.ItemsPanel>
-                        <DockTabStrip.DataTemplates>
-                            <DataTemplate DataType="core:IDockable">
-                                <DockableControl TrackingMode="Tab">
-                                    <StackPanel Background="Transparent"
-                                                Orientation="Horizontal"
-                                                Spacing="2"
-                                                DockProperties.IsDragArea="True"
-                                                DockProperties.IsDropArea="True">
-                                        <Panel Margin="2">
-                                            <ContentPresenter
-                                                ContentTemplate="{Binding $parent[DocumentControl].HeaderTemplate}"
-                                                Content="{Binding}" />
-                                        </Panel>
-                                        <Button x:Name="PART_CloseButton"
-                                                Command="{Binding Owner.Factory.CloseDockable}"
-                                                CommandParameter="{Binding}"
-                                                Classes="documentTabButton closeButton Icon"
-                                                IsVisible="{Binding CanClose}"
-                                                Margin="0 3 0 0"
-                                                x:CompileBindings="False">
-                                            <Path x:Name="PART_ClosePath" Classes="closeButton" Height="8" Width="8" />
-                                        </Button>
-                                    </StackPanel>
-                                </DockableControl>
-                            </DataTemplate>
-                        </DockTabStrip.DataTemplates>
-                    </DockTabStrip>
-                    <DockableControl DataContext="{Binding ActiveDockable}"
-                                     TrackingMode="Visible">
-                        <ContentControl x:Name="PART_ContentPresenter"
-                                        Content="{Binding}"
-                                        HorizontalAlignment="Stretch"
-                                        VerticalAlignment="Stretch" />
-                    </DockableControl>
-                </DockPanel>
+                <Border Background="{TemplateBinding Background}"
+                        TextElement.FontFamily="{TemplateBinding FontFamily}"
+                        TextElement.FontSize="{TemplateBinding FontSize}"
+                        TextElement.FontWeight="{TemplateBinding FontWeight}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Padding="{TemplateBinding Padding}"
+                        ContextMenu="{DynamicResource DocumentTabStripItemContextMenu}">
+                    <DockPanel x:Name="PART_DockPanel"
+                               DockProperties.IsDropArea="True"
+                               DockProperties.IsDockTarget="True"
+                               Background="{DynamicResource BorderColor}"
+                               ZIndex="1"
+                               x:DataType="controls:IDocumentDock"
+                               x:CompileBindings="True">
+                        <DocumentTabStrip x:Name="PART_TabStrip"
+                                          ItemsSource="{Binding VisibleDockables}"
+                                          SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
+                                          CanCreateItem="{Binding CanCreateDocument}"
+                                          DockProperties.IsDropArea="True"
+                                          DockPanel.Dock="Top">
+                            <DocumentTabStrip.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <localControls:ScrollingTabStripPanel/>
+                                </ItemsPanelTemplate>
+                            </DocumentTabStrip.ItemsPanel>
+                        </DocumentTabStrip>
+                        <DockableControl DataContext="{Binding ActiveDockable}"
+                                         TrackingMode="Visible"
+                                         DockPanel.Dock="Bottom">
+                            <ContentControl x:Name="PART_ContentPresenter"
+                                            Content="{Binding}"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch" />
+                        </DockableControl>
+                    </DockPanel>
+                </Border>
             </ControlTemplate>
         </Setter>
     </Style>
     
-    <Style Selector="DocumentControl /template/ TabStrip#PART_TabStrip">
+    
+    <Style Selector="DocumentTabStripItem">
+        <Setter Property="Template" x:DataType="core:IDockable">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        TextElement.FontFamily="{TemplateBinding FontFamily}"
+                        TextElement.FontSize="{TemplateBinding FontSize}"
+                        TextElement.FontWeight="{TemplateBinding FontWeight}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Padding="{TemplateBinding Padding}"
+                        ContextMenu="{DynamicResource DocumentTabStripItemContextMenu}">
+                <DockableControl TrackingMode="Tab">
+                    <StackPanel Background="Transparent"
+                                Orientation="Horizontal"
+                                Spacing="2"
+                                Margin="4 4 4 4"
+                                DockProperties.IsDragArea="True"
+                                DockProperties.IsDropArea="True">
+                        <Panel Margin="2">
+                            <ContentPresenter
+                                ContentTemplate="{Binding $parent[DocumentControl].HeaderTemplate}"
+                                Content="{Binding}" />
+                        </Panel>
+                        <Button x:Name="PART_CloseButton"
+                                Command="{Binding Owner.Factory.CloseDockable}"
+                                CommandParameter="{Binding}"
+                                Classes="Icon" Width="14" Height="14"
+                                IsVisible="{Binding CanClose}"
+                                Margin="0 3 0 0"
+                                x:CompileBindings="False">
+                            <Path x:Name="PART_ClosePath" Classes="closeButton" Height="8" Width="8" Data="{StaticResource Close}" />
+                        </Button>
+                    </StackPanel>
+                </DockableControl>
+                    </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    
+    <Style Selector="DocumentControl /template/ DocumentTabStrip#PART_TabStrip">
         <Setter Property="BorderThickness" Value="0 0 0 3" />
         <Setter Property="CornerRadius" Value="3" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Height" Value="30" />
     </Style>
     
-    <Style Selector="DocumentControl /template/ TabStrip#PART_TabStrip TabStripItem:selected">
+    <Style Selector="DocumentTabStripItem:selected">
         <Setter Property="BorderThickness" Value="0 0 0 3" />
         <Setter Property="CornerRadius" Value="3" />
         <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
     </Style>
     
-    <Style Selector="DocumentControl:not(:active) /template/ TabStrip#PART_TabStrip TabStripItem:selected">
+    <Style Selector=" DocumentTabStripItem:selected">
         <Setter Property="Background" Value="Transparent" />
     </Style>
     
-    <Style Selector="DocumentControl:active /template/ TabStrip#PART_TabStrip TabStripItem:selected">
+    <Style Selector="DocumentTabStripItem:selected">
         <Setter Property="Background" Value="Transparent" />
     </Style>
     
-    <Style Selector="DocumentControl /template/ TabStrip#PART_TabStrip TabStripItem">
+    <Style Selector="DocumentTabStripItem">
         <Setter Property="MinHeight" Value="30" />
+        <Setter Property="Padding" Value="0" />
     </Style>
 </Styles>

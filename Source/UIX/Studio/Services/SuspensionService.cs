@@ -466,7 +466,7 @@ namespace Studio.Services
         /// <param name="self">object to be bound</param>
         public static void BindTypedSuspension(this INotifyPropertyChanged self)
         {
-            App.Locator.GetService<ISuspensionService>()?.BindTypedSuspension(self);
+            ServiceRegistry.Get<ISuspensionService>()?.BindTypedSuspension(self);
         }
     }
 }

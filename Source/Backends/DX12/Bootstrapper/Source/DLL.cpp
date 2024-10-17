@@ -495,11 +495,14 @@ void BootstrapLayer(const char* invoker) {
     // Fetch function table
     if (LayerModule) {
         // Get hook points
+        LayerFunctionTable.next_D3D12GetInterfaceOriginal  = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(KernelXGetProcAddressOriginal(LayerModule, "HookD3D12GetInterface"));
         LayerFunctionTable.next_D3D12CreateDeviceOriginal  = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice"));
         LayerFunctionTable.next_CreateDXGIFactoryOriginal  = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory"));
         LayerFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1"));
         LayerFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory2"));
         LayerFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(KernelXGetProcAddressOriginal(LayerModule, "HookD3D12EnableExperimentalFeatures"));
+        LayerFunctionTable.next_AMDAGSInitialize           = reinterpret_cast<PFN_AMD_AGS_INITIALIZE>(GetProcAddress(LayerModule, "HookAMDAGSInitialize"));
+        LayerFunctionTable.next_AMDAGSDeinitialize         = reinterpret_cast<PFN_AMD_AGS_DEINITIALIZE>(GetProcAddress(LayerModule, "HookAMDAGSDeinitialize"));
         LayerFunctionTable.next_AMDAGSCreateDevice         = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(GetProcAddress(LayerModule, "HookAMDAGSCreateDevice"));
         LayerFunctionTable.next_AMDAGSDestroyDevice        = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(GetProcAddress(LayerModule, "HookAMDAGSDestroyDevice"));
         LayerFunctionTable.next_AMDAGSPushMarker           = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(GetProcAddress(LayerModule, "HookAMDAGSPushMarker"));
@@ -531,7 +534,7 @@ void BootstrapLayer(const char* invoker) {
     }
 }
 
-void WINAPI D3D12GetGPUOpenBootstrapperInfo(D3D12GPUOpenBootstrapperInfo* out) {
+extern "C" __declspec(dllexport) void WINAPI D3D12GetGPUOpenBootstrapperInfo(D3D12GPUOpenBootstrapperInfo* out) {
     out->version = 1;
 }
 
@@ -638,8 +641,8 @@ bool IsServiceActive() {
     }
 
     // May explicitly disable service traps
-    if (char* tokenKey{nullptr}; _dupenv_s(&tokenKey, &size, Backend::kNoServiceTrapKey) == 0 && tokenKey) {
-        free(tokenKey);
+    if (char* key{nullptr}; _dupenv_s(&key, &size, Backend::kNoServiceTrapKey) == 0 && key) {
+        free(key);
         return true;
     }
 
@@ -765,9 +768,46 @@ struct _PROC_THREAD_ATTRIBUTE_LIST {
     _PROC_THREAD_ATTRIBUTE_LIST_ATTRIBUTE Attributes[1u];
 };
 
+bool IsBackendKeySet(const char* key) {
+    size_t size;
+    if (char* value{nullptr}; _dupenv_s(&value, &size, key) == 0 && value) {
+        free(value);
+        return true;
+    }
+
+    // Not set
+    return false;
+}
+
+bool ShouldAttachChildProcesses() {
+    // If the service trap is disabled, we're always capturing child processes
+    if (!IsBackendKeySet(Backend::kNoServiceTrapKey)) {
+        return true;
+    }
+    
+    // May explicitly disable service traps
+    if (IsBackendKeySet(Backend::kCaptureChildProcessesKey)) {
+        return true;
+    }
+
+    // No capturing!
+    return false;
+}
+
 bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
     // Do not bootstrap if the service isn't running
     if (!IsServiceActive()) {
+#if ENABLE_LOGGING
+        LogContext{} << "ShouldBootstrapProcess, process rejected due to inactive service\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+
+    // May be disabled user side
+    if (!ShouldAttachChildProcesses()) {
+#if ENABLE_LOGGING
+        LogContext{} << "ShouldBootstrapProcess, process rejected due to disabled child capturing\n";
+#endif // ENABLE_LOGGING
         return false;
     }
 
@@ -781,6 +821,9 @@ bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
             
             // Do not bootstrap AppContainer processes
             if (entry.Attribute == PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES) {
+#if ENABLE_LOGGING
+                LogContext{} << "ShouldBootstrapProcess, process rejected due to AppContainer usage\n";
+#endif // ENABLE_LOGGING
                 return false;
             }
 
@@ -794,6 +837,9 @@ bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
                     // - Microsoft sign checks will cause the image to be rejected
                     if ((policyPayloads[0] & PROCESS_CREATION_MITIGATION_POLICY_IMAGE_LOAD_NO_REMOTE_ALWAYS_ON) ||
                         (policyPayloads[0] & PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON)) {
+#if ENABLE_LOGGING
+                        LogContext{} << "ShouldBootstrapProcess, process rejected due to mitigation policy\n";
+#endif // ENABLE_LOGGING
                         return false;
                     }
                 }
@@ -1412,6 +1458,21 @@ bool IsIHVRegion(const void* address) {
     return IsModuleRegion(IHVAMDXC64ModuleInfo, address);
 }
 
+template<typename T>
+T SafeLayerFunction(T layer, T detour) {
+    // The layer may fail to load for a number of reasons, one of such is safe-guarding / anti-cheat systems
+    // In case that happens, keep thing stable, just use the detour function table as the layer one, i.e. pass-through
+    return layer ? layer : detour;
+}
+
+HRESULT WINAPI HookD3D12GetInterface(REFCLSID rclsid, REFIID riid, void** ppvDebug) {
+    WaitForDeferredInitialization();
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_D3D12GetInterfaceOriginal, DetourFunctionTable.next_D3D12GetInterfaceOriginal);
+    return next(rclsid, riid, ppvDebug);
+}
+
 HRESULT WINAPI HookID3D12CreateDevice(
     _In_opt_ IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
@@ -1423,16 +1484,19 @@ HRESULT WINAPI HookID3D12CreateDevice(
     // Hold for deferred initialization, must happen before IHV region checks due to foreign modules
     WaitForDeferredInitialization();
 
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_D3D12CreateDeviceOriginal, DetourFunctionTable.next_D3D12CreateDeviceOriginal);
+
     // If this is not an IHV region, just pass down the call-chain
     if (!IsIHVRegion(callee)) {
-        return LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, riid, ppDevice);
+        return next(pAdapter, minimumFeatureLevel, riid, ppDevice);
     }
 
     // Native device
     ID3D12Device* device{nullptr};
 
     // Create device with special vendor IID, this device is not wrapped
-    if (HRESULT hr = LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, kIIDD3D12DeviceVendor, reinterpret_cast<void**>(&device)); FAILED(hr)) {
+    if (HRESULT hr = next(pAdapter, minimumFeatureLevel, kIIDD3D12DeviceVendor, reinterpret_cast<void**>(&device)); FAILED(hr)) {
         return hr;
     }
 
@@ -1453,7 +1517,10 @@ HRESULT HookD3D11On12CreateDevice(
     D3D_FEATURE_LEVEL *pChosenFeatureLevel
     ) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_D3D11On12CreateDeviceOriginal(
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_D3D11On12CreateDeviceOriginal, DetourFunctionTable.next_D3D11On12CreateDeviceOriginal);
+    return next(
         pDevice,
         Flags,
         pFeatureLevels,
@@ -1469,47 +1536,90 @@ HRESULT HookD3D11On12CreateDevice(
 
 HRESULT HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_EnableExperimentalFeatures(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_EnableExperimentalFeatures, DetourFunctionTable.next_EnableExperimentalFeatures);
+    return next(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
+}
+
+AGSReturnCode HookAMDAGSInitialize(int agsVersion, const AGSConfiguration* config, AGSContext** context, AGSGPUInfo* gpuInfo) {
+    WaitForDeferredInitialization();
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSInitialize, DetourFunctionTable.next_AMDAGSInitialize);
+    return next(agsVersion, config, context, gpuInfo);
+}
+
+AGSReturnCode HookAMDAGSDeinitialize(AGSContext* context) {
+    WaitForDeferredInitialization();
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSDeinitialize, DetourFunctionTable.next_AMDAGSDeinitialize);
+    return next(context);
 }
 
 AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSCreateDevice(context, creationParams, extensionParams, returnedParams);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSCreateDevice, DetourFunctionTable.next_AMDAGSCreateDevice);
+    return next(context, creationParams, extensionParams, returnedParams);
 }
 
 AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSDestroyDevice(context, device, deviceReferences);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSDestroyDevice, DetourFunctionTable.next_AMDAGSDestroyDevice);
+    return next(context, device, deviceReferences);
 }
 
 AGSReturnCode HookAMDAGSPushMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSPushMarker(context, commandList, data);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSPushMarker, DetourFunctionTable.next_AMDAGSPushMarker);
+    return next(context, commandList, data);
 }
 
 AGSReturnCode HookAMDAGSPopMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSPopMarker(context, commandList);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSPopMarker, DetourFunctionTable.next_AMDAGSPopMarker);
+    return next(context, commandList);
 }
 
 AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_AMDAGSSetMarker(context, commandList, data);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_AMDAGSSetMarker, DetourFunctionTable.next_AMDAGSSetMarker);
+    return next(context, commandList, data);
 }
 
 HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_CreateDXGIFactoryOriginal(riid, ppFactory);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactoryOriginal, DetourFunctionTable.next_CreateDXGIFactoryOriginal);
+    return next(riid, ppFactory);
 }
 
 HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_CreateDXGIFactory1Original(riid, ppFactory);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactory1Original, DetourFunctionTable.next_CreateDXGIFactory1Original);
+    return next(riid, ppFactory);
 }
 
 HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory) {
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_CreateDXGIFactory2Original(flags, riid, ppFactory);
+
+    // Get safe next
+    auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactory2Original, DetourFunctionTable.next_CreateDXGIFactory2Original);
+    return next(flags, riid, ppFactory);
 }
 
 void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
@@ -1521,6 +1631,14 @@ void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
     
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
+
+    // Attach against original address
+    DetourFunctionTable.next_AMDAGSInitialize = reinterpret_cast<PFN_AMD_AGS_INITIALIZE>(KernelXGetProcAddressOriginal(handle, "agsInitialize"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSInitialize), reinterpret_cast<void*>(HookAMDAGSInitialize));
+
+    // Attach against original address
+    DetourFunctionTable.next_AMDAGSDeinitialize = reinterpret_cast<PFN_AMD_AGS_DEINITIALIZE>(KernelXGetProcAddressOriginal(handle, "agsDeInitialize"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDeinitialize), reinterpret_cast<void*>(HookAMDAGSDeinitialize));
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSCreateDevice = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice"));
@@ -1555,6 +1673,10 @@ void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
     
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
+
+    // Attach against original address
+    DetourFunctionTable.next_D3D12GetInterfaceOriginal = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(KernelXGetProcAddressOriginal(handle, "D3D12GetInterface"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
 
     // Attach against original address
     DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "D3D12CreateDevice"));
@@ -1618,6 +1740,12 @@ void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
 
 void DetachInitialCreation() {
     // Remove device
+    if (DetourFunctionTable.next_D3D12GetInterfaceOriginal) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
+        DetourFunctionTable.next_D3D12GetInterfaceOriginal = nullptr;
+    }
+    
+    // Remove device
     if (DetourFunctionTable.next_D3D12CreateDeviceOriginal) {
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
         DetourFunctionTable.next_D3D12CreateDeviceOriginal = nullptr;
@@ -1655,12 +1783,16 @@ void DetachInitialCreation() {
 
     // Remove AMD ags
     if (DetourFunctionTable.next_AMDAGSCreateDevice) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSInitialize), reinterpret_cast<void*>(HookAMDAGSInitialize));
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDeinitialize), reinterpret_cast<void*>(HookAMDAGSDeinitialize));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSCreateDevice), reinterpret_cast<void*>(HookAMDAGSCreateDevice));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDestroyDevice), reinterpret_cast<void*>(HookAMDAGSDestroyDevice));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPushMarker), reinterpret_cast<void*>(HookAMDAGSPushMarker));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPopMarker), reinterpret_cast<void*>(HookAMDAGSPopMarker));
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSSetMarker), reinterpret_cast<void*>(HookAMDAGSSetMarker));
 
+        DetourFunctionTable.next_AMDAGSInitialize = nullptr;
+        DetourFunctionTable.next_AMDAGSDeinitialize = nullptr;
         DetourFunctionTable.next_AMDAGSCreateDevice = nullptr;
         DetourFunctionTable.next_AMDAGSDestroyDevice = nullptr;
         DetourFunctionTable.next_AMDAGSPushMarker = nullptr;

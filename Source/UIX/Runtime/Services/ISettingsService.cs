@@ -47,6 +47,20 @@ namespace Studio.Services
         }
         
         /// <summary>
+        /// Get a setting or create it
+        /// </summary>
+        public static T? GetOrDefault<T>(this ISettingsService self) where T : ISettingViewModel, new()
+        {
+            if (self.Get<T>() is not { } item)
+            {
+                item = new T();
+                self.Add(item);
+            }
+
+            return item;
+        }
+        
+        /// <summary>
         /// Add a setting
         /// </summary>
         public static void Add(this ISettingsService self, ISettingViewModel viewModel)

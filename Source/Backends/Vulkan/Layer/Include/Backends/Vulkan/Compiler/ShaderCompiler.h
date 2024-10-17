@@ -86,7 +86,8 @@ protected:
     };
 
     /// Compile a given job
-    void CompileShader(const ShaderJobEntry &job);
+    /// \return success state
+    bool CompileShader(const ShaderJobEntry &job);
 
     /// Worker entry
     void Worker(void *userData);

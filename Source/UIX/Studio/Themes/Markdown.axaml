@@ -1,0 +1,260 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2024 Advanced Micro Devices, Inc.,
+  Fatalist Development AB (Avalanche Studio Group),
+  and Miguel Petersen.
+  
+  All Rights Reserved.
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:avedit="https://github.com/avaloniaui/avaloniaedit"
+        xmlns:mdc="clr-namespace:Markdown.Avalonia.Controls;assembly=Markdown.Avalonia"
+        xmlns:extensions="clr-namespace:Markdown.Avalonia.Extensions;assembly=Markdown.Avalonia"
+        xmlns:ctxt="clr-namespace:ColorTextBlock.Avalonia;assembly=ColorTextBlock.Avalonia"
+        xmlns:md="https://github.com/whistyun/Markdown.Avalonia.Tight">
+    <!--
+        This is a modified version of https://github.com/whistyun/Markdown.Avalonia/blob/master/Markdown.Avalonia.Tight/StyleCollections/MarkdownStyleDefaultTheme.axaml
+        The changes below are a combination of styling changes and, most importantly, compatibility fixes with Avalonia 11.
+    -->
+
+    <Style Selector=":is(md|MarkdownScrollViewer)">
+        <Style.Setters>
+            <Setter Property="SelectionBrush" Value="{StaticResource ErrorDefaultBrush}" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CTextBlock">
+        <Style.Setters>
+            <Setter Property="SelectionBrush" Value="{StaticResource ErrorDefaultBrush}" />
+            <Setter Property="FontSize" Value="{extensions:Multiply FontSizeNormal, 1.1}" />
+            <Setter Property="Margin" Value="0,5" />
+        </Style.Setters>
+    </Style>
+    
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer TextBlock">
+        <Style.Setters>
+            <Setter Property="FontSize" Value="{extensions:Multiply FontSizeNormal, 1.1}" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CTextBlock.Heading1">
+        <Style.Setters>
+            <Setter Property="FontSize" Value="{extensions:Multiply FontSizeNormal, 3.5}" />
+            <Setter Property="Foreground" Value="{extensions:Alpha ThemeForegroundColor}" />
+            <Setter Property="FontWeight" Value="Light" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CTextBlock.Heading2">
+        <Style.Setters>
+            <Setter Property="FontSize" Value="{extensions:Multiply FontSizeNormal, 1.7}" />
+            <Setter Property="Foreground" Value="{extensions:Alpha ThemeForegroundColor}" />
+            <Setter Property="FontWeight" Value="Light" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CTextBlock.Heading3">
+        <Style.Setters>
+            <Setter Property="FontSize" Value="{extensions:Multiply FontSizeNormal, 1.7}" />
+            <Setter Property="Foreground" Value="{extensions:Alpha ThemeForegroundColor, 0.7}" />
+            <Setter Property="FontWeight" Value="Light" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CTextBlock.Heading4">
+        <Style.Setters>
+            <Setter Property="FontSize" Value="{extensions:Multiply FontSizeNormal, 1.2}" />
+            <Setter Property="Foreground" Value="{extensions:Alpha ThemeForegroundColor, 0.7}" />
+            <Setter Property="FontWeight" Value="Light" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CHyperlink">
+        <Style.Setters>
+            <Setter Property="IsUnderline" Value="false" />
+            <Setter Property="Foreground" Value="{extensions:Alpha ThemeAccentColor}" />
+        </Style.Setters>
+    </Style>
+    
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CHyperlink:pointerover">
+        <Setter Property="Foreground" Value="{extensions:Complementary ThemeAccentColor}" />
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.Table">
+        <Style.Setters>
+            <Setter Property="Margin" Value="5" />
+            <Setter Property="BorderThickness" Value="0,0,0,0" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.TightTable">
+        <Style.Setters>
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Grid.Table > Border">
+        <Style.Setters>
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="BorderThickness" Value="0,0,0,0" />
+            <Setter Property="BorderBrush" Value="{extensions:Alpha ThemeBorderHighColor}" />
+            <Setter Property="Padding" Value="2" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Grid.Table">
+        <Style.Setters>
+            <Setter Property="mdc:AutoScaleColumnDefinitions.IsEnabled" Value="True" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.TableHeader">
+        <Style.Setters>
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{extensions:Alpha ThemeBorderHighColor}" />
+            <Setter Property="BorderThickness" Value="0 0 0 1" />
+        </Style.Setters>
+    </Style>
+    
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.TableHeader ctxt|CTextBlock">
+        <Style.Setters>
+            <Setter Property="FontWeight" Value="DemiBold" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.EvenTableRow">
+        <Style.Setters>
+            <Setter Property="Background" Value="{extensions:Alpha ThemeForegroundColor, 0.12}" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.CodeBlock">
+        <Style.Setters>
+            <Setter Property="Padding" Value="5,0,0,0" />
+            <Setter Property="BorderThickness" Value="0,0,0,0" />
+            <Setter Property="Margin" Value="0,0,5,0" />
+            <Setter Property="Background" Value="{extensions:Alpha ThemeForegroundColor, 0.06}" />
+        </Style.Setters>
+    </Style>
+    
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer TextBlock.CodeBlock">
+        <Style.Setters>
+            <Setter Property="FontFamily"
+                    Value="menlo,monaco,consolas,droid sans mono,inconsolata,courier new,monospace,dejavu sans mono" />
+            <Setter Property="Foreground" Value="{extensions:DivideColor InfoMediumForeground, InfoMediumForeground, 0.45}" />
+        </Style.Setters>
+    </Style>
+    
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.NoContainer">
+        <Style.Setters>
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CCode">
+        <Style.Setters>
+            <Setter Property="Foreground" Value="{extensions:Alpha SystemBaseHighColor,  1.00}" />
+            <Setter Property="Background" Value="{extensions:Alpha ThemeForegroundColor, 0.06}" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.Note">
+        <Style.Setters>
+            <Setter Property="Margin" Value="5,0,5,0" />
+            <Setter Property="BorderBrush" Value="{extensions:Alpha ThemeForegroundColor, 0.13}" />
+            <Setter Property="BorderThickness" Value="3,3,3,3" />
+            <Setter Property="Background" Value="{extensions:Alpha ThemeForegroundColor, 0.02}" />
+        </Style.Setters>
+    </Style>
+    
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CTextBlock.Note">
+        <Style.Setters>
+            <Setter Property="Margin" Value="10, 5" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Grid.List">
+        <Style.Setters>
+            <Setter Property="Margin" Value="0,0,0,0" />
+        </Style.Setters>
+    </Style>
+    
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CTextBlock.ListMarker">
+        <Style.Setters>
+            <Setter Property="Margin" Value="0,5,5,5" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer Border.Blockquote">
+        <Style.Setters>
+            <Setter Property="BorderBrush" Value="{extensions:Alpha ThemeForegroundColor, 0.13}" />
+            <Setter Property="BorderThickness" Value="5,0,0,0" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer ScrollContentPresenter">
+        <Style.Setters>
+            <Setter Property="Margin" Value="0 0 10 0" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer StackPanel.Blockquote">
+        <Style.Setters>
+            <Setter Property="Margin" Value="10, 5" />
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".Markdown_Avalonia_MarkdownViewer mdc|Rule">
+        <Style.Setters>
+        </Style.Setters>
+    </Style>
+
+    <Style Selector=".CodeBlock avedit|TextEditor">
+        <Setter Property="SyntaxHighlighting" Value="" />
+        <Setter Property="FontFamily"
+                Value="menlo,monaco,consolas,droid sans mono,inconsolata,courier new,monospace,dejavu sans mono" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
+    </Style>
+
+    <Style Selector=".CodeBlock Label.LangInfo">
+        <Setter Property="Padding" Value="8, 0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="2" />
+    </Style>
+
+    <Style Selector=".CodeBlock avedit|TextEditor">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+
+    <Style Selector=".CodeBlock Label">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+
+    <Style Selector=".CodeBlock Button">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+</Styles>

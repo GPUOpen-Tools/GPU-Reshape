@@ -26,7 +26,11 @@
 
 #pragma once
 
+// Layer
 #include <Backends/Vulkan/Vulkan.h>
+
+// Backend
+#include <Backend/Resource/ResourceInfo.h>
 
 /// Hooks
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer);

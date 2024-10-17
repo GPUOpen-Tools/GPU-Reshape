@@ -40,6 +40,7 @@
              xmlns:r="using:Studio.Resources"
              xmlns:reactui="http://reactiveui.net"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
+             xmlns:objects="clr-namespace:Runtime.ViewModels.Objects;assembly=UIX.Studio.Runtime"
              mc:Ignorable="d"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:PipelineTreeViewModel" x:CompileBindings="True">
@@ -71,9 +72,10 @@
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             BorderThickness="0"
             Tag="{Binding}"
-            Items="{Binding PipelineIdentifiers}" >
+            ItemsSource="{Binding PipelineIdentifiers}"
+            SelectionMode="Multiple">
             <ListBox.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate DataType="objects:PipelineIdentifierViewModel">
                     <StackPanel Orientation="Horizontal">
                         <Border IsVisible="{Binding Stage, Converter={StaticResource PipelineStageConverter}}"
                                 Background="{Binding Stage, Converter={StaticResource PipelineStageConverter}}"

@@ -53,6 +53,10 @@ struct SpvPhysicalBlockTypeConstantVariable : public SpvPhysicalBlockSection {
     /// Parse all instructions
     void Parse();
 
+    /// Specialize this block
+    /// \param job job to specialize for
+    void Specialize(const SpvJob& job);
+
     /// Assign all type associations for a given instruction, ensures types are mapped correctly
     /// \param ctx parsing context
     void AssignTypeAssociation(const SpvParseContext& ctx);
@@ -98,6 +102,38 @@ public:
     /// Get the variable id
     uint32_t GetPushConstantVariableId() const {
         return pushConstantVariableId;
+    }
+
+public:
+    /// Get a builtin input
+    /// \param builtin given id, created if not present
+    /// \param type expected value type
+    /// \return existing or allocated id
+    IL::ID FindOrCreateInput(SpvBuiltIn builtin, const Backend::IL::Type* type);
+    
+    /// Get the literal of a known constant
+    /// \param id source id
+    /// \return casted value
+    template<typename T = uint32_t>
+    T GetConstantLiteral(uint32_t id) {
+        auto constant = program.GetConstants().GetConstant(id);
+        ASSERT(constant, "Missing constant");
+
+        switch (constant->kind) {
+            default: {
+                ASSERT(false, "Non-literal constant");
+                return T{};
+            }
+            case Backend::IL::ConstantKind::Bool: {
+                return static_cast<T>(constant->As<IL::BoolConstant>()->value);
+            }
+            case Backend::IL::ConstantKind::Int: {
+                return static_cast<T>(constant->As<IL::IntConstant>()->value);
+            }
+            case Backend::IL::ConstantKind::FP: {
+                return static_cast<T>(constant->As<IL::FPConstant>()->value);
+            }
+        }
     }
 
 private:

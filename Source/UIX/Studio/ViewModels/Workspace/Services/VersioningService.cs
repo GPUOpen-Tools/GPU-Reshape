@@ -73,6 +73,13 @@ namespace Studio.ViewModels.Workspace.Services
         {
             lock (this)
             {
+                // Search collapsed resources
+                if (CollapsedResources.TryGetValue(puid, out Resource collapsedResource))
+                {
+                    return collapsedResource;
+                }
+                
+                // Search branches first
                 foreach (Branch branch in _branches)
                 {
                     // If the current branch is ahead, the resource was not found, this could be caused by de-synchronization
@@ -84,7 +91,7 @@ namespace Studio.ViewModels.Workspace.Services
                     }
 
                     // Try to find the puid
-                    if (branch.Resources.TryGetValue(puid, out Resource resource))
+                    if (branch.EdgeResources.TryGetValue(puid, out Resource resource))
                     {
                         return resource;
                     }
@@ -188,12 +195,6 @@ namespace Studio.ViewModels.Workspace.Services
                         {
                             var versionCollapse = message.Get<VersionCollapseMessage>();
 
-                            // Get target branch
-                            if (!_branchLookup.TryGetValue(versionCollapse.head, out Branch? target))
-                            {
-                                break;
-                            }
-
                             // Collapse all branches up until target
                             int rangeIndex = 0;
                             for (; rangeIndex < _branches.Count; rangeIndex++)
@@ -206,11 +207,11 @@ namespace Studio.ViewModels.Workspace.Services
                                     break;
                                 }
 
-                                // Collapse all resources into target
-                                foreach (var kv in branch.Resources)
+                                // Collapse all resources into collapsed
+                                foreach (var kv in branch.EdgeResources)
                                 {
-                                    // Merge upward if not present
-                                    target.Resources.TryAdd(kv.Key, kv.Value);
+                                    // Always overwrite since it's going down chain
+                                    CollapsedResources[kv.Key] = kv.Value;
                                 }
                                 
                                 // Remove lookup
@@ -250,7 +251,7 @@ namespace Studio.ViewModels.Workspace.Services
                     // Deletion?
                     if (message.version == UInt32.MaxValue)
                     {
-                        branch.Resources.Remove(message.puid);
+                        branch.EdgeResources.Remove(message.puid);
                         continue;
                     }
                     
@@ -258,7 +259,7 @@ namespace Studio.ViewModels.Workspace.Services
                     Debug.Assert(message.version == branch.Head, "Versioning de-synchronization, committed resource to a former branch");
 
                     // Add resource (duplicate keys are fine, it may be a recommit)
-                    branch.Resources[message.puid] = new Resource()
+                    branch.EdgeResources[message.puid] = new Resource()
                     {
                         PUID = message.puid,
                         Version = branch.Head,
@@ -282,8 +283,15 @@ namespace Studio.ViewModels.Workspace.Services
             /// <summary>
             /// All resource mappings in this branch
             /// </summary>
-            public Dictionary<uint, Resource> Resources = new();
+            public Dictionary<uint, Resource> EdgeResources = new();
         }
+        
+        /// <summary>
+        /// All fully collapsed resources
+        /// The edge resources may overwrite this, it is only valid to read if none of the
+        /// front most branches reference said resource.
+        /// </summary>
+        public Dictionary<uint, Resource> CollapsedResources = new();
 
         /// <summary>
         /// Branch lookup

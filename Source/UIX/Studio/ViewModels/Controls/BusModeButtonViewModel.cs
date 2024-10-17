@@ -28,8 +28,7 @@ using System;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Media;
-using Avalonia.Threading;
-using Discovery.CLR;
+using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Services;
@@ -71,7 +70,7 @@ namespace Studio.ViewModels.Controls
             Toggle = ReactiveCommand.Create(OnToggle);
 
             // Bind to current workspace
-            App.Locator.GetService<IWorkspaceService>()?
+            _workspaceService?
                 .WhenAnyValue(x => x.SelectedWorkspace)
                 .Subscribe(x =>
             {
@@ -95,15 +94,15 @@ namespace Studio.ViewModels.Controls
                         switch (y)
                         {
                             case BusMode.Immediate:
-                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("SuccessColor"));
+                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("SuccessDefaultColor"));
                                 StatusGeometry = ResourceLocator.GetIcon("Play");
                                 break;
                             case BusMode.RecordAndCommit:
-                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("WarningColor"));
+                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("WarningDefaultColor"));
                                 StatusGeometry = ResourceLocator.GetIcon("Pause");
                                 break;
                             case BusMode.Discard:
-                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("ErrorColor"));
+                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("ErrorDefaultColor"));
                                 StatusGeometry = ResourceLocator.GetIcon("Pause");
                                 break;
                             default:
@@ -139,12 +138,24 @@ namespace Studio.ViewModels.Controls
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+            
+            // Update selected workspace, if any
+            if (_workspaceService?.SelectedWorkspace is { Connection: { } connection })
+            {
+                var range = connection.GetSharedBus().Add<PauseInstrumentationMessage>();
+                range.paused = _currentService.Mode != BusMode.Immediate ? 1 : 0;
+            }
         }
 
         /// <summary>
         /// Current service model
         /// </summary>
         private IBusPropertyService? _currentService = null;
+
+        /// <summary>
+        /// Shared workspace service
+        /// </summary>
+        private IWorkspaceService? _workspaceService = ServiceRegistry.Get<IWorkspaceService>();
 
         /// <summary>
         /// Internal status color

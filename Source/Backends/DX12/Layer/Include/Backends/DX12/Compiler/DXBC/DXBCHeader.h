@@ -32,6 +32,11 @@
 // Std
 #include <cstdint>
 
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif // _MSC_VER
+
 /// Shader header
 struct DXBCHeader {
     uint32_t identifier;
@@ -240,6 +245,10 @@ struct DXBCPSVRuntimeInfo2 {
     uint32_t threadCountZ;
 };
 
+struct DXBCPSVRuntimeInfo3 {
+    uint32_t entryFunctionName;
+};
+
 struct DXBCPSVRuntimeInfoRevision0 {
     DXBCPSVRuntimeInfo0 info0;
 };
@@ -253,6 +262,13 @@ struct DXBCPSVRuntimeInfoRevision2 {
     DXBCPSVRuntimeInfo0 info0;
     DXBCPSVRuntimeInfo1 info1;
     DXBCPSVRuntimeInfo2 info2;
+};
+
+struct DXBCPSVRuntimeInfoRevision3 {
+    DXBCPSVRuntimeInfo0 info0;
+    DXBCPSVRuntimeInfo1 info1;
+    DXBCPSVRuntimeInfo2 info2;
+    DXBCPSVRuntimeInfo3 info3;
 };
 
 enum class DXBCRootSignatureVersion : uint32_t {
@@ -465,3 +481,65 @@ struct DXILPDBHeader {
     DXILDigest digest;
     uint32_t ignore[7];
 };
+
+struct DXILSourceInfo {
+    uint32_t alignedByteSize;
+    uint16_t reserved;
+    uint16_t sectionCount;
+};
+
+enum class DXILSourceInfoSectionType : uint16_t {
+    SourceContents = 0,
+    SourceNames = 1,
+    Args = 2
+};
+
+struct DXILSourceInfoSection {
+    uint32_t alignedByteSize;
+    uint16_t reserved;
+    DXILSourceInfoSectionType type;
+};
+
+struct DXILSourceInfoArgs {
+    uint32_t flags;
+    uint32_t byteSize;
+    uint32_t count;
+};
+
+struct DXILSourceInfoSourceNames {
+    uint32_t flags;
+    uint32_t count;
+    uint16_t entriesByteSize;
+};
+
+struct DXILSourceInfoSourceNamesEntry {
+    uint32_t alignedByteSize;
+    uint32_t flags;
+    uint32_t nameByteSize;
+    uint32_t contentByteSize;
+};
+
+enum class DXILSourceInfoSourceContentsCompressType : uint16_t {
+    None = 0,
+    ZLib = 1
+};
+
+struct DXILSourceInfoSourceContents {
+    uint32_t alignedByteSize;
+    uint16_t reserved;
+    DXILSourceInfoSourceContentsCompressType compressType;
+    uint32_t entriesByteSize;
+    uint32_t uncompressedEntriesByteSize;
+    uint32_t count;
+};
+
+struct DXILSourceInfoSourceContentsEntry {
+    uint32_t alignedByteSize;
+    uint32_t reserved;
+    uint32_t contentByteSize;
+};
+
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif // _MSC_VER

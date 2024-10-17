@@ -77,7 +77,8 @@ namespace Studio.Services
         /// Add a new workspace
         /// </summary>
         /// <param name="workspaceViewModel">active connection</param>
-        void Add(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel);
+        /// <param name="openDescriptor">should the descriptor be opened?</param>
+        void Add(IWorkspaceViewModel workspaceViewModel, bool openDescriptor);
 
         /// <summary>
         /// Install a given workspace

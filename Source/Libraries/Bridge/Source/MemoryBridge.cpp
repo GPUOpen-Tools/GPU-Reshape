@@ -88,7 +88,9 @@ void MemoryBridge::Commit() {
 
     // Invoke streams in-order
     // TODO: This can be bucketed pretty easily if performance becomes a problem
-    for (MessageStream& stream : storageConsumeCache) {
+    for (uint32_t i = 0; i < streamCount; i++) {
+        const MessageStream &stream = storageConsumeCache[i];
+
         if (stream.GetSchema().type == MessageSchemaType::Ordered) {
             for (const ComRef<IBridgeListener>& listener : orderedListeners) {
                 listener->Handle(&stream, 1u);

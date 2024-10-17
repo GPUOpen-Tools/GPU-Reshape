@@ -33,6 +33,11 @@ struct RootSignatureUserMapping {
     /// Root parameter this is bound to
     uint32_t rootParameter{UINT32_MAX};
 
+    /// Descriptor dword offset for this root parameter
+    /// Each root parameter may take a variable number of dwords for whatever data it needs,
+    /// this is the base offset for this parameter.
+    uint32_t dwordOffset{UINT32_MAX};
+
     /// Descriptor offset within the parameter
     uint32_t offset{UINT32_MAX};
 

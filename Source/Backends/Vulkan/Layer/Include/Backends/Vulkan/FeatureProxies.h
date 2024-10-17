@@ -54,6 +54,12 @@ struct FeatureHook_vkCmdDispatch : TFeatureHook<Hooks::Dispatch> {
     }
 };
 
+struct FeatureHook_vkCmdDrawMeshTasksEXT : TFeatureHook<Hooks::DispatchMesh> {
+    void operator()(CommandBufferObject* object, CommandContext* context, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const {
+        hook.Invoke(context, groupCountX, groupCountY, groupCountZ);
+    }
+};
+
 struct FeatureHook_vkCmdCopyBuffer : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandBufferObject* object, CommandContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferCopy* pRegions) const;
 };
@@ -70,8 +76,16 @@ struct FeatureHook_vkCmdCopyBufferToImage : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandBufferObject *object, CommandContext *context, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkBufferImageCopy* pRegions) const;
 };
 
+struct FeatureHook_vkCmdCopyBufferToImage2 : TFeatureHook<Hooks::CopyResource> {
+    void operator()(CommandBufferObject *object, CommandContext *context, const VkCopyBufferToImageInfo2* pCopyBufferToImageInfo) const;
+};
+
 struct FeatureHook_vkCmdCopyImageToBuffer : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandBufferObject *object, CommandContext *context, VkImage srcImage, VkImageLayout srcImageLayout, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferImageCopy* pRegions) const;
+};
+
+struct FeatureHook_vkCmdCopyImageToBuffer2 : TFeatureHook<Hooks::CopyResource> {
+    void operator()(CommandBufferObject *object, CommandContext *context, const VkCopyImageToBufferInfo2* pCopyImageToBufferInfo) const;
 };
 
 struct FeatureHook_vkCmdUpdateBuffer : TFeatureHook<Hooks::WriteResource> {
@@ -106,10 +120,20 @@ struct FeatureHook_vkCmdEndRenderPass : TFeatureHook<Hooks::EndRenderPass> {
     void operator()(CommandBufferObject *object, CommandContext *context) const;
 };
 
-struct FeatureHook_vkCmdBeginRenderingKHR : TFeatureHook<Hooks::BeginRenderPass> {
+struct FeatureHook_vkCmdBeginRenderPass2 : TFeatureHook<Hooks::BeginRenderPass> {
+    void operator()(CommandBufferObject *object, CommandContext *context, const VkRenderPassBeginInfo* info, const VkSubpassBeginInfo* pSubpassBeginInfo) const;
+};
+
+using FeatureHook_vkCmdBeginRenderPass2KHR = FeatureHook_vkCmdBeginRenderPass2;
+
+struct FeatureHook_vkCmdBeginRendering : TFeatureHook<Hooks::BeginRenderPass> {
     void operator()(CommandBufferObject *object, CommandContext *context, const VkRenderingInfo* pRenderingInfo) const;
 };
 
-struct FeatureHook_vkCmdEndRenderingKHR : TFeatureHook<Hooks::EndRenderPass> {
+using FeatureHook_vkCmdBeginRenderingKHR = FeatureHook_vkCmdBeginRendering;
+
+struct FeatureHook_vkCmdEndRendering : TFeatureHook<Hooks::EndRenderPass> {
     void operator()(CommandBufferObject *object, CommandContext *context) const;
 };
+
+using FeatureHook_vkCmdEndRenderingKHR = FeatureHook_vkCmdEndRendering;

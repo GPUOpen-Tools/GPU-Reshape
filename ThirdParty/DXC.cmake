@@ -65,7 +65,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
 
     # Vulkan defaults
     if ("${ARGS_VULKAN}" STREQUAL "")
-        set(ARGS_VULKAN "-Zi -Qembed_debug")
+        set(ARGS_VULKAN "-Zi -Qembed_debug -fspv-target-env=vulkan1.1")
     endif ()
 
     # Parse additional args
@@ -148,7 +148,7 @@ endforeach ()
 
 # Copy binaries
 if (WIN32)
-    ConfigureOutput(DXC/bin/win64/dxil.dll dxil.dll)
-    ConfigureOutput(DXC/bin/win64/dxilconv.dll dxilconv.dll)
-    ConfigureOutput(DXC/bin/win64/dxcompiler.dll dxcompiler.dll)
+    ConfigureOutput(DXC/bin/win64/dxil.dll Dependencies/DXC/GRS.dxil.dll)
+    ConfigureOutput(DXC/bin/win64/dxilconv.dll Dependencies/DXC/GRS.dxilconv.dll)
+    ConfigureOutput(DXC/bin/win64/dxcompiler.dll Dependencies/DXC/GRS.dxcompiler.dll)
 endif()

@@ -44,7 +44,7 @@ namespace Studio
         
         public static AppBuilder BuildAvaloniaApp()
         {
-            IconProvider.Register<FontAwesomeIconProvider>();
+            IconProvider.Current.Register<FontAwesomeIconProvider>();
             
             return AppBuilder.Configure<App>()
                 .UseReactiveUI()

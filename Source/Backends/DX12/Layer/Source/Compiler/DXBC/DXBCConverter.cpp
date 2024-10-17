@@ -52,11 +52,11 @@ bool DXBCConverter::Install() {
     }
     
     // Get path of the layer
-    std::filesystem::path modulePath = GetBaseModuleDirectory();
+    std::filesystem::path modulePath = GetBaseModuleDirectory() / "Dependencies" / "DXC";
 
     // Load dxil
     //   ! No non-system/runtime dependents in dxilconv.dll, verified with dumpbin
-    dxilConvModule = LoadLibrary((modulePath / "dxilconv.dll").string().c_str());
+    dxilConvModule = LoadLibrary((modulePath / "GRS.dxilconv.dll").string().c_str());
     if (!dxilConvModule) {
         return false;
     }

@@ -51,6 +51,16 @@ namespace Studio.Views.Controls
         public static readonly StyledProperty<bool> IsExpandedProperty = AvaloniaProperty.Register<SectionView, bool>(nameof(IsExpanded), true);
         
         /// <summary>
+        /// Inline content style for the given view
+        /// </summary>
+        public static readonly StyledProperty<bool> InlineContentProperty = AvaloniaProperty.Register<SectionView, bool>(nameof(InlineContent), false);
+        
+        /// <summary>
+        /// Content margin style for the given view
+        /// </summary>
+        public static readonly StyledProperty<Thickness> ContentMarginProperty = AvaloniaProperty.Register<SectionView, Thickness>(nameof(ContentMargin), new Thickness(0, 35, 0, 0));
+        
+        /// <summary>
         /// Expansion command style for the given view
         /// </summary>
         public static readonly StyledProperty<ICommand> ExpandCommandProperty = AvaloniaProperty.Register<SectionView, ICommand>(nameof(ExpandCommand));
@@ -59,12 +69,25 @@ namespace Studio.Views.Controls
         {
             ExpandCommand = ReactiveCommand.Create(OnExpand);
         }
-
-        protected override void OnPropertyChanged<T>(AvaloniaPropertyChangedEventArgs<T> change)
+        
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             if (change.Property.Name == nameof(IsExpanded))
             {
                 UpdateIcon();
+            }
+
+            // Update inlined state
+            if (change.Property.Name == nameof(InlineContent))
+            {
+                if (InlineContent)
+                {
+                    ContentMargin = new Thickness();
+                }
+                else
+                {
+                    ContentMargin = new Thickness(0, 35, 0, 0);
+                }
             }
             
             // Pass down
@@ -112,6 +135,24 @@ namespace Studio.Views.Controls
         {
             get => GetValue(IsExpandedProperty);
             set => SetValue(IsExpandedProperty, value);
+        }
+        
+        /// <summary>
+        /// Inline getter / setter
+        /// </summary>
+        public bool InlineContent 
+        {
+            get => GetValue(InlineContentProperty);
+            set => SetValue(InlineContentProperty, value);
+        }
+        
+        /// <summary>
+        /// Content margin getter / setter
+        /// </summary>
+        public Thickness ContentMargin 
+        {
+            get => GetValue(ContentMarginProperty);
+            set => SetValue(ContentMarginProperty, value);
         }
 
         /// <summary>

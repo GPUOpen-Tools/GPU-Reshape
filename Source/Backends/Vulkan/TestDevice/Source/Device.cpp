@@ -405,13 +405,19 @@ void Device::ReleaseResources() {
         switch (info.type) {
             case ResourceType::TexelBuffer:
             case ResourceType::RWTexelBuffer:
-                vkDestroyBufferView(device, info.texelBuffer.view, nullptr);
-                vmaDestroyBuffer(allocator, info.texelBuffer.buffer, info.texelBuffer.allocation);
+            case ResourceType::StructuredBuffer:
+            case ResourceType::RWStructuredBuffer:
+                if (info.buffer.view) {
+                    vkDestroyBufferView(device, info.buffer.view, nullptr);
+                }
+                vmaDestroyBuffer(allocator, info.buffer.buffer, info.buffer.allocation);
                 break;
             case ResourceType::Texture1D:
             case ResourceType::RWTexture1D:
             case ResourceType::Texture2D:
             case ResourceType::RWTexture2D:
+            case ResourceType::Texture2DArray:
+            case ResourceType::RWTexture2DArray:
             case ResourceType::Texture3D:
             case ResourceType::RWTexture3D:
                 vkDestroyImageView(device, info.texture.view, nullptr);
@@ -497,17 +503,17 @@ BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
     // Attempt to allocate and create buffer
-    vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &resource.texelBuffer.buffer, &resource.texelBuffer.allocation, nullptr);
+    vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &resource.buffer.buffer, &resource.buffer.allocation, nullptr);
 
     // View info
     VkBufferViewCreateInfo bufferViewInfo{};
     bufferViewInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-    bufferViewInfo.buffer = resource.texelBuffer.buffer;
+    bufferViewInfo.buffer = resource.buffer.buffer;
     bufferViewInfo.format = Translate(format);
     bufferViewInfo.range = size;
 
     // Attempt to create buffer view
-    REQUIRE(vkCreateBufferView(device, &bufferViewInfo, nullptr, &resource.texelBuffer.view) == VK_SUCCESS);
+    REQUIRE(vkCreateBufferView(device, &bufferViewInfo, nullptr, &resource.buffer.view) == VK_SUCCESS);
 
     BufferID id(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 
@@ -528,7 +534,66 @@ BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format
         // Enqueue command
         UpdateCommand command;
         command.copyBuffer.type = UpdateCommandType::CopyBuffer;
-        command.copyBuffer.dest = resource.texelBuffer.buffer;
+        command.copyBuffer.dest = resource.buffer.buffer;
+        command.copyBuffer.dataSize = dataSize;
+        command.copyBuffer.source = uploadBuffer.buffer;
+        updateCommands.push_back(command);
+    }
+
+    return id;
+}
+
+BufferID Device::CreateStructuredBuffer(ResourceType type, uint32_t elementSize, uint64_t size, const void *data, uint64_t dataSize) {
+    ResourceInfo& resource = resources.emplace_back();
+    resource.type = type;
+    resource.buffer.structuredSize = elementSize;
+
+    // Buffer info
+    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.size = size;
+
+    switch (type) {
+        default:
+            ASSERT(false, "Invalid type");
+            break;
+        case ResourceType::StructuredBuffer:
+            bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            break;
+        case ResourceType::RWStructuredBuffer:
+            bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            break;
+    }
+
+    // Allocation info
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    // Attempt to allocate and create buffer
+    vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &resource.buffer.buffer, &resource.buffer.allocation, nullptr);
+
+    // No view
+    resource.buffer.view = VK_NULL_HANDLE;
+
+    BufferID id(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
+
+    // Any data to upload?
+    if (data && dataSize) {
+        UploadBuffer& uploadBuffer = CreateUploadBuffer(dataSize);
+
+        // Map the underlying data
+        void* mapData{nullptr};
+        vmaMapMemory(allocator, uploadBuffer.allocation, &mapData);
+
+        // Copy data to host buffer
+        std::memcpy(mapData, data, dataSize);
+
+        // Unmap
+        vmaUnmapMemory(allocator, uploadBuffer.allocation);
+
+        // Enqueue command
+        UpdateCommand command;
+        command.copyBuffer.type = UpdateCommandType::CopyBuffer;
+        command.copyBuffer.dest = resource.buffer.buffer;
         command.copyBuffer.dataSize = dataSize;
         command.copyBuffer.source = uploadBuffer.buffer;
         updateCommands.push_back(command);
@@ -543,7 +608,7 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
 
     // Image creation info
     VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-    imageInfo.extent = VkExtent3D{width, height, depth};
+    imageInfo.extent = VkExtent3D{width, height, 1u};
     imageInfo.arrayLayers = 1;
     imageInfo.format = Translate(format);
     imageInfo.mipLevels = 1;
@@ -564,9 +629,15 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
             imageInfo.imageType = VK_IMAGE_TYPE_2D;
             imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
             break;
+        case ResourceType::Texture2DArray:
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+            imageInfo.arrayLayers = depth;
+            break;
         case ResourceType::Texture3D:
             imageInfo.imageType = VK_IMAGE_TYPE_3D;
             imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+            imageInfo.extent.depth = depth;
             break;
         case ResourceType::RWTexture1D:
             imageInfo.imageType = VK_IMAGE_TYPE_1D;
@@ -576,9 +647,15 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
             imageInfo.imageType = VK_IMAGE_TYPE_2D;
             imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
             break;
+        case ResourceType::RWTexture2DArray:
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+            imageInfo.arrayLayers = depth;
+            break;
         case ResourceType::RWTexture3D:
             imageInfo.imageType = VK_IMAGE_TYPE_3D;
             imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+            imageInfo.extent.depth = depth;
             break;
     }
 
@@ -612,6 +689,11 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
         case ResourceType::Texture2D:
         case ResourceType::RWTexture2D:
             imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            break;
+        case ResourceType::Texture2DArray:
+        case ResourceType::RWTexture2DArray:
+            imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            imageViewInfo.subresourceRange.layerCount = depth;
             break;
         case ResourceType::Texture3D:
         case ResourceType::RWTexture3D:
@@ -676,13 +758,19 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
             case ResourceType::RWTexelBuffer:
                 binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
                 break;
+            case ResourceType::StructuredBuffer:
+            case ResourceType::RWStructuredBuffer:
+                binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                break;
             case ResourceType::Texture1D:
             case ResourceType::Texture2D:
+            case ResourceType::Texture2DArray:
             case ResourceType::Texture3D:
                 binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                 break;
             case ResourceType::RWTexture1D:
             case ResourceType::RWTexture2D:
+            case ResourceType::RWTexture2DArray:
             case ResourceType::RWTexture3D:
                 binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 break;
@@ -716,6 +804,8 @@ static bool HasImageDescriptor(ResourceType type) {
         case ResourceType::RWTexture1D:
         case ResourceType::Texture2D:
         case ResourceType::RWTexture2D:
+        case ResourceType::Texture2DArray:
+        case ResourceType::RWTexture2DArray:
         case ResourceType::Texture3D:
         case ResourceType::RWTexture3D:
         case ResourceType::SamplerState:
@@ -756,6 +846,16 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
             continue;
         }
 
+        if (type == ResourceType::StructuredBuffer || type == ResourceType::RWStructuredBuffer) {
+            VkDescriptorBufferInfo& bufferInfo = bufferInfos.emplace_back();
+            bufferInfo.offset = 0;
+            bufferInfo.buffer = resources.at(setResources[i]).buffer.buffer;
+            bufferInfo.range = VK_WHOLE_SIZE;
+
+            // OK
+            continue;
+        }
+
         if (HasImageDescriptor(type)) {
             VkDescriptorImageInfo& imageInfo = imageInfos.emplace_back();
 
@@ -773,11 +873,13 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                     break;
                 case ResourceType::Texture1D:
                 case ResourceType::Texture2D:
+                case ResourceType::Texture2DArray:
                 case ResourceType::Texture3D:
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     break;
                 case ResourceType::RWTexture1D:
                 case ResourceType::RWTexture2D:
+                case ResourceType::RWTexture2DArray:
                 case ResourceType::RWTexture3D:
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
                     break;
@@ -806,20 +908,27 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
         switch (resourceLayouts.at(layout).resources[i]) {
             case ResourceType::TexelBuffer:
                 write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-                write.pTexelBufferView = &resources.at(setResources[i]).texelBuffer.view;
+                write.pTexelBufferView = &resources.at(setResources[i]).buffer.view;
                 break;
             case ResourceType::RWTexelBuffer:
                 write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-                write.pTexelBufferView = &resources.at(setResources[i]).texelBuffer.view;
+                write.pTexelBufferView = &resources.at(setResources[i]).buffer.view;
+                break;
+            case ResourceType::StructuredBuffer:
+            case ResourceType::RWStructuredBuffer:
+                write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                write.pBufferInfo = &bufferInfos[bufferOffset++];
                 break;
             case ResourceType::Texture1D:
             case ResourceType::Texture2D:
+            case ResourceType::Texture2DArray:
             case ResourceType::Texture3D:
                 write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                 write.pImageInfo = &imageInfos[imageOffset++];
                 break;
             case ResourceType::RWTexture1D:
             case ResourceType::RWTexture2D:
+            case ResourceType::RWTexture2DArray:
             case ResourceType::RWTexture3D:
                 write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 write.pImageInfo = &imageInfos[imageOffset++];

@@ -29,12 +29,30 @@
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Controllers/VersioningController.h>
+#include <Backends/DX12/Translation.h>
 
 // Backend
+#include <Backend/Resource/ResourceInfo.h>
 #include <Backend/IL/ResourceTokenType.h>
+
+ResourceInfo GetResourceInfoFor(ResourceState* state) {
+    // Construct without descriptor
+    switch (static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.token.type)) {
+        default:
+            ASSERT(false, "Unexpected type");
+            return {};
+        case Backend::IL::ResourceTokenType::Texture:
+            return ResourceInfo::Texture(state->virtualMapping.token, state->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D);
+        case Backend::IL::ResourceTokenType::Buffer:
+            return ResourceInfo::Buffer(state->virtualMapping.token);
+    }
+}
 
 HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* readRange, void** blob) {
     auto table = GetTable(resource);
+
+    // Get device
+    auto deviceTable = GetTable(table.state->parent);
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_Map(table.next, subresource, readRange, blob);
@@ -42,17 +60,47 @@ HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const 
         return hr;
     }
 
+    // Get proxy info
+    ResourceInfo proxyResourceInfo = GetResourceInfoFor(table.state);
+
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: deviceTable.state->featureHookTables) {
+        proxyTable.mapResource.TryInvoke(proxyResourceInfo);
+    }
+
     // OK
     return S_OK;
 }
 
-static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource, const D3D12_RESOURCE_DESC* desc) {
+HRESULT HookID3D12ResourceUnmap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* writtenRange) {
+    auto table = GetTable(resource);
+
+    // Get device
+    auto deviceTable = GetTable(table.state->parent);
+
+    // Pass down callchain
+    table.bottom->next_Unmap(table.next, subresource, writtenRange);
+
+    // Get proxy info
+    ResourceInfo proxyResourceInfo = GetResourceInfoFor(table.state);
+
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: deviceTable.state->featureHookTables) {
+        proxyTable.unmapResource.TryInvoke(proxyResourceInfo);
+    }
+
+    // OK
+    return S_OK;
+}
+
+static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource, const D3D12_RESOURCE_DESC* desc, const ResourceCreateFlagSet& createFlags = {}) {
     // Create state
     auto* state = new (table.state->allocators, kAllocStateResource) ResourceState();
     state->allocators = table.state->allocators;
     state->object = resource;
     state->desc = *desc;
     state->parent = parent;
+    state->isEmulatedComitted = (createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear);
 
     // Keep reference
     parent->AddRef();
@@ -61,7 +109,7 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     table.state->states_Resources.Add(state);
 
     // Allocate PUID
-    state->virtualMapping.puid = table.state->physicalResourceIdentifierMap.AllocatePUID();
+    state->virtualMapping.token.puid = table.state->physicalResourceIdentifierMap.AllocatePUID(state);
 
     // Translate dimension
     switch (desc->Dimension) {
@@ -69,17 +117,39 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
             ASSERT(false, "Unsupported dimension");
             break;
         case D3D12_RESOURCE_DIMENSION_BUFFER:
-            state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+            state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
             break;
         case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
         case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
         case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-            state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+            state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
             break;
     }
 
-    // Entire SRB is visible from the resource
-    state->virtualMapping.srb = ~0u;
+    // Resource information
+    state->virtualMapping.token.formatId = static_cast<uint32_t>(Translate(desc->Format));
+    state->virtualMapping.token.formatSize = GetFormatByteSize(desc->Format);
+    state->virtualMapping.token.width = static_cast<uint32_t>(desc->Width);
+    state->virtualMapping.token.height = desc->Height;
+    state->virtualMapping.token.depthOrSliceCount = desc->DepthOrArraySize;
+    state->virtualMapping.token.mipCount = desc->MipLevels;
+
+    // Special case, report R1 as "0" (bitwise)
+    if (desc->Format == DXGI_FORMAT_R1_UNORM || desc->Format == DXGI_FORMAT_UNKNOWN) {
+        state->virtualMapping.token.formatSize = 0;
+    }
+
+    // If the number of mips is zero, its automatically deduced
+    if (state->virtualMapping.token.mipCount == 0) {
+        uint32_t maxDimension = std::max<uint32_t>({static_cast<uint32_t>(desc->Width), desc->Height, desc->DepthOrArraySize});
+        state->virtualMapping.token.mipCount = static_cast<uint32_t>(std::floor(std::log2(maxDimension))) + 1u;
+
+        // May be pooled later, update original description
+        state->desc.MipLevels = state->virtualMapping.token.mipCount;
+    }
+    
+    // Assume default view
+    state->virtualMapping.token.DefaultViewToRange();
 
     // Create mapping
     switch (desc->Dimension) {
@@ -91,8 +161,16 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     }
 
     // Inform controller
-    table.state->versioningController->CreateOrRecommitResource(state);
+    table.state->versioningController->CreateOrRecommitResource(state, nullptr);
 
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table.state->featureHookTables) {
+        proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+            .resource = GetResourceInfoFor(state),
+            .createFlags = createFlags
+        });
+    }
+    
     // Create detours
     return CreateDetour(state->allocators, resource, state);
 }
@@ -217,24 +295,74 @@ HRESULT WINAPI HookID3D12DeviceCreateCommittedResource3(ID3D12Device* device, co
     return S_OK;
 }
 
+template<typename T = D3D12_RESOURCE_DESC>
+static ResourceCreateFlagSet GetPlacedResourceFlags(const T *desc) {
+    // Creation flags
+    ResourceCreateFlagSet flags = {};
+
+    // If either a render target or depth stencil, this resource must be cleared
+    // This is basically due to certain metadata, such as DCC/DeltaColorCompression, requiring
+    // valid initial data.
+    if ((desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) || (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) {
+        flags |= ResourceCreateFlag::MetadataRequiresHardwareClear;
+    }
+
+    // OK
+    return flags;
+}
+
+static D3D12_HEAP_FLAGS SanitizePlacedCommittedHeapFlags(D3D12_HEAP_FLAGS flags) {
+    return flags & ~(
+        D3D12_HEAP_FLAG_DENY_BUFFERS |
+        D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES |
+        D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES |
+        D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
+        D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS |
+        D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES |
+        D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES
+    );
+}
+
 HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * heap, UINT64 heapFlags, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE * clearValue, const IID& riid, void ** pResource) {
     auto table = GetTable(device);
 
     // Object
     ID3D12Resource* resource{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, Next(heap), heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
-    if (FAILED(hr)) {
-        return hr;
+    // Get the required flags
+    ResourceCreateFlagSet flags = GetPlacedResourceFlags(desc);
+
+#if USE_EMULATED_COMMITTED_ON_PLACED
+    // TODO: Reshape should support generic modifications, so figure out a system for this
+    // If we require a hardware clear, safe-guard the resource
+    if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+        // Let the internal committed heap emulate the desired heap
+        D3D12_HEAP_DESC heapDesc = heap->GetDesc();
+
+        // Some flags are not appropriate for the emulated path
+        heapDesc.Flags = SanitizePlacedCommittedHeapFlags(heapDesc.Flags);
+
+        // Safe-guarded path
+        HRESULT hr = table.bottom->next_CreateCommittedResource(table.next, &heapDesc.Properties, heapDesc.Flags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
+#endif // USE_EMULATED_COMMITTED_ON_PLACED
+
+    // Application path
+    if (!resource) {
+        HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, Next(heap), heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource, desc);
+    resource = CreateResourceState(device, table, resource, desc, flags);
 
     // Query to external object if requested
     if (pResource) {
-        hr = resource->QueryInterface(riid, pResource);
+        HRESULT hr = resource->QueryInterface(riid, pResource);
         if (FAILED(hr)) {
             return hr;
         }
@@ -253,18 +381,40 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource1(ID3D12Device* device, ID3D1
     // Object
     ID3D12Resource* resource{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource1(table.next, Next(pHeap), HeapOffset, pDesc, InitialState, pOptimizedClearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
-    if (FAILED(hr)) {
-        return hr;
+    // Get the required flags
+    ResourceCreateFlagSet flags = GetPlacedResourceFlags(pDesc);
+
+#if USE_EMULATED_COMMITTED_ON_PLACED
+    // TODO: Reshape should support generic modifications, so figure out a system for this
+    // If we require a hardware clear, safe-guard the resource
+    if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+        // Let the internal committed heap emulate the desired heap
+        D3D12_HEAP_DESC heapDesc = pHeap->GetDesc();
+
+        // Some flags are not appropriate for the emulated path
+        heapDesc.Flags = SanitizePlacedCommittedHeapFlags(heapDesc.Flags);
+        
+        // Safe-guarded path
+        HRESULT hr = table.bottom->next_CreateCommittedResource2(table.next, &heapDesc.Properties, heapDesc.Flags, pDesc, InitialState, pOptimizedClearValue, nullptr, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
+#endif // USE_EMULATED_COMMITTED_ON_PLACED
+
+    // Application path
+    if (!resource) {
+        HRESULT hr = table.bottom->next_CreatePlacedResource1(table.next, Next(pHeap), HeapOffset, pDesc, InitialState, pOptimizedClearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
     }
 
     // Create state with lowered description
-    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc));
+    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc), flags);
 
     // Query to external object if requested
     if (ppvResource) {
-        hr = resource->QueryInterface(riid, ppvResource);
+        HRESULT hr = resource->QueryInterface(riid, ppvResource);
         if (FAILED(hr)) {
             return hr;
         }
@@ -283,18 +433,41 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource2(ID3D12Device* device, ID3D1
     // Object
     ID3D12Resource* resource{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource2(table.next, Next(pHeap), HeapOffset, pDesc, InitialLayout, pOptimizedClearValue, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
-    if (FAILED(hr)) {
-        return hr;
+    // Get the required flags
+    ResourceCreateFlagSet flags = GetPlacedResourceFlags(pDesc);
+
+#if USE_EMULATED_COMMITTED_ON_PLACED
+    // TODO: Reshape should support generic modifications, so figure out a system for this
+    // If we require a hardware clear, safe-guard the resource
+    if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+        // Let the internal committed heap emulate the desired heap
+        D3D12_HEAP_DESC heapDesc = pHeap->GetDesc();
+
+        // Some flags are not appropriate for the emulated path
+        heapDesc.Flags = SanitizePlacedCommittedHeapFlags(heapDesc.Flags);
+        
+        // Safe-guarded path
+        HRESULT hr = table.bottom->next_CreateCommittedResource3(table.next, &heapDesc.Properties, heapDesc.Flags, pDesc, InitialLayout, pOptimizedClearValue, nullptr, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+#endif // USE_EMULATED_COMMITTED_ON_PLACED
+
+    // Application path
+    if (!resource) {
+        HRESULT hr = table.bottom->next_CreatePlacedResource2(table.next, Next(pHeap), HeapOffset, pDesc, InitialLayout, pOptimizedClearValue, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
     }
 
     // Create state with lowered description
-    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc));
+    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc), flags);
 
     // Query to external object if requested
     if (ppvResource) {
-        hr = resource->QueryInterface(riid, ppvResource);
+        HRESULT hr = resource->QueryInterface(riid, ppvResource);
         if (FAILED(hr)) {
             return hr;
         }
@@ -320,7 +493,7 @@ HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource, desc);
+    resource = CreateResourceState(device, table, resource, desc, ResourceCreateFlag::Tiled);
 
     // Query to external object if requested
     if (pResource) {
@@ -350,7 +523,7 @@ HRESULT WINAPI HookID3D12DeviceCreateReservedResource1(ID3D12Device* device, con
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource, pDesc);
+    resource = CreateResourceState(device, table, resource, pDesc, ResourceCreateFlag::Tiled);
 
     // Query to external object if requested
     if (ppvResource) {
@@ -380,7 +553,7 @@ HRESULT WINAPI HookID3D12DeviceCreateReservedResource2(ID3D12Device* device, con
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource, pDesc);
+    resource = CreateResourceState(device, table, resource, pDesc, ResourceCreateFlag::Tiled);
 
     // Query to external object if requested
     if (ppvResource) {
@@ -404,7 +577,7 @@ static void* CreateWrapperForSharedHandle(ID3D12Device* device, ID3D12Resource* 
     D3D12_RESOURCE_DESC desc = resource->GetDesc();
 
     // Create a standard state
-    return CreateResourceState(device, table, resource, &desc);
+    return CreateResourceState(device, table, resource, &desc, ResourceCreateFlag::OpenedFromExternalHandle);
 }
 
 static void* CreateWrapperForSharedHandle(ID3D12Device* device, ID3D12Heap* heap) {
@@ -499,12 +672,26 @@ HRESULT WINAPI HookID3D12ResourceSetName(ID3D12Resource* _this, LPCWSTR name) {
     ENSURE(SUCCEEDED(wcstombs_s(&length, nullptr, 0u, name, 0u)), "Failed to determine length");
 
     // Copy string
-    table.state->debugName = new (table.state->allocators) char[length];
-    ENSURE(SUCCEEDED(wcstombs_s(&length, table.state->debugName, length, name, length)), "Failed to convert string");
+    char* debugName = new (table.state->allocators) char[length];
+    ENSURE(SUCCEEDED(wcstombs_s(&length, debugName, length, name, length)), "Failed to convert string");
 
     // Inform controller of the change
-    deviceTable.state->versioningController->CreateOrRecommitResource(table.state);
+    deviceTable.state->versioningController->CreateOrRecommitResource(table.state, debugName);
 
+    // Serialize all naming assignment
+    // Could alternatively serialize per-object, however, that's a lot of synchronization primitives
+    {
+        std::lock_guard guard(deviceTable.state->states_Resources.GetLock());
+
+        // Release previous name
+        if (table.state->debugName) {
+            destroy(table.state->debugName, table.state->allocators);
+        }
+
+        // Assign new name
+        table.state->debugName = debugName;
+    }
+    
     // Pass to device query
     return table.state->parent->SetName(name);
 }
@@ -568,6 +755,16 @@ ResourceState::~ResourceState() {
     if (!object) {
         parent->Release();
         return;
+    }
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table.state->featureHookTables) {
+        proxyTable.destroyResource.TryInvoke(GetResourceInfoFor(this));
+    }
+
+    // Release name
+    if (debugName) {
+        destroy(debugName, allocators);
     }
 
     // Remove mapping

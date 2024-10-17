@@ -39,21 +39,41 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Setting.ApplicationSettingView"
              x:DataType="setting:ApplicationSettingViewModel" x:CompileBindings="True">
-    <ScrollViewer VerticalAlignment="Stretch">
-        <Grid VerticalAlignment="Top">
-            <ItemsControl
-                VerticalAlignment="Top"
-                HorizontalAlignment="Stretch"
-                Items="{Binding Items}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="setting1:ISettingViewModel">
-                        <controls:SectionView
-                            Title="{Binding Header, FallbackValue=[SettingName]}">
-                            <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
-                        </controls:SectionView>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </Grid>
-    </ScrollViewer>
+    <Grid>
+        <ScrollViewer
+            VerticalAlignment="Stretch"
+            Margin="0 0 0 25">
+            <StackPanel Orientation="Vertical">
+                <ItemsControl
+                    HorizontalAlignment="Stretch"
+                    ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="setting1:ISettingViewModel">
+                            <controls:InlineSectionView
+                                Margin="0 0 0 10"
+                                LineBorderBrush="{StaticResource DockThemeBorderLowBrush}"
+                                Title="{Binding Header, FallbackValue=[SettingName]}">
+                                <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
+                            </controls:InlineSectionView>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel
+            Orientation="Horizontal"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Bottom">
+            <PathIcon
+                Data="{StaticResource InfoHollow}"
+                Width="13" />
+
+            <TextBlock
+                Margin="10 3.5 0 0"
+                Foreground="{StaticResource InfoMediumForeground}"
+                Height="20"
+                Text="An application restart is required to apply changes" />
+        </StackPanel>
+    </Grid>
 </UserControl>

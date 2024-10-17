@@ -70,6 +70,12 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
     /// Get the token from a handle
     VirtualResourceMapping GetVirtualMappingFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const;
 
+    /// Get the token from a handle
+    VirtualResourceMapping GetVirtualMappingFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle, ResourceState** state) const;
+
+    /// Get the token from a handle
+    VirtualResourceMapping GetVirtualMappingFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle, ResourceState** state) const;
+
     /// Get the virtual bound
     uint32_t GetVirtualRangeBound() const {
 #if DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
@@ -82,11 +88,17 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
     /// Parent state
     ID3D12Device* parent{};
 
+    // Object
+    ID3D12DescriptorHeap* object{};
+
     /// Owning allocator
     Allocators allocators;
 
     /// Is this heap exhausted? i.e. no injected entries
     bool exhausted{false};
+
+    /// Has the high descriptors been reserved by GRS?
+    bool isHighReserved{false};
 
     /// Type of this heap
     D3D12_DESCRIPTOR_HEAP_TYPE type;

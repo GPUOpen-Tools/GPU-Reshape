@@ -38,6 +38,7 @@ namespace IL {
         Literal,
 
         /// Logical
+        Not,
         Any,
         All,
 
@@ -63,6 +64,13 @@ namespace IL {
         IsInf,
         IsNaN,
 
+        /// Kernel
+        KernelValue,
+
+        /// Extended instruction sets
+        /// This includes typical Min, Max, Clamp, etc.
+        Extended,
+
         /// Flow control
         Select,
         Branch,
@@ -70,6 +78,9 @@ namespace IL {
         Switch,
         Phi,
         Return,
+
+        /// Procedure
+        Call,
 
         /// Atomic
         AtomicOr,
@@ -81,6 +92,25 @@ namespace IL {
         AtomicExchange,
         AtomicCompareExchange,
 
+        /// Full wave intrinsics
+        WaveAnyTrue,
+        WaveAllTrue,
+        WaveBallot,
+        WaveRead,
+        WaveReadFirst,
+        WaveAllEqual,
+        WaveBitAnd,
+        WaveBitOr,
+        WaveBitXOr,
+        WaveCountBits,
+        WaveMax,
+        WaveMin,
+        WaveProduct,
+        WaveSum,
+        WavePrefixCountBits,
+        WavePrefixProduct,
+        WavePrefixSum,
+
         /// Bit manipulation
         BitOr,
         BitXOr,
@@ -89,6 +119,7 @@ namespace IL {
         BitShiftRight,
 
         /// Structural
+        Construct,
         AddressChain,
         Extract,
         Insert,
@@ -108,6 +139,8 @@ namespace IL {
 
         /// Program
         StoreOutput,
+        StoreVertexOutput,
+        StorePrimitiveOutput,
 
         /// Resource
         SampleTexture,
@@ -115,6 +148,8 @@ namespace IL {
         LoadTexture,
         StoreBuffer,
         LoadBuffer,
+        StoreBufferRaw,
+        LoadBufferRaw,
 
         /// Resource queries
         ResourceToken,

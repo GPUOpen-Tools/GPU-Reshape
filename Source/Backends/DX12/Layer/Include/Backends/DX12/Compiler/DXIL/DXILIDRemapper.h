@@ -287,8 +287,15 @@ struct DXILIDRemapper {
 
             // If failed, this may be a replaced identifier, try user space
             if (mapping == ~0u) {
-                // Get mapped identifier
-                IL::ID id = idMap.GetMapped(record.sourceAnchor - source);
+                IL::ID id;
+
+                // Check user space map, forward references are handled the same
+                if (source <= record.sourceAnchor) {
+                    id = idMap.GetMapped(record.sourceAnchor - source);
+                } else {
+                    id = idMap.GetMapped(record.sourceAnchor + DXILIDRemapper::DecodeForward(static_cast<uint32_t>(source)));
+                }
+
                 ASSERT(id != IL::InvalidOffset, "Remapped failed to potentially replaced identifier");
 
                 // Get absolute mapping
@@ -655,6 +662,14 @@ public:
         // Move redirect
         compileSegment.userRedirects.resize(remote.head.userRedirectsOffset + remote.userRedirects.size());
         std::memcpy(compileSegment.userRedirects.data() + remote.head.userRedirectsOffset, remote.userRedirects.data(), sizeof(uint32_t) * remote.userRedirects.size());
+    }
+
+    /// Revert all source mappings
+    /// \param segment all mappings after this segment are invalidated
+    void RevertSourceMappings(DXILIDMap::Segment& segment) {
+        for (uint32_t i = segment.head.allocationOffset; i < stitchSegment.sourceMappings.size(); i++) {
+            stitchSegment.sourceMappings[i] = ~0u;
+        }
     }
 
     /// Merge a branch

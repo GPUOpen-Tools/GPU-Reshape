@@ -30,6 +30,12 @@
 #include <cstdint>
 
 struct InstrumentationConfig {
+    /// Enable detailed instrumentation
+    bool detailed{false};
+
+    /// Enable safe-guarded instrumentation
+    bool safeGuarded{false};
+    
     /// Feature set to enable
     uint64_t featureBitSet{0ull};
 };

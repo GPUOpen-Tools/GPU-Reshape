@@ -32,15 +32,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:context="using:Studio.ViewModels.Contexts"
     x:Class="Studio.Views.Controls.ContextMenuView"
-    x:DataType="context:ContextMenuItemViewModel"
-    Items="{Binding Items}">
+    x:DataType="context:ContextMenuItemViewModel">
     <ContextMenu.Styles>
         <Style Selector="MenuItem" x:DataType="context:IContextMenuItemViewModel">
             <Setter Property="Header" Value="{Binding Header}"/>
-            <Setter Property="Items" Value="{Binding Items}"/>
+            <Setter Property="ItemsSource" Value="{Binding Items}"/>
             <Setter Property="IsVisible" Value="{Binding IsVisible}"/>
+            <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
             <Setter Property="Command" Value="{Binding Command}"/>
-            <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
         </Style>
     </ContextMenu.Styles>
 </ContextMenu>

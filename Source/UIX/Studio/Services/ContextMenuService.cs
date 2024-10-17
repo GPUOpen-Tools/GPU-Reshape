@@ -38,17 +38,18 @@ namespace Studio.Services
         public object? TargetViewModel { get; set; }
 
         /// <summary>
-        /// Root context menu view model
+        /// All contexts
         /// </summary>
-        public IContextMenuItemViewModel ViewModel { get; } = new ContextMenuItemViewModel();
+        public ObservableCollection<IContextViewModel> ViewModels { get; } = new();
 
         public ContextMenuService()
         {
-            // Standard context menus
-            ViewModel.Items.AddRange(new IContextMenuItemViewModel[]
+            // Standard contexts
+            ViewModels.AddRange(new IContextViewModel[]
             {
                 new InstrumentContextViewModel(),
                 new InstrumentPipelineFilterContextViewModel(),
+                new SettingsContextViewModel(),
                 new CloseContextViewModel()
             });
         }

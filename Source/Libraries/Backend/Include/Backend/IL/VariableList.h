@@ -35,21 +35,23 @@
 
 namespace IL {
     struct VariableList {
-        using Container = std::vector<Backend::IL::Variable>;
+        using Container = std::vector<const Backend::IL::Variable*>;
 
         VariableList(const Allocators& allocators, IdentifierMap& map) : allocators(allocators), map(map) {
 
         }
 
         /// Add a new variable
-        void Add(const Backend::IL::Variable& arg) {
+        void Add(const Backend::IL::Variable* arg) {
             variables.push_back(arg);
+            variableMap[arg->id] = arg;
         }
 
         /// Remove a variable
         /// \param variable iterator
         void Remove(const Container::const_iterator& variable) {
             variables.erase(variable);
+            variableMap.erase((*variable)->id);
         }
 
         /// Copy this variable list
@@ -57,6 +59,24 @@ namespace IL {
         void CopyTo(VariableList& out) const {
             out.revision = revision;
             out.variables = variables;
+            out.variableMap = variableMap;
+        }
+
+        /// Get the variable from an identifier
+        /// \param id variable identifier
+        /// \return nullptr if not found
+        const Backend::IL::Variable* GetVariable(ID id) const {
+            auto it = variableMap.find(id);
+            if (it == variableMap.end()) {
+                return nullptr;
+            }
+
+            return it->second;
+        }
+
+        /// Get the number of variables
+        uint32_t GetCount() const {
+            return static_cast<uint32_t>(variables.size());
         }
 
         /// Iterator accessors
@@ -77,6 +97,9 @@ namespace IL {
 
         /// All variables
         Container variables;
+
+        /// Variable map
+        std::unordered_map<ID, const Backend::IL::Variable*> variableMap;
 
         /// Basic block revision
         uint32_t revision{0};

@@ -30,15 +30,39 @@
 
 namespace IL {
     /// Invalid, unmapped, source
-    static constexpr uint32_t InvalidOffset = 0x7FFFFFFF;
+    static constexpr uint32_t InvalidOffset = (1u << 29u) - 1u;
 
     /// Source value, word offset for the source instruction
     struct Source {
         /// Create source from code
-        static Source Code(uint32_t code) {
+        static Source User(uint32_t code) {
             Source source;
             source.codeOffset = code;
             source.modified = 0;
+            source.symbolicCodeOffset = 0;
+            source.symbolicInstruction = 0;
+            return source;
+        }
+
+        /// Symbolic source code offset
+        /// Should only be used by backend compilers
+        static Source SymbolicCodeOffset(uint32_t code) {
+            Source source;
+            source.codeOffset = code;
+            source.modified = 0;
+            source.symbolicCodeOffset = 1;
+            source.symbolicInstruction = 0;
+            return source;
+        }
+
+        /// Symbolic source instruction
+        /// Should only be used by backend compilers
+        static Source SymbolicInstruction(uint32_t code) {
+            Source source;
+            source.codeOffset = code;
+            source.modified = 0;
+            source.symbolicCodeOffset = 1;
+            source.symbolicInstruction = 1;
             return source;
         }
 
@@ -47,6 +71,8 @@ namespace IL {
             Source source;
             source.codeOffset = InvalidOffset;
             source.modified = 0;
+            source.symbolicCodeOffset = 0;
+            source.symbolicInstruction = 0;
             return source;
         }
 
@@ -54,24 +80,51 @@ namespace IL {
         Source Modify() const {
             Source source;
             source.codeOffset = codeOffset;
-            source.modified = IsValid();
+            source.modified = HasAnyCodeOffset();
+            source.symbolicCodeOffset = symbolicCodeOffset;
+            source.symbolicInstruction = symbolicInstruction;
+            return source;
+        }
+
+        /// Make this source symbolic
+        Source Symbolize() const {
+            Source source;
+            source.codeOffset = codeOffset;
+            source.modified = modified;
+            source.symbolicCodeOffset = true;
+            source.symbolicInstruction = symbolicInstruction;
             return source;
         }
 
         /// Is this source valid?
-        bool IsValid() const {
+        bool HasNonSymbolicCodeOffset() const {
+            return !symbolicCodeOffset &&  codeOffset != InvalidOffset;
+        }
+
+        /// Is this source valid?
+        bool HasAnyCodeOffset() const {
             return codeOffset != InvalidOffset;
         }
 
         /// Can this source be trivially copied? (fx. memcpy)
         bool TriviallyCopyable() const {
-            return codeOffset != InvalidOffset && !modified;
+            return codeOffset != InvalidOffset && !symbolicCodeOffset && !modified;
         }
 
-        uint32_t codeOffset : 31;
-        uint32_t modified   : 1;
+        /// The code offset, implementation specific
+        uint32_t codeOffset : 29;
+
+        /// The originating code has been modified
+        uint32_t modified : 1;
+
+        /// The code offset is symbolic, and is not a matching instruction
+        uint32_t symbolicCodeOffset : 1;
+
+        /// The instruction itself is symbolic, and is not compiled down
+        uint32_t symbolicInstruction : 1;
     };
 
+    static_assert(sizeof(Source) == sizeof(uint32_t), "Unexpected source size");
 
     /// Source span, represents a word region for the source instructions
     struct SourceSpan {

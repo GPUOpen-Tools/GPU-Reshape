@@ -56,7 +56,7 @@ namespace Studio.Models.IL
             dynamic? node;
             try
             {
-                node = JsonConvert.DeserializeObject(json);
+                node = JsonConvert.DeserializeObject(json, new JsonSerializerSettings { FloatFormatHandling = FloatFormatHandling.Symbol });
                 if (node == null)
                 {
                     return;
@@ -99,7 +99,7 @@ namespace Studio.Models.IL
             for (int i = 0; i < program.Types.Length; i++)
             {
                 program.Types[i] = ParseType(node.Types[i], program);
-                program.Lookup.Add(program.Types[i].ID, program.Types[i]);
+                program.Lookup[program.Types[i].ID] = program.Types[i];
             }
 
             // Parse all type references
@@ -112,7 +112,16 @@ namespace Studio.Models.IL
             for (int i = 0; i < program.Constants.Length; i++)
             {
                 program.Constants[i] = ParseConstant(node.Constants[i], program);
-                program.Lookup.Add(program.Constants[i].ID, program.Constants[i]);
+
+                // Symbolic referencing is handled separately
+                if (program.Constants[i].ID >= 0)
+                {
+                    program.Lookup.Add((uint)program.Constants[i].ID, program.Constants[i]);
+                }
+                else
+                {
+                    program.SymbolicLookup.Add((uint)-program.Constants[i].ID, program.Constants[i]);
+                }
             }
 
             // Parse all variables
@@ -306,7 +315,16 @@ namespace Studio.Models.IL
                 case TypeKind.Pointer:
                 {
                     var typed = (PointerType)type;
-                    typed.Pointee = (Type)program.Lookup[(uint)node.Pointee];
+
+                    // May be a forward reference
+                    if (node.Pointee != uint.MaxValue)
+                    {
+                        typed.Pointee = (Type)program.Lookup[(uint)node.Pointee];
+                    }
+                    else
+                    {
+                        typed.Pointee = null;
+                    }
                     break;
                 }
                 case TypeKind.Array:
@@ -318,13 +336,21 @@ namespace Studio.Models.IL
                 case TypeKind.Texture:
                 {
                     var typed = (TextureType)type;
-                    typed.SampledType = (Type)program.Lookup[(uint)node.SampledType];
+
+                    if (node.SampledType != null)
+                    {
+                        typed.SampledType = (Type)program.Lookup[(uint)node.SampledType];
+                    }
                     break;
                 }
                 case TypeKind.Buffer:
                 {
                     var typed = (BufferType)type;
-                    typed.ElementType = (Type)program.Lookup[(uint)node.ElementType];
+                    
+                    if (node.ElementType != null)
+                    {
+                        typed.ElementType = (Type)program.Lookup[(uint)node.ElementType];
+                    }
                     break;
                 }
                 case TypeKind.Function:
@@ -352,6 +378,21 @@ namespace Studio.Models.IL
 
                     break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Get a constant that may be symbolic
+        /// </summary>
+        private Constant GetConstantFromSigned(int signed, Program program)
+        {
+            if (signed >= 0)
+            {
+                return (Constant)program.Lookup[(uint)signed];
+            }
+            else
+            {
+                return (Constant)program.SymbolicLookup[(uint)-signed];
             }
         }
 
@@ -402,6 +443,34 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case ConstantKind.Array:
+                {
+                    ArrayConstant _array = new();
+
+                    _array.Elements = new Constant[node.Elements.Count];
+
+                    for (int i = 0; i < _array.Elements.Length; i++)
+                    {
+                        _array.Elements[i] = GetConstantFromSigned((int)node.Elements[i], program);
+                    }
+
+                    constant = _array;
+                    break;
+                }
+                case ConstantKind.Vector:
+                {
+                    VectorConstant vector = new();
+
+                    vector.Elements = new Constant[node.Elements.Count];
+
+                    for (int i = 0; i < vector.Elements.Length; i++)
+                    {
+                        vector.Elements[i] = GetConstantFromSigned((int)node.Elements[i], program);
+                    }
+
+                    constant = vector;
+                    break;
+                }
                 case ConstantKind.Struct:
                 {
                     StructConstant _struct = new();
@@ -410,7 +479,7 @@ namespace Studio.Models.IL
 
                     for (int i = 0; i < _struct.Members.Length; i++)
                     {
-                        _struct.Members[i] = (Constant)program.Lookup[(uint)node.Members[i]];
+                        _struct.Members[i] = GetConstantFromSigned((int)node.Members[i], program);
                     }
 
                     constant = _struct;
@@ -551,15 +620,41 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.Not:
                 case OpCode.Any:
                 case OpCode.All:
                 case OpCode.Trunc:
                 case OpCode.IsInf:
                 case OpCode.IsNaN:
+                case OpCode.WaveAnyTrue:
+                case OpCode.WaveAllTrue:
+                case OpCode.WaveBallot:
+                case OpCode.WaveReadFirst:
+                case OpCode.WaveAllEqual:
+                case OpCode.WaveBitAnd:
+                case OpCode.WaveBitOr:
+                case OpCode.WaveBitXOr:
+                case OpCode.WaveCountBits:
+                case OpCode.WaveMax:
+                case OpCode.WaveMin:
+                case OpCode.WaveProduct:
+                case OpCode.WaveSum:
+                case OpCode.WavePrefixCountBits:
+                case OpCode.WavePrefixProduct:
+                case OpCode.WavePrefixSum:
                 {
                     instruction = new UnaryInstruction()
                     {
                         Value = node.Value
+                    };
+                    break;
+                }
+                case OpCode.WaveRead:
+                {
+                    instruction = new WaveReadInstruction()
+                    {
+                        Value = node.Value,
+                        Lane = node.Lane
                     };
                     break;
                 }
@@ -594,6 +689,14 @@ namespace Studio.Models.IL
                         Condition = node.Condition,
                         Pass = node.Pass,
                         Fail = node.Fail
+                    };
+                    break;
+                }
+                case OpCode.KernelValue:
+                {
+                    instruction = new KernelValueInstruction()
+                    {
+                        Value = node.Value
                     };
                     break;
                 }
@@ -696,6 +799,22 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.Call:
+                {
+                    CallInstruction call = new()
+                    {
+                        Target = node.Target
+                    };
+                    
+                    call.Arguments = new uint[node.Arguments.Count];
+                    for (int i = 0; i < call.Arguments.Length; i++)
+                    {
+                        call.Arguments[i] = node.Arguments[i];
+                    }
+                    
+                    instruction = call;
+                    break;
+                }
                 case OpCode.AtomicOr:
                 case OpCode.AtomicXOr:
                 case OpCode.AtomicAnd:
@@ -731,6 +850,19 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.Construct:
+                {
+                    ConstructInstruction chain = new();
+
+                    chain.Values = new uint[node.Values.Count];
+                    for (int i = 0; i < chain.Values.Length; i++)
+                    {
+                        chain.Values[i] = node.Values[i];
+                    }
+
+                    instruction = chain;
+                    break;
+                }
                 case OpCode.AddressChain:
                 {
                     AddressChainInstruction chain = new()
@@ -749,11 +881,18 @@ namespace Studio.Models.IL
                 }
                 case OpCode.Extract:
                 {
-                    instruction = new ExtractInstruction()
+                    ExtractInstruction chain = new()
                     {
-                        Composite = node.Composite,
-                        Index = node.Index
+                        Composite = node.Composite
                     };
+
+                    chain.Chains = new uint[node.Chains.Count];
+                    for (int i = 0; i < chain.Chains.Length; i++)
+                    {
+                        chain.Chains[i] = node.Chains[i];
+                    }
+                    
+                    instruction = chain;
                     break;
                 }
                 case OpCode.Insert:
@@ -838,6 +977,30 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.StoreVertexOutput:
+                {
+                    instruction = new StoreVertexOutputInstruction()
+                    {
+                        Index = node.Index,
+                        Row = node.Row,
+                        Column = node.Column,
+                        Value = node.Value,
+                        VertexIndex = node.VertexIndex
+                    };
+                    break;
+                }
+                case OpCode.StorePrimitiveOutput:
+                {
+                    instruction = new StorePrimitiveOutputInstruction()
+                    {
+                        Index = node.Index,
+                        Row = node.Row,
+                        Column = node.Column,
+                        Value = node.Value,
+                        PrimitiveIndex = node.PrimitiveIndex
+                    };
+                    break;
+                }
                 case OpCode.SampleTexture:
                 {
                     instruction = new SampleTextureInstruction()
@@ -894,6 +1057,30 @@ namespace Studio.Models.IL
                         Buffer = node.Buffer,
                         Index = node.Index,
                         Offset = node.Offset
+                    };
+                    break;
+                }
+                case OpCode.StoreBufferRaw:
+                {
+                    instruction = new StoreBufferRawInstruction()
+                    {
+                        Buffer = node.Buffer,
+                        Index = node.Index,
+                        Value = node.Value,
+                        ComponentMask = node.ComponentMask,
+                        Alignment = node.Alignment
+                    };
+                    break;
+                }
+                case OpCode.LoadBufferRaw:
+                {
+                    instruction = new LoadBufferRawInstruction()
+                    {
+                        Buffer = node.Buffer,
+                        Index = node.Index,
+                        Offset = node.Offset,
+                        ComponentMask = node.ComponentMask,
+                        Alignment = node.Alignment
                     };
                     break;
                 }

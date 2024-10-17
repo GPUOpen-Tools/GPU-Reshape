@@ -97,6 +97,12 @@ public:
         }
     }
 
+    /// Set the new paused state
+    /// \param paused if false, wakes all threads
+    void SetPaused(bool paused) {
+        pool.SetPaused(paused);
+    }
+
     /// Get the number of workers
     uint32_t WorkerCount() const {
         return static_cast<uint32_t>(workers.size());

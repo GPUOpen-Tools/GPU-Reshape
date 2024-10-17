@@ -34,7 +34,7 @@
 
 // Common
 #include <Common/ComRef.h>
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/Containers/TrivialStackVector.h>
 
 // Std

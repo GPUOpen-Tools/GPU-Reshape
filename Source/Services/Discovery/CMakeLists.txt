@@ -94,5 +94,5 @@ endif()
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    include(DotNet.cmake)
+	add_subdirectory(DotNet)
 endif()

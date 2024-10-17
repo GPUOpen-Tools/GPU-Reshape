@@ -33,7 +33,8 @@
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
+#include <Backend/IL/Emitters/ResourceTokenEmitter.h>
+#include <Backend/IL/InstructionValueCommon.h>
 
 // Generated schema
 #include <Schemas/Features/ResourceBounds.h>
@@ -94,12 +95,14 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 return it;
 
             /* Handled cases */
-            case IL::OpCode::StoreBuffer: {
+            case IL::OpCode::StoreBuffer:
+            case IL::OpCode::StoreBufferRaw: {
                 isWrite = true;
                 isTexture = false;
                 break;
             }
-            case IL::OpCode::LoadBuffer: {
+            case IL::OpCode::LoadBuffer:
+            case IL::OpCode::LoadBufferRaw:  {
                 isWrite = false;
                 isTexture = false;
                 break;
@@ -176,33 +179,49 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     /* Handled cases */
                 case IL::OpCode::StoreBuffer: {
                     auto _instr = instr->As<IL::StoreBufferInstruction>();
-                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetToken();
-                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
+                    msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                     msg.detail.coordinate[1] = zero;
                     msg.detail.coordinate[2] = zero;
                     break;
                 }
                 case IL::OpCode::LoadBuffer: {
                     auto _instr = instr->As<IL::LoadBufferInstruction>();
-                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetToken();
-                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
+                    msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
+                    msg.detail.coordinate[1] = zero;
+                    msg.detail.coordinate[2] = zero;
+                    break;
+                }
+                case IL::OpCode::StoreBufferRaw: {
+                    auto _instr = instr->As<IL::StoreBufferRawInstruction>();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
+                    msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
+                    msg.detail.coordinate[1] = zero;
+                    msg.detail.coordinate[2] = zero;
+                    break;
+                }
+                case IL::OpCode::LoadBufferRaw: {
+                    auto _instr = instr->As<IL::LoadBufferRawInstruction>();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
+                    msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                     msg.detail.coordinate[1] = zero;
                     msg.detail.coordinate[2] = zero;
                     break;
                 }
                 case IL::OpCode::StoreTexture: {
                     auto _instr = instr->As<IL::StoreTextureInstruction>();
-                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetToken();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetPackedToken();
 
                     // Vectorized index?
                     if (const Backend::IL::Type* indexType = program.GetTypeMap().GetType(_instr->index); indexType->Is<Backend::IL::VectorType>()) {
                         const uint32_t dimension = indexType->As<Backend::IL::VectorType>()->dimension;
 
-                        msg.detail.coordinate[0] = oob.Extract(_instr->index, 0);
-                        msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : zero;
-                        msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : zero;
+                        msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(0)->id));
+                        msg.detail.coordinate[1] = dimension > 1 ? Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(1)->id)) : zero;
+                        msg.detail.coordinate[2] = dimension > 2 ? Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(2)->id)) : zero;
                     } else {
-                        msg.detail.coordinate[0] = _instr->index;
+                        msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                         msg.detail.coordinate[1] = zero;
                         msg.detail.coordinate[2] = zero;
                     }
@@ -210,17 +229,17 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 }
                 case IL::OpCode::LoadTexture: {
                     auto _instr = instr->As<IL::LoadTextureInstruction>();
-                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetToken();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetPackedToken();
 
                     // Vectorized index?
                     if (const Backend::IL::Type* indexType = program.GetTypeMap().GetType(_instr->index); indexType->Is<Backend::IL::VectorType>()) {
                         const uint32_t dimension = indexType->As<Backend::IL::VectorType>()->dimension;
 
-                        msg.detail.coordinate[0] = oob.Extract(_instr->index, 0);
-                        msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : zero;
-                        msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : zero;
+                        msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(0)->id));
+                        msg.detail.coordinate[1] = dimension > 1 ? Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(1)->id)) : zero;
+                        msg.detail.coordinate[2] = dimension > 2 ? Backend::IL::BitCastToUnsigned(oob, oob.Extract(_instr->index, program.GetConstants().UInt(2)->id)) : zero;
                     } else {
-                        msg.detail.coordinate[0] = _instr->index;
+                        msg.detail.coordinate[0] = Backend::IL::BitCastToUnsigned(oob, _instr->index);
                         msg.detail.coordinate[1] = zero;
                         msg.detail.coordinate[2] = zero;
                     }
@@ -254,9 +273,38 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(loadBuffer->index, SplatToValue(program, uint32Type, loadBuffer->index)), pre.ResourceSize(loadBuffer->buffer)));
                 break;
             }
+            case IL::OpCode::StoreBufferRaw: {
+                auto* storeBuffer = instr->As<IL::StoreBufferRawInstruction>();
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(storeBuffer->index, SplatToValue(program, uint32Type, storeBuffer->index)), pre.ResourceSize(storeBuffer->buffer)));
+                break;
+            }
+            case IL::OpCode::LoadBufferRaw: {
+                auto* loadBuffer = instr->As<IL::LoadBufferRawInstruction>();
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(loadBuffer->index, SplatToValue(program, uint32Type, loadBuffer->index)), pre.ResourceSize(loadBuffer->buffer)));
+                break;
+            }
             case IL::OpCode::StoreTexture: {
                 auto* storeTexture = instr->As<IL::StoreTextureInstruction>();
-                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(storeTexture->index, SplatToValue(program, uint32Type, storeTexture->index)), pre.ResourceSize(storeTexture->texture)));
+
+                // Get texture type
+                auto type = program.GetTypeMap().GetType(storeTexture->texture)->As<Backend::IL::TextureType>();
+
+                // Type of the index
+                const Backend::IL::Type *indexType = SplatToValue(program, uint32Type, storeTexture->index);
+                
+                // Store instructions have special considerations for cube arrays
+                // Size queries only report the width/height, so assume 6 faces (3d)
+                IL::ID size = pre.ResourceSize(storeTexture->texture);
+                if (type->dimension == Backend::IL::TextureDimension::Texture2DCube) {
+                    size = pre.Construct(
+                        indexType,
+                        pre.Extract(size, pre.UInt32(0)).GetID(),
+                        pre.Extract(size, pre.UInt32(1)).GetID(),
+                        pre.UInt32(6)
+                    );
+                }
+
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(storeTexture->index, indexType), size));
                 break;
             }
             case IL::OpCode::LoadTexture: {

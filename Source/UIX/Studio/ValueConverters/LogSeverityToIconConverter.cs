@@ -72,10 +72,10 @@ namespace Studio.ValueConverters
                         color = ResourceLocator.GetResource<Color>("SystemBaseHighColor");
                         break;
                     case LogSeverity.Warning:
-                        color =  ResourceLocator.GetResource<Color>("WarningColor");
+                        color =  ResourceLocator.GetResource<Color>("WarningDefaultColor");
                         break;
                     case LogSeverity.Error:
-                        color = ResourceLocator.GetResource<Color>("ErrorColor");
+                        color = ResourceLocator.GetResource<Color>("ErrorDefaultColor");
                         break;
                     default:
                         return null;

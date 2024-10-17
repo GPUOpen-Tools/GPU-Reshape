@@ -28,6 +28,9 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
 
+// Backend
+#include <Backend/IL/Metadata/DataMetadata.h>
+
 void SpvPhysicalBlockAnnotation::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::Annotation);
 
@@ -50,9 +53,23 @@ void SpvPhysicalBlockAnnotation::Parse() {
                 decoration.decorated = true;
 
                 // Handle decoration
-                switch (static_cast<SpvDecoration>(ctx++)) {
-                    default:
+                auto decorationKind = static_cast<SpvDecoration>(ctx++);
+                switch (decorationKind) {
+                    default: {
+                        // Parse pair
+                        SpvDecorationPair kv;
+                        kv.kind = decorationKind;
+                        kv.wordCount = ctx.PendingWords();
+
+                        // Copy payload data
+                        if (kv.wordCount) {
+                            kv.words = table.recordAllocator.AllocateArray<uint32_t>(kv.wordCount);
+                            std::memcpy(kv.words, ctx.GetInstructionCode(), sizeof(uint32_t) * kv.wordCount);
+                        }
+                
+                        decoration.value.decorations.push_back(kv);
                         break;
+                    }
                     case SpvDecorationDescriptorSet: {
                         decoration.value.descriptorSet = ctx++;
 
@@ -62,6 +79,20 @@ void SpvPhysicalBlockAnnotation::Parse() {
                     }
                     case SpvDecorationBinding: {
                         decoration.value.descriptorOffset = ctx++;
+                        break;
+                    }
+                    case SpvDecorationBuiltIn: {
+                        builtinMap[static_cast<SpvBuiltIn>(ctx++)] = target;
+                        break;
+                    }
+                    case SpvDecorationNonUniform: {
+                        program.GetMetadataMap().AddMetadata(target, IL::MetadataType::DivergentResourceIndex);
+                        break;
+                    }
+                    case SpvDecorationArrayStride: {
+                        program.GetMetadataMap().AddMetadata(target, IL::ArrayStrideMetadata {
+                            .byteStride = ctx++
+                        });
                         break;
                     }
                 }
@@ -81,22 +112,38 @@ void SpvPhysicalBlockAnnotation::Parse() {
                 decoration.decorated = true;
 
                 // Allocate if needed
-                if (member >= decoration.value.memberDecorations.size()) {
-                    decoration.value.memberDecorations.resize(member + 1);
+                if (member >= decoration.value.members.size()) {
+                    decoration.value.members.resize(member + 1);
                 }
 
-                // Get decoration for member
-                SpvValueDecoration& valueDecoration = decoration.value.memberDecorations[member];
+                // Append decoration
+                SpvMemberDecoration& memberDecoration = decoration.value.members[member];
 
+                // Parse pair
+                SpvDecorationPair kv;
+                kv.kind = static_cast<SpvDecoration>(ctx++);
+                kv.wordCount = ctx.PendingWords();
+
+                // Copy payload data
+                if (kv.wordCount) {
+                    kv.words = table.recordAllocator.AllocateArray<uint32_t>(kv.wordCount);
+                    std::memcpy(kv.words, ctx.GetInstructionCode(), sizeof(uint32_t) * kv.wordCount);
+                }
+                
                 // Handle decoration
-                switch (static_cast<SpvDecoration>(ctx++)) {
-                    default:
+                switch (kv.kind) {
+                    default: {
                         break;
+                    }
                     case SpvDecorationOffset: {
-                        valueDecoration.blockOffset = ctx++;
+                        program.GetMetadataMap().AddMetadata(target, member, IL::OffsetMetadata {
+                            .byteOffset = kv.words[0]
+                        });
                         break;
                     }
                 }
+                
+                memberDecoration.decorations.push_back(kv);
                 break;
             }
         }

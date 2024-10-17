@@ -260,7 +260,7 @@ bool NotifyIconDiscoveryListener::Stop() {
     return true;
 }
 
-void NotifyIconDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessInfo &info, DiscoveryBootstrappingEnvironment &environment) {
+void NotifyIconDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessCreateInfo &info, DiscoveryBootstrappingEnvironment &environment) {
     // Nothing
 }
 

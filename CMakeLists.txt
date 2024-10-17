@@ -149,8 +149,8 @@ if (${ENABLE_UIX} AND CMAKE_GENERATOR MATCHES "Visual Studio")
     enable_language(CSharp)
 
     # Set standard C# properties
-    SET(CMAKE_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8")
-    SET(CMAKE_CSharp_FLAGS "/langversion:6")
+    SET(CMAKE_DOTNET_TARGET_FRAMEWORK "net8.0")
+    SET(CMAKE_CSharp_FLAGS "/langversion:latest")
     SET(CMAKE_CSharp_FLAGS "/platform:x64")
 else()
     set(BUILD_UIX OFF)
@@ -204,11 +204,15 @@ endforeach()
 
 # Configure file for multi-configurators
 function(ConfigureOutput FILE OUT)
+    get_filename_component(Directory "${OUT}" DIRECTORY)
+
     if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
         foreach(Config ${CMAKE_CONFIGURATION_TYPES})
+            file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${Config}/${Directory})
             configure_file(${FILE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${Config}/${OUT} COPYONLY)
         endforeach()
     else()
+        file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${Directory})
         configure_file(${FILE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${OUT} COPYONLY)
     endif()
 endfunction()
@@ -224,6 +228,8 @@ endfunction()
 # Add build support
 if (NOT THIN_X86_BUILD)
     add_subdirectory(Build)
+else()
+    include(Build/Files.cmake)
 endif()
 
 # Add external projects

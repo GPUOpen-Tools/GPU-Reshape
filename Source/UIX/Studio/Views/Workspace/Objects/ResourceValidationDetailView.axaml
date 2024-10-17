@@ -79,7 +79,7 @@
             <Grid ColumnDefinitions="150,2,*" DockPanel.Dock="Top">
                 <ListBox 
                     Grid.Column="0"
-                    Items="{Binding Resources}" 
+                    ItemsSource="{Binding Resources}" 
                     SelectedItem="{Binding SelectedResource}"
                     Margin="0 0 -1 0">
                     <ListBox.ItemTemplate>
@@ -92,7 +92,7 @@
                 <ListBox
                     x:Name="Test"
                     Grid.Column="2"
-                    Items="{Binding SelectedResource.Instances}"
+                    ItemsSource="{Binding SelectedResource.Instances}"
                     Margin="-1 0 0 0">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -106,7 +106,7 @@
         </DockPanel>
         
         <Separator 
-            Width="1"
+            Width="1" Height="NaN"
             Margin="25 0 0 0"
             HorizontalAlignment="Left"
             VerticalAlignment="Stretch"

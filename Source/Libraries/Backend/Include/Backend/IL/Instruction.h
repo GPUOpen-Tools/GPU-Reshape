@@ -37,6 +37,8 @@
 #include "LiteralType.h"
 #include "ID.h"
 #include "ComponentMask.h"
+#include "ExtendedOp.h"
+#include "KernelValue.h"
 #include "TextureSampleMode.h"
 
 namespace IL {
@@ -88,12 +90,23 @@ namespace IL {
         /// Is this instruction part of the original source code?
         /// \return true if user instruction
         bool IsUserInstruction() const {
-            return source.IsValid();
+            // Symbolic instructions may not be part of the original code, however,
+            // they contribute to the abstracted structure.
+            return source.HasAnyCodeOffset() || source.symbolicInstruction;
         }
 
         OpCode opCode;
         ID result;
         Source source;
+    };
+
+    struct UnexposedInstructionTraits {
+        /// This instruction may be folded with immediate constants
+        /// Although the exact nature of the folding remains unexposed
+        uint32_t foldableWithImmediates : 1;
+
+        /// This instruction is divergent within the executing group
+        uint32_t divergent : 1;
     };
 
     struct UnexposedInstruction : public Instruction {
@@ -102,6 +115,12 @@ namespace IL {
         uint32_t backendOpCode;
 
         const char* symbol;
+
+        ID* operands;
+
+        uint32_t operandCount;
+
+        UnexposedInstructionTraits traits;
     };
 
     struct LiteralInstruction : public Instruction {
@@ -137,6 +156,26 @@ namespace IL {
         ID row;
         ID column;
         ID value;
+    };
+
+    struct StoreVertexOutputInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::StoreVertexOutput;
+
+        ID index;
+        ID row;
+        ID column;
+        ID value;
+        ID vertexIndex;
+    };
+
+    struct StorePrimitiveOutputInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::StorePrimitiveOutput;
+
+        ID index;
+        ID row;
+        ID column;
+        ID value;
+        ID primitiveIndex;
     };
 
     struct AddInstruction : public Instruction {
@@ -186,6 +225,7 @@ namespace IL {
         ID buffer;
         ID index;
         ID value;
+        ID offset;
         ComponentMaskSet mask;
     };
 
@@ -195,6 +235,27 @@ namespace IL {
         ID buffer;
         ID index;
         ID offset;
+    };
+
+    struct StoreBufferRawInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::StoreBufferRaw;
+
+        ID buffer;
+        ID index;
+        ID value;
+        ID offset;
+        ComponentMaskSet mask;
+        uint32_t alignment;
+    };
+
+    struct LoadBufferRawInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::LoadBufferRaw;
+
+        ID buffer;
+        ID index;
+        ID offset;
+        ComponentMaskSet mask;
+        uint32_t alignment;
     };
 
     struct ResourceSizeInstruction : public Instruction {
@@ -271,6 +332,12 @@ namespace IL {
         ID rhs;
     };
 
+    struct NotInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Not;
+
+        ID value;
+    };
+
     struct EqualInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Equal;
 
@@ -323,6 +390,32 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::IsNaN;
 
         ID value;
+    };
+
+    struct KernelValueInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::KernelValue;
+
+        Backend::IL::KernelValue value;
+    };
+
+    struct ExtendedInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Extended;
+
+        /// Get size of this instruction
+        /// \param opCount number of operands
+        /// \return byte size
+        static uint64_t GetSize(uint32_t opCount) {
+            return sizeof(ExtendedInstruction) + InlineArray<ID>::ElementSize(opCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(ExtendedInstruction) + operands.ElementSize();
+        }
+        
+        Backend::IL::ExtendedOp extendedOp;
+        InlineArray<ID> operands;
     };
 
     struct BitOrInstruction : public Instruction {
@@ -378,6 +471,25 @@ namespace IL {
         ID value;
     };
 
+    struct ConstructInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Construct;
+
+        /// Get size of this instruction
+        /// \param valueCount number of values
+        /// \return byte size
+        static uint64_t GetSize(uint32_t valueCount) {
+            return sizeof(ConstructInstruction) + InlineArray<ID>::ElementSize(valueCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(ConstructInstruction) + values.ElementSize();
+        }
+
+        InlineArray<ID> values;
+    };
+
     struct AddressChain {
         ID index;
     };
@@ -402,11 +514,28 @@ namespace IL {
         InlineArray<AddressChain> chains;
     };
 
+    struct ExtractChain {
+        ID index;
+    };
+
     struct ExtractInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Extract;
 
+        /// Get size of this instruction
+        /// \param chainCount number of chains
+        /// \return byte size
+        static uint64_t GetSize(uint32_t chainCount) {
+            return sizeof(ExtractInstruction) + InlineArray<ExtractChain>::ElementSize(chainCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(ExtractInstruction) + chains.ElementSize();
+        }
+
         ID composite;
-        uint32_t index;
+        InlineArray<ExtractChain> chains;
     };
 
     struct InsertInstruction : public Instruction {
@@ -513,6 +642,27 @@ namespace IL {
         ID value;
     };
 
+    struct CallInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Call;
+
+        /// Get size of this instruction
+        /// \param argumentCount number of arguments
+        /// \return byte size
+        static uint64_t GetSize(uint32_t argumentCount) {
+            return sizeof(CallInstruction) + InlineArray<ID>::ElementSize(argumentCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(CallInstruction) + arguments.ElementSize();
+        }
+
+        ID target;
+
+        InlineArray<ID> arguments;
+    };
+
     struct AtomicOrInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::AtomicOr;
 
@@ -570,6 +720,109 @@ namespace IL {
         ID value;
     };
 
+    struct WaveAnyTrueInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAnyTrue;
+
+        ID value;
+    };
+
+    struct WaveAllTrueInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAllTrue;
+
+        ID value;
+    };
+
+    struct WaveBallotInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBallot;
+
+        ID value;
+    };
+
+    struct WaveReadInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveRead;
+
+        ID value;
+        ID lane;
+    };
+
+    struct WaveReadFirstInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveReadFirst;
+
+        ID value;
+    };
+
+    struct WaveAllEqualInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAllEqual;
+
+        ID value;
+    };
+
+    struct WaveBitAndInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitAnd;
+
+        ID value;
+    };
+
+    struct WaveBitOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitOr;
+
+        ID value;
+    };
+
+    struct WaveBitXOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitXOr;
+
+        ID value;
+    };
+
+    struct WaveCountBitsInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveCountBits;
+
+        ID value;
+    };
+
+    struct WaveMaxInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveMax;
+
+        ID value;
+    };
+
+    struct WaveMinInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveMin;
+
+        ID value;
+    };
+
+    struct WaveProductInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveProduct;
+
+        ID value;
+    };
+
+    struct WaveSumInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveSum;
+
+        ID value;
+    };
+
+    struct WavePrefixCountBitsInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixCountBits;
+
+        ID value;
+    };
+
+    struct WavePrefixProductInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixProduct;
+
+        ID value;
+    };
+
+    struct WavePrefixSumInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixSum;
+
+        ID value;
+    };
+
     struct ExportInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Export;
 
@@ -593,8 +846,6 @@ namespace IL {
 
     struct AllocaInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Alloca;
-
-        ID type;
     };
 
     struct AnyInstruction : public Instruction {
@@ -631,6 +882,8 @@ namespace IL {
                 return sizeof(LoadTextureInstruction);
             case OpCode::StoreBuffer:
                 return sizeof(StoreBufferInstruction);
+            case OpCode::StoreBufferRaw:
+                return sizeof(StoreBufferRawInstruction);
             case OpCode::Add:
                 return sizeof(AddInstruction);
             case OpCode::Literal:
@@ -683,8 +936,12 @@ namespace IL {
                 return sizeof(OrInstruction);
             case OpCode::And:
                 return sizeof(AndInstruction);
+            case OpCode::Not:
+                return sizeof(NotInstruction);
             case OpCode::LoadBuffer:
                 return sizeof(LoadBufferInstruction);
+            case OpCode::LoadBufferRaw:
+                return sizeof(LoadBufferRawInstruction);
             case OpCode::ResourceSize:
                 return sizeof(ResourceSizeInstruction);
             case OpCode::ResourceToken:
@@ -697,6 +954,8 @@ namespace IL {
                 return sizeof(TruncInstruction);
             case OpCode::Return:
                 return sizeof(ReturnInstruction);
+            case OpCode::Call:
+                return static_cast<const CallInstruction*>(instruction)->GetSize();
             case OpCode::FloatToInt:
                 return sizeof(FloatToIntInstruction);
             case OpCode::IntToFloat:
@@ -705,18 +964,28 @@ namespace IL {
                 return sizeof(BitCastInstruction);
             case OpCode::AddressChain:
                 return static_cast<const AddressChainInstruction*>(instruction)->GetSize();
+            case OpCode::Construct:
+                return static_cast<const ConstructInstruction*>(instruction)->GetSize();
             case OpCode::Extract:
-                return sizeof(ExtractInstruction);
+                return static_cast<const ExtractInstruction*>(instruction)->GetSize();
             case OpCode::Insert:
                 return sizeof(InsertInstruction);
             case OpCode::Select:
                 return sizeof(SelectInstruction);
             case OpCode::StoreOutput:
                 return sizeof(StoreOutputInstruction);
+            case OpCode::StoreVertexOutput:
+                return sizeof(StoreVertexOutputInstruction);
+            case OpCode::StorePrimitiveOutput:
+                return sizeof(StorePrimitiveOutputInstruction);
             case OpCode::IsInf:
                 return sizeof(IsInfInstruction);
             case OpCode::IsNaN:
                 return sizeof(IsNaNInstruction);
+            case OpCode::KernelValue:
+                return sizeof(KernelValueInstruction);
+            case OpCode::Extended:
+                return static_cast<const ExtendedInstruction*>(instruction)->GetSize();
             case OpCode::AtomicOr:
                 return sizeof(AtomicOrInstruction);
             case OpCode::AtomicXOr:
@@ -733,6 +1002,40 @@ namespace IL {
                 return sizeof(AtomicExchangeInstruction);
             case OpCode::AtomicCompareExchange:
                 return sizeof(AtomicCompareExchangeInstruction);
+            case OpCode::WaveAnyTrue:
+                return sizeof(WaveAnyTrueInstruction);
+            case OpCode::WaveAllTrue:
+                return sizeof(WaveAllTrueInstruction);
+            case OpCode::WaveBallot:
+                return sizeof(WaveBallotInstruction);
+            case OpCode::WaveRead:
+                return sizeof(WaveReadInstruction);
+            case OpCode::WaveReadFirst:
+                return sizeof(WaveReadFirstInstruction);
+            case OpCode::WaveAllEqual:
+                return sizeof(WaveAllEqualInstruction);
+            case OpCode::WaveBitAnd:
+                return sizeof(WaveBitAndInstruction);
+            case OpCode::WaveBitOr:
+                return sizeof(WaveBitOrInstruction);
+            case OpCode::WaveBitXOr:
+                return sizeof(WaveBitXOrInstruction);
+            case OpCode::WaveCountBits:
+                return sizeof(WaveCountBitsInstruction);
+            case OpCode::WaveMax:
+                return sizeof(WaveMaxInstruction);
+            case OpCode::WaveMin:
+                return sizeof(WaveMinInstruction);
+            case OpCode::WaveProduct:
+                return sizeof(WaveProductInstruction);
+            case OpCode::WaveSum:
+                return sizeof(WaveSumInstruction);
+            case OpCode::WavePrefixCountBits:
+                return sizeof(WavePrefixCountBitsInstruction);
+            case OpCode::WavePrefixProduct:
+                return sizeof(WavePrefixProductInstruction);
+            case OpCode::WavePrefixSum:
+                return sizeof(WavePrefixSumInstruction);
         }
     }
 }

@@ -1,0 +1,65 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <TargetCulture>en</TargetCulture>
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+        <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
+        <Platforms>x64</Platforms>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AssemblyName>GPUReshape.NotifyIcon</AssemblyName>
+		
+        
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <DebugType>none</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\Release\</OutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'RelWithDebInfo' ">
+        <DebugType>portable</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\RelWithDebInfo\</OutputPath>
+        <DebugSymbols>true</DebugSymbols>
+        <Optimize>true</Optimize>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'MinSizeRel' ">
+        <DebugType>none</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\MinSizeRel\</OutputPath>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <OutputPath>..\..\..\..\..\Bin\MSVC\Debug\</OutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Avalonia" Version="11.1.1" />
+      <PackageReference Include="Avalonia.Desktop" Version="11.1.1" />
+      <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
+      <PackageReference Include="Avalonia.Themes.Simple" Version="11.1.1" />
+      <PackageReference Include="MessageBox.Avalonia" Version="3.1.6" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AvaloniaResource Include="Resources\Icons\Icon_NoFrame.png" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="GRS.Services.Discovery.DotNet">
+        <HintPath>$(OutputPath)\GRS.Services.Discovery.DotNet.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Resources\Resources.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
+    </ItemGroup>
+</Project>

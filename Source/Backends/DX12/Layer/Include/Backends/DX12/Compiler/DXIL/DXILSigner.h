@@ -49,11 +49,23 @@ public:
     /// \return false if failed
     bool Install();
 
-    /// Convert a DXIL blob
+    /// Sign a DXIL blob
     /// \param code blob code
     /// \param length blob length
     /// \return false if failed
     bool Sign(void* code, uint64_t length);
+
+private:
+    /// Sign with full validation, slow
+    /// \param code blob code
+    /// \param length blob length
+    /// \return false if failed
+    bool SignWithValidation(void* code, uint64_t length);
+    
+    /// Sign with bypass, trusting the blob
+    /// \param code blob code
+    /// \return false if failed
+    bool SignWithBypass(void* code);
 
 private:
     /// Objects

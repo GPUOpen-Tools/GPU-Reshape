@@ -32,6 +32,7 @@ using Avalonia.Media;
 using DynamicData;
 using ReactiveUI;
 using Studio.Services;
+using Studio.ViewModels.Documents;
 
 namespace Studio.ViewModels.Menu
 {
@@ -86,6 +87,13 @@ namespace Studio.ViewModels.Menu
                 
                 new MenuItemViewModel()
                 {
+                    Header = "What's New",
+                    Command = ReactiveCommand.Create(OnWhatsNew),
+                    IconPath = "Speaker"
+                },
+                
+                new MenuItemViewModel()
+                {
                     Header = "-"
                 },
                 
@@ -111,11 +119,22 @@ namespace Studio.ViewModels.Menu
         }
 
         /// <summary>
+        /// Invoked on what's new
+        /// </summary>
+        private void OnWhatsNew()
+        {
+            if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            {
+                layoutViewModel.DocumentLayout?.OpenDocument(new WhatsNewDescriptor());
+            }
+        }
+
+        /// <summary>
         /// Invoked on about
         /// </summary>
         private void OnAbout()
         {
-            App.Locator.GetService<IWindowService>()?.OpenFor(new AboutViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenFor(new AboutViewModel());
         }
 
         /// <summary>

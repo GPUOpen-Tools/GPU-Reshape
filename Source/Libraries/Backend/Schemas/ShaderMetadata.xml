@@ -34,6 +34,10 @@
         <field name="column" type="uint32"/>
     </struct>
 
+    <message name="GetShaderName">
+        <field name="shaderUID" type="uint64"/>
+    </message>
+
     <message name="GetShaderCode">
         <field name="shaderUID" type="uint64"/>
         <field name="poolCode" type="bool"/>
@@ -47,12 +51,20 @@
         <field name="shaderUID" type="uint64"/>
     </message>
 
+    <message name="ShaderName">
+        <field name="shaderUID" type="uint64"/>
+        <field name="language"  type="string"/>
+        <field name="found"     type="bool"/>
+        <field name="name"      type="string"/>
+    </message>
+
     <message name="ShaderCode">
         <field name="shaderUID" type="uint64"/>
         <field name="language"  type="string"/>
         <field name="found"     type="bool"/>
         <field name="native"    type="bool"/>
         <field name="fileCount" type="uint32"/>
+        <field name="poolCode"  type="bool"/>
     </message>
 
     <message name="ShaderCodeFile">
@@ -60,6 +72,7 @@
         <field name="fileUID"   type="uint32"/>
         <field name="filename"  type="string"/>
         <field name="code"      type="string"/>
+        <field name="poolCode"  type="bool"/>
     </message>
 
     <message name="ShaderIL">

@@ -45,7 +45,7 @@ namespace Studio.Views.Shader.TextMate
         public IRawTheme GetTheme(string scopeName)
         {
             // Try to fetch resource
-            Stream? stream = AvaloniaLocator.Current.GetService<IAssetLoader>()?.Open(new Uri($"avares://GPUReshape/Resources/TextMate/Themes/{scopeName}.json"));
+            Stream? stream = AssetLoader.Open(new Uri($"avares://GPUReshape/Resources/TextMate/Themes/{scopeName}.json"));
             if (stream == null)
             {
                 return null!;
@@ -61,7 +61,7 @@ namespace Studio.Views.Shader.TextMate
         public IRawGrammar GetGrammar(string scopeName)
         {
             // Try to fetch resource
-            Stream? stream = AvaloniaLocator.Current.GetService<IAssetLoader>()?.Open(new Uri($"avares://GPUReshape/Resources/TextMate/Grammars/{scopeName}.json"));
+            Stream? stream = AssetLoader.Open(new Uri($"avares://GPUReshape/Resources/TextMate/Grammars/{scopeName}.json"));
             if (stream == null)
             {
                 return null!;

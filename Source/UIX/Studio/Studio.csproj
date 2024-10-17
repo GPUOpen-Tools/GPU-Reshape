@@ -1,20 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ApplicationIcon>Resources\Icons\Icon_Frame.ico</ApplicationIcon>
         <TargetCulture>en</TargetCulture>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
         <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
         <Platforms>x64</Platforms>
-        <PublishTrimmed>true</PublishTrimmed>
-        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <StartupObject>Studio.Program</StartupObject>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyName>GPUReshape</AssemblyName>
+        
+        
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
     </PropertyGroup>
-    
+
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
         <DebugType>none</DebugType>
         <OutputPath>..\..\..\Bin\MSVC\Release\</OutputPath>
@@ -41,40 +45,47 @@
     </ItemGroup>
     
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="0.10.22" />
-        <PackageReference Include="Avalonia.AvaloniaEdit" Version="0.10.12.2" />
-        <PackageReference Include="Avalonia.Controls.PanAndZoom" Version="10.14.0" />
-        <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="0.10.10" />
-        <PackageReference Include="Avalonia.Desktop" Version="0.10.18" />
+        <PackageReference Include="Avalonia" Version="11.1.1" />
+        <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.0.1" />
+        <PackageReference Include="AvaloniaEdit.TextMate" Version="11.0.1" />
+        <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.1" />
+        <PackageReference Include="Avalonia.Controls.PanAndZoom" Version="11.1.0.1" />
+        <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.10" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.1.1" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
-        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="0.10.18" />
-        <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.18" />
-        <PackageReference Include="Avalonia.ReactiveUI.Events" Version="0.10.18" />
-        <PackageReference Include="AvaloniaEdit.TextMate" Version="0.10.12.2" />
-        <PackageReference Include="AvaloniaGraphControl" Version="0.4.1" />
-        <PackageReference Include="Dock.Avalonia" Version="0.10.18" />
-        <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.18" />
-        <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.0-beta.710" />
-        <PackageReference Include="mameolan.Avalonia.ExtendedToolkit" Version="1.0.0-CI-20220410-063959" />
-        <PackageReference Include="Markdown.Avalonia" Version="0.10.12" />
-        <PackageReference Include="MessageBox.Avalonia" Version="2.0.2" />
-        <PackageReference Include="Microsoft.CodeAnalysis" Version="3.9.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="3.9.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.Compilers" Version="3.9.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.9.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.9.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.Scripting.Common" Version="3.9.0" />
-        <PackageReference Include="Microsoft.Net.Compilers" Version="3.9.0">
+        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.1.1" />
+        <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
+        <PackageReference Include="Avalonia.Themes.Simple" Version="11.1.1" />
+        <PackageReference Include="AvaloniaGraphControl" Version="0.6.1" />
+        <PackageReference Include="Dock.Avalonia" Version="11.0.0" />
+        <PackageReference Include="Dock.Model.ReactiveUI" Version="11.1.0.1" />
+        <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.0-rc2" />
+        <PackageReference Include="Markdown.Avalonia" Version="11.0.3-a1" />
+        <PackageReference Include="MessageBox.Avalonia" Version="3.1.6" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="4.11.0-3.final" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.11.0-3.final" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Compilers" Version="4.11.0-3.final" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0-3.final" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.11.0-3.final" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Scripting.Common" Version="4.11.0-3.final" />
+        <PackageReference Include="Microsoft.Net.Compilers" Version="4.2.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-        <PackageReference Include="Projektanker.Icons.Avalonia" Version="3.7.0" />
-        <PackageReference Include="Projektanker.Icons.Avalonia.FontAwesome" Version="3.7.0" />
-        <PackageReference Include="TextMateSharp.Grammars" Version="1.0.38" />
-        <PackageReference Include="XamlNameReferenceGenerator" Version="1.3.4" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Projektanker.Icons.Avalonia" Version="9.4.0" />
+        <PackageReference Include="Projektanker.Icons.Avalonia.FontAwesome" Version="9.4.0" />
+        <PackageReference Include="TextMateSharp" Version="1.0.56" />
+        <PackageReference Include="TextMateSharp.Grammars" Version="1.0.56" />
     </ItemGroup>
     <ItemGroup>
+      <AvaloniaResource Include="Resources\WhatsNew\AddressWaterfalling.md" />
+      <AvaloniaResource Include="Resources\WhatsNew\InfiniteLoops.md" />
+      <AvaloniaResource Include="Resources\WhatsNew\MultiDeviceProcess.md" />
+      <AvaloniaResource Include="Resources\WhatsNew\NonUniformResourceIndex.md" />
+      <AvaloniaResource Include="Resources\WhatsNew\PlacementAllocations.md" />
+      <AvaloniaResource Include="Resources\WhatsNew\TexelAddressing.md" />
+      <AvaloniaResource Include="Resources\WhatsNew\WhatsNew.md" />
       <Compile Update="Views\MainView.axaml.cs">
         <DependentUpon>MainView.axaml</DependentUpon>
       </Compile>
@@ -197,6 +208,68 @@
         <DependentUpon>ConnectWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Themes\InlineSectionView.axaml.cs">
+        <DependentUpon>MiniSectionView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Setting\FeaturesSettingView.axaml.cs">
+        <DependentUpon>FeaturesSettingView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Documents\WhatsNewView.axaml.cs">
+        <DependentUpon>WhatsNewView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <None Remove="Resources\WhatsNew\Page.md" />
+      <Compile Update="Themes\StoryRadio.cs">
+        <DependentUpon>StoryRadio.axaml</DependentUpon>
+      </Compile>
+      <None Remove="Resources\WhatsNew\Index.json" />
+      <AvaloniaResource Include="Resources\WhatsNew\Index.json" />
+      <None Remove="Resources\WhatsNew\Images\Discard.png" />
+      <None Remove="Resources\WhatsNew\Images\Divergent.png" />
+      <Compile Update="Views\Workspace\Objects\NoDetailView.axaml.cs">
+        <DependentUpon>NoDetailView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <None Remove="Resources\WhatsNew\Images\divergent-resource-addressing.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\divergent-resource-addressing.png" />
+      <None Remove="Resources\WhatsNew\Images\img.png" />
+      <None Remove="Resources\WhatsNew\Images\img_1.png" />
+      <None Remove="Resources\WhatsNew\Images\img_2.png" />
+      <None Remove="Resources\WhatsNew\Images\img_3.png" />
+      <None Remove="Resources\WhatsNew\Images\img_4.png" />
+      <None Remove="Resources\WhatsNew\Images\img_5.png" />
+      <None Remove="Resources\WhatsNew\Images\img_6.png" />
+      <None Remove="Resources\WhatsNew\Images\img_7.png" />
+      <None Remove="Resources\WhatsNew\Images\launch-multi-device.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\launch-multi-device.png" />
+      <None Remove="Resources\WhatsNew\Images\launch-workspaces.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\launch-workspaces.png" />
+      <None Remove="Resources\WhatsNew\Images\loop-configuration.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\loop-configuration.png" />
+      <None Remove="Resources\WhatsNew\Images\loop-source.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\loop-source.png" />
+      <None Remove="Resources\WhatsNew\Images\scalarization.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\scalarization.png" />
+      <None Remove="Resources\WhatsNew\Images\texel-addressing-il.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\texel-addressing-il.png" />
+      <None Remove="Resources\WhatsNew\Images\texel-addressing-launch.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\texel-addressing-launch.png" />
+      <None Remove="Resources\WhatsNew\Images\uninitialized-placed-resource.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\uninitialized-placed-resource.png" />
+      <None Remove="Resources\WhatsNew\Images\uninitialized-resource-sample.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\uninitialized-resource-sample.png" />
+      <None Remove="Resources\WhatsNew\Images\waterfall-feature.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\waterfall-feature.png" />
+      <None Remove="Resources\WhatsNew\Images\waterfall-feature-code-only.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\waterfall-feature-code-only.png" />
+      <None Remove="Resources\WhatsNew\Images\waterfall-feature-with-code.png" />
+      <AvaloniaResource Include="Resources\WhatsNew\Images\waterfall-feature-with-code.png" />
+      <Compile Update="Views\Controls\MessageCollectionQueryView.axaml.cs">
+        <DependentUpon>MessageCollectionQueryView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -229,9 +302,6 @@
     </ItemGroup>
     <ItemGroup>
       <UpToDateCheckInput Remove="Views\Resources\ContextMenuView.axaml" />
-    </ItemGroup>
-    <ItemGroup>
-      <Folder Include="ViewModels\Data\" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Runtime\Runtime.csproj" />

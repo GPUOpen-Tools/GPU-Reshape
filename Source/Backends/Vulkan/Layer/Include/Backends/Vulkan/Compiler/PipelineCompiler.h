@@ -46,6 +46,7 @@ struct PipelineJob {
     PipelineState* state{ nullptr };
 
     /// TODO: Stack fallback
+    uint64_t* pipelineLibraryInstrumentationKeys{nullptr};
     ShaderModuleInstrumentationKey* shaderModuleInstrumentationKeys{nullptr};
 
     /// Pipeline specific hash
@@ -91,6 +92,13 @@ protected:
     /// Worker entry
     void WorkerGraphics(void* userData);
     void WorkerCompute(void* userData);
+
+    /// Set the shader module object
+    /// \param createInfo the assigned creation info
+    /// \param state the proxy state object
+    /// \param key the instrumentation key to query
+    /// \return success state
+    bool SetShaderModuleObject(VkPipelineShaderStageCreateInfo &createInfo, ShaderModuleState *state, const ShaderModuleInstrumentationKey &key);
 
 private:
     DeviceDispatchTable* table{nullptr};

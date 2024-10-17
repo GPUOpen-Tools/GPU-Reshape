@@ -43,8 +43,9 @@
         Foreground="{DynamicResource DockThemeForegroundBrush}"
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
+        SystemDecorations="BorderOnly"
         x:DataType="reports:InstrumentationReportViewModel">
     <Grid>
         <!-- Tool Header -->
@@ -85,7 +86,7 @@
                 </controls:SectionView>
                 <controls:SectionView DockPanel.Dock="Bottom" Title="Backend Diagnostic">
                     <Grid>
-                        <ListBox Items="{Binding Messages}" />
+                        <ListBox ItemsSource="{Binding Messages}" />
 
                         <StackPanel 
                             IsVisible="{Binding !Messages.Count}"

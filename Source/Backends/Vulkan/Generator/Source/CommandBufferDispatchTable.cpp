@@ -26,8 +26,9 @@
 
 #include "GenTypes.h"
 
+// Std
 #include <iostream>
-#include <array>
+#include <sstream>
 
 bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateEngine& templateEngine) {
     // Local lookup
@@ -112,7 +113,7 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
         }
 
         // Skip if not interesting
-        if (!isHookCandidate) {
+        if (!isHookCandidate || info.filter.excludedObjects.contains(name)) {
             continue;
         }
 

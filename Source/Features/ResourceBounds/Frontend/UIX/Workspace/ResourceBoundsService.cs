@@ -34,6 +34,8 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.IL;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
@@ -49,6 +51,16 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// Feature name
         /// </summary>
         public string Name => "Resource Bounds";
+        
+        /// <summary>
+        /// Feature category
+        /// </summary>
+        public string Category => string.Empty;
+
+        /// <summary>
+        /// Feature flags
+        /// </summary>
+        public InstrumentationFlag Flags => InstrumentationFlag.Standard;
         
         /// <summary>
         /// Parent view model
@@ -113,6 +125,8 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
+                        Traits = _traits,
+                        Severity = ValidationSeverity.Warning,
                         Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds",
                         Count = 1u
                     };
@@ -196,7 +210,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     uint[] coordinate = detailChunk.coordinate;
                     
                     // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance($"Out of bounds at {coordinate[0]}, {coordinate[1]}, {coordinate[2]}");
+                    resourceValidationObject.AddUniqueInstance($"Out of bounds at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}");
                 }
             }
             
@@ -214,6 +228,17 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         }
 
         /// <summary>
+        /// Check if a target may be instrumented
+        /// </summary>
+        public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable)
+        {
+            return instrumentable
+                .GetWorkspaceCollection()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .HasFeature("Resource Bounds") ?? false;
+        }
+
+        /// <summary>
         /// Create an instrumentation property
         /// </summary>
         /// <param name="target"></param>
@@ -223,7 +248,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         {
             // Get feature info on target
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Resource Bounds");
 
@@ -251,6 +276,17 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// All reduced resource messages
         /// </summary>
         private Dictionary<uint, ResourceValidationDetailViewModel> _reducedDetails = new();
+        
+        /// <summary>
+        /// Shared validation traits
+        /// </summary>
+        private ValidationInstructionExcludeTrait _traits = new ()
+        {
+            ExcludedOps = new OpCode[]
+            {
+                OpCode.StoreOutput
+            }
+        };
 
         /// <summary>
         /// Shader segment mapper

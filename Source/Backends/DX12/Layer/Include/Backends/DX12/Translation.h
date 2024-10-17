@@ -118,6 +118,91 @@ inline DXGI_FORMAT Translate(Backend::IL::Format format) {
     }
 }
 
+inline Backend::IL::Format Translate(DXGI_FORMAT format) {
+    switch (format) {
+        default:
+            return Backend::IL::Format::Unexposed;
+        case DXGI_FORMAT_R32G32B32A32_FLOAT:
+            return Backend::IL::Format::RGBA32Float;
+        case DXGI_FORMAT_R16G16B16A16_FLOAT:
+            return Backend::IL::Format::RGBA16Float;
+        case DXGI_FORMAT_R32_FLOAT:
+            return Backend::IL::Format::R32Float;
+        case DXGI_FORMAT_R8G8B8A8_UNORM:
+            return Backend::IL::Format::RGBA8;
+        case DXGI_FORMAT_R8G8B8A8_SNORM:
+            return Backend::IL::Format::RGBA8Snorm;
+        case DXGI_FORMAT_R32G32_FLOAT:
+            return Backend::IL::Format::RG32Float;
+        case DXGI_FORMAT_R16G16_FLOAT:
+            return Backend::IL::Format::RG16Float;
+        case DXGI_FORMAT_R11G11B10_FLOAT:
+            return Backend::IL::Format::R11G11B10Float;
+        case DXGI_FORMAT_R16_FLOAT:
+            return Backend::IL::Format::R16Float;
+        case DXGI_FORMAT_R16G16B16A16_UNORM:
+            return Backend::IL::Format::RGBA16;
+        case DXGI_FORMAT_R10G10B10A2_UNORM:
+            return Backend::IL::Format::RGB10A2;
+        case DXGI_FORMAT_R16G16_UNORM:
+            return Backend::IL::Format::RG16;
+        case DXGI_FORMAT_R8G8_UNORM:
+            return Backend::IL::Format::RG8;
+        case DXGI_FORMAT_R16_UNORM:
+            return Backend::IL::Format::R16;
+        case DXGI_FORMAT_R8_UNORM:
+            return Backend::IL::Format::R8;
+        case DXGI_FORMAT_R16G16B16A16_SNORM:
+            return Backend::IL::Format::RGBA16Snorm;
+        case DXGI_FORMAT_R16G16_SNORM:
+            return Backend::IL::Format::RG16Snorm;
+        case DXGI_FORMAT_R8G8_SNORM:
+            return Backend::IL::Format::RG8Snorm;
+        case DXGI_FORMAT_R16_SNORM:
+            return Backend::IL::Format::R16Snorm;
+        case DXGI_FORMAT_R8_SNORM:
+            return Backend::IL::Format::R8Snorm;
+        case DXGI_FORMAT_R32G32B32A32_SINT:
+            return Backend::IL::Format::RGBA32Int;
+        case DXGI_FORMAT_R16G16B16A16_SINT:
+            return Backend::IL::Format::RGBA16Int;
+        case DXGI_FORMAT_R8G8B8A8_SINT:
+            return Backend::IL::Format::RGBA8Int;
+        case DXGI_FORMAT_R32_SINT:
+            return Backend::IL::Format::R32Int;
+        case DXGI_FORMAT_R32G32_SINT:
+            return Backend::IL::Format::RG32Int;
+        case DXGI_FORMAT_R16G16_SINT:
+            return Backend::IL::Format::RG16Int;
+        case DXGI_FORMAT_R8G8_SINT:
+            return Backend::IL::Format::RG8Int;
+        case DXGI_FORMAT_R16_SINT:
+            return Backend::IL::Format::R16Int;
+        case DXGI_FORMAT_R8_SINT:
+            return Backend::IL::Format::R8Int;
+        case DXGI_FORMAT_R32G32B32A32_UINT:
+            return Backend::IL::Format::RGBA32UInt;
+        case DXGI_FORMAT_R16G16B16A16_UINT:
+            return Backend::IL::Format::RGBA16UInt;
+        case DXGI_FORMAT_R8G8B8A8_UINT:
+            return Backend::IL::Format::RGBA8UInt;
+        case DXGI_FORMAT_R32_UINT:
+            return Backend::IL::Format::R32UInt;
+        case DXGI_FORMAT_R10G10B10A2_UINT:
+            return Backend::IL::Format::RGB10a2UInt;
+        case DXGI_FORMAT_R32G32_UINT:
+            return Backend::IL::Format::RG32UInt;
+        case DXGI_FORMAT_R16G16_UINT:
+            return Backend::IL::Format::RG16UInt;
+        case DXGI_FORMAT_R8G8_UINT:
+            return Backend::IL::Format::RG8UInt;
+        case DXGI_FORMAT_R16_UINT:
+            return Backend::IL::Format::R16UInt;
+        case DXGI_FORMAT_R8_UINT:
+            return Backend::IL::Format::R8UInt;
+    }
+}
+
 inline const char *GetFormatString(DXGI_FORMAT format) {
     switch (format) {
         default:
@@ -610,4 +695,8 @@ inline uint32_t GetFormatBitSize(DXGI_FORMAT format) {
         default:
             return 0;
     }
+}
+
+inline uint32_t GetFormatByteSize(DXGI_FORMAT format) {
+    return std::max(1u, GetFormatBitSize(format) / 8u);
 }

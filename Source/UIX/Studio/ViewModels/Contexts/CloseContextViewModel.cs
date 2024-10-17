@@ -24,81 +24,74 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using System.Reactive;
-using System.Windows.Input;
-using Message.CLR;
+using System.Collections.Generic;
+using System.Linq;
 using ReactiveUI;
+using Studio.Extensions;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class CloseContextViewModel : ReactiveObject, IContextMenuItemViewModel
+    public class CloseContextViewModel : ReactiveObject, IContextViewModel
     {
         /// <summary>
-        /// Target view model of the context
+        /// Install a context against a target view model
         /// </summary>
-        public object? TargetViewModel
+        /// <param name="itemViewModels">destination items list</param>
+        /// <param name="targetViewModels">the targets to install for</param>
+        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object[] targetViewModels)
         {
-            get => _targetViewModel;
-            set
+            if (targetViewModels.PromoteOrNull<IClosableObject>() is not {} closable)
             {
-                this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsVisible = _targetViewModel is IClosableObject;
+                return;
             }
-        }
-
-        /// <summary>
-        /// Display header of this context model
-        /// </summary>
-        public string Header { get; set; } = "Close";
-        
-        /// <summary>
-        /// All items within this context model
-        /// </summary>
-        public ObservableCollection<IContextMenuItemViewModel> Items { get; } = new();
-
-        /// <summary>
-        /// Target command
-        /// </summary>
-        public ICommand? Command { get; } = null;
-
-        public CloseContextViewModel()
-        {
-            Command = ReactiveCommand.Create(OnInvoked);
+            
+            itemViewModels.Add(new ContextMenuItemViewModel()
+            {
+                Header = "Close",
+                Command = ReactiveCommand.Create(() => OnInvoked(closable))
+            });
         }
 
         /// <summary>
         /// Command implementation
         /// </summary>
-        private void OnInvoked()
+        private void OnInvoked(IClosableObject[] closables)
         {
-            if (_targetViewModel is not IClosableObject closable)
+            HashSet<IClosableObject> set = closables.ToHashSet();
+
+            // Closable objects need a bit of care, basically, we need to make sure
+            // that we're not closing anything twice in any particular chain, which
+            // may happen if a parent is closed with a child.
+            foreach (IClosableObject closable in closables)
             {
-                return;
+                // If this is not a hierarchical object, just close it immediately
+                if (closable is not IPropertyViewModel property)
+                {
+                    closable.CloseCommand?.Execute(null);
+                    continue;
+                }
+
+                // Does this object have a to be closed parent?
+                bool hasParent = false;
+
+                // Traverse up the tree to see if there's a shared parent which is to be closed
+                foreach (IPropertyViewModel parent in property.GetParents())
+                {
+                    if (parent is IClosableObject closableParent && set.Contains(closableParent))
+                    {
+                        hasParent = true;
+                        break;
+                    }
+                }
+
+                // If not this is isolated, so just close it
+                if (!hasParent)
+                {
+                    closable.CloseCommand?.Execute(null);
+                }
             }
-            
-            closable.CloseCommand?.Execute(null);
         }
-
-        /// <summary>
-        /// Is this context enabled?
-        /// </summary>
-        public bool IsVisible
-        {
-            get => _isEnabled;
-            set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
-        }
-
-        /// <summary>
-        /// Internal enabled state
-        /// </summary>
-        private bool _isEnabled = false;
-
-        /// <summary>
-        /// Internal target view model
-        /// </summary>
-        private object? _targetViewModel;
     }
 }

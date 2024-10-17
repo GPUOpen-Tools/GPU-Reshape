@@ -37,32 +37,33 @@ void DXILUtilIntrinsics::Compile() {
     // Numeric
     i1Type = typeMap.FindTypeOrAdd(Backend::IL::BoolType{});
     i8Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
+    i16Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 16, .signedness = true});
     i32Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
     f32Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 32});
     f16Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 16});
 
     // Structured handle type
-    handleType = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType{
+    handleType = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType{
         .memberTypes {
             typeMap.FindTypeOrAdd(Backend::IL::PointerType{
                 .pointee = i8Type,
                 .addressSpace = Backend::IL::AddressSpace::Function
             })
         }
-    }), "dx.types.Handle");
+    }, "dx.types.Handle");
 
     // Structured size map
-    dimensionsType = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+    dimensionsType = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
         .memberTypes {
             i32Type,
             i32Type,
             i32Type,
             i32Type
         }
-    }), "dx.types.Dimensions");
+    }, "dx.types.Dimensions");
 
     // Resource return I32
-    resRetI32 = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+    resRetI32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
         .memberTypes {
             i32Type,
             i32Type,
@@ -70,10 +71,21 @@ void DXILUtilIntrinsics::Compile() {
             i32Type,
             i32Type
         }
-    }), "dx.types.ResRet.i32");
+    }, "dx.types.ResRet.i32");
+
+    // Resource return I16
+    resRetI16 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+        .memberTypes {
+            i16Type,
+            i16Type,
+            i16Type,
+            i16Type,
+            i32Type
+        }
+    }, "dx.types.ResRet.i16");
 
     // Resource return F32
-    resRetF32 = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+    resRetF32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
         .memberTypes {
             f32Type,
             f32Type,
@@ -81,45 +93,56 @@ void DXILUtilIntrinsics::Compile() {
             f32Type,
             i32Type
         }
-    }), "dx.types.ResRet.f32");
+    }, "dx.types.ResRet.f32");
+
+    // Resource return F16
+    resRetF16 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
+        .memberTypes {
+            f16Type,
+            f16Type,
+            f16Type,
+            f16Type,
+            i32Type
+        }
+    }, "dx.types.ResRet.f16");
 
     // Resource return I32
-    cbufRetI32 = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+    cbufRetI32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
         .memberTypes {
             i32Type,
             i32Type,
             i32Type,
             i32Type
         }
-    }), "dx.types.CBufRet.i32");
+    }, "dx.types.CBufRet.i32");
 
     // Resource return F32
-    cbufRetF32 = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+    cbufRetF32 = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
         .memberTypes {
             f32Type,
             f32Type,
             f32Type,
             f32Type
         }
-    }), "dx.types.CBufRet.f32");
+    }, "dx.types.CBufRet.f32");
 
     // Resource return F32
-    resBind = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+    resBind = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
         .memberTypes {
             i32Type,
             i32Type,
             i32Type,
             i8Type
         }
-    }), "dx.types.ResBind");
+    }, "dx.types.ResBind");
 
     // Resource return F32
-    resourceProperties = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+    resourceProperties = table.type.typeMap.CompileOrFindNamedType(Backend::IL::StructType {
         .memberTypes {
             i32Type,
             i32Type
         }
-    }), "dx.types.ResourceProperties");
+    }, "dx.types.ResourceProperties");
 }
 
 const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrinsicSpec &spec) {
@@ -246,8 +269,12 @@ const Backend::IL::Type *DXILUtilIntrinsics::GetType(const DXILIntrinsicTypeSpec
             return dimensionsType;
         case DXILIntrinsicTypeSpec::ResRetI32:
             return resRetI32;
+        case DXILIntrinsicTypeSpec::ResRetI16:
+            return resRetI16;
         case DXILIntrinsicTypeSpec::ResRetF32:
             return resRetF32;
+        case DXILIntrinsicTypeSpec::ResRetF16:
+            return resRetF16;
         case DXILIntrinsicTypeSpec::CBufRetI32:
             return cbufRetI32;
         case DXILIntrinsicTypeSpec::CBufRetF32:

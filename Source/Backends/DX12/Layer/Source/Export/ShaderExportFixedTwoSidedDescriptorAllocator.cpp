@@ -27,6 +27,9 @@
 #include <Backends/DX12/Export/ShaderExportFixedTwoSidedDescriptorAllocator.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 
+// Backend
+#include <Backend/Diagnostic/DiagnosticFatal.h>
+
 // Std
 #include <algorithm>
 
@@ -107,7 +110,13 @@ ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::
 
     // Out of descriptors?
     if (lhsBucket.slotAllocationCounter + rhsBucket.slotAllocationCounter + width > bound) {
-        ASSERT(false, "Out of descriptors in fixed allocator");
+        // Display friendly message
+        Backend::DiagnosticFatal(
+            "Two-Sided Descriptor Exhaustion",
+            "GPU Reshape has run out internal descriptors for command list patching. Please report this issue."
+        );
+
+        // Unreachable
         return {};
     }
 

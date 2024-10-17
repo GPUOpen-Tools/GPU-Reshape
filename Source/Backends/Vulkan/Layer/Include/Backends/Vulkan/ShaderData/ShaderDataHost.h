@@ -72,14 +72,22 @@ public:
     /// \return buffer object
     VkBuffer GetResourceBuffer(ShaderDataID rid);
 
+    /// Get the allocation of a resource
+    /// \param rid resource identifier
+    /// \return given allocation
+    VmaAllocation GetMappingAllocation(ShaderDataMappingID rid);
+    
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;
     ShaderDataID CreateDescriptorData(const ShaderDataDescriptorInfo &info) override;
     void *Map(ShaderDataID rid) override;
+    ShaderDataMappingID CreateMapping(ShaderDataID data, uint64_t tileCount) override;
+    void DestroyMapping(ShaderDataMappingID mid) override;
     void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
     void Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
+    ShaderDataCapabilityTable GetCapabilityTable() override;
 
 private:
     struct ResourceEntry {
@@ -90,8 +98,16 @@ private:
         VkBuffer buffer{VK_NULL_HANDLE};
         VkBufferView view{VK_NULL_HANDLE};
 
+        /// Memory requirements
+        VkMemoryRequirements memoryRequirements;
+
         /// Top information
         ShaderDataInfo info;
+    };
+
+    struct MappingEntry {
+        /// Underlying allocation
+        VmaAllocation allocation;
     };
 
 private:
@@ -102,9 +118,13 @@ private:
     /// Parent device
     DeviceDispatchTable* table;
 
+    /// All capabilities
+    ShaderDataCapabilityTable capabilityTable;
+
     /// Shared lock
     std::mutex mutex;
 
+private:
     /// Free indices to be used immediately
     std::vector<ShaderDataID> freeIndices;
 
@@ -113,4 +133,11 @@ private:
 
     /// Linear resources
     std::vector<ResourceEntry> resources;
+
+private:
+    /// All free mapping indices
+    std::vector<ShaderDataMappingID> freeMappingIndices;
+
+    /// All mappings, sparsely laid out
+    std::vector<MappingEntry> mappings;
 };

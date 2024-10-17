@@ -48,8 +48,10 @@ struct SpvUtilShaderConstantData {
 
     /// Export a given value
     /// \param stream the current spirv stream
-    /// \param value the resource id
-    IL::ID GetConstantData(SpvStream& stream, uint32_t index);
+    /// \param type expected type
+    /// \param dwordOffset offset into dword array
+    /// \param dwordCount number of dwords for this constant value
+    IL::ID GetConstantData(SpvStream& stream, const Backend::IL::Type* type, uint32_t dwordOffset, uint32_t dwordCount);
 
     /// Copy to a new block
     /// \param remote the new block table

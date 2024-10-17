@@ -59,11 +59,11 @@
                 VerticalAlignment="Center" 
                 Height="30" 
                 Margin="8,0,0,0"
-                Items="{Binding Menu}">
+                ItemsSource="{Binding Menu}">
                 <Menu.Styles>
                     <Style Selector="MenuItem">
                         <Setter Property="Header" Value="{Binding (m:IMenuItemViewModel).Header}"/>
-                        <Setter Property="Items" Value="{Binding (m:IMenuItemViewModel).Items}"/>
+                        <Setter Property="ItemsSource" Value="{Binding (m:IMenuItemViewModel).Items}"/>
                         <Setter Property="Command" Value="{Binding (m:IMenuItemViewModel).Command}"/>
                         <Setter Property="IsEnabled" Value="{Binding Path=(m:IMenuItemViewModel).IsEnabled}"/>
                         <Setter Property="Icon">
@@ -114,7 +114,7 @@
             <ItemsControl
                 VerticalAlignment="Stretch"
                 HorizontalAlignment="Left"
-                Items="{Binding StatusLeft}">
+                ItemsSource="{Binding StatusLeft}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="status:IStatusViewModel">
                         <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
@@ -130,7 +130,7 @@
             <ItemsControl
                 VerticalAlignment="Stretch"
                 HorizontalAlignment="Right"
-                Items="{Binding StatusRight}">
+                ItemsSource="{Binding StatusRight}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="status:IStatusViewModel">
                         <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />

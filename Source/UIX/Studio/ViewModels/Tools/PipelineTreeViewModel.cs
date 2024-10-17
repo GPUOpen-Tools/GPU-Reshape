@@ -104,7 +104,7 @@ namespace Studio.ViewModels.Tools
                 .Subscribe();
             
             // Bind selected workspace
-            App.Locator.GetService<IWorkspaceService>()?
+            ServiceRegistry.Get<IWorkspaceService>()?
                 .WhenAnyValue(x => x.SelectedWorkspace)
                 .Subscribe(x => WorkspaceViewModel = x);
         }

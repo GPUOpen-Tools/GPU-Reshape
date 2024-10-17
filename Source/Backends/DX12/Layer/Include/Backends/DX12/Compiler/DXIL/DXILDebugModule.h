@@ -36,8 +36,11 @@
 // Std
 #include <string>
 
+// Forward declarations
+struct DXBCPhysicalBlockShaderSourceInfo;
+
 struct DXILDebugModule final : public IDXDebugModule {
-    DXILDebugModule(const Allocators &allocators);
+    DXILDebugModule(const Allocators &allocators, const DXBCPhysicalBlockShaderSourceInfo& shaderSourceInfo);
 
     /// Parse the DXIL bytecode
     /// \param byteCode code start
@@ -94,6 +97,10 @@ private:
     uint32_t GetLinearFileUID(uint32_t scopeMdId);
 
 private:
+    /// Create source fragments from the optional source block
+    void CreateFragmentsFromSourceBlock();
+
+private:
     /// Scanner
     DXILPhysicalBlockScan scan;
 
@@ -135,7 +142,11 @@ private:
 
     /// Find or create a source fragment
     /// \param view filename view
-    SourceFragment* FindOrCreateSourceFragment(const LLVMRecordStringView& view);
+    SourceFragment* FindOrCreateSourceFragmentSanitized(const LLVMRecordStringView& view);
+
+    /// Find or create a source fragment
+    /// \param view filename view
+    SourceFragment* FindOrCreateSourceFragmentSanitized(const std::string_view& view);
 
     /// Find or create a source fragment
     /// \param view filename view
@@ -206,8 +217,17 @@ private:
         };
     };
 
+    /// Value validation kind
+    enum class ThinValueKind {
+        None,
+        Function
+    };
+
     /// Lightweight value definition
     struct ThinValue {
+        /// Kind of this value
+        ThinValueKind kind{ThinValueKind::None};
+        
         /// Optional type
         uint32_t thinType{~0u};
 
@@ -223,4 +243,7 @@ private:
 
 private:
     Allocators allocators;
+
+    /// Optional, source info block
+    const DXBCPhysicalBlockShaderSourceInfo& shaderSourceInfo;
 };

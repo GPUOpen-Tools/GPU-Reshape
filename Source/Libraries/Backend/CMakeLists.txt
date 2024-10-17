@@ -46,8 +46,10 @@ add_library(
     Source/StartupEnvironment.cpp
     Source/ShaderSGUIDHostListener.cpp
     Source/IL/PrettyPrint.cpp
+    Source/IL/PrettyGraph.cpp
     Source/IL/Function.cpp
     Source/IL/BasicBlock.cpp
+    Source/Diagnostic/DiagnosticFatal.cpp
 
     # Generated schemas
     ${GeneratedLibSchemaCPP}
@@ -119,5 +121,6 @@ target_link_libraries(GRS.Libraries.Backend.Tests PUBLIC GRS.Libraries.Backend)
 #---- .Net Bindings ----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(GRS.Libraries.Backend.Schema.DotNet GeneratedLibSchemaCS)
+    Project_AddDotNetGeneratedMerge(GRS.Libraries.Backend.DotNet.GenMerge GeneratedLibSchemaCS)
+    add_subdirectory(DotNet)
 endif()

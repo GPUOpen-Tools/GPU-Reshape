@@ -41,8 +41,8 @@
         xmlns:sm="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
         xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
         mc:Ignorable="d"
-        d:DesignWidth="500" d:DesignHeight="300"
-        Width="600" Height="400"
+        d:DesignWidth="750" d:DesignHeight="450"
+        Width="800" Height="465"
         UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
         WindowState="Normal" WindowStartupLocation="CenterScreen"
         TransparencyLevelHint="None"
@@ -51,8 +51,9 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Icon="/Resources/Icons/Icon_Frame.ico"
         Title="Settings"
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome">
+        SystemDecorations="BorderOnly">
     <Window.DataContext>
         <vm:SettingsViewModel />
     </Window.DataContext>
@@ -62,13 +63,13 @@
         <controls:WindowChrome Title="Settings" Separator="True"/>
 
         <!-- Categories -->
-        <Grid Margin="0,35,5,0" Width="200" HorizontalAlignment="Left" VerticalAlignment="Stretch">
+        <Grid Margin="0,36,5,0" Width="200" HorizontalAlignment="Left" VerticalAlignment="Stretch">
             <TreeView 
                 x:Name="SettingTree" 
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 SelectedItem="{Binding SelectedSettingItem}"
-                Items="{Binding TreeItemViewModel.Items}">
+                ItemsSource="{Binding TreeItemViewModel.Items}">
                 <TreeView.Styles>
                     <Style Selector="TreeViewItem">
                         <Setter Property="IsExpanded" Value="{Binding Path=(setting:SettingTreeItemViewModel).IsExpanded}"/>
@@ -83,7 +84,7 @@
         </Grid>
 
         <!-- View -->
-        <Grid Margin="210,45,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Grid Margin="210,46,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <controls:LocatorViewHost 
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 

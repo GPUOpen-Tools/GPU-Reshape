@@ -32,6 +32,7 @@
 
 // Backend
 #include <Backend/IL/TypeSize.h>
+#include <Backend/IL/Metadata/KernelMetadata.h>
 
 // Common
 #include <Common/Sink.h>
@@ -64,6 +65,7 @@ void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.shadingModel = shadingModel;
     out.validationVersion = validationVersion;
     out.handles = handles;
+    out.entryPointId = entryPointId;
 }
 
 void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
@@ -127,6 +129,9 @@ void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
             }
         }
     }
+
+    // Create all resource bindings
+    CreateSymbolicBindings();
 }
 
 void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, const struct LLVMBlock *block, const LLVMRecord &record, const LLVMRecordStringView &name, uint32_t index) {
@@ -178,6 +183,10 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
             entryPoint.uid = block->uid;
             entryPoint.program = record.Op32(0);
 
+            // Assign new id
+            entryPointId = program.GetIdentifierMap().AllocID();
+            program.SetEntryPoint(entryPointId);
+
             // Extended metadata kv pairs?
             if (list.Op(4)) {
                 const LLVMRecord &kvRecord = block->records[list.ops[4] - 1];
@@ -191,6 +200,18 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
                         case DXILProgramTag::ShaderFlags: {
                             // Get current flags
                             programMetadata.shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op32(kv + 1)));
+                            break;
+                        }
+                        case DXILProgramTag::NumThreads: {
+                            // Get the threads node
+                            const LLVMRecord &threadsNode = block->records[kvRecord.Op32(kv + 1) - 1];
+
+                            // Add metadata
+                            program.GetMetadataMap().AddMetadata(entryPointId, IL::KernelWorkgroupSizeMetadata {
+                                .threadsX = GetOperandU32Constant(metadataBlock, threadsNode.Op32(0)),
+                                .threadsY = GetOperandU32Constant(metadataBlock, threadsNode.Op32(1)),
+                                .threadsZ = GetOperandU32Constant(metadataBlock, threadsNode.Op32(2)),
+                            });
                             break;
                         }
                     }
@@ -355,7 +376,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                     // Parse tags
                     for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
-                        switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, resource.Op32(kv + 0)))) {
+                        switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, extendedRecord.Op32(kv + 0)))) {
                             case DXILSRVTag::ElementType: {
                                 // Get type
                                 auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op32(kv + 1));
@@ -381,6 +402,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                     buffer.samplerMode = Backend::IL::ResourceSamplerMode::RuntimeOnly;
                     buffer.elementType = containedType;
                     buffer.texelType = format;
+                    buffer.byteAddressing = shape == DXILShaderResourceShape::RawBuffer;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
                     Backend::IL::TextureType texture{};
@@ -454,11 +476,15 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                     // Get extended record
                     const LLVMRecord &extendedRecord = block->records[extendedMetadata.source];
-                    ASSERT(extendedRecord.opCount == 2, "Expected 2 operands for extended metadata");
+                    ASSERT(extendedRecord.opCount % 2 == 0, "Expected an even number of operands for extended metadata");
 
                     // Parse tags
                     for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
-                        switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, resource.Op32(kv + 0)))) {
+                        switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, extendedRecord.Op32(kv + 0)))) {
+                            default: {
+                                // Ignored
+                                break;
+                            }
                             case DXILUAVTag::ElementType: {
                                 // Get type
                                 auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op32(kv + 1));
@@ -466,9 +492,6 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                                 // Get type and format
                                 elementType = GetComponentType(componentType);
                                 format = GetComponentFormat(componentType);
-                                break;
-                            }
-                            case DXILUAVTag::ByteStride: {
                                 break;
                             }
                         }
@@ -484,6 +507,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                     buffer.samplerMode = Backend::IL::ResourceSamplerMode::Writable;
                     buffer.elementType = containedType;
                     buffer.texelType = format;
+                    buffer.byteAddressing = shape == DXILShaderResourceShape::RawBuffer;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
                     Backend::IL::TextureType texture{};
@@ -596,6 +620,22 @@ const Backend::IL::Type *DXILPhysicalBlockMetadata::GetHandleType(DXILShaderReso
     }
 
     return handle->type;
+}
+
+IL::ID DXILPhysicalBlockMetadata::GetTypeSymbolicBindingGroup(const Backend::IL::Type *type) {
+    switch (type->kind) {
+        default:
+            ASSERT(false, "Invalid handle type");
+        return IL::InvalidID;
+        case Backend::IL::TypeKind::Texture:
+            return symbolicTextureBindings;
+        case Backend::IL::TypeKind::Sampler:
+            return symbolicSamplerBindings;
+        case Backend::IL::TypeKind::Buffer:
+            return symbolicBufferBindings;
+        case Backend::IL::TypeKind::CBuffer:
+            return symbolicCBufferBindings;
+    }
 }
 
 const DXILMetadataHandleEntry* DXILPhysicalBlockMetadata::GetHandle(DXILShaderResourceClass _class, uint32_t handleID) {
@@ -1274,7 +1314,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
             // [i32 x 4]
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType {
                 .elementType = i32x4,
-                .count = MaxRootSignatureDWord / 4u
+                .count = (job.instrumentationKey.physicalMapping->rootDWordCount + 3) / 4u
             })
         }
     });
@@ -1716,7 +1756,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXCompileJob &job)
         resource.ops[4] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerBase);
         resource.ops[5] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerRange);
         resource.ops[6] = FindOrAddOperandU32Constant(*metadataBlock, block, static_cast<uint32_t>(handle.uav.shape));
-        resource.ops[7] = FindOrAddOperandBoolConstant(*metadataBlock, block, false);
+        resource.ops[7] = FindOrAddOperandBoolConstant(*metadataBlock, block, true);
         resource.ops[8] = FindOrAddOperandBoolConstant(*metadataBlock, block, false);
         resource.ops[9] = FindOrAddOperandBoolConstant(*metadataBlock, block, false);
         resource.ops[10] = extendedMdIndex;
@@ -1780,6 +1820,55 @@ void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXCompileJob &job)
         // Insert handle
         classRecord->ops[i] = metadataBlock->metadata.size();
     }
+}
+
+void DXILPhysicalBlockMetadata::CreateSymbolicBindings() {
+    Backend::IL::TypeMap& typeMap = program.GetTypeMap();
+
+    // Allocate counters, no actual backing
+    symbolicTextureBindings = program.GetIdentifierMap().AllocID();
+    symbolicSamplerBindings = program.GetIdentifierMap().AllocID();
+    symbolicBufferBindings = program.GetIdentifierMap().AllocID();
+    symbolicCBufferBindings = program.GetIdentifierMap().AllocID();
+
+    // Binding groups are currently represented as incomplete resource types
+    // This will suffice for now, until a more complete representation is needed in the future
+
+    // General array of incomplete textures
+    typeMap.SetType(symbolicTextureBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(Backend::IL::TextureType { }),
+            .count = UINT32_MAX - 1
+        }),
+        .addressSpace = Backend::IL::AddressSpace::Resource
+    }));
+
+    // General array of incomplete samplers
+    typeMap.SetType(symbolicSamplerBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(Backend::IL::SamplerType { }),
+            .count = UINT32_MAX - 1
+        }),
+        .addressSpace = Backend::IL::AddressSpace::Resource
+    }));
+
+    // General array of incomplete buffers
+    typeMap.SetType(symbolicBufferBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(Backend::IL::BufferType { }),
+            .count = UINT32_MAX - 1
+        }),
+        .addressSpace = Backend::IL::AddressSpace::Resource
+    }));
+
+    // General array of incomplete cbuffers
+    typeMap.SetType(symbolicCBufferBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(Backend::IL::CBufferType { }),
+            .count = UINT32_MAX - 1
+        }),
+        .addressSpace = Backend::IL::AddressSpace::Constant
+    }));
 }
 
 DXILPhysicalBlockMetadata::MappedRegisterClass &DXILPhysicalBlockMetadata::FindOrAddRegisterClass(DXILShaderResourceClass _class) {
@@ -1854,6 +1943,17 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
 
                 // OK
                 programMetadata.internalShaderFlags = {};
+                break;
+            }
+            case DXILProgramTag::NumThreads: {
+                // Get the threads node
+                LLVMRecordView threadsNode(mdBlock, kvRecord->Op32(kv + 1) - 1);
+
+                // Overwrite the thread counts
+                auto workgroupSize = program.GetMetadataMap().GetMetadata<IL::KernelWorkgroupSizeMetadata>(entryPointId);
+                threadsNode->Op(0) = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, workgroupSize->threadsX);
+                threadsNode->Op(1) = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, workgroupSize->threadsY);
+                threadsNode->Op(2) = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, workgroupSize->threadsZ);
                 break;
             }
         }

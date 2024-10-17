@@ -67,6 +67,10 @@ namespace Backend::IL {
         return addr->As<PointerType>()->pointee;
     }
 
+    inline const Type* ResultOf(Program& program, const RemInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->lhs);
+    }
+
     inline const Type* ResultOf(Program& program, const AddInstruction* instr) {
         return program.GetTypeMap().GetType(instr->lhs);
     }
@@ -105,6 +109,10 @@ namespace Backend::IL {
 
     inline const Type* ResultOf(Program& program, const PhiInstruction* instr) {
         return program.GetTypeMap().GetType(instr->values[0].value);
+    }
+
+    inline const Type* ResultOf(Program& program, const NotInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
     }
 
     inline const Type* ResultOf(Program& program, const AndInstruction* instr) {
@@ -147,8 +155,114 @@ namespace Backend::IL {
         return program.GetTypeMap().GetType(instr->value);
     }
 
+    inline const Type* ResultOf(Program& program, const WaveAnyTrueInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveAllTrueInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveBallotInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveReadInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveReadFirstInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveAllEqualInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveBitAndInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveBitOrInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveBitXOrInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveCountBitsInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveMaxInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveMinInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveProductInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WaveSumInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WavePrefixCountBitsInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WavePrefixProductInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const WavePrefixSumInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
     inline const Type* ResultOf(Program& program, const IsNaNInstruction* instr) {
         return SplatToValue(program, program.GetTypeMap().FindTypeOrAdd(BoolType{}), instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const KernelValueInstruction* instr) {
+        switch (instr->value) {
+            default: {
+                ASSERT(false, "Invalid value");
+                return nullptr;
+            }
+            case KernelValue::DispatchThreadID: {
+                return program.GetTypeMap().FindTypeOrAdd(VectorType{
+                    .containedType = program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false }),
+                    .dimension = 3
+                });
+            }
+            case KernelValue::FlattenedLocalThreadID: {
+                return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
+            }
+        }
+    }
+
+    inline const Type* ResultOf(Program& program, const ExtendedInstruction* instr) {
+        switch (instr->extendedOp) {
+            default:
+                ASSERT(false, "Invalid extended op");
+                return nullptr;
+            case ExtendedOp::Min:
+            case ExtendedOp::Max:
+            case ExtendedOp::Abs:
+            case ExtendedOp::Floor:
+            case ExtendedOp::Ceil:
+            case ExtendedOp::Round:
+            case ExtendedOp::Pow:
+            case ExtendedOp::Exp:
+            case ExtendedOp::Sqrt:
+            case ExtendedOp::FirstBitLow:
+            case ExtendedOp::FirstBitHigh:
+                return program.GetTypeMap().GetType(instr->operands[0]);
+        }
     }
 
     inline const Type* ResultOf(Program& program, const IsInfInstruction* instr) {
@@ -273,7 +387,7 @@ namespace Backend::IL {
     }
 
     inline const Type* ResultOf(Program& program, const ResourceTokenInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(IntType{ .bitWidth=32, .signedness=false });
+        return program.GetTypeMap().GetResourceToken();
     }
 
     inline const Type* ResultOf(Program& program, const ResourceSizeInstruction* instr) {
@@ -289,7 +403,7 @@ namespace Backend::IL {
                 return nullptr;
             }
             case TypeKind::Texture: {
-                auto dimension = static_cast<uint8_t>(GetDimensionSize(resource->As<TextureType>()->dimension));
+                auto dimension = static_cast<uint8_t>(GetDimensionSize(resource->As<TextureType>()->dimension, true));
                 if (dimension == 1) {
                     return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
                 }
@@ -381,26 +495,40 @@ namespace Backend::IL {
             return nullptr;
         }
 
-        switch (type->kind) {
-            default:
-            ASSERT(false, "Unexpected GEP chain type");
-                return nullptr;
-            case Backend::IL::TypeKind::None:
-                return nullptr;
-            case Backend::IL::TypeKind::Buffer:
-                return type->As<Backend::IL::BufferType>()->elementType;
-            case Backend::IL::TypeKind::Texture:
-                return type->As<Backend::IL::TextureType>()->sampledType;
-            case Backend::IL::TypeKind::Vector:
-                return type->As<Backend::IL::VectorType>()->containedType;
-            case Backend::IL::TypeKind::Matrix:
-                return type->As<Backend::IL::MatrixType>()->containedType;
-            case Backend::IL::TypeKind::Pointer:
-                return type->As<Backend::IL::PointerType>()->pointee;
-            case Backend::IL::TypeKind::Array:
-                return type->As<Backend::IL::ArrayType>()->elementType;
-            case Backend::IL::TypeKind::Struct:
-                return type->As<Backend::IL::StructType>()->memberTypes[instr->index];
+        // Walk the chain
+        for (uint32_t i = 0; i < instr->chains.count; i++) {
+            switch (type->kind) {
+                default:
+                    ASSERT(false, "Unexpected GEP chain type");
+                    return nullptr;
+                case Backend::IL::TypeKind::None:
+                    return nullptr;
+                case Backend::IL::TypeKind::Buffer:
+                    type = type->As<Backend::IL::BufferType>()->elementType;
+                    break;
+                case Backend::IL::TypeKind::Texture:
+                    type = type->As<Backend::IL::TextureType>()->sampledType;
+                    break;
+                case Backend::IL::TypeKind::Vector:
+                    type = type->As<Backend::IL::VectorType>()->containedType;
+                    break;
+                case Backend::IL::TypeKind::Matrix:
+                    type = type->As<Backend::IL::MatrixType>()->containedType;
+                    break;
+                case Backend::IL::TypeKind::Pointer:
+                    type = type->As<Backend::IL::PointerType>()->pointee;
+                    break;
+                case Backend::IL::TypeKind::Array:
+                    type = type->As<Backend::IL::ArrayType>()->elementType;
+                    break;
+                case Backend::IL::TypeKind::Struct: {
+                    const Constant* index = program.GetConstants().GetConstant(instr->chains[i].index);
+                    ASSERT(index, "Dynamic structured extraction not supported");
+                    type = type->As<Backend::IL::StructType>()->memberTypes[index->As<IntConstant>()->value];
+                }
+            }
         }
+
+        return type;
     }
 }

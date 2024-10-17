@@ -69,7 +69,7 @@ namespace Studio.ViewModels.Workspace.Services
         {
             var segment = new ShaderSourceSegment
             {
-                Extract = message.contents.String,
+                Extract = message.contents.String.Trim(),
                 Location = new ShaderLocation
                 {
                     SGUID = message.shaderGUID,

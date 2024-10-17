@@ -36,9 +36,29 @@ namespace IL {
         /// Reinterpret this global
         /// \tparam T the target global
         template<typename T>
+        T* As() {
+            ASSERT(kind == T::kKind, "Invalid cast");
+            return static_cast<T*>(this);
+        }
+        
+        /// Reinterpret this global
+        /// \tparam T the target global
+        template<typename T>
         const T* As() const {
             ASSERT(kind == T::kKind, "Invalid cast");
             return static_cast<const T*>(this);
+        }
+
+        /// Cast this global
+        /// \tparam T the target global
+        /// \return nullptr is invalid cast
+        template<typename T>
+        T* Cast() {
+            if (kind != T::kKind) {
+                return nullptr;
+            }
+
+            return static_cast<T*>(this);
         }
 
         /// Cast this global
@@ -58,6 +78,12 @@ namespace IL {
         template<typename T>
         bool Is() const {
             return kind == T::kKind;
+        }
+
+        /// Check if this constant is symbolic
+        /// i.e. It is non-semantic
+        bool IsSymbolic() const {
+            return id == InvalidID;
         }
 
         const Backend::IL::Type* type{nullptr};
@@ -111,6 +137,30 @@ namespace IL {
         }
 
         double value{0};
+    };
+
+    struct ArrayConstant : public Constant {
+        using Type = Backend::IL::ArrayType;
+
+        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Array;
+
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type->SortKey(), elements);
+        }
+
+        std::vector<const Constant*> elements;
+    };
+
+    struct VectorConstant : public Constant {
+        using Type = Backend::IL::VectorType;
+
+        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Vector;
+
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type->SortKey(), elements);
+        }
+
+        std::vector<const Constant*> elements;
     };
 
     struct StructConstant : public Constant {

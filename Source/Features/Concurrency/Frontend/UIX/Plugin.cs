@@ -27,7 +27,6 @@
 using System;
 using Avalonia;
 using DynamicData;
-using GRS.Features.Concurrency.UIX.Contexts;
 using GRS.Features.Concurrency.UIX.Workspace;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
@@ -58,13 +57,8 @@ namespace GRS.Features.Concurrency.UIX
         /// <returns></returns>
         public bool Install()
         {
-            // Add to context menus
-            AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel
-                .GetItem<IInstrumentContextViewModel>()?
-                .Items.Add(new ConcurrencyContextMenuItemViewModel());
-            
             // Get workspace service
-            var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
+            var workspaceService = ServiceRegistry.Get<IWorkspaceService>();
             
             // Add workspace extension
             workspaceService?.Extensions.Add(this);
@@ -74,7 +68,8 @@ namespace GRS.Features.Concurrency.UIX
             {
                 Name = Resources.Workspace_Configuration_Concurrency_Name,
                 Description = Resources.Workspace_Configuration_Concurrency_Description,
-                Flags = WorkspaceConfigurationFlag.CanDetail,
+                Flags = WorkspaceConfigurationFlag.CanDetail | 
+                        WorkspaceConfigurationFlag.CanUseTexelAddressing,
                 FeatureName = "Concurrency"
             });
 
@@ -88,7 +83,7 @@ namespace GRS.Features.Concurrency.UIX
         public void Uninstall()
         {
             // Remove workspace extension
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Extensions.Remove(this);
+            ServiceRegistry.Get<IWorkspaceService>()?.Extensions.Remove(this);
         }
 
         /// <summary>

@@ -28,6 +28,10 @@
 
 
 <schema>
+    <message name="PauseInstrumentation">
+        <field name="paused" type="bool"/>
+    </message>
+
     <message name="SetVirtualFeatureRedirect">
         <field name="name" type="string"/>
         <field name="index" type="int32"/>
@@ -36,6 +40,12 @@
     <message name="SetInstrumentationConfig">
         <field name="safeGuard" type="bool"/>
         <field name="detail" type="bool"/>
+    </message>
+
+    <message name="InstrumentationVersion">
+        <field name="version" type="uint64">
+            Opaque instrumentation version that may be pushed to the controller, eventually pushed back
+        </field>
     </message>
     
     <message name="SetGlobalInstrumentation">

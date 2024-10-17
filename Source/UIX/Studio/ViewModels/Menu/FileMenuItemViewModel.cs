@@ -101,7 +101,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnSettings()
         {
-            App.Locator.GetService<IWindowService>()?.OpenFor(new SettingsViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenFor(new SettingsViewModel());
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnExit()
         {
-            App.Locator.GetService<IWindowService>()?.Exit();
+            ServiceRegistry.Get<IWindowService>()?.Exit();
         }
 
         /// <summary>

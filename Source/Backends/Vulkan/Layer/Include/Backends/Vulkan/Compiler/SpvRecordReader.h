@@ -94,8 +94,16 @@ struct SpvRecordReader {
         return offset < GetOperandCount();
     }
 
+    /// Peek the next word within the instruction bounds
+    /// \param peekOffset offset to apply, must be in bounds
+    /// \return the peeked word
+    uint32_t Peek(uint32_t peekOffset = 0) {
+        ASSERT(offset + peekOffset < GetOperandCount(), "Out of bounds operand");
+        return record.operands[offset + peekOffset];
+    }
+
     uint32_t operator++(int) {
-        ASSERT(offset < GetWordCount(), "Out of bounds operand");
+        ASSERT(offset < GetOperandCount(), "Out of bounds operand");
         return record.operands[offset++];
     }
 

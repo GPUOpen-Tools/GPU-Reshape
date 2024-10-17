@@ -35,4 +35,9 @@ enum class DXILIDUserType {
 
     /// Vector from sequential value indices (LLVMValueX, ... LLVMValueX+N)
     VectorOnSequential,
+
+    /// Struct from sequential value indices (LLVMValueX, ... LLVMValueX+N)
+    /// This is useful as DXIL does not allow for insertvalue constructs, and to avoid
+    /// needless memory / register operations
+    StructOnSequential,
 };

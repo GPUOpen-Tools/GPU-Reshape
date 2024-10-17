@@ -126,11 +126,16 @@ bool ShaderCompiler::InitializeModule(ShaderModuleState *state) {
 
 void ShaderCompiler::Worker(void *data) {
     auto *job = static_cast<ShaderJobEntry *>(data);
-    CompileShader(*job);
+    
+    // Try to compile, if failed remove the reservation
+    if (!CompileShader(*job)) {
+        job->info.state->RemoveInstrument(job->info.instrumentationKey);
+    }
+    
     destroy(job, allocators);
 }
 
-void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
+bool ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 #if SHADER_COMPILER_SERIAL
     static std::mutex mutex;
     std::lock_guard guard(mutex);
@@ -138,15 +143,15 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 
     // Single file compile debugging
 #if SHADER_COMPILER_DEBUG_FILE
-    constexpr const char* kPath = "C:\\AMD\\GPUOpen-Tools\\gpu-validation\\Bin\\Clang\\Debug\\Intermediate\\Debug\\Cauldron v1.4\\SampleVK v1.4.1\\Vulkan\\{0C9E10E4-945A-4C72-AC8E-E436B28EEB75}.source.spirv";
+    constexpr const char* kPath = "";
 
     // Stream in the debug binary
     std::ifstream stream(kPath, std::ios::in | std::ios::binary);
     std::vector<uint8_t> debugBinary((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
 
     // Hack the code
-    job.state->createInfoDeepCopy.createInfo.pCode = reinterpret_cast<const uint32_t*>(debugBinary.data());
-    job.state->createInfoDeepCopy.createInfo.codeSize = debugBinary.size();
+    job.info.state->createInfoDeepCopy.createInfo.pCode = reinterpret_cast<const uint32_t*>(debugBinary.data());
+    job.info.state->createInfoDeepCopy.createInfo.codeSize = debugBinary.size();
 #endif
 
     // Diagnostic scope
@@ -156,7 +161,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     if (!InitializeModule(job.info.state)) {
         scope.Add(DiagnosticType::ShaderParsingFailed);
         ++job.info.diagnostic->failedJobs;
-        return;
+        return false;
     }
 
     // Passed initial check?
@@ -178,12 +183,31 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     // Create a copy of the module, don't modify the source
     SpvModule *module = job.info.state->spirvModule->Copy();
 
+    // Spv job
+    SpvJob spvJob;
+    spvJob.instrumentationKey = job.info.instrumentationKey;
+    spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
+    spvJob.messages = scope;
+
+    // Specialize the module
+    module->Specialize(spvJob);
+
     // Get user map
     IL::ShaderDataMap& shaderDataMap = module->GetProgram()->GetShaderDataMap();
 
     // Add resources
     for (const ShaderDataInfo& info : shaderData) {
         shaderDataMap.Add(info);
+    }
+
+    // Pre-injection
+    for (size_t i = 0; i < shaderFeatures.size(); i++) {
+        if (!(job.info.instrumentationKey.featureBitSet & (1ull << i))) {
+            continue;
+        }
+
+        // Pre-inject marked shader feature
+        shaderFeatures[i]->PreInject(*module->GetProgram(), *job.info.dependentSpecialization);
     }
 
     // Pass through all features
@@ -196,12 +220,6 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
         shaderFeatures[i]->Inject(*module->GetProgram(), *job.info.dependentSpecialization);
     }
 
-    // Spv job
-    SpvJob spvJob;
-    spvJob.instrumentationKey = job.info.instrumentationKey;
-    spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
-    spvJob.messages = scope;
-
     // Recompile the program
     if (!module->Recompile(
         job.info.state->createInfoDeepCopy.createInfo.pCode,
@@ -210,7 +228,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     )) {
         scope.Add(DiagnosticType::ShaderInternalCompilerError);
         ++job.info.diagnostic->failedJobs;
-        return;
+        return false;
     }
 
     // Copy the deep creation info
@@ -241,7 +259,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     if (result != VK_SUCCESS) {
         scope.Add(DiagnosticType::ShaderCreationFailed);
         ++job.info.diagnostic->failedJobs;
-        return;
+        return false;
     }
 
     // Assign the instrument
@@ -252,4 +270,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 
     // Destroy the module
     destroy(module, allocators);
+
+    // OK
+    return true;
 }

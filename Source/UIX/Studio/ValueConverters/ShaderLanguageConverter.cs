@@ -52,7 +52,7 @@ namespace Studio.ValueConverters
             // Handle target
             if (targetType == typeof(IBrush))
             {
-                return ResourceLocator.GetResource<IBrush>("Language" + value);
+                return ResourceLocator.GetBrush("Language" + value);
             }
             else if (targetType == typeof(bool))
             {

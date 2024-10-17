@@ -1,0 +1,88 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2024 Advanced Micro Devices, Inc.,
+  Fatalist Development AB (Avalanche Studio Group),
+  and Miguel Petersen.
+  
+  All Rights Reserved.
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+
+<Styles
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:Studio.Views.Controls">
+    <Design.PreviewWith>
+        <local:InlineSectionView Width="250" Height="100" Title="Poof">
+            <StackPanel Orientation="Vertical">
+                <TextBlock Text="A!" />
+                <TextBlock Text="B!" />
+                <TextBlock Text="C!" />
+            </StackPanel>
+        </local:InlineSectionView>
+    </Design.PreviewWith>
+
+    <Style Selector="local|InlineSectionView">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="Margin" Value="0,0,0,2.5" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border>
+                    <Grid>
+                        <DockPanel LastChildFill="True">
+                            <Button 
+                                Classes="Icon"
+                                Height="25"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Left"
+                                Command="{TemplateBinding ExpandCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <PathIcon 
+                                        Data="{TemplateBinding ExpansionIcon}" 
+                                        Margin=" 0 -0.5 7 0"
+                                        Width="9" />
+                                    <TextBlock Text="{TemplateBinding Title}" FontSize="12" />
+                                    <Border Height="2" HorizontalAlignment="Stretch" Background="Black"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <Border 
+                                Height="1"
+                                Margin="5 12 0 0"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Stretch"
+                                Background="{TemplateBinding LineBorderBrush}"/>
+                        </DockPanel>
+
+                        <ContentPresenter
+                            Margin="0,30,0,0"
+                            IsVisible="{TemplateBinding IsExpanded}"
+                            Content="{TemplateBinding Content}" />
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

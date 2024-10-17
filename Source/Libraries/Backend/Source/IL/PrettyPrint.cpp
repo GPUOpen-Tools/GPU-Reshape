@@ -43,36 +43,56 @@ void IL::PrettyPrint(const Program &program, IL::PrettyPrintContext out) {
     PrettyPrint(program.GetConstants(), out);
     out.Line() << "\n";
 
+    // Print all variables
+    PrettyPrint(&program, program.GetVariableList(), out);
+    out.Line() << "\n";
+
     // Print all functions
     for (const IL::Function *fn: program.GetFunctionList()) {
         if (*program.GetFunctionList().begin() != fn) {
             out.Line() << "\n";
         }
         
-        PrettyPrint(*fn, out);
+        PrettyPrint(&program, *fn, out);
     }
 }
 
-void IL::PrettyPrint(const Function &function, IL::PrettyPrintContext out) {
+void IL::PrettyPrint(const Program* program, const VariableList& variables, IL::PrettyPrintContext out) {
+    out.stream << "Variables\n";
+    out.TabInline();
+
+    for (const Backend::IL::Variable* variable : variables) {
+        out.Line() << "%" << variable->id << " = global ";
+        PrettyPrint(variable->type, out);
+
+        if (variable->initializer) {
+            out.stream << " initializer:%" << variable->initializer->id;
+        }
+        
+        out.stream << "\n";
+    }
+}
+
+void IL::PrettyPrint(const Program *program, const Function &function, IL::PrettyPrintContext out) {
     out.Line() << "%" << function.GetID() << " = Function\n";
 
     // Print all basic blocks
     for (const IL::BasicBlock *bb: function.GetBasicBlocks()) {
-        PrettyPrint(*bb, out.Tab());
+        PrettyPrint(program, *bb, out.Tab());
     }
 }
 
-void IL::PrettyPrint(const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
+void IL::PrettyPrint(const Program *program, const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
     out.Line() << "%" << basicBlock.GetID() << " = BasicBlock\n";
 
     // Print all instructions
     for (const IL::Instruction *instr: basicBlock) {
-        PrettyPrint(instr, out.Tab());
+        PrettyPrint(program, instr, out.Tab());
     }
 }
 
 
-void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
+void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::PrettyPrintContext out) {
     std::ostream &line = out.Line();
 
     if (instr->result != IL::InvalidID) {
@@ -93,6 +113,10 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
                 line << "Unexposed '" << unexposed->symbol << "'";
             } else {
                 line << "Unexposed op:" << unexposed->backendOpCode;
+            }
+
+            for (uint32_t i = 0; i < unexposed->operandCount; i++) {
+                line << " %" << unexposed->operands[i];
             }
             break;
         }
@@ -211,9 +235,28 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:%" << store->value;
             break;
         }
+        case OpCode::StoreBufferRaw: {
+            auto store = instr->As<IL::StoreBufferRawInstruction>();
+            line << "StoreBufferRaw buffer:%" << store->buffer
+                 << " index:%" << store->index
+                 << " value:%" << store->value
+                 << " mask:" << store->mask.value
+                 << " align:" << store->alignment;
+            break;
+        }
         case OpCode::StoreOutput: {
             auto store = instr->As<IL::StoreOutputInstruction>();
             line << "StoreOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value;
+            break;
+        }
+        case OpCode::StoreVertexOutput: {
+            auto store = instr->As<IL::StoreVertexOutputInstruction>();
+            line << "StoreVertexOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value << " vertexIndex:%" << store->vertexIndex;
+            break;
+        }
+        case OpCode::StorePrimitiveOutput: {
+            auto store = instr->As<IL::StorePrimitiveOutputInstruction>();
+            line << "StorePrimitiveOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value << " primitiveIndex:%" << store->primitiveIndex;
             break;
         }
         case OpCode::IsInf: {
@@ -224,6 +267,19 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         case OpCode::IsNaN: {
             auto isNaN = instr->As<IL::IsNaNInstruction>();
             line << "IsNaN %" << isNaN->value;
+            break;
+        }
+        case OpCode::KernelValue: {
+            auto kernel = instr->As<IL::KernelValueInstruction>();
+            line << "KernelValue " << static_cast<uint32_t>(kernel->value);
+            break;
+        }
+        case OpCode::Extended: {
+            auto extended = instr->As<IL::ExtendedInstruction>();
+            line << "Extended ";
+            for (uint32_t i = 0; i < extended->operands.count; i++) {
+                line << " %" << extended->operands[i];
+            }
             break;
         }
         case OpCode::Sub: {
@@ -249,6 +305,11 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         case OpCode::And: {
             auto _and = instr->As<IL::AndInstruction>();
             line << "And %" << _and->lhs << " %" << _and->rhs;
+            break;
+        }
+        case OpCode::Not: {
+            auto _and = instr->As<IL::NotInstruction>();
+            line << "Not %" << _and->value;
             break;
         }
         case OpCode::Equal: {
@@ -290,9 +351,26 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             }
             break;
         }
+        case OpCode::Construct: {
+            auto extract = instr->As<IL::ConstructInstruction>();
+            line << "Construct ";
+            
+            for (uint32_t i = 0; i < extract->values.count; i++) {
+                if (i != 0) {
+                    line << ", ";
+                }
+                
+                line << "%" << extract->values[i];
+            }
+            break;
+        }
         case OpCode::Extract: {
             auto extract = instr->As<IL::ExtractInstruction>();
-            line << "Extract composite:%" << extract->composite << " index:%" << extract->index;
+            line << "Extract composite:%" << extract->composite;
+            
+            for (uint32_t i = 0; i < extract->chains.count; i++) {
+                line << "[ %" << extract->chains[i].index << " ]";
+            }
             break;
         }
         case OpCode::Insert: {
@@ -397,7 +475,11 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         }
         case OpCode::Alloca: {
             auto _alloca = instr->As<IL::AllocaInstruction>();
-            line << "Alloca %" << _alloca->type;
+            line << "Alloca ";
+
+            if (program) {
+                PrettyPrint(program->GetTypeMap().GetType(_alloca->result)->As<Backend::IL::PointerType>()->pointee, out);
+            }
             break;
         }
         case OpCode::StoreTexture: {
@@ -418,6 +500,17 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         case OpCode::LoadBuffer: {
             auto load = instr->As<IL::LoadBufferInstruction>();
             line << "LoadBuffer buffer:%" << load->buffer << " index:%" << load->index;
+
+            if (load->offset != InvalidID) {
+                line << " offset:%" << load->offset;
+            }
+            break;
+        }
+        case OpCode::LoadBufferRaw: {
+            auto load = instr->As<IL::LoadBufferRawInstruction>();
+            line << "LoadBufferRaw buffer:%" << load->buffer
+                 << " index:%" << load->index
+                 << " mask:" << load->mask.value << " align:" << load->alignment;;
 
             if (load->offset != InvalidID) {
                 line << " offset:%" << load->offset;
@@ -452,6 +545,22 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             } else {
                 line << "Return %" << ret->value;
             }
+            break;
+        }
+        case OpCode::Call: {
+            auto call = instr->As<IL::CallInstruction>();
+
+            line << "Call %" << call->target << " (";
+
+            for (uint32_t i = 0; i < call->arguments.count; i++) {
+                if (i != 0) {
+                    line << ", ";
+                }
+
+                line << "%" << call->arguments[i];
+            }
+            
+            line << ")";
             break;
         }
         case OpCode::BitXOr: {
@@ -514,10 +623,99 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "AtomicCompareExchange address:%" << atomic->address << " value:%" << atomic->value << " comparator:%" << atomic->comparator;
             break;
         }
+        case OpCode::WaveAnyTrue: {
+            auto atomic = instr->As<IL::WaveAnyTrueInstruction>();
+            line << "WaveAnyTrue value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveAllTrue: {
+            auto atomic = instr->As<IL::WaveAllTrueInstruction>();
+            line << "WaveAllTrue value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveBallot: {
+            auto atomic = instr->As<IL::WaveBallotInstruction>();
+            line << "WaveBallot value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveRead: {
+            auto atomic = instr->As<IL::WaveReadInstruction>();
+            line << "WaveRead value:%" << atomic->value << " lane:%" << atomic->lane;
+            break;
+        }
+        case OpCode::WaveReadFirst: {
+            auto atomic = instr->As<IL::WaveReadFirstInstruction>();
+            line << "WaveReadFirst value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveAllEqual: {
+            auto atomic = instr->As<IL::WaveAllEqualInstruction>();
+            line << "WaveAllEqual value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveBitAnd: {
+            auto atomic = instr->As<IL::WaveBitAndInstruction>();
+            line << "WaveBitAnd value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveBitOr: {
+            auto atomic = instr->As<IL::WaveBitOrInstruction>();
+            line << "WaveBitOr value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveBitXOr: {
+            auto atomic = instr->As<IL::WaveBitXOrInstruction>();
+            line << "WaveBitXOr value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveCountBits: {
+            auto atomic = instr->As<IL::WaveCountBitsInstruction>();
+            line << "WaveCountBits value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveMax: {
+            auto atomic = instr->As<IL::WaveMaxInstruction>();
+            line << "WaveMax value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveMin: {
+            auto atomic = instr->As<IL::WaveMinInstruction>();
+            line << "WaveMin value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveProduct: {
+            auto atomic = instr->As<IL::WaveProductInstruction>();
+            line << "WaveProduct value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveSum: {
+            auto atomic = instr->As<IL::WaveSumInstruction>();
+            line << "WaveSum value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WavePrefixCountBits: {
+            auto atomic = instr->As<IL::WavePrefixCountBitsInstruction>();
+            line << "WavePrefixCountBits value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WavePrefixProduct: {
+            auto atomic = instr->As<IL::WavePrefixProductInstruction>();
+            line << "WavePrefixProduct value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WavePrefixSum: {
+            auto atomic = instr->As<IL::WavePrefixSumInstruction>();
+            line << "WavePrefixSum value:%" << atomic->value;
+            break;
+        }
     }
 
-    if (instr->source.IsValid()) {
+    if (instr->source.HasAnyCodeOffset()) {
         line << " [" << instr->source.codeOffset << "]";
+    }
+
+    if (instr->source.symbolicInstruction) {
+        line << " [sym]";
     }
 
     line << "\n";
@@ -722,7 +920,16 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
         }
         case Backend::IL::TypeKind::Pointer: {
             auto ptr = type->As<Backend::IL::PointerType>();
-            line << "Pointer pointee:%" << ptr->pointee->id << " space:";
+            line << "Pointer pointee:"; 
+            
+            if (ptr->pointee) {
+                line << "%" << ptr->pointee->id;
+            } else {
+                line << "forward";
+            }
+
+            line << " space:";
+            
             switch (ptr->addressSpace) {
                 case Backend::IL::AddressSpace::Constant:
                     line << "Constant";
@@ -750,6 +957,9 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
                     break;
                 case Backend::IL::AddressSpace::Output:
                     line << "Output";
+                    break;
+                case Backend::IL::AddressSpace::Input:
+                    line << "Input";
                     break;
             }
             break;
@@ -890,51 +1100,108 @@ void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out
     for (Backend::IL::Constant *constant: map) {
         std::ostream &line = out.Line();
 
-        line << "%" << constant->id << " = type:%" << constant->type->id << " ";
-
-        switch (constant->kind) {
-            default: {
-                line << "Unexposed";
-                break;
-            }
-            case Backend::IL::ConstantKind::Bool: {
-                auto _bool = constant->As<Backend::IL::BoolConstant>();
-                line << "Bool ";
-                if (_bool->value) {
-                    line << "true";
-                } else {
-                    line << "false";
-                }
-                break;
-            }
-            case Backend::IL::ConstantKind::Int: {
-                auto _int = constant->As<Backend::IL::IntConstant>();
-
-                if (_int->type->As<Backend::IL::IntType>()->signedness) {
-                    line << "Int";
-                } else {
-                    line << "UInt";
-                }
-
-                line << " " << _int->value;
-                break;
-            }
-            case Backend::IL::ConstantKind::FP: {
-                auto fp = constant->As<Backend::IL::FPConstant>();
-                line << "FP";
-                line << " " << fp->value;
-                break;
-            }
-            case Backend::IL::ConstantKind::Undef: {
-                PrettyPrint(constant->type, out);
-                line << " Undef";
-                break;
-            }
+        if (!constant) {
+            line << "null\n";
+            continue;
         }
 
+        if (constant->IsSymbolic()) {
+            continue;
+        }
+
+        line << "%" << constant->id << " = type:%" << constant->type->id << " ";
+        PrettyPrint(constant, out);
         line << "\n";
     }
 }
+
+void IL::PrettyPrint(const IL::Constant* constant, PrettyPrintContext out) {
+    switch (constant->kind) {
+        default: {
+            out.stream << "Unexposed";
+            break;
+        }
+        case Backend::IL::ConstantKind::Bool: {
+            auto _bool = constant->As<Backend::IL::BoolConstant>();
+            out.stream << "Bool ";
+            if (_bool->value) {
+                out.stream << "true";
+            } else {
+                out.stream << "false";
+            }
+            break;
+        }
+        case Backend::IL::ConstantKind::Int: {
+            auto _int = constant->As<Backend::IL::IntConstant>();
+
+            if (_int->type->As<Backend::IL::IntType>()->signedness) {
+                out.stream << "Int";
+            } else {
+                out.stream << "UInt";
+            }
+
+            out.stream << " " << _int->value;
+            break;
+        }
+        case Backend::IL::ConstantKind::FP: {
+            auto fp = constant->As<Backend::IL::FPConstant>();
+            out.stream << "FP";
+            out.stream << " " << fp->value;
+            break;
+        }
+        case Backend::IL::ConstantKind::Array: {
+            auto array = constant->As<Backend::IL::ArrayConstant>();
+            out.stream << "Array [";
+
+            for (size_t i = 0; i < array->elements.size(); i++) {
+                if (i != 0) {
+                    out.stream << ", ";
+                }
+
+                out.stream << "%" << array->elements[i]->id;
+            }
+            
+            out.stream << "]";
+            break;
+        }
+        case Backend::IL::ConstantKind::Struct: {
+            auto _struct = constant->As<Backend::IL::StructConstant>();
+            out.stream << "Struct {";
+
+            for (size_t i = 0; i < _struct->members.size(); i++) {
+                if (i != 0) {
+                    out.stream << ", ";
+                }
+
+                out.stream << "%" << _struct->members[i]->id;
+            }
+            
+            out.stream << "}";
+            break;
+        }
+        case Backend::IL::ConstantKind::Vector: {
+            auto _struct = constant->As<Backend::IL::VectorConstant>();
+            out.stream << "Vector [";
+
+            for (size_t i = 0; i < _struct->elements.size(); i++) {
+                if (i != 0) {
+                    out.stream << ", ";
+                }
+
+                out.stream << "%" << _struct->elements[i]->id;
+            }
+            
+            out.stream << "]";
+            break;
+        }
+        case Backend::IL::ConstantKind::Undef: {
+            PrettyPrint(constant->type, out);
+            out.stream << " Undef";
+            break;
+        }
+    }
+}
+
 
 static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlocks, const IL::BasicBlock *block, IL::ID successor, IL::PrettyPrintContext &out) {
     IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
@@ -1272,7 +1539,15 @@ void PrettyPrintJson(const Backend::IL::Type *type, IL::PrettyPrintContext out) 
         case Backend::IL::TypeKind::Pointer: {
             auto ptr = type->As<Backend::IL::PointerType>();
             out.Line() << "\"AddressSpace\": " << static_cast<uint32_t>(ptr->addressSpace) << ",";
-            out.Line() << "\"Pointee\": " << ptr->pointee->id << ",";
+            out.Line() << "\"Pointee\": ";
+
+            if (ptr->pointee) {
+                out.stream << ptr->pointee->id;
+            } else {
+                out.stream << IL::InvalidID;
+            }
+            
+            out.stream << ",";
             break;
         }
         case Backend::IL::TypeKind::Array: {
@@ -1353,7 +1628,30 @@ void PrettyPrintJson(const Backend::IL::Type *type, IL::PrettyPrintContext out) 
     out.Line() << "\"Kind\": " << static_cast<uint32_t>(type->kind);
 }
 
-void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintContext out) {
+struct SymbolicContext {
+    /// Symbolic constants mappings
+    std::unordered_map<const IL::Constant*, int32_t> mappings;
+};
+
+/// Get or allocate a constant id
+static int32_t GetConstantId(const Backend::IL::Constant *constant, SymbolicContext& context) {
+    // Non-symbolic just use their id
+    if (!constant->IsSymbolic()) {
+        return constant->id;
+    }
+
+    // Already allocated?
+    auto it = context.mappings.find(constant);
+    if (it != context.mappings.end()) {
+        return it->second;
+    }
+
+    // Symbolics are represented with negative values
+    const int32_t id = - (1 + static_cast<int32_t>(context.mappings.size()));
+    return context.mappings[constant] = id;
+}
+
+void PrettyPrintJson(const Backend::IL::Constant *constant, SymbolicContext& context, IL::PrettyPrintContext out) {
     switch (constant->kind) {
         default:
             break;
@@ -1369,7 +1667,38 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintConte
         }
         case Backend::IL::ConstantKind::FP: {
             auto fp = constant->As<Backend::IL::FPConstant>();
-            out.Line() << "\"Value\": " << fp->value << ",";
+            out.Line() << "\"Value\": ";
+
+            if (std::isinf(fp->value)) {
+                if (fp->value > 0) {
+                    out.stream << "Infinity";
+                } else {
+                    out.stream << "-Infinity";
+                }
+            } else if (std::isnan(fp->value)) {
+                out.stream << "NaN";
+            } else {
+                out.stream << fp->value;
+            }
+
+            out.stream << ",";
+            break;
+        }
+        case Backend::IL::ConstantKind::Array: {
+            auto str = constant->As<Backend::IL::ArrayConstant>();
+            
+            out.Line() << "\"Elements\": ";
+            out.Line() << "[";
+            
+            for (size_t i = 0; i < str->elements.size(); i++) {
+                if (i != str->elements.size() - 1) {
+                    out.Line() << "\t" << GetConstantId(str->elements[i], context) << ",";
+                } else {
+                    out.Line() << "\t" << GetConstantId(str->elements[i], context);
+                }
+            }
+
+            out.Line() << "],";
             break;
         }
         case Backend::IL::ConstantKind::Struct: {
@@ -1378,11 +1707,28 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintConte
             out.Line() << "\"Members\": ";
             out.Line() << "[";
             
-            for (size_t i = 0; i < str->members.size(); i++) {         
+            for (size_t i = 0; i < str->members.size(); i++) {
                 if (i != str->members.size() - 1) {
-                    out.Line() << "\t" << str->members[i]->id << ",";
+                    out.Line() << "\t" << GetConstantId(str->members[i], context) << ",";
                 } else {
-                    out.Line() << "\t" << str->members[i]->id;
+                    out.Line() << "\t" << GetConstantId(str->members[i], context);
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+        case Backend::IL::ConstantKind::Vector: {
+            auto vec = constant->As<Backend::IL::VectorConstant>();
+            
+            out.Line() << "\"Elements\": ";
+            out.Line() << "[";
+            
+            for (size_t i = 0; i < vec->elements.size(); i++) {
+                if (i != vec->elements.size() - 1) {
+                    out.Line() << "\t" << GetConstantId(vec->elements[i], context) << ",";
+                } else {
+                    out.Line() << "\t" << GetConstantId(vec->elements[i], context);
                 }
             }
 
@@ -1390,8 +1736,8 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintConte
             break;
         }
     }
-    
-    out.Line() << "\"ID\": " << constant->id << ",";
+
+    out.Line() << "\"ID\": " << GetConstantId(constant, context) << ",";
     out.Line() << "\"Kind\": " << static_cast<uint32_t>(constant->kind) << ",";
     out.Line() << "\"Type\": " << constant->type->id;
 }
@@ -1504,12 +1850,39 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
             break;
         }
+        case IL::OpCode::StoreBufferRaw: {
+            auto store = instr->As<IL::StoreBufferRawInstruction>();
+            out.Line() << "\"Buffer\": " << store->buffer << ",";
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
+            out.Line() << "\"Alignment\": " << store->alignment << ",";
+            break;
+        }
         case IL::OpCode::StoreOutput: {
             auto store = instr->As<IL::StoreOutputInstruction>();
             out.Line() << "\"Index\": " << store->index << ",";
             out.Line() << "\"Row\": " << store->row << ",";
             out.Line() << "\"Column\": " << store->column << ",";
             out.Line() << "\"Value\": " << store->value << ",";
+            break;
+        }
+        case IL::OpCode::StoreVertexOutput: {
+            auto store = instr->As<IL::StoreVertexOutputInstruction>();
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Row\": " << store->row << ",";
+            out.Line() << "\"Column\": " << store->column << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            out.Line() << "\"VertexIndex\": " << store->vertexIndex << ",";
+            break;
+        }
+        case IL::OpCode::StorePrimitiveOutput: {
+            auto store = instr->As<IL::StorePrimitiveOutputInstruction>();
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Row\": " << store->row << ",";
+            out.Line() << "\"Column\": " << store->column << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            out.Line() << "\"PrimitiveIndex\": " << store->primitiveIndex << ",";
             break;
         }
         case IL::OpCode::IsInf: {
@@ -1520,6 +1893,22 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
         case IL::OpCode::IsNaN: {
             auto isNaN = instr->As<IL::IsNaNInstruction>();
             out.Line() << "\"Value\": " << isNaN->value << ",";
+            break;
+        }
+        case IL::OpCode::Extended: {
+            auto extended = instr->As<IL::ExtendedInstruction>();
+            out.Line() << "\"Operands\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < static_cast<uint32_t>(extended->operands.count); i++) {         
+                if (i != extended->operands.count - 1) {
+                    out.Line() << "\t" << extended->operands[i] << ",";
+                } else {
+                    out.Line() << "\t" << extended->operands[i];
+                }
+            }
+
+            out.Line() << "],";
             break;
         }
         case IL::OpCode::Sub: {
@@ -1550,6 +1939,11 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             auto _and = instr->As<IL::AndInstruction>();
             out.Line() << "\"LHS\": " << _and->lhs << ",";
             out.Line() << "\"RHS\": " << _and->rhs << ",";
+            break;
+        }
+        case IL::OpCode::Not: {
+            auto _not = instr->As<IL::NotInstruction>();
+            out.Line() << "\"Value\": " << _not->value << ",";
             break;
         }
         case IL::OpCode::Equal: {
@@ -1606,10 +2000,42 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "],";
             break;
         }
+        case IL::OpCode::Construct: {
+            auto extract = instr->As<IL::ConstructInstruction>();
+            out.Line() << "\"Values\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < static_cast<uint32_t>(extract->values.count); i++) {         
+                if (i != extract->values.count - 1) {
+                    out.Line() << "\t" << extract->values[i] << ",";
+                } else {
+                    out.Line() << "\t" << extract->values[i];
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
         case IL::OpCode::Extract: {
             auto extract = instr->As<IL::ExtractInstruction>();
             out.Line() << "\"Composite\": " << extract->composite << ",";
-            out.Line() << "\"Index\": " << extract->index << ",";
+            out.Line() << "\"Chains\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < static_cast<uint32_t>(extract->chains.count); i++) {         
+                if (i != extract->chains.count - 1) {
+                    out.Line() << "\t" << extract->chains[i].index << ",";
+                } else {
+                    out.Line() << "\t" << extract->chains[i].index;
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+        case IL::OpCode::KernelValue: {
+            auto kernelValue = instr->As<IL::KernelValueInstruction>();
+            out.Line() << "\"Value\": " << static_cast<uint32_t>(kernelValue->value) << ",";
             break;
         }
         case IL::OpCode::Insert: {
@@ -1755,7 +2181,7 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
         }
         case IL::OpCode::Alloca: {
             auto _alloca = instr->As<IL::AllocaInstruction>();
-            out.Line() << "\"Type\": " << _alloca->type << ",";
+            out.Line() << "\"Type\": " << program.GetTypeMap().GetType(_alloca->result)->id << ",";
             break;
         }
         case IL::OpCode::StoreTexture: {
@@ -1780,6 +2206,18 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             auto load = instr->As<IL::LoadBufferInstruction>();
             out.Line() << "\"Buffer\": " << load->buffer << ",";
             out.Line() << "\"Index\": " << load->index << ",";
+
+            if (load->offset != IL::InvalidID) {
+                out.Line() << "\"Offset\": " << load->offset << ",";
+            }
+            break;
+        }
+        case IL::OpCode::LoadBufferRaw: {
+            auto load = instr->As<IL::LoadBufferRawInstruction>();
+            out.Line() << "\"Buffer\": " << load->buffer << ",";
+            out.Line() << "\"Index\": " << load->index << ",";
+            out.Line() << "\"ComponentMask\": " << load->mask.value << ",";
+            out.Line() << "\"Alignment\": " << load->alignment << ",";
 
             if (load->offset != IL::InvalidID) {
                 out.Line() << "\"Offset\": " << load->offset << ",";
@@ -1813,6 +2251,23 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             if (ret->value != IL::InvalidID) {
                 out.Line() << "\"Value\": " << ret->value << ",";
             }
+            break;
+        }
+        case IL::OpCode::Call: {
+            auto call = instr->As<IL::CallInstruction>();
+
+            out.Line() << "\"Target\": " << call->target << ",";
+            out.Line() << "\"Arguments\": [";
+
+            for (uint32_t i = 0; i < call->arguments.count; i++) {
+                out.Line() << call->arguments[i];
+                
+                if (i != call->arguments.count - 1) {
+                    out.stream << ",";
+                }
+            }
+            
+            out.Line() << "],";
             break;
         }
         case IL::OpCode::BitXOr: {
@@ -1885,6 +2340,92 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"Comparator\": " << atomic->comparator << ",";
             break;
         }
+        case IL::OpCode::WaveAnyTrue: {
+            auto atomic = instr->As<IL::WaveAnyTrueInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveAllTrue: {
+            auto atomic = instr->As<IL::WaveAllTrueInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveBallot: {
+            auto atomic = instr->As<IL::WaveBallotInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveRead: {
+            auto atomic = instr->As<IL::WaveReadInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            out.Line() << "\"Lane\": " << atomic->lane << ",";
+            break;
+        }
+        case IL::OpCode::WaveReadFirst: {
+            auto atomic = instr->As<IL::WaveReadFirstInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveAllEqual: {
+            auto atomic = instr->As<IL::WaveAllEqualInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveBitAnd: {
+            auto atomic = instr->As<IL::WaveBitAndInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveBitOr: {
+            auto atomic = instr->As<IL::WaveBitOrInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveBitXOr: {
+            auto atomic = instr->As<IL::WaveBitXOrInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveCountBits: {
+            auto atomic = instr->As<IL::WaveCountBitsInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveMax: {
+            auto atomic = instr->As<IL::WaveMaxInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveMin: {
+            auto atomic = instr->As<IL::WaveMinInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveProduct: {
+            auto atomic = instr->As<IL::WaveProductInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveSum: {
+            auto atomic = instr->As<IL::WaveSumInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WavePrefixCountBits: {
+            auto atomic = instr->As<IL::WavePrefixCountBitsInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WavePrefixProduct: {
+            auto atomic = instr->As<IL::WavePrefixProductInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WavePrefixSum: {
+            auto atomic = instr->As<IL::WavePrefixSumInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
     }
     
     out.Line() << "\"OpCode\": " << static_cast<uint32_t>(instr->opCode) << ",";
@@ -1924,10 +2465,10 @@ void PrettyPrintJson(const Backend::IL::Program& program, const Backend::IL::Fun
 
     const IL::VariableList& variables = function->GetParameters();
     
-    for (const Backend::IL::Variable& variable : variables) {
-        out.Line() << "\t" << variable.id;
+    for (const Backend::IL::Variable* variable : variables) {
+        out.Line() << "\t" << variable->id;
         
-        if (&variable != &*--variables.end()) {
+        if (variable != *--variables.end()) {
             out.stream << ",";
         }
     }
@@ -1991,9 +2532,11 @@ void IL::PrettyPrintProgramJson(const Program& program, PrettyPrintContext out) 
 
         PrettyPrintContext ctx = out.Tab();
 
+        SymbolicContext symbolicCtx;
+
         for (const Backend::IL::Constant* constant : program.GetConstants()) {
             ctx.Line() << "{";
-            PrettyPrintJson(constant, ctx.Tab());
+            PrettyPrintJson(constant, symbolicCtx, ctx.Tab());
             ctx.Line() << "}";
 
             if (constant != *--program.GetConstants().end()) {
@@ -2011,12 +2554,12 @@ void IL::PrettyPrintProgramJson(const Program& program, PrettyPrintContext out) 
 
         PrettyPrintContext ctx = out.Tab();
 
-        for (const Backend::IL::Variable& variable : program.GetVariableList()) {
+        for (const Backend::IL::Variable* variable : program.GetVariableList()) {
             ctx.Line() << "{";
-            PrettyPrintJson(&variable, ctx.Tab());
+            PrettyPrintJson(variable, ctx.Tab());
             ctx.Line() << "}";
 
-            if (&variable != &*--program.GetVariableList().end()) {
+            if (variable != *--program.GetVariableList().end()) {
                 ctx.stream << ",";
             }
         }

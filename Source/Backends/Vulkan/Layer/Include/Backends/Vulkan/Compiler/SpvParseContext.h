@@ -68,11 +68,26 @@ struct SpvParseContext {
         ReadOperands();
     }
 
+    /// Peek the next word within the instruction bounds
+    /// \param peekOffset offset to apply, must be in bounds
+    /// \return the peeked word
+    uint32_t Peek(uint32_t peekOffset = 0) {
+        ASSERT(instructionOffset + peekOffset < Get()->GetWordCount(), "Reading beyond instruction bounds");
+        return *(code + instructionOffset + peekOffset);
+    }
+
     /// Read the next word within the instruction bounds
     /// \return the consumed word
     uint32_t operator++(int) {
         ASSERT(instructionOffset < Get()->GetWordCount(), "Reading beyond instruction bounds");
         return *(code + (instructionOffset++));
+    }
+
+    /// Skip a set number of words
+    /// \param count number of words to skip
+    void Skip(uint32_t count = 1) {
+        ASSERT(instructionOffset + count <= Get()->GetWordCount(), "Reading beyond instruction bounds");
+        instructionOffset += count;
     }
 
     /// Does the current instruction have any pending words?
@@ -93,7 +108,7 @@ struct SpvParseContext {
 
     /// Get the templating source for the current offset
     IL::Source Source() const {
-        return IL::Source::Code(static_cast<uint32_t>(code - source.programBegin));
+        return IL::Source::User(static_cast<uint32_t>(code - source.programBegin));
     }
 
     /// Get the block source for the current offset

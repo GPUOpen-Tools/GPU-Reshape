@@ -27,6 +27,7 @@
 #pragma once
 
 // Discovery
+#include "DiscoveryProcessCreateInfo.h"
 #include "DiscoveryProcessInfo.h"
 
 class DiscoveryService;
@@ -75,10 +76,11 @@ namespace Discovery::CLR {
 	    bool UninstallConflictingInstances();
 
 	    /// Start a bootstrapped service against all discovery backends
-	    /// \param info process information
+	    /// \param createInfo process information
 	    /// \param environment ordered message stream environment fed to the application
+	    /// \param info instantiated process info
 	    /// \return false if failed
-	    bool StartBootstrappedProcess(const DiscoveryProcessInfo^ info, Message::CLR::IMessageStream^ environment);
+	    bool StartBootstrappedProcess(const DiscoveryProcessCreateInfo^ createInfo, Message::CLR::IMessageStream^ environment, DiscoveryProcessInfo^% info);
 
 	private:
 		::DiscoveryService* service{ nullptr };

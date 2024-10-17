@@ -46,7 +46,6 @@ namespace Studio.Services
             {
                 new FileMenuItemViewModel(),
                 new WorkspaceMenuItemViewModel(),
-                new WindowMenuItemViewModel(),
                 new HelpMenuItemViewModel(),
             });
         }

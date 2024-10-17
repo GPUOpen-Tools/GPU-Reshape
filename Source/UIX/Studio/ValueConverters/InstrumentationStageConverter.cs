@@ -53,6 +53,8 @@ namespace Studio.ValueConverters
                     return string.Format(Resources.Resources.Instrumentation_Stage_Shaders, (int)(values[1] ?? throw new Exception("Invalid parameter")));
                 case InstrumentationStage.Pipeline:
                     return string.Format(Resources.Resources.Instrumentation_Stage_Pipelines, (int)(values[1] ?? throw new Exception("Invalid parameter")));
+                case InstrumentationStage.PipelineLibrary:
+                    return string.Format(Resources.Resources.Instrumentation_Stage_PipelineLibraries, (int)(values[1] ?? throw new Exception("Invalid parameter")));
             }
         }
 

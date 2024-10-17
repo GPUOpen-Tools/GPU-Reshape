@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <TargetCulture>en</TargetCulture>
         <Nullable>enable</Nullable>
         <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
         <Platforms>x64</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
-        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AssemblyName>UIX.Studio.Runtime</AssemblyName>
     </PropertyGroup>
 
@@ -36,11 +37,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Avalonia" Version="0.10.22" />
-      <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.18" />
-      <PackageReference Include="Dock.Avalonia" Version="0.10.18" />
-      <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.18" />
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+      <PackageReference Include="Avalonia" Version="11.1.1" />
+      <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.1" />
+      <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.10" />
+      <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
+      <PackageReference Include="Dock.Avalonia" Version="11.0.0" />
+      <PackageReference Include="Dock.Model.ReactiveUI" Version="11.1.0.1" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     </ItemGroup>
 
     <ItemGroup>
@@ -88,6 +91,21 @@
 
 
 
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Update="Resources\Resources.resx">
+        <Generator>ResXFileCodeGenerator</Generator>
+        <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Resources\Resources.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
     </ItemGroup>
 
 

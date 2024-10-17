@@ -60,6 +60,9 @@ private:
 private:
     /// Parse a wait for screenshot pass
     bool ParseWaitForScreenshot(const nlohmann::json& json, ComRef<ITestPass>& out);
+    
+    /// Parse a wait for pipelines pass
+    bool ParseWaitForPipelines(const nlohmann::json& json, ComRef<ITestPass>& out);
 
     /// Parse a key pass
     bool ParseKey(const nlohmann::json& json, ComRef<ITestPass>& out);

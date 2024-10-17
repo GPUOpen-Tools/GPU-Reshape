@@ -36,7 +36,12 @@ enum class CommandType {
 
     /// Resources
     StageBuffer,
+    ClearBuffer,
+    Discard,
 
     /// Invokes
-    Dispatch
+    Dispatch,
+
+    /// Synchronization
+    UAVBarrier
 };

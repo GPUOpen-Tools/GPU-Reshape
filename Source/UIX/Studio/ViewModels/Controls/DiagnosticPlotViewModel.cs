@@ -24,9 +24,11 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
 using Avalonia.Threading;
 using Bridge.CLR;
 using LiveChartsCore;
@@ -38,6 +40,7 @@ using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using ReactiveUI;
 using Runtime;
 using SkiaSharp;
+using Studio.Extensions;
 using Studio.ViewModels.Workspace;
 
 namespace Studio.ViewModels.Controls
@@ -243,6 +246,17 @@ namespace Studio.ViewModels.Controls
 
                 // Update limits
                 YAxes[0].MaxLimit = _presentIntervalValues.Max() * 1.25f;
+                
+                // Workaround for internal bug with re-rendering without layout invalidations
+                if (++_stepFieldUpdateCounter % 100 == 0)
+                {
+                    // Reset steps
+                    YAxes.ForEach(x => _stepCountField?.SetValue(x, 0));
+                    XAxes.ForEach(x => _stepCountField?.SetValue(x, 0));
+                    
+                    // Reset
+                    _stepFieldUpdateCounter = 0;
+                }
             });
         }
 
@@ -285,5 +299,16 @@ namespace Studio.ViewModels.Controls
         /// Last tracked job count
         /// </summary>
         private uint _lastJobCount = 0;
+
+        /// <summary>
+        /// Update counter
+        /// </summary>
+        private int _stepFieldUpdateCounter = 0;
+        
+        /// <summary>
+        /// Get internal step count field
+        /// See usage for reasoning
+        /// </summary>
+        private static FieldInfo? _stepCountField = typeof(Axis).BaseType!.GetField("_stepCount", BindingFlags.NonPublic | BindingFlags.Instance);
     }
 }

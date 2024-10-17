@@ -104,7 +104,7 @@ namespace Studio.ViewModels.Tools
                 .Subscribe();
             
             // Bind selected workspace
-            App.Locator.GetService<IWorkspaceService>()?
+            ServiceRegistry.Get<IWorkspaceService>()?
                 .WhenAnyValue(x => x.SelectedWorkspace)
                 .Subscribe(x => WorkspaceViewModel = x);
         }
@@ -118,7 +118,7 @@ namespace Studio.ViewModels.Tools
             if (_workspaceViewModel == null)
                 return;
             
-            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
                 layoutViewModel.DocumentLayout?.OpenDocument( new ShaderDescriptor()
                 {
@@ -232,8 +232,49 @@ namespace Studio.ViewModels.Tools
                     case ShaderCodeFileMessage.ID:
                         Handle(message.Get<ShaderCodeFileMessage>());
                         break;
+                    case ShaderNameMessage.ID:
+                        Handle(message.Get<ShaderNameMessage>());
+                        break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Message handler
+        /// </summary>
+        /// <param name="message"></param>
+        private void Handle(ShaderNameMessage message)
+        {
+            // Flatten
+            ShaderNameMessage.FlatInfo flat = message.Flat;
+
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (!_lookup.ContainsKey(flat.shaderUID))
+                    return;
+
+                ShaderIdentifierViewModel shaderIdentifierViewModel = _lookup[flat.shaderUID];
+                
+                // May not have a debug name
+                if (flat.found == 0 || string.IsNullOrEmpty(flat.name))
+                {
+                    shaderIdentifierViewModel.Descriptor = $"Shader {flat.shaderUID} - Parsing...";
+                    
+                    // Request the shader filenames
+                    // This will parse the module range
+                    if (_workspaceViewModel?.Connection?.GetSharedBus() is { } bus)
+                    {
+                        var request = bus.Add<GetShaderCodeMessage>();
+                        request.poolCode = 0;
+                        request.shaderUID = flat.shaderUID;
+                    }
+                }
+                else
+                {
+                    shaderIdentifierViewModel.Language = flat.language;
+                    shaderIdentifierViewModel.Descriptor = $"{flat.name} {flat.shaderUID}";
+                }
+            });
         }
 
         /// <summary>
@@ -362,8 +403,7 @@ namespace Studio.ViewModels.Tools
                         // Submit request for filenames
                         if (bus != null)
                         {
-                            var request = bus.Add<GetShaderCodeMessage>();
-                            request.poolCode = 0;
+                            var request = bus.Add<GetShaderNameMessage>();
                             request.shaderUID = guids[i];
                         }
 

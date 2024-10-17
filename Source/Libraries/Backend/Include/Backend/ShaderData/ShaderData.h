@@ -32,5 +32,13 @@
 /// Allocation id for shader data
 using ShaderDataID = uint32_t;
 
+/// Allocation id for mapping data
+using ShaderDataMappingID = uint32_t;
+
 /// Invalid values
 static constexpr ShaderDataID InvalidShaderDataID = ~0u;
+static constexpr ShaderDataID InvalidShaderDataMappingID = ~0u;
+
+/// The standard byte width of a single tile
+/// Platforms may represent actual tiles / pages with a subdivision of this
+static constexpr uint32_t kShaderDataMappingTileWidth = 65536;

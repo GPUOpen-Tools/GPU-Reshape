@@ -32,7 +32,7 @@
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
+#include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 #include <Backend/IL/ResourceTokenType.h>
 #include <Backend/CommandContext.h>
 #include <Backend/IL/BasicBlockFlags.h>
@@ -148,7 +148,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
         IL::ResourceTokenEmitter token(pre, resource);
 
         // Keep token
-        packedToken = token.GetToken();
+        packedToken = token.GetPackedToken();
 
         // Get the ids
         compileType = pre.UInt32(static_cast<uint32_t>(compileTypeLiteral));
@@ -236,6 +236,12 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
             }
             case IL::OpCode::StoreBuffer: {
                 return InjectForResource(program, context.function, it, it->As<IL::StoreBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
+            }
+            case IL::OpCode::LoadBufferRaw: {
+                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferRawInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
+            }
+            case IL::OpCode::StoreBufferRaw: {
+                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferRawInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
             }
             case IL::OpCode::StoreTexture: {
                 return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config);

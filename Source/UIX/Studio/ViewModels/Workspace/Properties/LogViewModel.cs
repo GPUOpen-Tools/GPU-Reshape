@@ -124,10 +124,7 @@ namespace Studio.ViewModels.Workspace.Properties
             // Append messages on UI thread
             Dispatcher.UIThread.InvokeAsync(() =>
             {
-                foreach (LogEvent instance in events)
-                {
-                    _loggingViewModel?.Events.Add(instance);
-                }
+                _loggingViewModel?.Events.AddRange(events);
             });
         }
 
@@ -142,7 +139,7 @@ namespace Studio.ViewModels.Workspace.Properties
                 events.Add(new LogEvent
                 {
                     Severity = (LogSeverity)message.severity,
-                    Message = $"{ConnectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}"
+                    Message = $"{ConnectionViewModel?.Application?.Process} - [{message.system.String}] {message.message.String}"
                 });
             }
         }
@@ -193,6 +190,6 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Shared logging view model
         /// </summary>
-        private ILoggingViewModel? _loggingViewModel = App.Locator.GetService<ILoggingService>()?.ViewModel;
+        private ILoggingViewModel? _loggingViewModel = ServiceRegistry.Get<ILoggingService>()?.ViewModel;
     }
 }

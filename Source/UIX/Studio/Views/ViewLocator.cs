@@ -45,7 +45,7 @@ namespace Studio.Views
             }
             
             // Attempt to instantiate
-            IViewFor? view = App.Locator.GetService<ILocatorService>()?.InstantiateDerived<IViewFor>(viewModel);
+            IViewFor? view = ServiceRegistry.Get<ILocatorService>()?.InstantiateDerived<IViewFor>(viewModel);
             if (view == null)
             {
                 return null;

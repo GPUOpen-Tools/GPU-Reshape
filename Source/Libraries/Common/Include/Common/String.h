@@ -60,6 +60,11 @@ namespace std {
         return s;
     }
 
+    static inline std::string lowercase(std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+        return s;
+    }
+
     static inline std::string uppercase(std::string s) {
         std::transform(s.begin(), s.end(), s.begin(), ::toupper);
         return s;
@@ -97,6 +102,30 @@ namespace std {
 
     static inline bool icontains(const string_view &a, const string_view &b) {
         return isearch(a, b) != a.end();
+    }
+
+    static inline std::string replace_all(const std::string_view& str, const std::string_view& search, const std::string_view& replacement) {
+        std::string replaced;
+
+        std::string_view::const_iterator current = str.begin();
+        for (;;) {
+            // Find next instance
+            auto next = std::search(current, str.end(), search.begin(), search.end());
+            if (next == str.end()) {
+                break;
+            }
+
+            // Append until with replacement
+            replaced.append(current, next);
+            replaced.append(replacement);
+
+            // Skip instance
+            current = next + search.size();
+        }
+
+        // Append remaining
+        replaced.append(current, str.end());
+        return replaced;
     }
 
     inline bool ends_with(std::string_view const &value, std::string_view const &ending) {

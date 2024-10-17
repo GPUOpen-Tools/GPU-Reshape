@@ -25,6 +25,7 @@
 // 
 
 using System;
+using Studio.Models.IL;
 
 namespace Studio.Models.Workspace.Objects
 {
@@ -64,5 +65,32 @@ namespace Studio.Models.Workspace.Objects
         /// Instruction linear index into the basic block
         /// </summary>
         public uint InstructionIndex { get; set; }
+    }
+
+    public static class ShaderLocationExtensions
+    {
+        /// <summary>
+        /// Get an instruction from a program
+        /// </summary>
+        /// <param name="program">the program to query</param>
+        /// <param name="location">location within the program to extract</param>
+        /// <returns>null if not found</returns>
+        public static Instruction? GetInstruction(this Program program, ShaderLocation location)
+        {
+            // Try to find basic block
+            if (!program.Lookup.TryGetValue(location.BasicBlockId, out object? valueObject) || valueObject is not BasicBlock block)
+            {
+                return null;
+            }
+
+            // Validate instruction index
+            if (block.Instructions.Length < location.InstructionIndex)
+            {
+                return null;
+            }
+
+            // Get instruction
+            return block.Instructions[location.InstructionIndex];
+        }
     }
 }

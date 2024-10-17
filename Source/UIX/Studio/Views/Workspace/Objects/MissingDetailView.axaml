@@ -32,22 +32,35 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
-             mc:Ignorable="d" d:DesignWidth="800"
+             mc:Ignorable="d" 
+             d:DesignHeight="100" d:DesignWidth="800"
              x:Class="Studio.Views.Workspace.Objects.MissingDetailView"
              x:DataType="objects:MissingDetailViewModel">
     <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{StaticResource DockApplicationAccentBrushLow}">
         <StackPanel 
-            Orientation="Horizontal" 
+            Orientation="Vertical" 
             HorizontalAlignment="Center"
             VerticalAlignment="Center">
-            <TextBlock Height="20" Text="Compiling with detailed exports "/>
-            <ProgressBar 
-                IsIndeterminate="True"
-                Margin="15 0 0 0"
-                MinHeight="5" Height="5"
-                MinWidth="150" Width="150"
-                Foreground="{StaticResource DockApplicationAccentBrushHigh}"
-                Background="{StaticResource DockThemeBorderLowBrush}"/>
+            <StackPanel 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <TextBlock Height="20" Text="{Binding StatusMessage}"/>
+                <ProgressBar 
+                    IsIndeterminate="True"
+                    Margin="15 0 0 0"
+                    MinHeight="5" Height="5"
+                    MinWidth="150" Width="150"
+                    Foreground="{StaticResource DockApplicationAccentBrushHigh}"
+                    Background="{StaticResource DockThemeBorderLowBrush}"/>
+            </StackPanel>
+
+            <TextBlock
+                Margin="0 15 0 0"
+                Foreground="{StaticResource InfoMediumForeground}"
+                Height="20"
+                IsVisible="{Binding HasStatus}"
+                Text="{Binding StatusInfo}"/>
         </StackPanel>
     </Grid>
 </UserControl>

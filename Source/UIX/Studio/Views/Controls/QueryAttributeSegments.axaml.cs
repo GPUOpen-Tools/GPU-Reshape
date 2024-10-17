@@ -87,7 +87,15 @@ namespace Studio.Views.Controls
             }
 
             // Measure glyph end
-            double endWidth = Math.Floor(TextFormatter.GetWidth(QueryBox.Text.Substring(0, decorator.Attribute.Offset + decorator.Attribute.Length), QueryBox.FontSize).Width) + 5;
+            double endWidth;
+            if (decorator.Attribute.Offset + decorator.Attribute.Length <= QueryBox.Text.Length)
+            {
+                endWidth = Math.Floor(TextFormatter.GetWidth(QueryBox.Text.Substring(0, decorator.Attribute.Offset + decorator.Attribute.Length), QueryBox.FontSize).Width) + 5;
+            }
+            else
+            {
+                endWidth = beginWidth;
+            }
 
             // Create decorator control
             var control = new Border()
@@ -118,6 +126,6 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Tracked decorators
         /// </summary>
-        private Dictionary<QueryAttributeDecorator, IControl> _segmentControls = new();
+        private Dictionary<QueryAttributeDecorator, Control> _segmentControls = new();
     }
 }

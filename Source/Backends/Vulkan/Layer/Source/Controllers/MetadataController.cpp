@@ -90,6 +90,10 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetPipelineNameMessage>());
                     break;
                 }
+                case GetShaderNameMessage::kID: {
+                    OnMessage(*it.Get<GetShaderNameMessage>());
+                    break;
+                }
                 case GetShaderCodeMessage::kID: {
                     OnMessage(*it.Get<GetShaderCodeMessage>());
                     break;
@@ -151,6 +155,26 @@ void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
     }
 }
 
+void MetadataController::OnMessage(const GetShaderNameMessage &message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderUID);
+
+    // Determine name
+    const char* name = shader->debugName ? shader->debugName : "";
+
+    // Language is always SPIRV
+    const char* language = "SPIRV";
+
+    // Push response
+    auto&& file = view.Add<ShaderNameMessage>(ShaderNameMessage::AllocationInfo { .languageLength = std::strlen(language), .nameLength = std::strlen(name) });
+    file->shaderUID = message.shaderUID;
+    file->name.Set(name);
+    file->language.Set(language);
+    file->found = (shader->debugName != nullptr);
+}
+
 void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     MessageStreamView view(stream);
 
@@ -185,6 +209,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         response->native = true;
         response->language.Set(language);
         response->fileCount = 0;
+        response->poolCode = message.poolCode;
         return;
     }
 
@@ -198,6 +223,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     response->native = false;
     response->language.Set(language);
     response->fileCount = fileCount;
+    response->poolCode = message.poolCode;
 
     // Add file responses
     for (uint32_t i = 0; i < fileCount; i++) {
@@ -207,6 +233,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         });
         file->shaderUID = message.shaderUID;
         file->fileUID = i;
+        file->poolCode = message.poolCode;
 
         // Fill filename
         file->filename.Set(sourceMap->GetSourceFilename(i));

@@ -27,17 +27,29 @@
 #pragma once
 
 // Backend
-#include "Queue.h"
+#include <Backend/Scheduler/Queue.h>
+#include <Backend/Scheduler/SchedulerPrimitive.h>
+#include <Backend/ShaderData/ShaderData.h>
 
 // Common
 #include <Common/IComponent.h>
 
 // Forward declarations
 struct CommandBuffer;
+struct SchedulerPrimitiveEvent;
+struct SchedulerTileMapping;
 
 class IScheduler : public TComponent<IScheduler> {
 public:
     COMPONENT(IScheduler);
+
+    /// Create a new primitive
+    /// \return primitive id
+    virtual SchedulerPrimitiveID CreatePrimitive() = 0;
+
+    /// Destroy a primitive
+    /// \param pid primitive id
+    virtual void DestroyPrimitive(SchedulerPrimitiveID pid) = 0;
 
     /// Wait for all pending submissions
     virtual void WaitForPending() = 0;
@@ -45,5 +57,12 @@ public:
     /// Schedule a command buffer
     /// \param queue queue to be scheduled on
     /// \param buffer buffer to be scheduled
-    virtual void Schedule(Queue queue, const CommandBuffer& buffer) = 0;
+    virtual void Schedule(Queue queue, const CommandBuffer& buffer, const SchedulerPrimitiveEvent* event) = 0;
+
+    /// Map a batch of tiles
+    /// \param queue queue to be scheduled on
+    /// \param id buffer to map
+    /// \param count number of mappings
+    /// \param mappings mappings data
+    virtual void MapTiles(Queue queue, ShaderDataID id, uint32_t count, const SchedulerTileMapping* mappings) = 0;
 };

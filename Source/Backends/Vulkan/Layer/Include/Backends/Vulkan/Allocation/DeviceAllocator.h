@@ -61,6 +61,20 @@ public:
     /// \return the mirror allocation
     MirrorAllocation AllocateMirror(const VkMemoryRequirements& requirements, AllocationResidency residency = AllocationResidency::Device);
 
+    /// Allocate a memory chunk
+    /// \param requirements all memory requirements
+    /// \return memory chunk
+    VmaAllocation AllocateMemory(const VkMemoryRequirements& requirements);
+
+    /// Get the allocation info of a chunk
+    /// \param allocation memory chunk
+    /// \return allocation info
+    VmaAllocationInfo GetAllocationInfo(VmaAllocation allocation);
+    
+    /// Free a given memory chunk
+    /// \param allocation chunk to be free'd
+    void Free(VmaAllocation allocation);
+    
     /// Free a given allocation
     /// \param allocation
     void Free(const Allocation& allocation);

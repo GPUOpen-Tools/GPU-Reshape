@@ -36,9 +36,14 @@ namespace Studio.Views.Tools.Property
     public class PropertyCollectionGridDescriptor : PropertyDescriptor
     {
         /// <summary>
-        /// Exposed property on parent
+        /// Exposed property info on parent
         /// </summary>
         public readonly PropertyInfo PropertyInfo;
+
+        /// <summary>
+        /// Exposed property field on parent
+        /// </summary>
+        public readonly PropertyField PropertyField;
         
         /// <summary>
         /// Owning parent
@@ -48,18 +53,29 @@ namespace Studio.Views.Tools.Property
         /// <summary>
         /// Expected converter
         /// </summary>
-        public override TypeConverter Converter => new AcceptAllConverter();
+        public override TypeConverter Converter => _acceptAllConverter;
+
+        /// <summary>
+        /// All attributes within this descriptor
+        /// </summary>
+        public override AttributeCollection Attributes => _attributes;
 
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="parent">Property view model parent component</param>
         /// <param name="propertyInfo">Property view model field property</param>
-        public PropertyCollectionGridDescriptor(IPropertyViewModel parent, PropertyInfo propertyInfo)
+        public PropertyCollectionGridDescriptor(IPropertyViewModel parent, PropertyInfo propertyInfo, PropertyField propertyField)
             : base(FormatName(propertyInfo.Name), new Attribute[] { new CategoryAttribute(parent.Name) })
         {
             Parent = parent;
             PropertyInfo = propertyInfo;
+            PropertyField = propertyField;
+            _attributes = new AttributeCollection(propertyInfo.GetCustomAttributes().ToArray());
+            _acceptAllConverter = new AcceptAllConverter()
+            {
+                TargetType = propertyInfo.PropertyType
+            };
         }
 
         /// <summary>
@@ -136,5 +152,15 @@ namespace Studio.Views.Tools.Property
         {
             return string.Join(" ", Regex.Split(memberName, @"(?<!^)(?=[A-Z])"));
         }
+
+        /// <summary>
+        /// Internal converter
+        /// </summary>
+        private AcceptAllConverter _acceptAllConverter;
+
+        /// <summary>
+        /// Internal attributes
+        /// </summary>
+        private AttributeCollection _attributes;
     }
 }

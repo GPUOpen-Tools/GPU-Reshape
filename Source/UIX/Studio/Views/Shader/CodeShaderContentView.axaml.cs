@@ -25,25 +25,29 @@
 // 
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using AvaloniaEdit.Highlighting.Xshd;
 using AvaloniaEdit.TextMate;
-using AvaloniaEdit.Utils;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Shader;
 using Studio.Extensions;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Workspace.Properties;
 using Studio.Views.Editor;
 using TextMateSharp.Grammars;
 
@@ -72,7 +76,7 @@ namespace Studio.Views.Shader
 
             // Set the default grammar (just assume .hlsl)
             textMate.SetGrammar(registryOptions.GetScopeByLanguageId(registryOptions.GetLanguageByExtension(".hlsl").Id));
-
+            
             // Create background renderer
             _validationBackgroundRenderer = new ValidationBackgroundRenderer
             {
@@ -95,7 +99,7 @@ namespace Studio.Views.Shader
             Editor.TextArea.TextView.LineTransformers.Add(_validationTextMarkerService);
 
             // Add services
-            IServiceContainer services = Editor.Document.GetService<IServiceContainer>();
+            var services = AvaloniaEdit.Utils.ServiceExtensions.GetService<AvaloniaEdit.Utils.IServiceContainer>(Editor.Document);
             services?.AddService(typeof(ValidationTextMarkerService), _validationTextMarkerService);
 
             // Common styling
@@ -197,10 +201,21 @@ namespace Studio.Views.Shader
             {
                 return;
             }
+
+            // Check if there's any detailed info at all
+            if (!ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
+            {
+                vm.DetailViewModel = new NoDetailViewModel()
+                {
+                    Object = vm.Object,
+                    PropertyCollection = vm.PropertyCollection
+                };
+                return;
+            }
             
             // Ensure detailed collection has started
-            ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
-                
+            InstrumentationVersion version = ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
+            
             // Set selection
             vm.SelectedValidationObject = validationObject;
             
@@ -210,7 +225,8 @@ namespace Studio.Views.Shader
                 vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
                     Object = vm.Object,
-                    PropertyCollection = vm.PropertyCollection
+                    PropertyCollection = vm.PropertyCollection,
+                    Version = version
                 };
             }).DisposeWithClear(_detailDisposable);
         }

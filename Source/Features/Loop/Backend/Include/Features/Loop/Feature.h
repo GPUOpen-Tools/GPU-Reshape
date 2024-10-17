@@ -36,6 +36,8 @@
 #include <Backend/ShaderData/IShaderDataHost.h>
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/VisitContext.h>
+#include <Backend/ShaderProgram/ShaderProgram.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -48,6 +50,7 @@
 #include <mutex>
 
 // Forward declarations
+class SignalShaderProgram;
 class IShaderSGUIDHost;
 class IScheduler;
 
@@ -63,6 +66,7 @@ public:
 
     /// IFeature
     bool Install() override;
+    bool PostInstall() override;
     FeatureInfo GetInfo() override;
     FeatureHookTable GetHookTable() override;
     void CollectMessages(IMessageStorage *storage) override;
@@ -86,9 +90,24 @@ public:
     }
 
 private:
+    using LoopCounterMap = std::map<IL::ID, IL::ID>;
+
+    /// Inject all function wide loop counters
+    /// @param program source program
+    /// @param map destination map
+    void InjectLoopCounters(IL::Program &program, LoopCounterMap& map);
+
+    /// Increment the function local counter
+    /// @param emitter target emitter
+    /// @param function function to increment
+    /// @param map allocated counters
+    /// @return current iteration value
+    IL::ID GetAndIncrementCounter(IL::Emitter<>& emitter, IL::Function *function, LoopCounterMap &map);
+
+private:
     /// Feature hooks
     void OnOpen(CommandContext *context);
-    void OnSubmit(CommandContextHandle contextHandle);
+    void OnPostSubmit(const CommandContextHandle* contextHandles, uint32_t count);
     void OnJoin(CommandContextHandle contextHandle);
 
 private:
@@ -144,6 +163,12 @@ private:
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
     ComRef<IShaderDataHost>  shaderDataHost{nullptr};
     ComRef<IScheduler>       scheduler{nullptr};
+
+    /// Signal program
+    ComRef<SignalShaderProgram> signalShaderProgram;
+
+    /// Allocated program ID
+    ShaderProgramID signalShaderProgramID{InvalidShaderProgramID};
 
     /// Export id for this feature
     ShaderExportID exportID{};

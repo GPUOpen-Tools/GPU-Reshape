@@ -34,7 +34,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:cvm="clr-namespace:Studio.ViewModels.Controls;assembly=UIX.Studio.Runtime"
         xmlns:controls="clr-namespace:Studio.Views.Controls"
-        xmlns:propertyGrid="https://github.com/avalonia_extendedtoolkit"
         xmlns:viewModels="clr-namespace:Studio.ViewModels"
         xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
         xmlns:r="clr-namespace:Studio.Resources"
@@ -52,8 +51,9 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Icon="/Resources/Icons/Icon_Frame.ico"
         Title="Launch Application"
+        ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
+        SystemDecorations="BorderOnly"
         x:DataType="viewModels:LaunchViewModel">
     <Window.Resources>
         <ResourceDictionary>
@@ -106,13 +106,35 @@
                     <TextBox Text="{Binding Arguments}" />
                 </Grid>
                 
-                <TextBlock Text="Workspace" Margin="0 15 0 0" />
+                <StackPanel Orientation="Horizontal" Margin="0 15 0 0">
+                    <CheckBox
+                        IsChecked="{Binding CaptureChildProcesses}"
+                        Content="Capture Child Processes"
+                        ToolTip.Tip="{x:Static r:Resources.Launch_CaptureChildProcesses}"/>
+                            
+                    <CheckBox
+                        Margin="15 0 0 0"
+                        IsChecked="{Binding AttachAllDevices}"
+                        Content="Attach All Devices"
+                        ToolTip.Tip="{x:Static r:Resources.Launch_AttachAllDevices}"/>
+                </StackPanel>
+                
+                <controls:InlineSectionView Title="Additional Arguments" IsExpanded="False" Margin="0 10 0 0" >
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock Text="Environment" />
+                        <Grid Margin="0 5 0 0">
+                            <TextBox Text="{Binding Environment}" />
+                        </Grid>
+                    </StackPanel>
+                </controls:InlineSectionView>
+                
+                <TextBlock Text="Workspace" Margin="0 10 0 0" />
                 <Grid Margin="0 5 0 0">
                     <ComboBox 
                         Height="25"
                         Margin="0 0 0 5"
                         SelectedItem="{Binding SelectedConfiguration}"
-                        Items="{Binding Configurations}">
+                        ItemsSource="{Binding Configurations}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type workspace:IWorkspaceConfigurationViewModel}">
                                 <TextBlock Text="{Binding Name}"/>
@@ -120,92 +142,95 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </Grid>
-            </StackPanel>
-            
-            <Border
-                HorizontalAlignment="Stretch"
-                Background="{StaticResource InfoMediumBackground}"
-                IsVisible="{Binding SelectedConfiguration, Converter={StaticResource ConfigurationVisibilityConverter}, ConverterParameter=true}"
-                Padding="5 5 5 5"
-                Margin="0 235 0 5">
-                <StackPanel>
-                    <TextBlock
-                        Text="{Binding SelectedConfigurationDescription}"
-                        TextWrapping="Wrap"/>
                 
-                    <CheckBox
-                        IsChecked="{Binding SafeGuard}"
-                        IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanSafeGuard}}"
-                        Margin="0 10 0 0"
-                        ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"
-                        Content="Safe guarding">
-                    </CheckBox>
-                
-                    <CheckBox
-                        IsChecked="{Binding Detail}"
-                        IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanDetail}}"
-                        Margin="0 10 0 0"
-                        ToolTip.Tip="{x:Static r:Resources.Launch_Detail}"
-                        Content="Detailed reporting">
-                    </CheckBox>
-                
-                    <CheckBox
-                        IsChecked="{Binding SynchronousRecording}"
-                        IsEnabled="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlagBindings.RequiresSynchronousRecordingBinding}}"
-                        Margin="0 10 0 0"
-                        ToolTip.Tip="{x:Static r:Resources.Launch_SynchronousRecording}"
-                        Content="Synchronous recording">
-                    </CheckBox>
-                </StackPanel>
-            </Border>
-
-            <Grid 
-                ColumnDefinitions="*,*" 
-                Margin="0 235 0 5"
-                IsVisible="{Binding SelectedConfiguration, Converter={StaticResource ConfigurationVisibilityConverter}}"
-                Height="200">
-                <TreeView
-                    Grid.Column="0"
-                    x:Name="WorkspaceTree"
-                    Margin="0 0 2.5 0"
-                    ContextMenu="{StaticResource ReactiveContextMenu}"
-                    Tag="{Binding}"
-                    Items="{Binding Workspaces}">
-                    <TreeView.Styles>
-                        <Style Selector="TreeViewItem">
-                            <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}" />
-                        </Style>
-                    </TreeView.Styles>
-                    <TreeView.ItemTemplate>
-                        <TreeDataTemplate ItemsSource="{Binding Items}">
-                            <controls:UniformViewHost ContextMenu="{StaticResource ReactiveContextMenu}" DataContext="{Binding $self.DataContext}" />
-                        </TreeDataTemplate>
-                    </TreeView.ItemTemplate>
-                </TreeView>
-
-                <Border Grid.Column="1" Margin="2.5 0 0  0" Background="{StaticResource DockApplicationAccentBrushLow}" Padding="5">
-                    <propertyGrid:PropertyGrid
-                        x:Name="PropertyGrid"
+                <Grid>
+                    <Border
                         HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        PropertyDisplayMode="All"
-                        ShowAttachedProperties="True"
-                        ShowReadOnlyProperties="True">
-                        <propertyGrid:PropertyGrid.Layout>
-                            <propertyGrid:CategorizedLayout />
-                        </propertyGrid:PropertyGrid.Layout>
-                    </propertyGrid:PropertyGrid>
-                </Border>
-            </Grid>
-            
-            <ProgressBar
-                VerticalAlignment="Bottom"
-                MinHeight="5"
-                x:Name="ProgressIndicator"
-                Value="100"
-                Background="{DynamicResource InfoMediumBackground}"
-                IsIndeterminate="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}"
-                Foreground="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}" />
+                        Background="{StaticResource InfoMediumBackground}"
+                        IsVisible="{Binding SelectedConfiguration, Converter={StaticResource ConfigurationVisibilityConverter}, ConverterParameter=true}"
+                        Padding="5 5 5 5"
+                        Margin="0 0 0 5">
+                        <StackPanel>
+                            <TextBlock
+                                Text="{Binding SelectedConfigurationDescription}"
+                                TextWrapping="Wrap"/>
+                        
+                            <CheckBox
+                                IsChecked="{Binding SafeGuard}"
+                                IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanSafeGuard}}"
+                                Margin="0 10 0 0"
+                                ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"
+                                Content="Safe guarding">
+                            </CheckBox>
+                        
+                            <CheckBox
+                                IsChecked="{Binding Detail}"
+                                IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanDetail}}"
+                                Margin="0 10 0 0"
+                                ToolTip.Tip="{x:Static r:Resources.Launch_Detail}"
+                                Content="Detailed reporting">
+                            </CheckBox>
+                        
+                            <CheckBox
+                                IsChecked="{Binding TexelAddressing}"
+                                IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanUseTexelAddressing}}"
+                                Margin="0 10 0 0"
+                                ToolTip.Tip="{x:Static r:Resources.Launch_TexelAddressing}"
+                                Content="Texel addressing">
+                            </CheckBox>
+                        
+                            <CheckBox
+                                IsChecked="{Binding SynchronousRecording}"
+                                IsEnabled="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlagBindings.RequiresSynchronousRecordingBinding}}"
+                                Margin="0 10 0 0"
+                                ToolTip.Tip="{x:Static r:Resources.Launch_SynchronousRecording}"
+                                Content="Synchronous recording">
+                            </CheckBox>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid 
+                        ColumnDefinitions="*,*" 
+                        Margin="0 0 0 5"
+                        IsVisible="{Binding SelectedConfiguration, Converter={StaticResource ConfigurationVisibilityConverter}}"
+                        Height="200">
+                        <TreeView
+                            Grid.Column="0"
+                            x:Name="WorkspaceTree"
+                            Margin="0 0 2.5 0"
+                            ContextMenu="{StaticResource ReactiveContextMenu}"
+                            Tag="{Binding}"
+                            ItemsSource="{Binding Workspaces}">
+                            <TreeView.Styles>
+                                <Style Selector="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}" />
+                                </Style>
+                            </TreeView.Styles>
+                            <TreeView.ItemTemplate>
+                                <TreeDataTemplate ItemsSource="{Binding Items}">
+                                    <controls:UniformViewHost ContextMenu="{StaticResource ReactiveContextMenu}" DataContext="{Binding $self.DataContext}" />
+                                </TreeDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+
+                        <Border Grid.Column="1" Margin="2.5 0 0  0" Background="{StaticResource DockApplicationAccentBrushLow}" Padding="5">
+                            <controls:PropertyGrid
+                                x:Name="PropertyGrid"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"/>
+                        </Border>
+                    </Grid>
+                    
+                    <ProgressBar
+                        VerticalAlignment="Bottom"
+                        MinHeight="5"
+                        x:Name="ProgressIndicator"
+                        Value="100"
+                        Background="{DynamicResource InfoMediumBackground}"
+                        IsIndeterminate="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}"
+                        Foreground="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}" />
+                </Grid>
+            </StackPanel>
         </Grid>
 
         <!-- Tool Result -->
@@ -219,8 +244,15 @@
 
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                 <Button
+                    IsEnabled="{Binding ValidApplicationPath}"
+                    Command="{Binding Settings}"
+                    ToolTip.Tip="Open settings for the application name">
+                    Settings
+                </Button>
+                
+                <Button
                     Classes="Primary"
-                    HorizontalAlignment="Right"
+                    Margin="2 0 0 0"
                     IsEnabled="{Binding CanLaunch}"
                     Command="{Binding Start}">
                     Start Process

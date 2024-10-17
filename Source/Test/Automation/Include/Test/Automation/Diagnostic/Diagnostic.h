@@ -46,7 +46,9 @@ public:
         // Output with time stamp and indentation
         // TODO: Time zoning!
         std::cout
+#ifndef __clang__ // Clang only partially implements P0355
             << std::format("{:%H:%M:%OS}\t", std::chrono::system_clock::now())
+#endif // __clang__
             << std::string(static_cast<uint32_t>(indent * 2u), ' ')
             << Format(format, std::forward<T>(args)...) << std::endl;
     }

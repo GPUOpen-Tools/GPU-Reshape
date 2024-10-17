@@ -49,6 +49,9 @@ struct RenderPassState : public ReferenceObject {
     /// User render pass
     VkRenderPass object{VK_NULL_HANDLE};
 
+    /// Render pass object used for reconstruction events
+    VkRenderPass reconstructionObject{VK_NULL_HANDLE};
+
     /// Deep copy info
     VkRenderPassCreateInfo2DeepCopy deepCopy;
 

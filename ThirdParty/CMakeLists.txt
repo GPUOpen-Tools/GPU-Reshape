@@ -36,6 +36,10 @@ endif()
 # Global
 set(ThirdPartyDisconnected ${ThirdPartyDisconnected} CACHE INTERNAL "ThirdPartyDisconnected")
 
+# Create install directories at compile time, avoid potential sharing violations
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/External/include")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/External/lib")
+
 # Install all third party libraries
 # TODO: While the pulled objects are generally trusted, there should be some safety mechanism
 if (NOT THIN_X86_BUILD)
@@ -56,6 +60,7 @@ if (NOT THIN_X86_BUILD)
     include(UnorderedDense.cmake)
     include(BTree.cmake)
     include(ZLIB.cmake)
+    include(MD5.cmake)
 
     if (${ENABLE_EXPERIMENTAL})
         include(Eigen.cmake)

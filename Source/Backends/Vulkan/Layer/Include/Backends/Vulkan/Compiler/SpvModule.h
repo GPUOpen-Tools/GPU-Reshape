@@ -35,7 +35,7 @@
 
 // Backend
 #include <Backend/IL/Program.h>
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
 // Layer
 #include <Backends/Vulkan/Compiler/SpvTypeMap.h>
@@ -70,6 +70,11 @@ public:
     /// \param code the SPIRV module pointer
     /// \param wordCount number of words within the module stream
     bool ParseModule(const uint32_t* code, uint32_t wordCount);
+
+    /// Specialize a module
+    /// \param job target job
+    /// \return success state
+    bool Specialize(const SpvJob& job);
 
     /// Recompile the program, code must be the same as the originally parsed module
     /// \param code the SPIRV module pointer

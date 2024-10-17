@@ -1,0 +1,105 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <TargetCulture>en</TargetCulture>
+        <Nullable>enable</Nullable>
+        <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
+        <Platforms>x64</Platforms>
+        <PublishTrimmed>true</PublishTrimmed>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AssemblyName>GRS.Features.ExportIndices.UIX</AssemblyName>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <DebugType>none</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\Release\</OutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'RelWithDebInfo' ">
+        <DebugType>portable</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\RelWithDebInfo\</OutputPath>
+        <DebugSymbols>true</DebugSymbols>
+        <Optimize>true</Optimize>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'MinSizeRel' ">
+        <DebugType>none</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\MinSizeRel\</OutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <OutputPath>..\..\..\..\..\Bin\MSVC\Debug\</OutputPath>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <None Remove=".gitignore" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Avalonia" Version="0.10.22" />
+      <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.18" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="UIX.Studio.Runtime">
+            <HintPath>$(OutputPath)\UIX.Studio.Runtime.dll</HintPath>
+        </Reference>
+        <Reference Include="GRS.Features.ExportIndices.Backend.DotNet">
+            <HintPath>$(OutputPath)\GRS.Features.ExportIndices.Backend.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="GRS.Libraries.Bridge.DotNet">
+            <HintPath>$(OutputPath)\GRS.Libraries.Bridge.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="GRS.Libraries.Message.DotNet">
+            <HintPath>$(OutputPath)\GRS.Libraries.Message.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="GRS.Libraries.Backend.Schema.DotNet">
+            <HintPath>$(OutputPath)\GRS.Libraries.Backend.Schema.DotNet.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Themes\DefaultStyle.axaml" />
+      <UpToDateCheckInput Remove="Themes\WorkspacePropertyView.axaml" />
+      <UpToDateCheckInput Remove="Views\ConnectWindow.axaml" />
+      <UpToDateCheckInput Remove="Views\Controls\ContextMenuView.axaml" />
+      <UpToDateCheckInput Remove="Views\Controls\UniformViewHost.axaml" />
+      <UpToDateCheckInput Remove="Views\Controls\WorkspaceTreeItemView.axaml" />
+      <UpToDateCheckInput Remove="Views\Documents\ShaderView.axaml" />
+      <UpToDateCheckInput Remove="Views\Documents\WelcomeView.axaml" />
+      <UpToDateCheckInput Remove="Views\Documents\WorkspaceOverviewView.axaml" />
+      <UpToDateCheckInput Remove="Views\MainView.axaml" />
+      <UpToDateCheckInput Remove="Views\MainWindow.axaml" />
+      <UpToDateCheckInput Remove="Views\ProportionalStackPanelView.axaml" />
+      <UpToDateCheckInput Remove="Views\SettingsWindow.axaml" />
+      <UpToDateCheckInput Remove="Views\Tools\ConnectionView.axaml" />
+      <UpToDateCheckInput Remove="Views\Tools\LogView.axaml" />
+      <UpToDateCheckInput Remove="Views\Tools\PropertyView.axaml" />
+      <UpToDateCheckInput Remove="Views\Tools\WorkspaceView.axaml" />
+      <UpToDateCheckInput Remove="Views\Views\DashboardView.axaml" />
+      <UpToDateCheckInput Remove="Views\Views\HomeView.axaml" />
+      <UpToDateCheckInput Remove="Views\Workspace\Properties\MessageCollectionView.axaml" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Resources\Resources.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
+      <Compile Update="Resources\Resources.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Update="Resources\Resources.resx">
+        <Generator>ResXFileCodeGenerator</Generator>
+        <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      </EmbeddedResource>
+    </ItemGroup>
+
+</Project>

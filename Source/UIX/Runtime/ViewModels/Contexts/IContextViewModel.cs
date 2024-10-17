@@ -24,12 +24,17 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using System.Windows.Input;
+using System.Collections.Generic;
 
 namespace Studio.ViewModels.Contexts
 {
     public interface IContextViewModel
     {
+        /// <summary>
+        /// Install a context against a target view model
+        /// </summary>
+        /// <param name="itemViewModels">destination items list</param>
+        /// <param name="targetViewModels">the targets to install for</param>
+        void Install(IList<IContextMenuItemViewModel> itemViewModels, object[] targetViewModels);
     }
 }

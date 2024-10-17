@@ -32,11 +32,40 @@
 
 // Backend
 #include <Backend/IFeatureHost.h>
+#include <Backend/StartupContainer.h>
+#include <Backend/ShaderData/IShaderDataHost.h>
+
+// Message
+#include <Message/MessageStreamCommon.h>
+
+// Schemas
+#include <Schemas/ConfigCommon.h>
 
 // Initialization
-#include <Features/Initialization/Feature.h>
+#include <Features/Initialization/TexelAddressingFeature.h>
+#include <Features/Initialization/ResourceAddressingFeature.h>
 
-static ComRef<ComponentTemplate<InitializationFeature>> feature{nullptr};
+class InitializationComponentTemplate final : public IComponentTemplate {
+public:
+    ComRef<> Instantiate(Registry* registry) {
+        // Get components
+        auto startup = registry->Get<Backend::StartupContainer>();
+        auto dataHost = registry->Get<IShaderDataHost>();
+
+        // Is texel addressing enabled?
+        SetTexelAddressingMessage config = CollapseOrDefault<SetTexelAddressingMessage>(startup->GetView(), SetTexelAddressingMessage { .enabled = true });
+
+        // Create feature
+        // Check that tiled resources is supported at all
+        if (config.enabled && dataHost->GetCapabilityTable().supportsTiledResources) {
+            return registry->New<TexelAddressingInitializationFeature>();
+        } else {
+            return registry->New<ResourceAddressingInitializationFeature>();
+        }
+    }
+};
+
+static ComRef<InitializationComponentTemplate> feature{nullptr};
 
 DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
     info->name = "Initialization";
@@ -50,7 +79,7 @@ DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
     }
 
     // Install the Initialization feature
-    feature = registry->New<ComponentTemplate<InitializationFeature>>();
+    feature = registry->New<InitializationComponentTemplate>();
     host->Register(feature);
 
     // OK

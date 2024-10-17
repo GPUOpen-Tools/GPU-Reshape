@@ -29,10 +29,10 @@
 // Layer
 #include "RootSignatureUserSpace.h"
 
-// Common
-#include <Common/Containers/TrivialStackVector.h>
+// Std
+#include <unordered_map>
 
 struct RootSignatureUserClass {
     /// All user spaces within this class
-    std::vector<RootSignatureUserSpace> spaces;
+    std::unordered_map<uint32_t, RootSignatureUserSpace> spaces;
 };

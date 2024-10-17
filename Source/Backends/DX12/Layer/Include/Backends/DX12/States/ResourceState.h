@@ -48,6 +48,9 @@ struct __declspec(uuid("09175D5B-BA8A-4531-9553-BC1CD024A1FE")) ResourceState {
     /// Resource creation
     D3D12_RESOURCE_DESC desc;
 
+    /// Is this resource emulated as committed?
+    bool isEmulatedComitted{false};
+
     /// Optional debug name
     char* debugName{nullptr};
 

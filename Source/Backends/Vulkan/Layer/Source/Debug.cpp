@@ -27,10 +27,85 @@
 #include <Backends/Vulkan/Debug.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/States/PipelineState.h>
+#include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/States/BufferState.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
+
+VkResult Hook_vkDebugMarkerSetObjectNameEXT(VkDevice device, const VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Name copy
+    VkDebugMarkerObjectNameInfoEXT nameInfo = *pNameInfo;
+
+    // Handle type
+    switch (pNameInfo->objectType) {
+        default: {
+            break;
+        }
+        case VK_OBJECT_TYPE_PIPELINE: {
+            if (PipelineState* state = table->states_pipeline.TryGet(reinterpret_cast<VkPipeline>(pNameInfo->object))) {
+                // Get length
+                size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+
+                // Copy string
+                state->debugName = new (table->allocators) char[length];
+                strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+            }
+            break;
+        }
+        case VK_OBJECT_TYPE_SHADER_MODULE: {
+            if (ShaderModuleState* state = table->states_shaderModule.TryGet(reinterpret_cast<VkShaderModule>(pNameInfo->object))) {
+                // Get length
+                size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+
+                // Copy string
+                state->debugName = new (table->allocators) char[length];
+                strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+            }
+            break;
+        }
+        case VK_OBJECT_TYPE_IMAGE: {
+            if (ImageState* state = table->states_image.TryGet(reinterpret_cast<VkImage>(pNameInfo->object))) {
+                // Get length
+                size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+
+                // Copy string
+                state->debugName = new (table->allocators) char[length];
+                strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+
+                // Inform controller of the change
+                table->versioningController->CreateOrRecommitImage(state);
+            }
+            break;
+        }
+        case VK_OBJECT_TYPE_BUFFER: {
+            if (BufferState* state = table->states_buffer.TryGet(reinterpret_cast<VkBuffer>(pNameInfo->object))) {
+                // Get length
+                size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+
+                // Copy string
+                state->debugName = new (table->allocators) char[length];
+                strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+
+                // Inform controller of the change
+                table->versioningController->CreateOrRecommitBuffer(state);
+            }
+            break;
+        }
+        case VK_OBJECT_TYPE_COMMAND_BUFFER: {
+            if (const auto* commandBuffer = reinterpret_cast<const CommandBufferObject*>(pNameInfo->object)) {
+                // Unwrap object
+                nameInfo.object = reinterpret_cast<uint64_t>(commandBuffer->object);
+            }
+            break;
+        }
+    }
+
+    // Pass down callchain
+    return table->next_vkDebugMarkerSetObjectNameEXT(device, &nameInfo);
+}
 
 VkResult Hook_vkSetDebugUtilsObjectNameEXT(VkDevice device, const VkDebugUtilsObjectNameInfoEXT* pNameInfo) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -44,49 +119,60 @@ VkResult Hook_vkSetDebugUtilsObjectNameEXT(VkDevice device, const VkDebugUtilsOb
             break;
         }
         case VK_OBJECT_TYPE_PIPELINE: {
-            PipelineState* state = table->states_pipeline.Get(reinterpret_cast<VkPipeline>(pNameInfo->objectHandle));
+            if (PipelineState* state = table->states_pipeline.TryGet(reinterpret_cast<VkPipeline>(pNameInfo->objectHandle))) {
+                // Get length
+                size_t length = std::strlen(pNameInfo->pObjectName) + 1;
 
-            // Get length
-            size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+                // Copy string
+                state->debugName = new (table->allocators) char[length];
+                strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+            }
+            break;
+        }
+        case VK_OBJECT_TYPE_SHADER_MODULE: {
+            if (ShaderModuleState* state = table->states_shaderModule.TryGet(reinterpret_cast<VkShaderModule>(pNameInfo->objectHandle))) {
+                // Get length
+                size_t length = std::strlen(pNameInfo->pObjectName) + 1;
 
-            // Copy string
-            state->debugName = new (table->allocators) char[length];
-            strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+                // Copy string
+                state->debugName = new (table->allocators) char[length];
+                strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
+            }
             break;
         }
         case VK_OBJECT_TYPE_IMAGE: {
-            ImageState* state = table->states_image.Get(reinterpret_cast<VkImage>(pNameInfo->objectHandle));
+            if (ImageState* state = table->states_image.TryGet(reinterpret_cast<VkImage>(pNameInfo->objectHandle))) {
+                // Get length
+                size_t length = std::strlen(pNameInfo->pObjectName) + 1;
 
-            // Get length
-            size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+                // Copy string
+                state->debugName = new (table->allocators) char[length];
+                strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
 
-            // Copy string
-            state->debugName = new (table->allocators) char[length];
-            strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
-
-            // Inform controller of the change
-            table->versioningController->CreateOrRecommitImage(state);
+                // Inform controller of the change
+                table->versioningController->CreateOrRecommitImage(state);
+            }
             break;
         }
         case VK_OBJECT_TYPE_BUFFER: {
-            BufferState* state = table->states_buffer.Get(reinterpret_cast<VkBuffer>(pNameInfo->objectHandle));
+            if (BufferState* state = table->states_buffer.TryGet(reinterpret_cast<VkBuffer>(pNameInfo->objectHandle))) {
+                // Get length
+                size_t length = std::strlen(pNameInfo->pObjectName) + 1;
 
-            // Get length
-            size_t length = std::strlen(pNameInfo->pObjectName) + 1;
+                // Copy string
+                state->debugName = new (table->allocators) char[length];
+                strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
 
-            // Copy string
-            state->debugName = new (table->allocators) char[length];
-            strcpy_s(state->debugName, length * sizeof(char), pNameInfo->pObjectName);
-
-            // Inform controller of the change
-            table->versioningController->CreateOrRecommitBuffer(state);
+                // Inform controller of the change
+                table->versioningController->CreateOrRecommitBuffer(state);
+            }
             break;
         }
         case VK_OBJECT_TYPE_COMMAND_BUFFER: {
-            const auto* commandBuffer = reinterpret_cast<const CommandBufferObject*>(pNameInfo->objectHandle);
-
-            // Unwrap object
-            nameInfo.objectHandle = reinterpret_cast<uint64_t>(commandBuffer->object);
+            if (const auto* commandBuffer = reinterpret_cast<const CommandBufferObject*>(pNameInfo->objectHandle)) {
+                // Unwrap object
+                nameInfo.objectHandle = reinterpret_cast<uint64_t>(commandBuffer->object);
+            }
             break;
         }
     }

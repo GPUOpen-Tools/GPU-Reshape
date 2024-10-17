@@ -30,14 +30,23 @@
 #include <vector>
 #include <type_traits>
 
-template<typename T>
+/// Slot identifier
+using SlotId = uint64_t;
+
+/// Default invalid slot identifier
+static constexpr SlotId kInvalidSlotId = ~0ull;
+
+/// Slot array, uses swap semantics for deletion
+/// \tparam T contained type
+/// \tparam KEY contained type tracking slot member point
+template<typename T, SlotId std::remove_pointer_t<T>::*KEY>
 struct SlotArray {
     static constexpr bool kIsIndirect = std::is_pointer_v<std::remove_const_t<T>>;
 
     /// Add an element to this array
     /// \param value
     void Add(const T& value) {
-        uint64_t id = array.size();
+        SlotId id = array.size();
         auto&& emplaced = array.emplace_back(value);
         IdOf(emplaced) = id;
     }
@@ -48,8 +57,8 @@ struct SlotArray {
         size_t id = IdOf(value);
 
         // Swap last element with slot
-        if (array.size() > 1) {
-            std::swap(array[id], array.back());
+        if (id != array.size() - 1) {
+            array[id] = array.back();
             IdOf(array[id]) = id;
         }
 
@@ -66,6 +75,11 @@ struct SlotArray {
                 Remove(array[i]);
             }
         }
+    }
+
+    /// Clear this container
+    void Clear() {
+        array.clear();
     }
 
     /// Get element at index
@@ -106,20 +120,20 @@ struct SlotArray {
 
 private:
     /// Get id of a given value
-    uint64_t& IdOf(T& value) {
+    SlotId& IdOf(T& value) {
         if constexpr(kIsIndirect) {
-            return value->id;
+            return value->*KEY;
         } else {
-            return value.id;
+            return value.*KEY;
         }
     }
 
     /// Get id of a given value
-    const uint64_t& IdOf(const T& value) {
+    const SlotId& IdOf(const T& value) {
         if constexpr(kIsIndirect) {
-            return value->id;
+            return value->*KEY;
         } else {
-            return value.id;
+            return value.*KEY;
         }
     }
 

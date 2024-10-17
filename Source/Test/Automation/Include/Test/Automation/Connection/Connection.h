@@ -88,10 +88,33 @@ public:
         return featureMap.at(std::string(name));
     }
 
+    /// Set the object threshold before a connection kicks in
+    void SetObjectThreshold(uint32_t value) {
+        objectThreshold = value;
+    }
+
     /// Get the attached process id
     uint32_t GetProcessID() const {
         return processID;
     }
+
+public:
+    /// Add a new message
+    /// \return message data, invalidated on successive messages and commits
+    template<typename T>
+    T* Add() {
+        return view.Add<T>();
+    }
+    
+    /// Add a new message and commit immediately
+    template<typename T>
+    void AddAndCommit() {
+        Add<T>();
+        Commit();
+    }
+
+    /// Commit all messages
+    void Commit();
 
 private:
     /// Create a connection
@@ -107,9 +130,6 @@ private:
 
     /// Pool all target features
     bool PoolFeatures();
-
-    /// Commit all messages
-    void Commit();
 
 private:
     /// Remote bridge
@@ -127,4 +147,7 @@ private:
 
     /// Attached process id
     uint32_t processID{UINT32_MAX};
+
+    /// Threshold before connection kicks in
+    uint32_t objectThreshold{1u};
 };

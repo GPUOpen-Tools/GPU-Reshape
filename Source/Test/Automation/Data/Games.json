@@ -1,0 +1,140 @@
+{
+	"Applications":
+	[
+		{
+			"SteamID": "1024380",
+			"Process": "SecondExtinction_F.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1716740",
+			"Process": "Starfield.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "780310",
+			"Process": "riftbreaker_win_release.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "730",
+			"Process": "cs2.exe",
+			"SteamPath": "game/bin/win64/cs2.exe",
+			"Arguments": "-vulkan",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1182900",
+			"Process": "APlagueTaleRequiem_x64.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1265780",
+			"Process": "ToM-Win64-Shipping.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1016800",
+			"Process": "ChernobylGame-Win64-Shipping.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "534380",
+			"Process": "DyingLightGame_x64_rwdi.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-dx12",
+			"Discovery": true
+		},
+		{
+			"SteamID": "548570",
+			"Process": "RAGE2.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1408610",
+			"Process": "CotWTheAngler_Steam.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1680880",
+			"Process": "FORSPOKEN.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1408610",
+			"Process": "Deathloop.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "2215430",
+			"Process": "GhostOfTsushima.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "2420110",
+			"Process": "HorizonForbiddenWest.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1265780",
+			"Process": "ToM-Win64-Shipping.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1895880",
+			"Process": "RiftApart.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1361210",
+			"Process": "Darktide.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "1086940",
+			"Process": "fix-me",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "529340",
+			"Process": "victoria3.exe",
+			"SteamPath": "binaries/victoria3.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Arguments": "-vulkan",
+			"Discovery": true
+		},
+		{
+			"SteamID": "1056960",
+			"Process": "Youngblood_x64vk.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		},
+		{
+			"SteamID": "392160",
+			"Process": "X4.exe",
+			"Passes": [{ "Type": "Wait", "Duration": 180000 }, { "Type": "WaitForPipelines" }],
+			"Discovery": true
+		}
+	]
+}

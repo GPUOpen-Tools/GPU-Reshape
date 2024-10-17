@@ -32,6 +32,24 @@
 
 // Std
 #include <atomic>
+#ifndef __cplusplus_cli
+#include <mutex>
+#endif // __cplusplus_cli
+
+// Forward declarations
+struct ReferenceObject;
+
+/// Host state for a reference object
+#ifndef __cplusplus_cli
+struct ReferenceHost {
+    /// Shared mutex
+    /// Any operation that may result in a new user must be guarded by this
+    std::mutex mutex;
+};
+#else // __cplusplus_cli
+/// CoreRT threading workaround
+struct ReferenceHost;
+#endif // __cplusplus_cli
 
 /// A reference counted object
 struct ReferenceObject {
@@ -42,6 +60,12 @@ struct ReferenceObject {
     virtual ~ReferenceObject() {
         // Ensure the object is fully released
         ASSERT(users.load() == 0, "Dangling users to referenced object, use destroyRef");
+    }
+    
+    /// Release all host resources
+    /// Must be called when locked
+    virtual void ReleaseHost() {
+        /** poof */
     }
 
     /// Add a user to this object
@@ -56,16 +80,50 @@ struct ReferenceObject {
         return --users == 0;
     }
 
+    /// Get the number of users
+    uint32_t GetUsers() const {
+        return users.load();
+    }
+
+    /// Optional reference host
+    ReferenceHost* referenceHost{nullptr};
+    
 private:
     /// Number of users for this object
     std::atomic<uint32_t> users{0};
 };
 
+namespace Detail {
+    /// Lock the owning reference host
+    void LockReferenceHost(ReferenceHost* host);
+
+    /// Unlock the owning reference host
+    void UnlockReferenceHost(ReferenceHost* host);
+}
+
 template<typename T>
 inline void destroyRef(T* object, const Allocators& allocators) {
-    if (object->ReleaseUserNoDestruct()) {
-        destroy(object, allocators);
+    if (!object->ReleaseUserNoDestruct()) {
+        return;
     }
+    
+    // If there's a host, synchronize it
+    if (ReferenceHost* host = object->referenceHost) {
+        Detail::LockReferenceHost(host);
+
+        // With the host acquired, ensure no user has been added
+        // If so, the object remains alive
+        if (object->GetUsers()) {
+            Detail::UnlockReferenceHost(host);
+            return;
+        }
+
+        // Inform the host of the release
+        object->ReleaseHost();
+        Detail::UnlockReferenceHost(host);
+    }
+
+    destroy(object, allocators);
 }
 
 template<typename T>

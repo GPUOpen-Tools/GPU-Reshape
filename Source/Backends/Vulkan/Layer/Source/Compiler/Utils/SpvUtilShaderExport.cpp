@@ -118,6 +118,10 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     spvStreamBinding[1] = streamId;
     spvStreamBinding[2] = SpvDecorationBinding;
     spvStreamBinding[3] = job.bindingInfo.streamDescriptorOffset;
+
+    // Add to all entry points
+    table.entryPoint.AddInterface(SpvStorageClassUniform, counterId);
+    table.entryPoint.AddInterface(SpvStorageClassUniform, streamId);
 }
 
 void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, const IL::ID* values, uint32_t valueCount) {

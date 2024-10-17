@@ -158,10 +158,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
     DescriptorPoolState* poolState = table->states_descriptorPool.Get(pAllocateInfo->descriptorPool);
 
     // Create the new states
-    for (uint32_t i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
+    for (uint32_t setIndex = 0; setIndex < pAllocateInfo->descriptorSetCount; setIndex++) {
         // Create state
         auto state = new(table->allocators) DescriptorSetState;
-        state->object = pDescriptorSets[i];
+        state->object = pDescriptorSets[setIndex];
         state->table = table;
         state->poolSwapIndex = static_cast<uint32_t>(poolState->states.size());
         state->descriptorCount = 0;
@@ -170,7 +170,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         poolState->states.push_back(state);
         
         // Get layout
-        const DescriptorSetLayoutState* layout = table->states_descriptorSetLayout.Get(pAllocateInfo->pSetLayouts[i]);
+        const DescriptorSetLayoutState* layout = table->states_descriptorSetLayout.Get(pAllocateInfo->pSetLayouts[setIndex]);
 
         // Accumulate offsets
         for (uint32_t bindingIdx = 0; bindingIdx < layout->physicalMapping.bindings.size(); bindingIdx++) {
@@ -183,7 +183,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
             if (mapping.flags & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT) {
                 if (variableCountEXT) {
                     // Get from reported counts
-                    bindingCount = variableCountEXT->pDescriptorCounts[bindingIdx];
+                    bindingCount = variableCountEXT->pDescriptorCounts[setIndex];
                 } else {
                     // "If descriptorSetCount is zero or this structure is not included in the pNext chain, then the variable lengths are considered to be zero."
                     bindingCount = 0;
@@ -195,7 +195,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         }
         
         // Allocate segment for given layout
-        state->segmentID = table->prmTable->Allocate(state->descriptorCount);
+        if (state->descriptorCount > 0) {
+            state->segmentID = table->prmTable->Allocate(state->descriptorCount);
+        }
 
         // Preallocate
         state->prmtOffsets.reserve(layout->physicalMapping.bindings.size());
@@ -209,9 +211,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
             if (mapping.immutableSamplers && mapping.type == VK_DESCRIPTOR_TYPE_SAMPLER) {
                 // Prepare mapping
                 VirtualResourceMapping virtualMapping;
-                virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
-                virtualMapping.puid = IL::kResourceTokenPUIDReservedNullSampler;
-                virtualMapping.srb = ~0u;
+                virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
+                virtualMapping.token.puid = IL::kResourceTokenPUIDReservedNullSampler;
             
                 // Update the table with immutable samplers
                 for (uint32_t descriptorIndex = 0; descriptorIndex < mapping.bindingCount; descriptorIndex++) {
@@ -221,7 +222,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         }
 
         // Store lookup
-        table->states_descriptorSet.Add(pDescriptorSets[i], state);
+        table->states_descriptorSet.Add(pDescriptorSets[setIndex], state);
     }
 
     // OK

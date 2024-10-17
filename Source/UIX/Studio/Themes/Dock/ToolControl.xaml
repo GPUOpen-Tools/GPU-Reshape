@@ -36,17 +36,17 @@
                             ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
                          -->
                         <ct:CollapsableDockTabStrip x:Name="PART_TabStrip"
-                                                    Items="{Binding VisibleDockables}"
+                                                    ItemsSource="{Binding VisibleDockables}"
                                                     SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
                                                     DockProperties.IsDropArea="True"
                                                     DockProperties.IsDragEnabled="False">
-                            <DockTabStrip.ItemsPanel>
+                            <ct:CollapsableDockTabStrip.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel Orientation="Vertical"
                                                VerticalAlignment="{Binding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}" />
                                 </ItemsPanelTemplate>
-                            </DockTabStrip.ItemsPanel>
-                            <DockTabStrip.DataTemplates>
+                            </ct:CollapsableDockTabStrip.ItemsPanel>
+                            <ct:CollapsableDockTabStrip.DataTemplates>
                                 <DataTemplate DataType="core:IDockable">
                                     <DockableControl TrackingMode="Tab">
                                         <!--
@@ -67,7 +67,7 @@
                                         </StackPanel>
                                     </DockableControl>
                                 </DataTemplate>
-                            </DockTabStrip.DataTemplates>
+                            </ct:CollapsableDockTabStrip.DataTemplates>
                         </ct:CollapsableDockTabStrip>
 
                         <Border x:Name="PART_Border" Margin="0 30 0 0" Padding="0 5 0 0" IsVisible="{Binding IsExpanded}">
@@ -82,9 +82,10 @@
                     </DockPanel>
                     
                     <Separator 
+                        x:Name="PART_Separator"
                         ZIndex="100"
                         HorizontalAlignment="Stretch"
-                        Height="1"
+                        Height="1" Width="NaN"
                         VerticalAlignment="{Binding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}"
                         Background="{DynamicResource BorderColor}"/>
                 </Grid>

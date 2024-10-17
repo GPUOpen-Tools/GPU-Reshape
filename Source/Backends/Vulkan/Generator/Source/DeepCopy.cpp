@@ -464,7 +464,7 @@ static bool IsIgnoredStruct(const char* name) {
     return !std::strcmp(name, "VkExportMetalObjectCreateInfoEXT");
 }
 
-static bool CollectDeepCopyExtensionStructures(ObjectTreeMetadata& md, tinyxml2::XMLElement *types, const std::string_view& parent) {
+static bool CollectDeepCopyExtensionStructures(const FilterInfo& filter, ObjectTreeMetadata& md, tinyxml2::XMLElement *types, const std::string_view& parent) {
     // Create extension lookup
     for (tinyxml2::XMLElement *typeNode = types->FirstChildElement("type"); typeNode; typeNode = typeNode->NextSiblingElement("type")) {
         // Try to get the category, if not, not interested
@@ -513,7 +513,7 @@ static bool CollectDeepCopyExtensionStructures(ObjectTreeMetadata& md, tinyxml2:
         }
 
         // Next?
-        if (!anyUse) {
+        if (!anyUse || filter.excludedObjects.contains(name)) {
             continue;
         }
 
@@ -553,7 +553,7 @@ static bool CollectDeepCopyExtensionStructures(ObjectTreeMetadata& md, tinyxml2:
         md.extensions[name] = ext;
 
         // Collect nested copies
-        CollectDeepCopyExtensionStructures(md, types, name);
+        CollectDeepCopyExtensionStructures(filter, md, types, name);
     }
 
     // OK
@@ -720,7 +720,7 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
 
     // Collect all extensions
     for (const std::string& object : md.typeNames) {
-        if (!CollectDeepCopyExtensionStructures(md, types, object)) {
+        if (!CollectDeepCopyExtensionStructures(info.filter, md, types, object)) {
             return false;
         }
     }

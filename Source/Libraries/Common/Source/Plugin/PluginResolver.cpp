@@ -113,7 +113,7 @@ bool PluginResolver::FindPluginAtNode(tinyxml2::XMLNode *catChildNode, PluginLis
     }
 
     // Get the info delegate
-    auto* delegate = state.library.GetFn<PluginInfoDelegate>(PLUGIN_INFO_S);
+    auto* delegate = state.library.GetProcAddr<PluginInfoDelegate>(PLUGIN_INFO_S);
     if (!delegate) {
         std::cerr << "Plugin '" << name << "' missing entrypoint '" << PLUGIN_INFO_S << "'" << std::endl;
         return false;
@@ -257,7 +257,7 @@ void PluginResolver::Uninstall() {
             }
 
             // Get the uninstall delegate (optional)
-            auto* delegate = state.library.GetFn<PluginUninstallDelegate>(PLUGIN_UNINSTALL_S);
+            auto* delegate = state.library.GetProcAddr<PluginUninstallDelegate>(PLUGIN_UNINSTALL_S);
             if (!delegate) {
                 continue;
             }
@@ -293,7 +293,7 @@ bool PluginResolver::InstallPlugin(const PluginEntry &entry) {
     }
 
     // Get the install delegate
-    auto* delegate = state.library.GetFn<PluginInstallDelegate>(PLUGIN_INSTALL_S);
+    auto* delegate = state.library.GetProcAddr<PluginInstallDelegate>(PLUGIN_INSTALL_S);
     if (!delegate) {
         std::cerr << "Plugin '" << entry.plugin << "' missing entrypoint '" << PLUGIN_INSTALL_S << "'" << std::endl;
         return false;

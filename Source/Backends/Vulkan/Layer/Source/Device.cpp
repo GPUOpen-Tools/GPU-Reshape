@@ -57,6 +57,7 @@
 // Backend
 #include <Backend/EnvironmentInfo.h>
 #include <Backend/StartupEnvironment.h>
+#include <Backend/StartupContainer.h>
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
 #include <Backend/IL/Format.h>
@@ -75,20 +76,16 @@
 #include <cstring>
 
 static void ApplyStartupEnvironment(DeviceDispatchTable* table) {
-    MessageStream stream;
-    
-    // Attempt to load
-    Backend::StartupEnvironment startupEnvironment;
-    startupEnvironment.LoadFromConfig(stream);
-    startupEnvironment.LoadFromEnvironment(stream);
+    // Get container
+    auto container = table->registry.Get<Backend::StartupContainer>();
 
     // Empty?
-    if (stream.IsEmpty()) {
+    if (container->stream.IsEmpty()) {
         return;
     }
-
+    
     // Commit initial stream
-    table->bridge->GetInput()->AddStream(stream);
+    table->bridge->GetInput()->AddStream(container->stream);
     table->bridge->Commit();
 }
 
@@ -199,6 +196,46 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceDispatchTab
     return info;
 }
 
+static void DeviceSyncPoint(DeviceDispatchTable *table) {
+    // Commit bridge data
+    BridgeDeviceSyncPoint(table, nullptr);
+}
+
+template<typename T>
+static void EnableDescriptorFeatureSet(T* features) {
+    features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
+    features->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
+}
+
+template<typename T>
+static void EnableFeatureSet(T* features) {
+    features->vertexPipelineStoresAndAtomics = true;
+    features->fragmentStoresAndAtomics = true;
+    features->sparseBinding = true;
+    features->sparseResidencyBuffer = true;
+}
+
+static Backend::VendorType GetVendor(uint32_t vendorID) {
+    // Assume from vendor id
+    switch (vendorID) {
+        default: {
+            return Backend::VendorType::Unknown;
+        }
+        case 0x1002:
+        case 0x1022: {
+            return Backend::VendorType::AMD;
+        }
+        case 0x10DE: {
+            return Backend::VendorType::Nvidia;
+        }
+        case 0x163C:
+        case 0x8086:
+        case 0x8087: {
+            return Backend::VendorType::Intel;
+        }
+    }
+}
+
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     auto chainInfo = static_cast<VkLayerDeviceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
@@ -246,6 +283,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Get the device features
     table->parent->next_vkGetPhysicalDeviceFeatures2(physicalDevice, &table->physicalDeviceFeatures);
 
+    // Try to get the vendor
+    table->vendor = GetVendor(table->physicalDeviceProperties.vendorID);
+
     // Create a deep copy
     table->createInfo.DeepCopy(table->allocators, *pCreateInfo);
 
@@ -255,18 +295,67 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Add descriptor indexing extension
     table->enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+    
+    // Add synchronization extensions
+    table->enabledExtensions.push_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
+    table->enabledExtensions.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
 
-    // Find existing indexing features or allocate a new one
-    auto* indexingFeatures = FindStructureTypeMutableUnsafe<VkPhysicalDeviceDescriptorIndexingFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES>(table->createInfo->pNext);
-    if (!indexingFeatures) {
-        indexingFeatures = new (ALLOCA(VkPhysicalDeviceDescriptorIndexingFeatures)) VkPhysicalDeviceDescriptorIndexingFeatures{};
-        indexingFeatures->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-        PrependExtensionUnsafe(&table->createInfo.createInfo, indexingFeatures);
+    // Optional feature structures
+    auto* features2                = FindStructureTypeMutableUnsafe<VkPhysicalDeviceFeatures2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2>(table->createInfo->pNext);
+    auto* features1_2              = FindStructureTypeMutableUnsafe<VkPhysicalDeviceVulkan12Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES>(table->createInfo->pNext);
+    auto* features1_3              = FindStructureTypeMutableUnsafe<VkPhysicalDeviceVulkan13Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES>(table->createInfo->pNext);
+    auto* indexingFeatures         = FindStructureTypeMutableUnsafe<VkPhysicalDeviceDescriptorIndexingFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES>(table->createInfo->pNext);
+    auto* timelineFeatures         = FindStructureTypeMutableUnsafe<VkPhysicalDeviceTimelineSemaphoreFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES>(table->createInfo->pNext);
+    auto* synchronization2Features = FindStructureTypeMutableUnsafe<VkPhysicalDeviceSynchronization2Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES>(table->createInfo->pNext);
+
+    // Try enabling descriptor features
+    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeaturesFallback{};
+    if (features1_2) {
+        EnableDescriptorFeatureSet(features1_2);
+    } else if (indexingFeatures) {
+        EnableDescriptorFeatureSet(indexingFeatures);
+    } else {
+        EnableDescriptorFeatureSet(&indexingFeaturesFallback);
+        indexingFeaturesFallback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+        PrependExtensionUnsafe(&table->createInfo.createInfo, &indexingFeaturesFallback);
     }
 
-    // Enable update after bind
-    indexingFeatures->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
-    indexingFeatures->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
+    // Try enabling synchronization2
+    VkPhysicalDeviceSynchronization2Features synchronization2Fallback{};
+    if (features1_3) {
+        features1_3->synchronization2 = true;
+    } else if (synchronization2Features) {
+        synchronization2Features->synchronization2 = true;
+    } else {
+        synchronization2Fallback.synchronization2 = true;
+        synchronization2Fallback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+        PrependExtensionUnsafe(&table->createInfo.createInfo, &synchronization2Fallback);
+    }
+
+    // Try enabling timeline features
+    VkPhysicalDeviceTimelineSemaphoreFeatures timelineFallback{};
+    if (features1_2) {
+        features1_2->timelineSemaphore = true;
+    } else if (timelineFeatures) {
+        timelineFeatures->timelineSemaphore = true;
+    } else {
+        timelineFallback.timelineSemaphore = true;
+        timelineFallback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
+        PrependExtensionUnsafe(&table->createInfo.createInfo, &timelineFallback);
+    }
+
+    // Try enabling base features
+    VkPhysicalDeviceFeatures featuresFallback{};
+    if (features2) {
+        EnableFeatureSet(&features2->features);
+    } else {
+        if (table->createInfo->pEnabledFeatures) {
+            featuresFallback = *table->createInfo->pEnabledFeatures;
+        }
+
+        EnableFeatureSet(&featuresFallback);
+        table->createInfo->pEnabledFeatures = &featuresFallback;
+    }
 
     // Set new layers and extensions
     table->createInfo->ppEnabledLayerNames = table->enabledLayers.data();
@@ -402,7 +491,7 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
         }
     }
 
-    // Query and apply environment
+    // Apply environment
     ApplyStartupEnvironment(table);
 
     // Finally, post-install all features for late work
@@ -410,6 +499,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     for (const ComRef<IFeature>& feature : table->features) {
         ENSURE(feature->PostInstall(), "Failed to post-install feature");
     }
+
+    // Start sync thread
+    table->syncPointActionThread.Start(std::bind(DeviceSyncPoint, table));
 
     // OK
     return VK_SUCCESS;
@@ -424,6 +516,9 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 
     // Ensure all work is done
     table->next_vkDeviceWaitIdle(device);
+
+    // Stop the sync point thread
+    table->syncPointActionThread.Stop();
 
     // Process all remaining work
     table->exportStreamer->Process();
@@ -456,7 +551,7 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
     next_vkDestroyDevice(device, pAllocator);
 }
 
-void BridgeDeviceSyncPoint(DeviceDispatchTable *table) {
+void BridgeDeviceSyncPoint(DeviceDispatchTable *table, ShaderExportQueueState* queueState) {
     // Commit all logging to bridge
     table->parent->logBuffer.Commit(table->bridge.GetUnsafe());
     
@@ -465,6 +560,13 @@ void BridgeDeviceSyncPoint(DeviceDispatchTable *table) {
     table->instrumentationController->Commit();
     table->metadataController->Commit();
     table->versioningController->Commit();
+
+    // Inform the streamer of the sync point
+    if (queueState) {
+        table->exportStreamer->Process(queueState);
+    } else {
+        table->exportStreamer->Process();
+    }
 
     // Update the environment?
     if (table->environmentUpdateAction.Step()) {

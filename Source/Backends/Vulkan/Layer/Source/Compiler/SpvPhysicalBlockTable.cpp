@@ -29,6 +29,7 @@
 SpvPhysicalBlockTable::SpvPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
     program(program),
     scan(program),
+    extensionImport(allocators, program, *this),
     entryPoint(allocators, program, *this),
     capability(allocators, program, *this),
     annotation(allocators, program, *this),
@@ -38,7 +39,8 @@ SpvPhysicalBlockTable::SpvPhysicalBlockTable(const Allocators &allocators, IL::P
     shaderExport(allocators, program, *this),
     shaderPRMT(allocators, program, *this),
     shaderDescriptorConstantData(allocators, program, *this),
-    shaderConstantData(allocators, program, *this) {
+    shaderConstantData(allocators, program, *this),
+    shaderDebug(allocators, program, *this) {
     /* */
 }
 
@@ -48,13 +50,33 @@ bool SpvPhysicalBlockTable::Parse(const uint32_t *code, uint32_t count) {
         return false;
     }
 
+    // Parse extensions before any utilities
+    extensionImport.Parse();
+
+    // Setup utilities
+    shaderDebug.Parse();
+
     // Parse all blocks
     entryPoint.Parse();
     capability.Parse();
     annotation.Parse();
     debugStringSource.Parse();
     typeConstantVariable.Parse();
+
+    // Compile debug data
+    // Function parsing depends on this
+    shaderDebug.FinalizeSource();
+
+    // Finally, parse the functions
     function.Parse();
+
+    // OK
+    return true;
+}
+
+bool SpvPhysicalBlockTable::Specialize(const SpvJob &job) {
+    // Specialize relevant blocks
+    typeConstantVariable.Specialize(job);
 
     // OK
     return true;
@@ -85,6 +107,9 @@ bool SpvPhysicalBlockTable::Compile(const SpvJob &job) {
     // Compile dynamic constant data
     typeConstantVariable.CompileConstants();
 
+    // Compile entry point, may add interfaces
+    entryPoint.Compile();
+
     // OK
     return true;
 }
@@ -96,6 +121,8 @@ void SpvPhysicalBlockTable::Stitch(SpvStream &out) {
 
 void SpvPhysicalBlockTable::CopyTo(SpvPhysicalBlockTable &out) {
     scan.CopyTo(out.scan);
+    extensionImport.CopyTo(out, out.extensionImport);
+    entryPoint.CopyTo(out, out.entryPoint);
     capability.CopyTo(out, out.capability);
     annotation.CopyTo(out, out.annotation);
     debugStringSource.CopyTo(out, out.debugStringSource);
@@ -105,4 +132,5 @@ void SpvPhysicalBlockTable::CopyTo(SpvPhysicalBlockTable &out) {
     shaderDescriptorConstantData.CopyTo(out, out.shaderDescriptorConstantData);
     shaderConstantData.CopyTo(out, out.shaderConstantData);
     shaderPRMT.CopyTo(out, out.shaderPRMT);
+    shaderDebug.CopyTo(out, out.shaderDebug);
 }

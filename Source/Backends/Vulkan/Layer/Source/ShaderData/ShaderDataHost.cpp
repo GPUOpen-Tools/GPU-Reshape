@@ -58,11 +58,17 @@ bool ShaderDataHost::Install() {
         return false;
     }
 
+    // Fill capability table
+    capabilityTable.supportsTiledResources = table->physicalDeviceFeatures.features.sparseResidencyBuffer;
+    capabilityTable.bufferMaxElementCount = table->physicalDeviceProperties.limits.maxTexelBufferElements;
+
     // OK
     return true;
 }
 
 void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffset) {
+    std::lock_guard guard(mutex);
+    
     TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites(allocators);
 
     // Add all relevant resources
@@ -102,6 +108,8 @@ void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffs
 }
 
 ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -129,20 +137,27 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferInfo.size = Backend::IL::GetSize(info.format) * info.elementCount;
 
+    // If tiled, append flags
+    if (info.flagSet & ShaderDataBufferFlag::Tiled) {
+        bufferInfo.flags |= VK_BUFFER_CREATE_SPARSE_BINDING_BIT | VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
+    }
+
     // Attempt to create the buffer
     if (table->next_vkCreateBuffer(table->object, &bufferInfo, nullptr, &entry.buffer) != VK_SUCCESS) {
         return InvalidShaderDataID;
     }
 
     // Get the requirements
-    VkMemoryRequirements requirements;
-    table->next_vkGetBufferMemoryRequirements(table->object, entry.buffer, &requirements);
+    table->next_vkGetBufferMemoryRequirements(table->object, entry.buffer, &entry.memoryRequirements);
 
-    // Create the allocation
-    entry.allocation = deviceAllocator->Allocate(requirements, info.hostVisible ? AllocationResidency::HostVisible : AllocationResidency::Device);
+    // If not tiled, immediately bind memory
+    if (!(info.flagSet & ShaderDataBufferFlag::Tiled)) {
+        // Create the allocation
+        entry.allocation = deviceAllocator->Allocate(entry.memoryRequirements, info.flagSet & ShaderDataBufferFlag::HostVisible ? AllocationResidency::HostVisible : AllocationResidency::Device);
 
-    // Bind against the allocation
-    deviceAllocator->BindBuffer(entry.allocation, entry.buffer);
+        // Bind against the allocation
+        deviceAllocator->BindBuffer(entry.allocation, entry.buffer);
+    }
 
     // View creation info
     VkBufferViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
@@ -160,6 +175,8 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
 }
 
 ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -187,6 +204,8 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
 }
 
 ShaderDataID ShaderDataHost::CreateDescriptorData(const ShaderDataDescriptorInfo &info) {
+    std::lock_guard guard(mutex);
+    
     // Determine index
     ShaderDataID rid;
     if (freeIndices.empty()) {
@@ -214,6 +233,7 @@ ShaderDataID ShaderDataHost::CreateDescriptorData(const ShaderDataDescriptorInfo
 }
 
 void *ShaderDataHost::Map(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to map
@@ -223,7 +243,48 @@ void *ShaderDataHost::Map(ShaderDataID rid) {
     return deviceAllocator->Map(entry.allocation);
 }
 
+ShaderDataMappingID ShaderDataHost::CreateMapping(ShaderDataID data, uint64_t tileCount) {
+    std::lock_guard guard(mutex);
+    
+    ResourceEntry &dataEntry = resources[indices[data]];
+
+    // Allocate index
+    ShaderDataMappingID mid;
+    if (freeMappingIndices.empty()) {
+        mid = static_cast<uint32_t>(mappings.size());
+        mappings.emplace_back();
+    } else {
+        mid = freeMappingIndices.back();
+        freeMappingIndices.pop_back();
+    }
+
+    // Setup requirements, inherit memory bits from the source data
+    VkMemoryRequirements requirements;
+    requirements.memoryTypeBits = dataEntry.memoryRequirements.memoryTypeBits;
+    requirements.alignment = kShaderDataMappingTileWidth;
+    requirements.size = tileCount * kShaderDataMappingTileWidth;
+
+    // Create allocation
+    MappingEntry& entry = mappings[mid];
+    entry.allocation = deviceAllocator->AllocateMemory(requirements);
+
+    // OK
+    return mid;
+}
+
+void ShaderDataHost::DestroyMapping(ShaderDataMappingID mid) {
+    std::lock_guard guard(mutex);
+    MappingEntry& entry = mappings[mid];
+
+    // Release the allocation
+    deviceAllocator->Free(entry.allocation);
+
+    // Mark as free
+    freeMappingIndices.push_back(mid);
+}
+
 void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to flush
@@ -234,6 +295,7 @@ void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t le
 }
 
 VkBuffer ShaderDataHost::GetResourceBuffer(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to map
@@ -244,7 +306,14 @@ VkBuffer ShaderDataHost::GetResourceBuffer(ShaderDataID rid) {
     return entry.buffer;
 }
 
+VmaAllocation ShaderDataHost::GetMappingAllocation(ShaderDataMappingID mid) {
+    std::lock_guard guard(mutex);
+    MappingEntry &entry = mappings[mid];
+    return entry.allocation;
+}
+
 void ShaderDataHost::Destroy(ShaderDataID rid) {
+    std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
 
     // Entry to release
@@ -275,6 +344,8 @@ void ShaderDataHost::Destroy(ShaderDataID rid) {
 }
 
 void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
+    std::lock_guard guard(mutex);
+    
     if (out) {
         uint32_t offset = 0;
 
@@ -296,7 +367,12 @@ void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataT
     }
 }
 
+ShaderDataCapabilityTable ShaderDataHost::GetCapabilityTable() {
+    return capabilityTable;
+}
+
 ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
+    std::lock_guard guard(mutex);
     ConstantShaderDataBuffer out;
 
     // Total dword count
@@ -340,6 +416,8 @@ ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
 }
 
 ShaderConstantsRemappingTable ShaderDataHost::CreateConstantMappingTable() {
+    std::lock_guard guard(mutex);
+    
     ShaderConstantsRemappingTable out(indices.size());
 
     // Current offset

@@ -27,6 +27,7 @@
 #pragma once
 
 // Backend
+#include "FeatureActivationStage.h"
 #include "FeatureHookTable.h"
 #include "FeatureInfo.h"
 
@@ -57,6 +58,14 @@ public:
     /// \return constructed hook table
     virtual FeatureHookTable GetHookTable() { return {}; }
 
+    /// Activate this feature
+    /// \param stage stage being activated
+    virtual void Activate(FeatureActivationStage stage) { }
+
+    /// Deactivate this feature
+    /// i.e. the feature is no longer in us
+    virtual void Deactivate() { }
+    
     /// Collect all produced messages
     /// \param storage the output storage
     virtual void CollectMessages(IMessageStorage* storage) { }

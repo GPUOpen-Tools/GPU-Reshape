@@ -66,6 +66,8 @@ using PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN = HRESULT(WINAPI *)(const struct D3D1
 using PFN_D3D12_GET_GPUOPEN_BOOTSTRAPPER_INFO = void(WINAPI *)(const struct D3D12GPUOpenBootstrapperInfo* out);
 
 /// Extension pointer types
+using PFN_AMD_AGS_INITIALIZE = AGSReturnCode(__stdcall *)(int agsVersion, const AGSConfiguration* config, AGSContext** context, AGSGPUInfo* gpuInfo);
+using PFN_AMD_AGS_DEINITIALIZE = AGSReturnCode(__stdcall *)(AGSContext* context);
 using PFN_AMD_AGS_CREATE_DEVICE = AGSReturnCode(__stdcall *)(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams);
 using PFN_AMD_AGS_DESTRIY_DEVICE = AGSReturnCode(__stdcall *)(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences);
 using PFN_AMD_AGS_PUSH_MARKER = AGSReturnCode(__stdcall *)(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data);
@@ -75,6 +77,9 @@ using PFN_AMD_AGS_SET_MARKER = AGSReturnCode(__stdcall *)(AGSContext* context, I
 /// Vendor specific device IID
 static constexpr GUID kIIDD3D12DeviceVendor = { 0xc443b53a, 0xe4f6, 0x48f5, { 0x98, 0xed, 0xbe, 0x76, 0x8b, 0x47, 0xf, 0x6d } };
 
+/// SDK Version
+static constexpr uint32_t kD3D12AgilitySDKVersion = 714;
+
 /// Optional gpu reshape information
 struct D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO {
     /// Shared registry
@@ -83,6 +88,7 @@ struct D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO {
 
 /// Optional function table
 struct D3D12GPUOpenFunctionTable {
+    PFN_D3D12_GET_INTERFACE  next_D3D12GetInterfaceOriginal{nullptr};
     PFN_D3D12_CREATE_DEVICE  next_D3D12CreateDeviceOriginal{nullptr};
     PFN_CREATE_DXGI_FACTORY  next_CreateDXGIFactoryOriginal{nullptr};
     PFN_CREATE_DXGI_FACTORY1 next_CreateDXGIFactory1Original{nullptr};
@@ -95,6 +101,8 @@ struct D3D12GPUOpenFunctionTable {
     PFN_ENABLE_EXPERIMENTAL_FEATURES next_EnableExperimentalFeatures{nullptr};
 
     /// Extensions
+    PFN_AMD_AGS_INITIALIZE     next_AMDAGSInitialize{nullptr};
+    PFN_AMD_AGS_DEINITIALIZE   next_AMDAGSDeinitialize{nullptr};
     PFN_AMD_AGS_CREATE_DEVICE  next_AMDAGSCreateDevice{nullptr};
     PFN_AMD_AGS_DESTRIY_DEVICE next_AMDAGSDestroyDevice{nullptr};
     PFN_AMD_AGS_PUSH_MARKER    next_AMDAGSPushMarker{nullptr};
@@ -102,13 +110,33 @@ struct D3D12GPUOpenFunctionTable {
     PFN_AMD_AGS_SET_MARKER     next_AMDAGSSetMarker{nullptr};
 };
 
+/// SDK state
+struct D3D12GPUOpenSDKRuntime {
+    /// SDK overrides
+    bool isAgilitySDKOverride714{false};
+    bool isAMDAGS{false};
+
+    // AGS payload
+    struct {
+        uint32_t reservedUavSpace;
+        uint32_t reservedUavSlot;
+    } AMDAGS;
+};
+
 /// Process state
 struct D3D12GPUOpenProcessState {
     /// Runtime feature set
     bool isExperimentalModeEnabled{false};
     bool isExperimentalShaderModelsEnabled{false};
+    bool isAgilitySDKOverrideEnabled{false};
     bool applicationRequestedExperimentalShadingModels{false};
     bool isDXBCConversionEnabled{false};
+
+    /// Global SDK
+    D3D12GPUOpenSDKRuntime sdk;
+
+    /// Shared device factory
+    ID3D12DeviceFactory* deviceFactory{nullptr};
 
     /// Device UID allocator
     std::atomic<uint32_t> deviceUID; 

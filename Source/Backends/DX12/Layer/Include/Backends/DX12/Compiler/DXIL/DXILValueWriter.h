@@ -143,6 +143,11 @@ struct DXILValueWriter {
         record.opCount = destOffset + missing;
     }
 
+    /// Any operands remaining?
+    bool Any() const {
+        return sourceOffset < record.opCount;
+    }
+
 private:
     DXILPhysicalBlockTable& table;
 

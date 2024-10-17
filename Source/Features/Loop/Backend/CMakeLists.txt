@@ -26,14 +26,16 @@
 
 # Loop feature library
 
-# Generate the schema
+# Generate the schemas
 Project_AddShaderSchema(Generated Schemas/Loop.xml Include/Schemas/Features)
+Project_AddSchema(Generated Schemas/LoopConfig.xml Include/Schemas/Features)
 
 # Create feature
 add_library(
     GRS.Features.Loop.Backend SHARED
     Source/Feature.cpp
     Source/Plugin.cpp
+    Source/SignalShaderProgram.cpp
 
     # Generated
     ${GeneratedCPP}
@@ -74,5 +76,6 @@ Project_AddTest(
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(GRS.Features.Loop.Backend.DotNet GeneratedCS)
+    Project_AddDotNetGeneratedMerge(GRS.Features.Loop.Backend.DotNet.GenMerge GeneratedCS)
+    add_subdirectory(DotNet)
 endif()

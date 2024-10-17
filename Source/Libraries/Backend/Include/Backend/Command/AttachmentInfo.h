@@ -27,12 +27,15 @@
 #pragma once
 
 // Backend
-#include "ResourceInfo.h"
-#include "AttachmentAction.h"
+#include <Backend/Resource/ResourceInfo.h>
+#include <Backend/Command/AttachmentAction.h>
 
 struct AttachmentInfo {
     /// Given resource
     ResourceInfo resource;
+
+    /// Optional, resolve resource target
+    const ResourceInfo* resolveResource{nullptr};
 
     /// Data actions for given resource
     AttachmentAction loadAction;

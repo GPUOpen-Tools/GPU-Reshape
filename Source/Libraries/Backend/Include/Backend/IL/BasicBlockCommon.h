@@ -42,6 +42,9 @@ namespace Backend::IL {
         idMap.RemoveInstruction(instr->result);
         idMap.AddInstruction(it, result);
 
+        // Keep track of all redirects
+        idMap.RedirectInstruction(instr->result, result);
+
         // Remap the type map
         TypeMap& typeMap = program.GetTypeMap();
         typeMap.SetType(result, typeMap.GetType(instr->result));
@@ -55,5 +58,24 @@ namespace Backend::IL {
 
         // Ensure the basic block is recompiled
         it.basicBlock->MarkAsDirty();
+    }
+
+    /// Find the first non phi instruction
+    /// \param block given block
+    /// \param it iterator to search from
+    /// \return first non phi, may be end
+    inline BasicBlock::Iterator FirstNonPhi(BasicBlock* block, BasicBlock::Iterator it) {
+        while (it != block->end() && it->Is<PhiInstruction>()) {
+            ++it;
+        }
+
+        return it;
+    }
+
+    /// Find the first non phi instruction
+    /// \param block given block
+    /// \return first non phi, may be end
+    inline BasicBlock::Iterator FirstNonPhi(BasicBlock* block) {
+        return FirstNonPhi(block, block->begin());
     }
 }

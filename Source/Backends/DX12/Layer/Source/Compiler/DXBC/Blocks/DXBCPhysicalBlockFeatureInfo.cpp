@@ -66,6 +66,10 @@ void DXBCPhysicalBlockFeatureInfo::Compile() {
         features |= DXBCShaderFeature::TypedUAVLoadAdditionalFormats;
     }
 
+    if (bindingInfo.shaderFlags & DXILProgramShaderFlag::UseWaveIntrinsics) {
+        features |= DXBCShaderFeature::WaveOps;
+    }
+
     // Add features
     block->stream.Append(features.value);
 }

@@ -27,7 +27,7 @@
 #pragma once
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 
 // Std
 #include <cstdint>
@@ -38,7 +38,7 @@
 /// Simple dependency tracker
 /// TODO: Make the search faster...
 template<typename T, typename U>
-struct DependentObject {
+struct DependentObject : public ReferenceHost {
     struct Object {
         Object(const Allocators& allocators) : dependencies(allocators) {
             
@@ -123,6 +123,7 @@ struct DependentObject {
 
     /// Get the number of dependencies
     uint32_t Count(T* key) {
+        std::lock_guard guard(mutex);
         return static_cast<uint32_t>(GetObj(key).dependencies.size());
     }
 
@@ -137,7 +138,6 @@ private:
     }
 
 private:
-    std::mutex           mutex;
     std::map<T*, Object> map;
 
 private:

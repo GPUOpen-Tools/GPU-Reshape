@@ -37,7 +37,7 @@
 #include <Common/ComRef.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/Containers/TrivialObjectPool.h>
 #include <Common/Containers/TrivialStackVector.h>
@@ -162,8 +162,9 @@ public:
 
     /// Map a stream state pre submission
     /// \param state the stream state
+    /// \param commandList the owning command list
     /// \param segment the segment to be mapped to
-    void MapSegment(ShaderExportStreamState* state, ShaderExportStreamSegment* segment);
+    void MapSegment(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList, ShaderExportStreamSegment* segment);
 
     /// Invoked during root binding
     /// \param state parent stream state
@@ -233,10 +234,6 @@ public:
     /// \param state parent stream state
     void CloseCommandList(ShaderExportStreamState* state);
 
-    /// Close a command list
-    /// \param state parent stream state
-    void ResetCommandList(ShaderExportStreamState* state);
-
     /// Recycle a command list
     /// \param state parent stream state, must be pending
     void RecycleCommandList(ShaderExportStreamState* state);
@@ -286,6 +283,14 @@ private:
     /// Free a descriptor data segment
     void FreeDescriptorDataSegment(const DescriptorDataSegment& dataSegment);
 
+    /// Perform a linear search for a given heap segment
+    /// \param state the state to search in
+    /// \param resourceHeap the resource heap to search for
+    /// \param samplerHeap the sampler heap to search for, matched in pair with the resource heap
+    /// \param out shared segment allocation
+    /// \return true if found
+    bool LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, ShaderExportSegmentDescriptorAllocation* out);
+    
     /// Get the expected bind state of a pipeline
     ShaderExportStreamBindState& GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline);
 

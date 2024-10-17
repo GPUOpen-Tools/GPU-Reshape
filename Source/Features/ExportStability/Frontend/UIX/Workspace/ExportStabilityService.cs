@@ -35,6 +35,8 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.IL;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
@@ -50,6 +52,16 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// Feature name
         /// </summary>
         public string Name => "Export Stability";
+        
+        /// <summary>
+        /// Feature category
+        /// </summary>
+        public string Category => string.Empty;
+
+        /// <summary>
+        /// Feature flags
+        /// </summary>
+        public InstrumentationFlag Flags => InstrumentationFlag.Standard;
         
         /// <summary>
         /// Assigned workspace
@@ -114,6 +126,8 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
+                        Traits = _traits,
+                        Severity = ValidationSeverity.Info,
                         Content = $"Exporting {(message.Flat.isNaN == 1 ? "NaN" : "Inf")}",
                         Count = 1u
                     };
@@ -210,6 +224,17 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         }
 
         /// <summary>
+        /// Check if a target may be instrumented
+        /// </summary>
+        public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable)
+        {
+            return instrumentable
+                .GetWorkspaceCollection()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .HasFeature("Export Stability") ?? false;
+        }
+
+        /// <summary>
         /// Create an instrumentation property
         /// </summary>
         /// <param name="target"></param>
@@ -219,7 +244,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         {
             // Get feature info on target
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Export Stability");
 
@@ -247,6 +272,17 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// All reduced resource messages
         /// </summary>
         private Dictionary<uint, ResourceValidationDetailViewModel> _reducedDetails = new();
+        
+        /// <summary>
+        /// Shared validation traits
+        /// </summary>
+        private ValidationInstructionExcludeTrait _traits = new ()
+        {
+            ExcludedOps = new OpCode[]
+            {
+                OpCode.StoreOutput
+            }
+        };
 
         /// <summary>
         /// Segment mapping

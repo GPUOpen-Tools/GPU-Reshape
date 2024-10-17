@@ -43,6 +43,9 @@
                     <DataGridTextColumn Header="API" Width="75" />
                     <DataGridTextColumn Header="PID" Width="50" />
                 </DataGrid.Columns>
+                <DataGrid.ItemsSource>
+                    _ _ _
+                </DataGrid.ItemsSource>
             </DataGrid>
         </Grid>
     </Design.PreviewWith>
@@ -88,6 +91,14 @@
                 </Border>
             </ControlTemplate>
         </Setter>
+    </Style>
+    
+    <Style Selector="DataGridRow:nth-child(odd)">
+        <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush4}"/>
+    </Style>
+    
+    <Style Selector="DataGridRow:nth-child(even)">
+        <Setter Property="Background" Value="Transparent"/>
     </Style>
     
     <Style Selector="DataGrid">

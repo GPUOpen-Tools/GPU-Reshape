@@ -36,6 +36,7 @@ using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
 using System.Reactive.Linq;
 using Runtime.ViewModels.Shader;
+using Studio.Extensions;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Views.Tools
@@ -62,7 +63,7 @@ namespace Studio.Views.Tools
                 return;
             
             // Get service
-            var service = App.Locator.GetService<IWorkspaceService>();
+            var service = ServiceRegistry.Get<IWorkspaceService>();
             if (service?.SelectedShader == null)
                 return;
 

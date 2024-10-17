@@ -28,6 +28,9 @@
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 
+// Backend
+#include <Backend/Diagnostic/DiagnosticFatal.h>
+
 DeviceAllocator::~DeviceAllocator() {
     if (allocator) {
         vmaDestroyAllocator(allocator);
@@ -93,6 +96,15 @@ Allocation DeviceAllocator::Allocate(const VkMemoryRequirements& requirements, A
     // Attempt to allocate the memory
     VkResult result = vmaAllocateMemory(allocator, &requirements, &createInfo, &allocation.allocation, &allocation.info);
     if (result != VK_SUCCESS) {
+        // Display friendly message
+        Backend::DiagnosticFatal(
+            "Out Of Memory",
+            "GPU Reshape has run out of {} memory. Please consider decreasing the workload "
+            "or simplifying instrumentation (e.g., disabling texel addressing)",
+            residency == AllocationResidency::Device ? "device-local" : "system"
+        );
+
+        // Unreachable
         return {};
     }
 
@@ -118,6 +130,45 @@ MirrorAllocation DeviceAllocator::AllocateMirror(const VkMemoryRequirements& req
     }
 
     return allocation;
+}
+
+VmaAllocation DeviceAllocator::AllocateMemory(const VkMemoryRequirements& requirements) {
+    // Default to GPU memory
+    VmaAllocationCreateInfo createInfo{};
+    createInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    // Try to create allocation
+    VmaAllocation allocation;
+    if (vmaAllocateMemory(
+        allocator,
+        &requirements,
+        &createInfo,
+        &allocation,
+        nullptr
+    ) != VK_SUCCESS) {
+        // Display friendly message
+        Backend::DiagnosticFatal(
+            "Out Of Memory",
+            "GPU Reshape has run out of virtual backing memory. Please consider decreasing the workload "
+            "or disabling texel addressing."
+        );
+
+        // Unreachable
+        return nullptr;
+    }
+
+    // OK
+    return allocation;
+}
+
+VmaAllocationInfo DeviceAllocator::GetAllocationInfo(VmaAllocation allocation) {
+    VmaAllocationInfo info{};
+    vmaGetAllocationInfo(allocator, allocation, &info);
+    return info;
+}
+
+void DeviceAllocator::Free(VmaAllocation allocation) {
+    vmaFreeMemory(allocator, allocation);
 }
 
 void DeviceAllocator::Free(const Allocation& allocation) {

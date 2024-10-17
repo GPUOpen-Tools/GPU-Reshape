@@ -50,6 +50,9 @@
 // Services
 #include <Services/HostResolver/HostResolverService.h>
 
+// System
+#include <Windows.h>
+
 /// Console ping pong
 class PingPongConsole : public TComponent<PingPongConsole>, public IBridgeListener {
 public:

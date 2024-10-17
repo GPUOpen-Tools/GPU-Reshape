@@ -49,12 +49,14 @@
 #include <Backends/DX12/Resource/DescriptorResourceMapping.h>
 #include <Backends/DX12/Resource/DescriptorData.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
+#include <Backends/DX12/CommandListRenderPassScope.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
+#include <Backend/FeatureHookTable.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -128,7 +130,26 @@ ShaderExportStreamer::~ShaderExportStreamer() {
 
     // Free all stream states
     for (ShaderExportStreamState* state : streamStatePool) {
-        device->deviceAllocator->Free(state->constantShaderDataBuffer.allocation);
+        if (state->pending) {
+            RecycleCommandList(state);
+        }
+    }
+
+    // Free all descriptor data segments
+    for (const DescriptorDataSegmentEntry& entry : freeDescriptorDataSegmentEntries) {
+        device->deviceAllocator->Free(entry.allocation);
+    }
+
+    // Free all constant buffers
+    for (const ConstantShaderDataBuffer& buffer : freeConstantShaderDataBuffers) {
+        device->deviceAllocator->Free(buffer.allocation);
+    }
+
+    // Free all constant allocators
+    for (const ShaderExportConstantAllocator& allocator : freeConstantAllocators) {
+        for (const ShaderExportConstantSegment& staging : allocator.staging) {
+            device->deviceAllocator->Free(staging.allocation);
+        }
     }
 }
 
@@ -169,9 +190,13 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
 }
 
 void ShaderExportStreamer::Free(ShaderExportStreamState *state) {
-    std::lock_guard guard(mutex);
+    // Recycle old data if needed
+    if (state->pending) {
+        RecycleCommandList(state);
+    }
 
     // Done
+    std::lock_guard guard(mutex);
     streamStatePool.Push(state);
 }
 
@@ -223,6 +248,7 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
     segment->fenceNextCommitId = queueState->sharedFence->CommitFence();
 
     // OK
+    std::lock_guard queueGuard(device->states_Queues.GetLock());
     queueState->exportState->liveSegments.push_back(segment);
 }
 
@@ -244,8 +270,14 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
     state->isInstrumented = false;
     state->pending = true;
 
+    // Reset render pass state
+    state->renderPass.insideRenderPass = false;
+
+    // If this is a copy command list, there's so descriptor data
+    state->hasDescriptorState = commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY;
+
     // Uses descriptors?
-    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
+    if (state->hasDescriptorState) {
         // Set initial heap
         commandList->SetDescriptorHeaps(1u, &sharedGPUHeap);
 
@@ -253,7 +285,13 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
         ShaderExportSegmentDescriptorAllocation allocation;
         allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count());
         allocation.allocator = sharedGPUHeapAllocator;
-        state->segmentDescriptors.push_back(allocation);
+
+        // Keep track of it, no actual (user) heap ownership so leave that null
+        state->segmentDescriptors.push_back(ShaderExportSegmentDescriptorEntry {
+            .resourceHeap = nullptr,
+            .samplerHeap = nullptr,
+            .segment = allocation
+        });
 
         // Assign constant data buffer
         if (freeConstantShaderDataBuffers.empty()) {
@@ -338,11 +376,14 @@ void ShaderExportStreamer::InvalidateDescriptorSlots(ShaderExportStreamState* st
             continue;
         }
 
+        // Get the dword offset of this parameter
+        const uint32_t rootDWordOffset = rootSignature->physicalMapping->rootDWordOffsets[i];
+
         // Write invalidated slots
         if (rootSignature->logicalMapping.userRootHeapTypes[i] == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
-            bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
+            bindState.descriptorDataAllocator->Set(rootDWordOffset, static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
         } else if (state->resourceHeap) {
-            bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), state->resourceHeap->GetVirtualRangeBound());
+            bindState.descriptorDataAllocator->Set(rootDWordOffset, static_cast<uint32_t>(i), state->resourceHeap->GetVirtualRangeBound());
         }
     }
 }
@@ -358,6 +399,8 @@ void ShaderExportStreamer::UpdateReservedHeapConstantData(ShaderExportStreamStat
 }
 
 void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamState *state, const uint32_t* dwords, uint32_t dwordCount, ID3D12GraphicsCommandList *commandList) {
+    CommandListRenderPassScope scope(static_cast<ID3D12GraphicsCommandList4*>(commandList), &state->renderPass);
+    
     // Expected read state
     D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 
@@ -388,6 +431,20 @@ void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamSta
     barrier.Transition.StateAfter = readState;
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
     commandList->ResourceBarrier(1u, &barrier);
+}
+
+bool ShaderExportStreamer::LinearFindHeapSegment(ShaderExportStreamState* state, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, ShaderExportSegmentDescriptorAllocation* out) {
+    // Try to find a matching heap entry, the given segment may already have been allocated
+    // Note: Keep it linear until it's a problem
+    for (const ShaderExportSegmentDescriptorEntry& entry : state->segmentDescriptors) {
+        if (entry.resourceHeap == resourceHeap && entry.samplerHeap == samplerHeap) {
+            *out = entry.segment;
+            return true;
+        }
+    }
+
+    // None found
+    return false;
 }
 
 void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, ID3D12GraphicsCommandList* commandList) {
@@ -425,20 +482,32 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
 
     // No need to recreate if not resource heap
     if (!state->resourceHeap) {
+        // OK
         return;
     }
 
     // Data race begone!
     std::lock_guard guard(mutex);
 
-    // Allocate initial segment from shared allocator
+    // Final segment allocation
     ShaderExportSegmentDescriptorAllocation allocation;
-    allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
-    allocation.allocator = state->resourceHeap->allocator;
-    state->segmentDescriptors.push_back(allocation);
+    
+    // Try to find existing allocation first
+    if (!LinearFindHeapSegment(state, state->resourceHeap, state->samplerHeap, &allocation)) {
+        // Not found, allocate initial segment from shared allocator
+        allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
+        allocation.allocator = state->resourceHeap->allocator;
 
-    // Map immutable to current heap
-    MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
+        // Keep track of the allocation, used for later searches
+        state->segmentDescriptors.push_back(ShaderExportSegmentDescriptorEntry {
+            .resourceHeap = state->resourceHeap,
+            .samplerHeap = state->samplerHeap,
+            .segment = allocation
+        });
+        
+        // Map immutable to current heap
+        MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
+    }
 
     // Set current for successive binds
     state->currentSegment = allocation.info;
@@ -471,7 +540,7 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
 
     // Create initial descriptor segments
     if (bindState.rootSignature != rootSignature) {
-        bindState.descriptorDataAllocator->BeginSegment(rootSignature->logicalMapping.userRootCount, false);
+        bindState.descriptorDataAllocator->BeginSegment(rootSignature->physicalMapping->rootDWordCount, false);
 #ifndef NDEBUG
         bindState.bindMask = 0x0;
 #endif // NDEBUG
@@ -505,7 +574,7 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
 
     // Create initial descriptor segments
     if (bindState.rootSignature != rootSignature) {
-        bindState.descriptorDataAllocator->BeginSegment(rootSignature->logicalMapping.userRootCount, false);
+        bindState.descriptorDataAllocator->BeginSegment(rootSignature->physicalMapping->rootDWordCount, false);
 #ifndef NDEBUG
         bindState.bindMask = 0x0;
 #endif // NDEBUG
@@ -542,7 +611,7 @@ void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, ID3D12G
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->logicalMapping.userRootCount, true);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->physicalMapping->rootDWordCount, true);
 }
 
 void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
@@ -559,7 +628,7 @@ void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, ID3D12
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->logicalMapping.userRootCount, true);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->physicalMapping->rootDWordCount, true);
 }
 
 ShaderExportStreamBindState& ShaderExportStreamer::GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline) {
@@ -657,22 +726,25 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     std::lock_guard guard(mutex);
     ASSERT(state->pending, "Recycling non-pending stream state");
 
-    // Move descriptor data ownership to segment
-    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        FreeDescriptorDataSegment(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
-    }
+    // Uses descriptors?
+    if (state->hasDescriptorState) {
+        // Move descriptor data ownership to segment
+        for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+            FreeDescriptorDataSegment(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
+        }
 
-    // Move constant ownership to the segment
-    freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
+        // Move constant ownership to the segment
+        freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
+
+        // Move ownership to the segment
+        for (const ShaderExportSegmentDescriptorEntry& segmentDescriptor : state->segmentDescriptors) {
+            segmentDescriptor.segment.allocator->Free(segmentDescriptor.segment.info);
+        }
+    }
 
     // Move constant allocator to the segment
     if (!state->constantAllocator.staging.empty()) {
         FreeConstantAllocator(state->constantAllocator);
-    }
-
-    // Move ownership to the segment
-    for (const ShaderExportSegmentDescriptorAllocation& segmentDescriptor : state->segmentDescriptors) {
-        segmentDescriptor.allocator->Free(segmentDescriptor.info);
     }
 
     // Cleanup
@@ -758,39 +830,27 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
     device->shaderDataHost->CreateDescriptors(descriptorLayout.GetShaderData(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
 }
 
-void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {
-    // Map the command state to shared segment
-    for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
-        // Update the segment counters
-        device->object->CreateUnorderedAccessView(
-            segment->allocation->counter.allocation.device.resource, nullptr,
-            &segment->allocation->counter.view,
-            descriptorLayout.GetExportCounter(allocation.info.cpuHandle)
-        );
-
-        // Update the segment streams
-        for (uint64_t i = 0; i < segment->allocation->streams.size(); i++) {
+void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ID3D12GraphicsCommandList* commandList, ShaderExportStreamSegment *segment) {
+    // Uses descriptors?
+    if (state->hasDescriptorState) {
+        // Map the command state to shared segment
+        for (const ShaderExportSegmentDescriptorEntry& allocation : state->segmentDescriptors) {
+            // Update the segment counters
             device->object->CreateUnorderedAccessView(
-                segment->allocation->streams[i].allocation.device.resource, nullptr,
-                &segment->allocation->streams[i].view,
-                descriptorLayout.GetExportStream(allocation.info.cpuHandle, static_cast<uint32_t>(i))
+                segment->allocation->counter.allocation.device.resource, nullptr,
+                &segment->allocation->counter.view,
+                descriptorLayout.GetExportCounter(allocation.segment.info.cpuHandle)
             );
+
+            // Update the segment streams
+            for (uint64_t i = 0; i < segment->allocation->streams.size(); i++) {
+                device->object->CreateUnorderedAccessView(
+                    segment->allocation->streams[i].allocation.device.resource, nullptr,
+                    &segment->allocation->streams[i].view,
+                    descriptorLayout.GetExportStream(allocation.segment.info.cpuHandle, static_cast<uint32_t>(i))
+                );
+            }
         }
-    }
-
-    // Move descriptor data ownership to segment
-    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        segment->descriptorDataSegments.push_back(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
-    }
-
-    // Move constant ownership to the segment
-    segment->constantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
-    state->constantShaderDataBuffer = {};
-
-    // Move constant allocator to the segment
-    if (!state->constantAllocator.staging.empty()) {
-        segment->constantAllocator.push_back(state->constantAllocator);
-        state->constantAllocator = {};
     }
 
     // Add context handle
@@ -798,15 +858,10 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
     segment->commandContextHandles.push_back(state->commandContextHandle);
 
     // Move ownership to the segment
-    segment->segmentDescriptors.insert(segment->segmentDescriptors.end(), state->segmentDescriptors.begin(), state->segmentDescriptors.end());
     segment->referencedHeaps.insert(segment->referencedHeaps.end(), state->referencedHeaps.begin(), state->referencedHeaps.end());
 
     // Empty out
-    state->segmentDescriptors.clear();
     state->referencedHeaps.clear();
-
-    // Data has been migrated
-    state->pending = false;
 }
 
 void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
@@ -837,8 +892,11 @@ void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState
     uint64_t offset = baseDescriptor.ptr - heap->gpuDescriptorBase.ptr;
     ASSERT(offset % heap->stride == 0, "Mismatched heap stride");
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -872,8 +930,11 @@ void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamStat
     uint64_t offset = baseDescriptor.ptr - heap->gpuDescriptorBase.ptr;
     ASSERT(offset % heap->stride == 0, "Mismatched heap stride");
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -889,9 +950,12 @@ void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamSt
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -907,9 +971,12 @@ void ShaderExportStreamer::SetGraphicsRootShaderResourceView(ShaderExportStreamS
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -925,9 +992,12 @@ void ShaderExportStreamer::SetComputeRootUnorderedAccessView(ShaderExportStreamS
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -943,9 +1013,12 @@ void ShaderExportStreamer::SetGraphicsRootUnorderedAccessView(ShaderExportStream
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -961,9 +1034,12 @@ void ShaderExportStreamer::SetComputeRootConstantBufferView(ShaderExportStreamSt
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -979,9 +1055,12 @@ void ShaderExportStreamer::SetGraphicsRootConstantBufferView(ShaderExportStreamS
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -1119,22 +1198,37 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment, Tr
 }
 
 void ShaderExportStreamer::FreeConstantAllocator(ShaderExportConstantAllocator& allocator) {
+    static constexpr size_t kLargeConstantThreshold = 64'000;
+    
     // Cleanup the staging data
     if (!allocator.staging.empty()) {
+        size_t trimCount = allocator.staging.size();
+
+        // If we're below the threshold, keep the last chunk
+        // Large chunks can easily accumulate as they're swapped between different streaming state
+        if (allocator.staging.back().size < kLargeConstantThreshold) {
+            trimCount--;
+        }
+        
         // Free all staging allocations except the last
-        for (size_t i = 0; i < allocator.staging.size() - 1u; i++) {
+        for (size_t i = 0; i < trimCount; i++) {
             device->deviceAllocator->Free(allocator.staging[i].allocation);
         }
 
         // Remove all but the last
-        allocator.staging.erase(allocator.staging.begin(), allocator.staging.begin() + (allocator.staging.size() - 1u));
+        allocator.staging.erase(allocator.staging.begin(), allocator.staging.begin() + trimCount);
 
         // Reset head counter
-        allocator.staging.back().head = 0;
+        if (!allocator.staging.empty()) {
+            allocator.staging.back().head = 0;
+        }
     }
 
     // Add to free pool
     freeConstantAllocators.push_back(allocator);
+
+    // Erase local state
+    allocator.staging.clear();
 }
 
 void ShaderExportStreamer::FreeDescriptorDataSegment(const DescriptorDataSegment &dataSegment) {
@@ -1159,26 +1253,6 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     // Reset versioning
     segment->versionSegPoint = {};
 
-    // Release all descriptors to their respective owners
-    for (const ShaderExportSegmentDescriptorAllocation& allocation : segment->segmentDescriptors) {
-        allocation.allocator->Free(allocation.info);
-    }
-
-    // Release all descriptor data
-    for (const DescriptorDataSegment& dataSegment : segment->descriptorDataSegments) {
-        FreeDescriptorDataSegment(dataSegment);
-    }
-
-    // Release all constant data buffers
-    for (ConstantShaderDataBuffer& constantData : segment->constantShaderDataBuffers) {
-        freeConstantShaderDataBuffers.push_back(constantData);
-    }
-
-    // Release all constant allocators
-    for (ShaderExportConstantAllocator& constantAllocator : segment->constantAllocator) {
-        FreeConstantAllocator(constantAllocator);
-    }
-
     // Release patch descriptors
     sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
     sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
@@ -1188,16 +1262,12 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     queue->PushCommandList(segment->immediatePostPatch);
 
     // Cleanup
-    segment->segmentDescriptors.clear();
     segment->referencedHeaps.clear();
-    segment->descriptorDataSegments.clear();
     segment->immediatePrePatch = {};
     segment->immediatePostPatch = {};
     segment->patchDeviceCPUDescriptor = {};
     segment->patchDeviceGPUDescriptor = {};
     segment->commandContextHandles.clear();
-    segment->constantShaderDataBuffers.clear();
-    segment->constantAllocator.clear();
 
     // Add back to pool
     segmentPool.Push(segment);
@@ -1270,12 +1340,6 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQue
         }
     }
 
-    // Done
-    HRESULT hr = patchList->Close();
-    if (FAILED(hr)) {
-        return nullptr;
-    }
-
     // OK
     return patchList;
 }
@@ -1329,12 +1393,6 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPostCommandList(CommandQu
         0u,
         nullptr
     );
-
-    // Done
-    HRESULT hr = patchList->Close();
-    if (FAILED(hr)) {
-        return nullptr;
-    }
 
     // OK
     return patchList;

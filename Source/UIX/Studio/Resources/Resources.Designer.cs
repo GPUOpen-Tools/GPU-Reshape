@@ -95,7 +95,7 @@ namespace Studio.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Toggle the bus mode.
+        ///   Looks up a localized string similar to Pause/resume all instrumentation.
         /// </summary>
         public static string BusMode_Toggle_Tooltip {
             get {
@@ -151,11 +151,29 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Texel Addressing enables tracking initialization / concurrency events on a per-texel level, greatly improving accuracy. This incurs a heavy memory and performance overhead, disable to track on a per-resource level..
+        /// </summary>
+        public static string Features_TexelAddressing_Info {
+            get {
+                return ResourceManager.GetString("Features_TexelAddressing_Info", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Display help.
         /// </summary>
         public static string Help_Tooltip {
             get {
                 return ResourceManager.GetString("Help_Tooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Compiling {0} pipeline libraries....
+        /// </summary>
+        public static string Instrumentation_Stage_PipelineLibraries {
+            get {
+                return ResourceManager.GetString("Instrumentation_Stage_PipelineLibraries", resourceCulture);
             }
         }
         
@@ -174,6 +192,24 @@ namespace Studio.Resources {
         public static string Instrumentation_Stage_Shaders {
             get {
                 return ResourceManager.GetString("Instrumentation_Stage_Shaders", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Attach to all graphical devices the application creates, a workspace is automatically created per device.
+        /// </summary>
+        public static string Launch_AttachAllDevices {
+            get {
+                return ResourceManager.GetString("Launch_AttachAllDevices", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hook into the entire process tree of an application, automatically creates process hierarchy.
+        /// </summary>
+        public static string Launch_CaptureChildProcesses {
+            get {
+                return ResourceManager.GetString("Launch_CaptureChildProcesses", resourceCulture);
             }
         }
         
@@ -210,6 +246,15 @@ namespace Studio.Resources {
         public static string Launch_SynchronousRecording {
             get {
                 return ResourceManager.GetString("Launch_SynchronousRecording", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enables texel addressing, imposes large memory overhead.
+        /// </summary>
+        public static string Launch_TexelAddressing {
+            get {
+                return ResourceManager.GetString("Launch_TexelAddressing", resourceCulture);
             }
         }
         
@@ -394,7 +439,7 @@ namespace Studio.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to All.
+        ///   Looks up a localized string similar to All Standard.
         /// </summary>
         public static string Workspace_Configuration_All_Name {
             get {

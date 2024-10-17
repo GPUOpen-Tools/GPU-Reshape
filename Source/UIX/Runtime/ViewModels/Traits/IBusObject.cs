@@ -27,6 +27,7 @@
 using System;
 using Avalonia;
 using Message.CLR;
+using Runtime.ViewModels.Traits;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Services;
 using Studio.ViewModels.Workspace.Properties;
@@ -45,13 +46,21 @@ namespace Studio.ViewModels.Traits
     public static class BusObjectExtensions
     {
         /// <summary>
+        /// Get the busd service of a property
+        /// </summary>
+        public static IBusPropertyService? GetBusService(this IPropertyViewModel self)
+        {
+            return self.GetWorkspaceCollection()?.GetService<IBusPropertyService>();
+        }
+        
+        /// <summary>
         /// Enqueue a bus object from a given property view model
         /// </summary>
         /// <param name="self"></param>
         /// <param name="propertyViewModel"></param>
         public static void EnqueueBus(this IBusObject self, IPropertyViewModel propertyViewModel)
         {
-            propertyViewModel.GetRoot().GetService<IBusPropertyService>()?.Enqueue(self);
+            propertyViewModel.GetWorkspaceCollection()?.GetService<IBusPropertyService>()?.Enqueue(self);
         }
         
         /// <summary>

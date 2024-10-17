@@ -26,9 +26,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Threading;
 using Message.CLR;
 using Runtime.ViewModels.Shader;
+using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -67,6 +69,12 @@ namespace Studio.ViewModels.Workspace.Services
                         {
                             var shaderCode = message.Get<ShaderCodeMessage>();
 
+                            // Ignore non-pooling requests
+                            if (shaderCode.poolCode == 0)
+                            {
+                                continue;
+                            }
+
                             // Try to get the view model
                             if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry) || entry.ShaderViewModel == null)
                             {
@@ -102,6 +110,12 @@ namespace Studio.ViewModels.Workspace.Services
                         {
                             var shaderCode = message.Get<ShaderCodeFileMessage>();
 
+                            // Ignore non-pooling requests
+                            if (shaderCode.poolCode == 0)
+                            {
+                                continue;
+                            }
+                            
                             // Try to get the view model
                             if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry) || entry.ShaderViewModel == null)
                             {
@@ -113,23 +127,11 @@ namespace Studio.ViewModels.Workspace.Services
                             string code = shaderCode.code.String;
                             string filename = shaderCode.filename.String;
 
-                            // Copy contents
-                            Dispatcher.UIThread.InvokeAsync(() =>
+                            _pendingShaderFiles.GetOrDefault(entry.ShaderViewModel).Add(new ShaderFileViewModel()
                             {
-                                // First file?
-                                if (fileUID == 0)
-                                {
-                                    entry.ShaderViewModel.Contents = code;
-                                    entry.ShaderViewModel.Filename = filename;
-                                }
-
-                                // Create general model
-                                entry.ShaderViewModel.FileViewModels.Add(new ShaderFileViewModel()
-                                {
-                                    Contents = code,
-                                    UID = fileUID,
-                                    Filename = filename
-                                });
+                                Contents = code,
+                                UID = fileUID,
+                                Filename = filename
                             });
                             break;
                         }
@@ -179,6 +181,36 @@ namespace Studio.ViewModels.Workspace.Services
                         }
                     }
                 }
+            }
+
+            // Any files to commit?
+            if (_pendingShaderFiles.Count > 0)
+            {
+                // Keep a local copy for the UI dispatcher
+                var pendingShaderFiles = _pendingShaderFiles.ToArray();
+                _pendingShaderFiles.Clear();
+                
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    foreach (var (shader, files) in pendingShaderFiles)
+                    {
+                        if (files.Count == 0)
+                        {
+                            continue;
+                        }
+                        
+                        // Copy first file over
+                        shader.Contents = files[0].Contents;
+                        shader.Filename = files[0].Filename;
+
+                        // Update shaders in batch
+                        using (shader.FileViewModels.SuspendNotifications())
+                        {
+                            shader.FileViewModels.Clear();
+                            shader.FileViewModels.AddRange(files);
+                        }
+                    }
+                });
             }
         }
 
@@ -305,5 +337,11 @@ namespace Studio.ViewModels.Workspace.Services
         /// All pending view models, i.e. in-flight
         /// </summary>
         private Dictionary<UInt64, PendingEntry> _pendingShaderViewModels = new();
+
+        /// <summary>
+        /// All pending shader files
+        /// Lives on the bridge dispatcher
+        /// </summary>
+        private Dictionary<ShaderViewModel, List<ShaderFileViewModel>> _pendingShaderFiles = new();
     }
 }

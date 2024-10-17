@@ -50,7 +50,7 @@
                         <PathIcon Data="{StaticResource Refresh}" Width="13" />
                     </Button>
 
-                    <Separator Width="1" Margin="0 3 0 3" Background="{StaticResource BorderColorHigh}"/>
+                    <Separator Width="1" Height="NaN" Margin="0 3 0 3" Background="{StaticResource BorderColorHigh}"/>
 
                     <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.Tree_Expand_Tooltip}" Command="{Binding Expand}">
                         <PathIcon Data="{StaticResource Expand}" Width="13" />
@@ -59,7 +59,7 @@
                         <PathIcon Data="{StaticResource Collapse}" Width="13" />
                     </Button>
                     
-                    <Separator Width="1" Margin="0 3 0 3" Background="{StaticResource BorderColorHigh}"/>
+                    <Separator Width="1" Height="NaN" Margin="0 3 0 3" Background="{StaticResource BorderColorHigh}"/>
                     
                     <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.Tree_DestroyAll_Tooltip}" Command="{Binding ClearAll}">
                         <PathIcon Data="{StaticResource TrashAll}" Width="13" />
@@ -80,15 +80,17 @@
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             BorderThickness="0"
             SelectionChanged="OnItemSelected"
+            AutoScrollToSelectedItem="False"
+            SelectionMode="Multiple"
             Tag="{Binding}"
-            Items="{Binding Workspaces}">
+            ItemsSource="{Binding Workspaces}">
             <TreeView.Styles>
                 <Style Selector="TreeViewItem">
                     <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}"/>
                 </Style>
             </TreeView.Styles>
             <TreeView.ItemTemplate>
-                <TreeDataTemplate ItemsSource="{Binding Items}">
+                <TreeDataTemplate ItemsSource="{Binding (cvm:IObservableTreeItem).Items}">
                     <controls:UniformViewHost ContextMenu="{StaticResource ReactiveContextMenu}" DataContext="{Binding $self.DataContext}"/>
                 </TreeDataTemplate>
             </TreeView.ItemTemplate>

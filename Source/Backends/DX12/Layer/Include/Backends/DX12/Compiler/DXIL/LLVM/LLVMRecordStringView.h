@@ -138,7 +138,7 @@ struct LLVMRecordStringView {
 
     /// Copy until a given condition is met
     template<typename F>
-    void CopyUntilTerminated(uint64_t begin, char* buffer, uint32_t length, F&& functor) {
+    void CopyUntilTerminated(uint64_t begin, char* buffer, uint32_t length, F&& functor) const {
         size_t i;
         for (i = begin; i < std::min<size_t>(begin + length - 1, operandCount); i++) {
             char ch = static_cast<char>(operands[i]);

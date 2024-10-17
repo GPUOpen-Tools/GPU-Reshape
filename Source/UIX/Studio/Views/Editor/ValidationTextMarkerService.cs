@@ -27,10 +27,12 @@
 using System;
 using System.Collections.Generic;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using Runtime.ViewModels.IL;
 using Studio.Extensions;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -59,14 +61,14 @@ namespace Studio.Views.Editor
                     element =>
                     {
                         // Set background
-                        element.TextRunProperties.BackgroundBrush = _validationBrush;
+                        element.TextRunProperties.SetBackgroundBrush(GetBrushForObject(marker.Object));
 
                         // Modify type face (todo...)
-                        element.TextRunProperties.Typeface = new Typeface(
+                        element.TextRunProperties.SetTypeface(new Typeface(
                             element.TextRunProperties.Typeface.FontFamily,
                             FontStyle.Normal,
                             FontWeight.Normal
-                        );
+                        ));
                     }
                 );
             }
@@ -141,9 +143,34 @@ namespace Studio.Views.Editor
         }
 
         /// <summary>
-        /// Error brush
+        /// Get the brush for a given validation object
         /// </summary>
-        private Brush _validationBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? new SolidColorBrush(Colors.Red);
+        private IBrush GetBrushForObject(ValidationObject? _object)
+        {
+            if (_object == null)
+            {
+                return _validationBrushError;
+            }
+            
+            switch (_object.Severity)
+            {
+                case ValidationSeverity.Info:
+                    return _validationBrushInfo;
+                case ValidationSeverity.Warning:
+                    return _validationBrushWarning;
+                case ValidationSeverity.Error:
+                    return _validationBrushError;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        /// <summary>
+        /// Brushes
+        /// </summary>
+        private IBrush _validationBrushInfo = ResourceLocator.GetBrush("InfoMediumLowForeground") ?? new SolidColorBrush(Colors.White);
+        private IBrush _validationBrushWarning = ResourceLocator.GetBrush("WarningLowBrush") ?? new SolidColorBrush(Colors.Yellow);
+        private IBrush _validationBrushError = ResourceLocator.GetBrush("ErrorDefaultBrush") ?? new SolidColorBrush(Colors.Red);
 
         /// <summary>
         /// All active segments

@@ -26,10 +26,14 @@
 
 #pragma once
 
+// Generator
 #include "Kernel.h"
 #include "Resource.h"
 
+// Std
+#include <string>
 #include <vector>
+#include <string_view>
 
 struct ProgramInvocation {
     int64_t groupCountX{0};

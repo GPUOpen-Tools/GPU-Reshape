@@ -29,4 +29,5 @@
 #include <Backends/Vulkan/Vulkan.h>
 
 /// Hooks
+VkResult Hook_vkDebugMarkerSetObjectNameEXT(VkDevice device, const VkDebugMarkerObjectNameInfoEXT* pNameInfo);
 VkResult Hook_vkSetDebugUtilsObjectNameEXT(VkDevice device, const VkDebugUtilsObjectNameInfoEXT* pNameInfo);

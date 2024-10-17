@@ -29,6 +29,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Layout;
+using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.ReactiveUI.Controls;
 
@@ -43,7 +44,7 @@ namespace Studio.ValueConverters.Themes
         {
             if (value is not ToolDock tool)
             {
-                throw new NotSupportedException();
+                return null;
             }
 
             // Handle type

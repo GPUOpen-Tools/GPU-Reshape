@@ -74,7 +74,7 @@
             VerticalAlignment="Top"
             HorizontalAlignment="Right"
             Margin="0 10 25 0"
-            Items="{Binding ShaderContentViewModels}"
+            ItemsSource="{Binding ShaderContentViewModels}"
             IsVisible="{Binding Ready}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>

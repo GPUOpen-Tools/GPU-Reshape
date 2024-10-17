@@ -55,9 +55,13 @@ extern "C" {
         if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
             return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetDeviceProcAddr);
         }
+
+        // Attempt to get table
+        // May be nullptr
+        auto table = DeviceDispatchTable::GetNullable(GetInternalTable(device));
         
-        // Device table
-        if (PFN_vkVoidFunction hook = DeviceDispatchTable::GetHookAddress(pName)) {
+        // Device table, uses table for compatibility testing
+        if (PFN_vkVoidFunction hook = DeviceDispatchTable::GetHookAddress(table, pName)) {
             return hook;
         }
 
@@ -66,14 +70,13 @@ extern "C" {
             return hook;
         }
 
-        // Attempt to get table
-        auto table = DeviceDispatchTable::Get(GetInternalTable(device));
-        if (!table) {
-            return nullptr;
+        // Pass down callchain
+        if (table) {
+            return table->next_vkGetDeviceProcAddr(device, pName);
         }
 
-        // Pass down callchain
-        return table->next_vkGetDeviceProcAddr(device, pName);
+        // Nothing found
+        return nullptr;
     }
 
     [[maybe_unused]]
@@ -82,24 +85,27 @@ extern "C" {
             return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetInstanceProcAddr);
         }
 
+        // Attempt to get table
+        // Note that certain global commands may pass in undefined instance values
+        auto table = InstanceDispatchTable::GetNullable(GetInternalTable(instance));
+
         // Instance table
         if (PFN_vkVoidFunction hook = InstanceDispatchTable::GetHookAddress(pName)) {
             return hook;
         }
 
         // Device table
-        if (PFN_vkVoidFunction hook = DeviceDispatchTable::GetHookAddress(pName)) {
+        if (PFN_vkVoidFunction hook = DeviceDispatchTable::GetHookAddress(nullptr, pName)) {
             return hook;
         }
 
-        // Attempt to get table
-        auto table = InstanceDispatchTable::Get(GetInternalTable(instance));
-        if (!table) {
-            return nullptr;
+        // Pass down callchain
+        if (table) {
+            return table->next_vkGetInstanceProcAddr(instance, pName);
         }
 
-        // Pass down callchain
-        return table->next_vkGetInstanceProcAddr(instance, pName);
+        // Nothing found
+        return nullptr;
     }
 
     [[maybe_unused]]

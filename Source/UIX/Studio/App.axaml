@@ -33,7 +33,13 @@
              xmlns:idc="using:Dock.Avalonia.Controls"
              xmlns:controls="using:Studio.Views.Controls"
              xmlns:core="using:Dock.Model.Core"
-             x:Class="Studio.App">
+             x:Class="Studio.App"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <SimpleTheme />
+        <StyleInclude Source="avares://GPUReshape/Themes/DefaultStyle.axaml" />
+    </Application.Styles>
+    
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>

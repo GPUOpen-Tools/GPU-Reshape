@@ -1,4 +1,4 @@
-// 
+//
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -97,6 +97,7 @@ uint32_t InstrumentationController::GetJobCount() {
         case InstrumentationStage::Shaders:
             return static_cast<uint32_t>(compilationBatch->shaderCompilerDiagnostic.GetRemainingJobs());
         case InstrumentationStage::Pipelines:
+        case InstrumentationStage::PipelineLibraries:
             return static_cast<uint32_t>(compilationBatch->pipelineCompilerDiagnostic.GetRemainingJobs());
     }
 }
@@ -115,8 +116,13 @@ void InstrumentationController::CreatePipelineAndAdd(PipelineState *state) {
     CreatePipelineNoLock(state);
 
     // Add dependencies, shader module -> pipeline
-    for (ShaderModuleState * shader : state->shaderModules) {
+    for (ShaderModuleState * shader : state->referencedShaderModules) {
         table->dependencies_shaderModulesPipelines.Add(shader, state);
+    }
+
+    // Add dependencies, library -> pipeline
+    for (PipelineState * library : state->pipelineLibraries) {
+        table->dependencies_pipelineLibraries.Add(library, state);
     }
     
     // Add to state
@@ -146,7 +152,7 @@ void InstrumentationController::CreatePipelineNoLock(PipelineState *state) {
     }
 
     // Add source modules
-    for (ShaderModuleState *shaderState: state->shaderModules) {
+    for (ShaderModuleState *shaderState: state->referencedShaderModules) {
         if (immediateBatch.dirtyObjects.count(shaderState)) {
             continue;
         }
@@ -156,6 +162,19 @@ void InstrumentationController::CreatePipelineNoLock(PipelineState *state) {
                 
         immediateBatch.dirtyObjects.insert(shaderState);
         immediateBatch.dirtyShaderModules.push_back(shaderState);
+    }
+
+    // Add source libraries
+    for (PipelineState *libraryState: state->pipelineLibraries) {
+        if (immediateBatch.dirtyObjects.count(libraryState)) {
+            continue;
+        }
+
+        // Own lifetime
+        libraryState->AddUser();
+                
+        immediateBatch.dirtyObjects.insert(libraryState);
+        immediateBatch.dirtyPipelineLibraries.push_back(libraryState);
     }
 }
 
@@ -191,24 +210,36 @@ void InstrumentationController::PropagateInstrumentationInfo(PipelineState *stat
     );
 
     // Clean previous dependent streams
-    state->dependentInstrumentationInfo.specializations.resize(state->shaderModules.size());
+    state->dependentInstrumentationInfo.specializations.resize(state->referencedShaderModules.size());
     for (MessageStream& dependentStream : state->dependentInstrumentationInfo.specializations) {
         dependentStream.ClearWithSchemaInvalidate();
     }
 
     // Summarize dependent specialization states
-    for (size_t i = 0; i < state->shaderModules.size(); i++) {
-        ShaderModuleState *dependentState = state->shaderModules[i];
+    for (size_t i = 0; i < state->referencedShaderModules.size(); i++) {
+        ShaderModuleState *dependentState = state->referencedShaderModules[i];
         
         // Nothing to enqueue?
         if (state->instrumentationInfo.specialization.IsEmpty() && dependentState->instrumentationInfo.specialization.IsEmpty()) {
             continue;
         }
 
+        // todo: propagate the pipeline inst info
+
         // Summarize the shader specialization followed by pipeline specialization
         MessageStream& stream = state->dependentInstrumentationInfo.specializations[i];
         stream.Append(dependentState->instrumentationInfo.specialization);
         stream.Append(state->instrumentationInfo.specialization);
+    }
+
+    // Reset instrumentation keys, do not clear as the previous keys may have to be kept around
+    // For example, if only one shader was re-instrumented, but not the rest
+    if (state->referencedInstrumentationKeys.empty()) {
+        state->referencedInstrumentationKeys.resize(state->referencedShaderModules.size());
+        state->libraryInstrumentationKeys.resize(state->pipelineLibraries.size());
+    } else {
+        ASSERT(state->referencedInstrumentationKeys.size() == state->referencedInstrumentationKeys.size(), "Unexpected instrumentation key state");
+        ASSERT(state->libraryInstrumentationKeys.size() == state->pipelineLibraries.size(), "Unexpected instrumentation key state");
     }
 }
 
@@ -231,6 +262,26 @@ void InstrumentationController::PropagateInstrumentationInfo(ShaderModuleState *
         state->instrumentationInfo.specialization.GetDataBegin(),
         state->instrumentationInfo.specialization.GetByteSize()
     );
+}
+
+void InstrumentationController::ActivateAndCommitFeatures(uint64_t featureBitSet, uint64_t previousFeatureBitSet) {
+    // Set the enabled feature bit set
+    SetDeviceCommandFeatureSetAndCommit(table, featureBitSet);
+    
+    // Feature events
+    for (size_t i = 0; i < table->features.size(); i++) {
+        uint64_t bit = 1ull << i;;
+
+        // Inform activation, state-less
+        if (featureBitSet & bit) {
+            table->features[i]->Activate(FeatureActivationStage::Commit);
+        }
+
+        // Inform feature deactivation
+        if (!(featureBitSet & bit) && (previousFeatureBitSet & bit)) {
+            table->features[i]->Deactivate();
+        }
+    }
 }
 
 bool InstrumentationController::FilterPipeline(PipelineState *state, const FilterEntry &filter) {
@@ -269,9 +320,17 @@ void InstrumentationController::Handle(const MessageStream *streams, uint32_t co
 void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstIterator &it) {
     switch (it.GetID()) {
         // Config
+        case PauseInstrumentationMessage::kID: {
+            dispatcher->SetPaused(it.Get<PauseInstrumentationMessage>()->paused);
+            break;
+        }
         case SetApplicationInstrumentationConfigMessage::kID: {
             auto *message = it.Get<SetApplicationInstrumentationConfigMessage>();
             synchronousRecording = message->synchronousRecording;
+            break;
+        }
+        case InstrumentationVersionMessage::kID: {
+            versionID = it.Get<InstrumentationVersionMessage>()->version;
             break;
         }
 
@@ -331,7 +390,12 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 state->AddUser();
 
                 immediateBatch.dirtyObjects.insert(state);
-                immediateBatch.dirtyPipelines.push_back(state);
+
+                if (state->isLibrary) {
+                    immediateBatch.dirtyPipelineLibraries.push_back(state);
+                } else {
+                    immediateBatch.dirtyPipelines.push_back(state);
+                }
             }
             break;
         }
@@ -404,7 +468,7 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             }
 
             // Add source modules
-            for (ShaderModuleState *shaderModuleState: state->shaderModules) {
+            for (ShaderModuleState *shaderModuleState: state->referencedShaderModules) {
                 if (immediateBatch.dirtyObjects.count(shaderModuleState)) {
                     continue;
                 }
@@ -414,6 +478,19 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 
                 immediateBatch.dirtyObjects.insert(shaderModuleState);
                 immediateBatch.dirtyShaderModules.push_back(shaderModuleState);
+            }
+
+            // Add all libraries
+            for (PipelineState *pipelineState : state->pipelineLibraries) {
+                if (immediateBatch.dirtyObjects.count(pipelineState)) {
+                    continue;
+                }
+
+                // Own lifetime
+                pipelineState->AddUser();
+                
+                immediateBatch.dirtyObjects.insert(pipelineState);
+                immediateBatch.dirtyPipelineLibraries.push_back(pipelineState);
             }
             break;
         }
@@ -452,7 +529,12 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 state->AddUser();
 
                 immediateBatch.dirtyObjects.insert(state);
-                immediateBatch.dirtyPipelines.push_back(state);
+                
+                if (state->isLibrary) {
+                    immediateBatch.dirtyPipelineLibraries.push_back(state);
+                } else {
+                    immediateBatch.dirtyPipelines.push_back(state);
+                }
             }
             break;
         }
@@ -504,13 +586,18 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
 
                 // Push pipeline
                 immediateBatch.dirtyObjects.insert(state);
-                immediateBatch.dirtyPipelines.push_back(state);
 
+                if (state->isLibrary) {
+                    immediateBatch.dirtyPipelineLibraries.push_back(state);
+                } else {
+                    immediateBatch.dirtyPipelines.push_back(state);
+                }
+                
                 // Own lifetime
                 state->AddUser();
 
                 // Push source modules
-                for (ShaderModuleState *shaderState: state->shaderModules) {
+                for (ShaderModuleState *shaderState: state->referencedShaderModules) {
                     if (immediateBatch.dirtyObjects.count(shaderState)) {
                         continue;
                     }
@@ -653,15 +740,15 @@ void InstrumentationController::CommitInstrumentation() {
     if (pendingResummarization) {
         featureBitSet = SummarizeFeatureBitSet();
 
-        // Set the enabled feature bit set
-        SetDeviceCommandFeatureSetAndCommit(table, featureBitSet);
-
         // Mark as summarized
         pendingResummarization = false;
     }
     
     // If no dirty objects, nothing to instrument
     if (immediateBatch.dirtyObjects.empty()) {
+        // Nothing to instrument, activate the features as "instrumented"
+        ActivateAndCommitFeatures(featureBitSet, previousFeatureBitSet);
+        previousFeatureBitSet = featureBitSet;
         return;
     }
 
@@ -682,15 +769,30 @@ void InstrumentationController::CommitInstrumentation() {
     // Copy batch
     auto* batch = new (registry->GetAllocators()) Batch(immediateBatch);
     batch->stampBegin = std::chrono::high_resolution_clock::now();
+    batch->versionID = versionID;
 
     // Summarize the needed feature set
+    batch->previousFeatureBitSet = previousFeatureBitSet;
     batch->featureBitSet = featureBitSet;
+
+    // Inform activation, state-less
+    for (size_t i = 0; i < table->features.size(); i++) {
+        if (batch->featureBitSet & (1ull << i)) {
+            table->features[i]->Activate(FeatureActivationStage::Instrumentation);
+        }
+    }
+
+    // Keep track of last bit set
+    previousFeatureBitSet = featureBitSet;
 
     // Task group
     // TODO: Tie lifetime of this task group to the controller
     TaskGroup group(dispatcher.GetUnsafe());
     if (!batch->dirtyShaderModules.empty()) {
         group.Chain(BindDelegate(this, InstrumentationController::CommitShaders), batch);
+    }
+    if (!batch->dirtyPipelineLibraries.empty()) {
+        group.Chain(BindDelegate(this, InstrumentationController::CommitPipelineLibraries), batch);
     }
     if (!batch->dirtyPipelines.empty()) {
         group.Chain(BindDelegate(this, InstrumentationController::CommitPipelines), batch);
@@ -715,8 +817,22 @@ void InstrumentationController::CommitInstrumentation() {
     hasPendingBucket = false;
 }
 
+void InstrumentationController::CommitFeatureMessages() {
+    // Always commit the sguid host before,
+    // since this may be collected during instrumentation
+    table->sguidHost->Commit(table->bridge.GetUnsafe());
+    
+    // Commit all feature messages
+    for (const ComRef<IFeature>& feature : table->features) {
+        feature->CollectMessages(table->bridge->GetOutput());
+    }
+}
+
 void InstrumentationController::Commit() {
     uint32_t count = GetJobCount();
+
+    // Commit all collected feature messages
+    CommitFeatureMessages();
 
     // Serial
     std::lock_guard guard(mutex);
@@ -768,11 +884,21 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 
         // Perform feedback from the dependent objects
         for (PipelineState* dependentObject : table->dependencies_shaderModulesPipelines.Get(state)) {
+            // Ignore libraries, shaders are compiled against the final pipeline state object
+            if (dependentObject->isLibrary) {
+                continue;
+            }
+            
             // Get the super feature set
             uint64_t featureBitSet = shaderFeatureBitSet | dependentObject->instrumentationInfo.featureBitSet;
 
             // No features?
             if (!featureBitSet) {
+                continue;
+            }
+
+            // Raytracing is pass-through for now
+            if (dependentObject->type == PipelineType::Raytracing) {
                 continue;
             }
 
@@ -805,6 +931,12 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.physicalMapping->layoutHash);
 
+            // Determine the shader module index within the dependent object
+            uint64_t dependentIndex = dependentObject->GetDependentIndex(state);
+
+            // Keep key around
+            dependentObject->referencedInstrumentationKeys[dependentIndex] = instrumentationKey;
+
             // Attempt to reserve
             if (!state->Reserve(instrumentationKey)) {
                 continue;
@@ -812,9 +944,6 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 
             // Increment counter
             batch->stageCounters[static_cast<uint32_t>(dependentObject->type)]++;
-
-            // Determine the shader module index within the dependent object
-            uint64_t dependentIndex = std::ranges::find(dependentObject->shaderModules, state) - dependentObject->shaderModules.begin();
 
             // Inject the feedback state
             shaderCompiler->Add(table, ShaderJob {
@@ -827,130 +956,196 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
     }
 }
 
-void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *data) {
+void InstrumentationController::CommitPipelineLibraries(DispatcherBucket *bucket, void *data) {
+    auto* batch = static_cast<Batch*>(data);
+    CommitOpaquePipelines(bucket, batch->dirtyPipelineLibraries.data(), static_cast<uint32_t>(batch->dirtyPipelineLibraries.size()), InstrumentationStage::PipelineLibraries, data);
+}
+
+void InstrumentationController::CommitPipelines(DispatcherBucket *bucket, void *data) {
+    auto* batch = static_cast<Batch*>(data);
+    CommitOpaquePipelines(bucket, batch->dirtyPipelines.data(), static_cast<uint32_t>(batch->dirtyPipelines.size()), InstrumentationStage::Pipelines, data);
+}
+
+bool InstrumentationController::CommitPipeline(Batch* batch, PipelineState* state, PipelineState* dependentObject, Vector<PipelineJob>& jobs) {
+    // Setup the job
+    PipelineJob job;
+    job.state = state;
+    job.combinedHash = 0x0;
+
+    // Feature bit sets
+    TrivialStackVector<ShaderModuleInstrumentationKey, 32> shaderModuleInstrumentationKeys(state->ownedShaderModules.size());
+    TrivialStackVector<uint64_t, 32>                       pipelineLibraryInstrumentationKeys(state->pipelineLibraries.size());
+
+    // Super set
+    uint64_t superFeatureBitSet{0};
+
+    // Job may be skipped due to missing keys
+    bool missingKey = false;
+
+    // Create library keys
+    for (uint32_t libraryIndex = 0; libraryIndex < state->pipelineLibraries.size(); libraryIndex++) {
+        // Get shader
+        PipelineState* pipelineLibrary = state->pipelineLibraries[libraryIndex];
+        ASSERT(state->GetDependentIndex(pipelineLibrary) == libraryIndex, "Unexpected dependent index");
+
+        // Get instrumentation key
+        uint64_t libraryKey = dependentObject->libraryInstrumentationKeys[dependentObject->GetDependentIndex(pipelineLibrary)];
+
+        // If either object is expecting features, there must be a valid key
+        if (pipelineLibrary->instrumentationInfo.featureBitSet || dependentObject->instrumentationInfo.featureBitSet) {
+            ASSERT(libraryKey, "Invalid library key");
+        }
+        
+        // Summarize the super feature bit set (shader -> pipeline)
+        superFeatureBitSet |= (libraryKey != 0);
+
+        // Assign key
+        pipelineLibraryInstrumentationKeys[libraryIndex] = libraryKey;
+
+        // Combine parent hash
+        CombineHash(job.combinedHash, libraryKey);
+        
+        // Library may have failed to compile for whatever reason, skip if need be
+        if (!pipelineLibrary->HasInstrument(libraryKey)) {
+            missingKey = true;
+        }
+    }
+
+    // Create the owned shader module keys
+    for (uint32_t shaderIndex = 0; shaderIndex < state->ownedShaderModules.size(); shaderIndex++) {
+        // Get shader
+        ShaderModuleState* shaderState = state->ownedShaderModules[shaderIndex];
+
+        // Get the instrumentation key
+        const ShaderModuleInstrumentationKey& instrumentationKey = dependentObject->referencedInstrumentationKeys[dependentObject->GetDependentIndex(shaderState)];
+
+        // If either object is expecting features, there must be a valid key
+        if (shaderState->instrumentationInfo.featureBitSet || dependentObject->instrumentationInfo.featureBitSet) {
+            ASSERT(instrumentationKey, "Invalid instrumentation key");
+        }
+
+        // Summarize the super feature bit set (shader -> pipeline)
+        superFeatureBitSet |= instrumentationKey.featureBitSet;
+
+        // Assign key
+        shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;
+
+        // Combine parent hash
+        CombineHash(job.combinedHash, instrumentationKey.combinedHash);
+        
+        // Shader may have failed to compile for whatever reason, skip if need be
+        if (!shaderState->HasInstrument(instrumentationKey)) {
+            missingKey = true;
+        }
+    }
+
+    // Raytracing is pass-through for now
+    if (state->type == PipelineType::Raytracing) {
+        superFeatureBitSet = 0x0;
+    }
+
+    // No features?
+    if (!superFeatureBitSet) {
+        // Inform the dependent object to fetch the default pipeline
+        if (state->isLibrary) {
+            dependentObject->libraryInstrumentationKeys[dependentObject->GetDependentIndex(state)] = kDefaultPipelineStateHash;
+        }
+        
+        // Set the hot swapped object to native
+        state->hotSwapObject.store(nullptr);
+
+        // This is not a failure, there is nothing to instrument
+        return true;
+    }
+
+    // If a key is missing, the compilation has failed
+    if (missingKey) {
+        return false;
+    }
+
+    // If this is a library, store the final key in the dependent object
+    if (state->isLibrary) {
+        ASSERT(dependentObject != state, "Library compilation must be a dependent state");
+        
+        // Store at the dependent index
+        dependentObject->libraryInstrumentationKeys[dependentObject->GetDependentIndex(state)] = job.combinedHash;
+        
+        // May have multiple users, try to reserve first
+        if (!state->Reserve(job.combinedHash)) {
+            return true;
+        }
+    }
+
+    // Copy job keys
+    job.pipelineLibraryInstrumentationKeys = pipelineLibraryInstrumentationKeys.DetachAllocation(allocators);
+    job.shaderModuleInstrumentationKeys = shaderModuleInstrumentationKeys.DetachAllocation(allocators);
+
+    // Push job
+    jobs.push_back(job);
+
+    // Increment counter
+    batch->stageCounters[static_cast<uint32_t>(state->type)]++;
+
+    // Append commit entry
+    batch->commitEntries.push_back(Batch::CommitEntry {
+        .state = state,
+        .combinedHash = job.combinedHash,
+    });
+
+    return true;
+}
+
+void InstrumentationController::CommitOpaquePipelines(DispatcherBucket* bucket, PipelineState** pipelineStates, uint32_t count, InstrumentationStage stage, void *data) {
     auto* batch = static_cast<Batch*>(data);
     batch->stampBeginPipelines = std::chrono::high_resolution_clock::now();
 
     // Set configure
-    batch->stage = InstrumentationStage::Pipelines;
+    batch->stage = stage;
     batch->pipelineCompilerDiagnostic.messages = &batch->messages;
+
+    // Collection of keys which failed
+    std::vector<std::pair<uint64_t, ShaderModuleInstrumentationKey>> rejectedKeys;
+
+    // Allocate batch
+    Vector<PipelineJob> jobs(allocators);
 
     // Reset counters
     std::fill_n(batch->stageCounters, static_cast<uint32_t>(PipelineType::Count), 0u);
 
-    // Collection of keys which failed
-    std::vector<std::pair<ShaderModuleState*, ShaderModuleInstrumentationKey>> rejectedKeys;
-
-    // Allocate batch
-    auto jobs = new (registry->GetAllocators()) PipelineJob[batch->dirtyPipelines.size()];
-
-    // Enqueued jobs
-    uint32_t enqueuedJobs{0};
-
     // Submit compiler jobs
-    for (size_t dirtyIndex = 0; dirtyIndex < batch->dirtyPipelines.size(); dirtyIndex++) {
-        PipelineState *state = batch->dirtyPipelines[dirtyIndex];
+    for (size_t dirtyIndex = 0; dirtyIndex < count; dirtyIndex++) {
+        PipelineState *state = pipelineStates[dirtyIndex];
 
-        // Was this job skipped?
-        bool isSkipped = false;
+        // Was this job successful?
+        bool passed = true;
 
-        // Setup the job
-        PipelineJob& job = jobs[enqueuedJobs];
-        job.state = state;
-        job.combinedHash = 0x0;
-
-        // Allocate feature bit sets
-        job.shaderModuleInstrumentationKeys = new (registry->GetAllocators()) ShaderModuleInstrumentationKey[state->shaderModules.size()];
-
-        // Super set
-        uint64_t superFeatureBitSet{0};
-
-        // Set the module feature bit sets
-        for (uint32_t shaderIndex = 0; shaderIndex < state->shaderModules.size(); shaderIndex++) {
-            uint64_t featureBitSet = 0;
-
-            // Get shader
-            ShaderModuleState* shaderState = state->shaderModules[shaderIndex];
-
-            // Create super feature bit set (shader -> pipeline)
-            // ? Pipeline specific bit set fed back during shader compilation
-            featureBitSet |= shaderState->instrumentationInfo.featureBitSet;
-            featureBitSet |= state->instrumentationInfo.featureBitSet;
-
-            // Summarize
-            superFeatureBitSet |= featureBitSet;
-
-            // Number of slots used by the pipeline
-            uint32_t pipelineLayoutUserSlots = state->layout->boundUserDescriptorStates;
-            ASSERT(pipelineLayoutUserSlots <= table->physicalDeviceProperties.limits.maxBoundDescriptorSets, "Pipeline layout user slots sanity check failed (corrupt)");
-
-            // User push constant offset
-            uint32_t pipelineLayoutDataPCOffset = state->layout->dataPushConstantOffset;
-#if PRMT_METHOD == PRMT_METHOD_UB_PC
-            uint32_t pipelineLayoutPRMTPCOffset = state->layout->prmtPushConstantOffset;
-#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
-
-            // Create the instrumentation key
-            ShaderModuleInstrumentationKey instrumentationKey{};
-            instrumentationKey.featureBitSet = featureBitSet;
-            instrumentationKey.pipelineLayoutUserSlots = pipelineLayoutUserSlots;
-            instrumentationKey.pipelineLayoutDataPCOffset = pipelineLayoutDataPCOffset;
-#if PRMT_METHOD == PRMT_METHOD_UB_PC
-            instrumentationKey.pipelineLayoutPRMTPCOffset = pipelineLayoutPRMTPCOffset;
-#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
-            instrumentationKey.physicalMapping = &state->layout->physicalMapping;
-
-            // Combine hashes
-            instrumentationKey.combinedHash = state->instrumentationInfo.specializationHash;
-            CombineHash(instrumentationKey.combinedHash, shaderState->instrumentationInfo.specializationHash);
-            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutUserSlots);
-            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutDataPCOffset);
-#if PRMT_METHOD == PRMT_METHOD_UB_PC
-            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutPRMTPCOffset);
-#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
-            CombineHash(instrumentationKey.combinedHash, instrumentationKey.physicalMapping->layoutHash);
-
-            // Assign key
-            job.shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;
-
-            // Combine parent hash
-            CombineHash(job.combinedHash, instrumentationKey.combinedHash);
-            
-            // Shader may have failed to compile for whatever reason, skip if need be
-            if (!shaderState->HasInstrument(instrumentationKey)) {
-                rejectedKeys.push_back(std::make_pair(shaderState, instrumentationKey));
-                isSkipped = true;
+        // If a library, create a pipeline per unique dependency
+        if (state->isLibrary) {
+            for (PipelineState* dependentObject : table->dependencies_pipelineLibraries.Get(state)) {
+                // Is this dependency part of the batch?
+                if (!batch->dirtyObjects.contains(dependentObject)) {
+                    continue;
+                }
+                
+                // Get the instrumentation keys from the dependent object, since it's the
+                // one that actually wants the modules
+                if (!CommitPipeline(batch, state, dependentObject, jobs)) {
+                    passed = false;
+                }
             }
+        } else {
+            // Get the instrumentation keys from the state itself
+            passed = CommitPipeline(batch, state, state, jobs);
         }
 
-        // No features?
-        if (!superFeatureBitSet) {
-            // Set the hot swapped object to native
-            state->hotSwapObject.store(nullptr);
-            isSkipped = true;
+        // Report rejected pipelines
+        if (!passed) {
+            rejectedKeys.push_back(std::make_pair(0, ShaderModuleInstrumentationKey{}));
         }
-
-        // Not of interest?
-        if (isSkipped) {
-            destroy(job.shaderModuleInstrumentationKeys, allocators);
-            continue;
-        }
-
-        // Increment counter
-        batch->stageCounters[static_cast<uint32_t>(state->type)]++;
-
-        // Append commit entry
-        batch->commitEntries.push_back(Batch::CommitEntry {
-            .state = state,
-            .combinedHash = job.combinedHash,
-        });
-
-        // Next job
-        enqueuedJobs++;
     }
 
     // Submit all jobs
-    pipelineCompiler->AddBatch(table, &batch->pipelineCompilerDiagnostic, jobs, enqueuedJobs, bucket);
+    pipelineCompiler->AddBatch(table, &batch->pipelineCompilerDiagnostic, jobs.data(), static_cast<uint32_t>(jobs.size()), bucket);
 
     // Report all rejected keys
     if (!rejectedKeys.empty()) {
@@ -960,16 +1155,13 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
         // Compose keys
         for (auto&& kv : rejectedKeys) {
-            keyMessage << "\tShader " << kv.first->uid << " [" << kv.second.featureBitSet << "] with " << kv.second.pipelineLayoutUserSlots << " user slots\n";
+            keyMessage << "\tObject " << kv.first << " [" << kv.second.featureBitSet << "] with " << kv.second.pipelineLayoutUserSlots << " user slots\n";
         }
 
         // Submit
         table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, keyMessage.str());
 #endif // LOG_REJECTED_KEYS
     }
-
-    // Free up
-    destroy(jobs, registry->GetAllocators());
 }
 
 void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data) {
@@ -983,7 +1175,10 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Commit all sguid changes
     auto bridge = registry->Get<IBridge>();
     table->sguidHost->Commit(bridge.GetUnsafe());
-    
+
+    // Activate the features
+    ActivateAndCommitFeatures(batch->featureBitSet, batch->previousFeatureBitSet);
+
     // Commit all pending entries
     for (Batch::CommitEntry entry : batch->commitEntries) {
         if (auto pipeline = entry.state->GetInstrument(entry.combinedHash)) {
@@ -994,6 +1189,9 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Sync scope
     {
         std::lock_guard guard(mutex);
+
+        // Commit view
+        MessageStreamView view(commitStream);
         
         // Diagnostic
 #if LOG_INSTRUMENTATION
@@ -1024,7 +1222,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
         }
 
         // Create final diagnostics message
-        auto message = MessageStreamView(commitStream).Add<InstrumentationDiagnosticMessage>(InstrumentationDiagnosticMessage::AllocationInfo {
+        auto message = view.Add<InstrumentationDiagnosticMessage>(InstrumentationDiagnosticMessage::AllocationInfo {
             .messagesByteSize = diagnosticStream.GetByteSize()
         });
 
@@ -1039,8 +1237,20 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
         message->millisecondsTotal = msTotal;
 #endif // LOG_INSTRUMENTATION
 
+        // Commit instrumentation version
+        view.Add<InstrumentationVersionMessage>()->version = batch->versionID;
+
         // Release the batch, bucket destructed after this call
         compilationBatch = nullptr;
+
+        // Mark as done
+        compilationEvent.IncrementCounter();
+
+        // Recommit the immediate batch
+        // Previous commits may be held up since they're waiting on the current batch to complete,
+        // While we could have a separate thread to track all of this, it's better if it can be
+        // handled with the applications threading alone.
+        CommitInstrumentation();
     }
 
     // Release handles
@@ -1050,9 +1260,6 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Release batch
     destroy(batch, allocators);
-
-    // Mark as done
-    compilationEvent.IncrementCounter();
 }
 
 uint64_t InstrumentationController::SummarizeFeatureBitSet() {
@@ -1075,11 +1282,16 @@ uint64_t InstrumentationController::SummarizeFeatureBitSet() {
 
 void InstrumentationController::WaitForCompletion() {
     // Commit all pending instrumentation
+    uint64_t headCounter;
     {
         std::lock_guard guard(mutex);
         CommitInstrumentation();
+
+        // Only get head inside guard, otherwise there's a risk its incremented without any
+        // way to commit it in the future.
+        headCounter = compilationEvent.GetHead();
     }
 
     // Wait til head
-    compilationEvent.Wait(compilationEvent.GetHead());
+    compilationEvent.Wait(headCounter);
 }

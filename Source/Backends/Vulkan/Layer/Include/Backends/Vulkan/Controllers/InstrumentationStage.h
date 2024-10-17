@@ -29,5 +29,6 @@
 enum class InstrumentationStage {
     None,
     Shaders,
+    PipelineLibraries,
     Pipelines,
 };

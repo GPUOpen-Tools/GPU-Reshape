@@ -27,7 +27,6 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.ExtendedToolkit.Controls.PropertyGrid.PropertyTypes;
 using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
@@ -64,14 +63,7 @@ namespace Studio.Views
                     x.WhenAnyValue(y => y.SelectedPropertyConfigurations)
                         .Subscribe(y =>
                         {
-                            // Create new descriptor
-                            PropertyGrid.SelectedObject = new PropertyCollectionTypeDescriptor(y ?? Array.Empty<IPropertyViewModel>());
-
-                            // Clear previous metadata, internally a type based cache is used, this is not appropriate
-                            MetadataRepository.Clear();
-
-                            // Finally, recreate the property setup with fresh metadata
-                            PropertyGrid.ReloadCommand.Execute(null);
+                            PropertyGrid.DataContext = new PropertyGridViewModel(y?.Promote<ReactiveObject>() ?? Array.Empty<ReactiveObject>());
                         });
                     
                     // Bind interactions
@@ -116,7 +108,7 @@ namespace Studio.Views
             var dialog = new OpenFileDialog();
 
             string[]? result = await dialog.ShowAsync(this);
-            if (result == null)
+            if (result == null || result.Length == 0)
             {
                 return;
             }
@@ -130,15 +122,15 @@ namespace Studio.Views
         /// <param name="x"></param>
         private async void OnWorkingDirectoryButton(RoutedEventArgs x)
         {
-            var dialog = new OpenFileDialog();
+            var dialog = new OpenFolderDialog();
 
-            string[]? result = await dialog.ShowAsync(this);
+            string? result = await dialog.ShowAsync(this);
             if (result == null)
             {
                 return;
             }
 
-            _VM.WorkingDirectoryPath = result[0];
+            _VM.WorkingDirectoryPath = result;
         }
 
         private LaunchViewModel _VM => (LaunchViewModel)DataContext!;

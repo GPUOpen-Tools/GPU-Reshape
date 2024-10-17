@@ -25,15 +25,15 @@
 // 
 
 using System;
-using System.Reactive.Linq;
-using Avalonia;
+using System.Linq;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using DynamicData;
-using DynamicData.Binding;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using ReactiveUI;
 using Studio.Extensions;
-using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Controls;
+using Studio.ViewModels.Workspace.Message;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Views.Workspace.Properties
@@ -48,17 +48,60 @@ namespace Studio.Views.Workspace.Properties
         public MessageCollectionView()
         {
             InitializeComponent();
-
+            
+            // On data context
             this.WhenAnyValue(x => x.DataContext)
                 .CastNullable<MessageCollectionViewModel>()
                 .Subscribe(viewModel =>
                 {
+                    // Set query filter
+                    CollectionQueryView.DataContext = viewModel.HierarchicalMessageQueryFilterViewModel;
+                    
                     // Bind signals
-                    MessageDataGrid.Events().DoubleTapped
-                        .Select(_ => MessageDataGrid.SelectedItem as ValidationObject)
-                        .WhereNotNull()
-                        .Subscribe(x => viewModel.OpenShaderDocument.Execute(x));
+                    MessageList.AddHandler(InputElement.PointerPressedEvent, OnListPointerPressed, RoutingStrategies.Tunnel);
                 });
+            
+            
+            // Bind activation
+            this.WhenActivated(_ =>
+            {
+                if (DataContext is not MessageCollectionViewModel vm)
+                {
+                    return;
+                }
+                
+                // Reconstruct and bind scroll events
+#if false
+                if (MessageTree.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is { } scrollViewer)
+                {
+                    scrollViewer.Offset = vm.ScrollAmount;
+                    scrollViewer.Events().ScrollChanged.Subscribe(x => vm.ScrollAmount = scrollViewer.Offset);
+                }
+#endif
+            });
+        }
+
+        /// <summary>
+        /// Invoked on pointer presses
+        /// </summary>
+        private void OnListPointerPressed(object? sender, PointerPressedEventArgs _event)
+        {
+            // Get contexts
+            if (DataContext is not MessageCollectionViewModel {} viewModel ||
+                MessageList.RowSelection?.SelectedItem is not IObservableTreeItem { } item)
+            {
+                return;
+            }
+
+            // Double click?
+            if (_event.ClickCount < 2)
+            {
+                return;
+            }
+
+            // Open document for item
+            viewModel.OpenShaderDocument.Execute(item);
+            _event.Handled = true;
         }
     }
 }

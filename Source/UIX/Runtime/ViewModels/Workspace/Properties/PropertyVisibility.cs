@@ -55,5 +55,10 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Views are hidden by default
         /// </summary>
         HiddenByDefault = 8,
+        
+        /// <summary>
+        /// This section is "inline", if the content presenter supports it
+        /// </summary>
+        InlineSection = 16
     }
 }

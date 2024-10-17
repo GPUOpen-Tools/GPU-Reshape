@@ -32,7 +32,7 @@
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
+#include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 
 // Generated schema
 #include <Schemas/Features/ExportStability.h>
@@ -91,12 +91,22 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
                 value = it->As<IL::StoreBufferInstruction>()->value;
                 resource = it->As<IL::StoreBufferInstruction>()->buffer;
                 break;
+            case IL::OpCode::StoreBufferRaw:
+                value = it->As<IL::StoreBufferRawInstruction>()->value;
+                resource = it->As<IL::StoreBufferRawInstruction>()->buffer;
+                break;
             case IL::OpCode::StoreTexture:
                 value = it->As<IL::StoreTextureInstruction>()->texel;
                 resource = it->As<IL::StoreTextureInstruction>()->texture;
                 break;
             case IL::OpCode::StoreOutput:
                 value = it->As<IL::StoreOutputInstruction>()->value;
+                break;
+            case IL::OpCode::StoreVertexOutput:
+                value = it->As<IL::StoreVertexOutputInstruction>()->value;
+                break;
+            case IL::OpCode::StorePrimitiveOutput:
+                value = it->As<IL::StorePrimitiveOutputInstruction>()->value;
                 break;
         }
 
@@ -157,7 +167,7 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
         // Detailed instrumentation?
         if (config.detail && resource != IL::InvalidID) {
             msg.chunks |= UnstableExportMessage::Chunk::Detail;
-            msg.detail.token = IL::ResourceTokenEmitter(oob, resource).GetToken();
+            msg.detail.token = IL::ResourceTokenEmitter(oob, resource).GetPackedToken();
         }
 
         // Export the message

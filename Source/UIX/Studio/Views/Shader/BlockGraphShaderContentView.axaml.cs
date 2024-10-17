@@ -144,7 +144,7 @@ namespace Studio.Views.Shader
             catch (Exception)
             {
                 // Inform of failure
-                App.Locator.GetService<ILoggingService>()?.ViewModel.Events.Add(new LogEvent()
+                ServiceRegistry.Get<ILoggingService>()?.ViewModel.Events.Add(new LogEvent()
                 {
                     Severity = LogSeverity.Error,
                     Message = $"Failed to deserialize block graph"

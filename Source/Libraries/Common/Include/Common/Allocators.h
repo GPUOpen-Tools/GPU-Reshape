@@ -27,7 +27,8 @@
 #pragma once
 
 // Common
-#include "Allocator/ContainerAllocator.h"
+#include <Common/Allocator/Allocators.h>
+#include <Common/Allocator/AllocatorTag.h>
 
 // Std
 #include <cstring>
@@ -82,11 +83,6 @@ inline void destroy(T* object, Allocators allocators) {
         return;
 
     object->~T();
-
-    // Poison fill memory
-#ifndef NDEBUG
-    memset(static_cast<void*>(object), 0xFFu, sizeof(T));
-#endif
     
     allocators.free(allocators.userData, object, kDefaultAlign);
 }

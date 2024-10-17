@@ -35,6 +35,7 @@
 // Std
 #include <list>
 #include <algorithm>
+#include <unordered_map>
 
 namespace IL {
     struct IdentifierMap {
@@ -43,31 +44,31 @@ namespace IL {
         /// Allocate a new ID
         /// \return
         ID AllocID() {
-            map.emplace_back();
-            return static_cast<ID>(map.size() - 1);
+            instructionMap.emplace_back();
+            return static_cast<ID>(instructionMap.size() - 1);
         }
 
         /// Allocate a range of IDs
         /// \return base ID
         ID AllocIDRange(uint32_t count) {
-            auto base = static_cast<ID>(map.size());
-            map.resize(map.size() + count);
+            auto base = static_cast<ID>(instructionMap.size());
+            instructionMap.resize(instructionMap.size() + count);
             return base;
         }
 
         /// Set the number of bound ids
         /// \param id the capacity
         void SetBound(uint32_t bound) {
-            if (map.size() > bound) {
+            if (instructionMap.size() > bound) {
                 return;
             }
 
-            map.resize(bound);
+            instructionMap.resize(bound);
         }
 
         /// Get the maximum id
         ID GetMaxID() const {
-            return static_cast<ID>(map.size());
+            return static_cast<ID>(instructionMap.size());
         }
 
         /// Add a mapped instruction
@@ -75,21 +76,81 @@ namespace IL {
         /// \param result the resulting id
         void AddInstruction(const OpaqueInstructionRef& ref, ID result) {
             ASSERT(result != InvalidID, "Mapping instruction with invalid result");
-            map.at(result) = ref;
+            instructionMap.at(result) = ref;
         }
 
         /// Remove a mapped instruction
         /// \param result the resulting id
         void RemoveInstruction(ID result) {
             ASSERT(result != InvalidID, "Unmapping instruction with invalid result");
-            map.at(result) = {};
+            instructionMap.at(result) = {};
+        }
+
+        /// Redirect an instruction
+        /// This has no semantic relevance except for programs which explicitly fetch source instructions
+        /// \param original the original instruction result
+        /// \param redirect the new / redirected result
+        void RedirectInstruction(ID original, ID redirect) {
+            ASSERT(original != InvalidID && redirect != InvalidID, "Unmapping instruction with invalid result");
+
+            // Lazy allocate, most instrumentation will not require redirects
+            if (redirect >= redirectMap.size()) {
+                redirectMap.resize(redirect + 1, InvalidID);
+            }
+
+            // If the destination is a redirect in and of itself, is the destination's redirect
+            // Ensures we always point to the source
+            if (IL::ID existingRedirect = redirectMap[original]; existingRedirect != InvalidID) {
+                original = existingRedirect;
+            }
+            
+            redirectMap[redirect] = original;
+        }
+
+        /// Get the source / original instruction id from a potentially redirected id
+        /// \param id the id to query
+        /// \return source id (always valid)
+        IL::ID GetSourceInstruction(ID id) const {
+            if (id >= redirectMap.size()) {
+                return id;
+            }
+
+            // Check the redirect map
+            if (ID redirect = redirectMap[id]; redirect != InvalidID) {
+                return redirect;
+            }
+
+            // No redirect, this is a source id
+            return id;
         }
 
         /// Get a mapped instruction
         /// \param id the resulting id
         /// \return may be invalid if not mapped
         const OpaqueInstructionRef& Get(const ID& id) const {
-            return map.at(id);
+            return instructionMap.at(id);
+        }
+
+        /// Add a mapped basic block
+        /// \param block the block to be mapped
+        /// \param result the resulting id
+        void AddBasicBlock(BasicBlock* block, ID result) {
+            ASSERT(result != InvalidID, "Mapping block with invalid id");
+            blockMap[result] = block;
+        }
+
+        /// Remove a mapped basic block
+        /// \param result the resulting id
+        void RemoveBasicBlock(ID result) {
+            ASSERT(result != InvalidID, "Unmapping block with invalid id");
+            blockMap.at(result) = nullptr;
+        }
+
+        /// Get a basic block
+        /// \param id id to fetch
+        /// \return fetched block
+        BasicBlock* GetBasicBlock(ID id) const {
+            return blockMap.at(id);
         }
 
         /// Add a new user to a block
@@ -133,6 +194,12 @@ namespace IL {
         std::vector<Block> blocks;
 
         /// All instructions
-        std::vector<OpaqueInstructionRef> map;
+        std::vector<OpaqueInstructionRef> instructionMap;
+
+        /// All redirected identifiers
+        std::vector<IL::ID> redirectMap;
+
+        /// All basic blocks
+        std::unordered_map<ID, BasicBlock*> blockMap;
     };
 }

@@ -45,11 +45,12 @@ static std::string SanitizeCompilerPath(const std::string_view& view) {
     return path;
 }
 
-void SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view &filename) {
+uint32_t SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view &filename) {
     PhysicalSource *source = GetOrAllocate(filename, id);
     source->language = language;
     source->version = version;
     source->filename = SanitizeCompilerPath(filename);
+    return sourceMappings[id];
 }
 
 void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {

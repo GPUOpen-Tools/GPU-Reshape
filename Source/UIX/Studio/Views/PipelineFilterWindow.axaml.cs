@@ -54,7 +54,7 @@ namespace Studio.Views
 #endif
 
             // Setup query
-            QueryBox.Items = AutoSource;
+            QueryBox.ItemsSource = AutoSource;
             QueryBox.TextFilter = QueryTextFilter;
             QueryBox.TextSelector = QuerySelector;
             

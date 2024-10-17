@@ -111,7 +111,7 @@
             x:Name="LogListbox"
             BorderThickness="1 0 0 0"
             Margin="24 0 0 0" 
-            Items="{Binding FilteredEvents}">
+            ItemsSource="{Binding FilteredEvents}">
             <ListBox.DataTemplates>
                 <DataTemplate DataType="logging:LogEvent">
                     <Grid ColumnDefinitions="25,*">
