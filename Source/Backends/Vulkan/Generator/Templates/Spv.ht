@@ -9,6 +9,7 @@ inline SpvPhysicalBlockType GetSpvBlockType(SpvOp op) {
         default:
             return SpvPhysicalBlockType::Count;
         case SpvOpLine:
+        case SpvOpNoLine:
             return SpvPhysicalBlockType::TypeConstantVariable;
         case SpvOpFunction:
             return SpvPhysicalBlockType::Function;
