@@ -381,6 +381,11 @@ void FeatureHook_vkCmdFillBuffer::operator()(CommandBufferObject *object, Comman
     // Get states
     BufferState* dstBufferState = object->table->states_buffer.Get(dstBuffer);
 
+    // Report actual size
+    if (size == VK_WHOLE_SIZE) {
+        size = dstBufferState->virtualMapping.token.width - dstOffset;
+    }
+
     // Setup source descriptor
     BufferDescriptor dstDescriptor{
         .offset = dstOffset,

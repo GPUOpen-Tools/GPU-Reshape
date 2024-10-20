@@ -90,6 +90,13 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage2 |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage |= (1ull << i);
         }
+
+        if (hookTable.writeResource.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdUpdateBuffer[i] = hookTable.writeResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdFillBuffer[i] = hookTable.writeResource;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdUpdateBuffer |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdFillBuffer |= (1ull << i);
+        }
         
         if (hookTable.resolveResource.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdResolveImage[i] = hookTable.resolveResource;
