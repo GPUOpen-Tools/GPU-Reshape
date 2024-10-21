@@ -39,6 +39,13 @@
 
 /// Check if a resource is volumetric
 static bool IsVolumetric(const ResourceState* state) {
+    // Null descriptors do not have an associated state
+    // TODO: Generally speaking we don't discern differently typed null descriptors, do we want to report
+    //       the assumed volumetrics of the creation parameters?
+    if (!state) {
+        return false;
+    }
+    
     return state->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 }
 
