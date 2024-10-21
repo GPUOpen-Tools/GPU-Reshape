@@ -176,4 +176,13 @@ Do you consent to this?</value>
     <data name="Tool_Log" xml:space="preserve">
         <value>Workspace logs</value>
     </data>
+    <data name="ShaderView_Code" xml:space="preserve">
+        <value>Source code</value>
+    </data>
+    <data name="ShaderView_IL" xml:space="preserve">
+        <value>Instructions (GRIL)</value>
+    </data>
+    <data name="ShaderView_BlockGraph" xml:space="preserve">
+        <value>Basic block graph (GRIL)</value>
+    </data>
 </root>

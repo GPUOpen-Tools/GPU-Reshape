@@ -69,6 +69,11 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// Tooling tip
+        /// </summary>
+        public string? ToolTip => Resources.Resources.ShaderView_IL;
+
+        /// <summary>
         /// The final assembled program
         /// </summary>
         public string AssembledProgram

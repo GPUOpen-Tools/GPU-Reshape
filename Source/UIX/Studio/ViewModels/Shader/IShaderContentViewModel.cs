@@ -66,6 +66,11 @@ namespace Studio.ViewModels.Shader
         public bool IsActive { get; set; }
         
         /// <summary>
+        /// Tooling tip
+        /// </summary>
+        public string? ToolTip { get; }
+        
+        /// <summary>
         /// Startup navigation requests
         /// </summary>
         public NavigationLocation? NavigationLocation { get; set; }

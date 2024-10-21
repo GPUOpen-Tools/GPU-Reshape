@@ -72,6 +72,11 @@ namespace Studio.ViewModels.Shader
             get => _icon;
             set => this.RaiseAndSetIfChanged(ref _icon, value);
         }
+
+        /// <summary>
+        /// Tooling tip
+        /// </summary>
+        public string? ToolTip => Resources.Resources.ShaderView_Code;
         
         /// <summary>
         /// Workspace within this overview

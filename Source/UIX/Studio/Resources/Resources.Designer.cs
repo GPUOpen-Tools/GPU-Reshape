@@ -394,6 +394,33 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Basic block graph (GRIL).
+        /// </summary>
+        public static string ShaderView_BlockGraph {
+            get {
+                return ResourceManager.GetString("ShaderView_BlockGraph", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Source code.
+        /// </summary>
+        public static string ShaderView_Code {
+            get {
+                return ResourceManager.GetString("ShaderView_Code", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Instructions (GRIL).
+        /// </summary>
+        public static string ShaderView_IL {
+            get {
+                return ResourceManager.GetString("ShaderView_IL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Selected shader files.
         /// </summary>
         public static string Tool_Files {

@@ -88,7 +88,8 @@
                         Background="Transparent"
                         BorderThickness="0"
                         Height="25"
-                        IsChecked="{Binding IsActive}">
+                        IsChecked="{Binding IsActive}"
+                        ToolTip.Tip="{Binding ToolTip}">
                         <PathIcon Data="{Binding Icon}" Width="15" />
                     </ToggleButton>
                 </DataTemplate>
