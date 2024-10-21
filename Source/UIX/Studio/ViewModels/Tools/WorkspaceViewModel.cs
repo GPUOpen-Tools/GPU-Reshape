@@ -51,6 +51,11 @@ namespace Studio.ViewModels.Tools
         /// Tooling icon
         /// </summary>
         public override StreamGeometry? Icon => ResourceLocator.GetIcon("ToolWorkspace");
+
+        /// <summary>
+        /// Tooling tip
+        /// </summary>
+        public override string? ToolTip => Resources.Resources.Tool_Workspaces;
         
         /// <summary>
         /// Connect to new workspace

@@ -394,6 +394,60 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Selected shader files.
+        /// </summary>
+        public static string Tool_Files {
+            get {
+                return ResourceManager.GetString("Tool_Files", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Workspace logs.
+        /// </summary>
+        public static string Tool_Log {
+            get {
+                return ResourceManager.GetString("Tool_Log", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All workspace pipelines.
+        /// </summary>
+        public static string Tool_Pipelines {
+            get {
+                return ResourceManager.GetString("Tool_Pipelines", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Instrumentation properties.
+        /// </summary>
+        public static string Tool_Properties {
+            get {
+                return ResourceManager.GetString("Tool_Properties", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All workspace shaders.
+        /// </summary>
+        public static string Tool_Shaders {
+            get {
+                return ResourceManager.GetString("Tool_Shaders", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All application workspaces.
+        /// </summary>
+        public static string Tool_Workspaces {
+            get {
+                return ResourceManager.GetString("Tool_Workspaces", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Collapse all items.
         /// </summary>
         public static string Tree_Collapse_Tooltip {

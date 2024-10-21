@@ -158,4 +158,22 @@ Do you consent to this?</value>
     <data name="Launch_AttachAllDevices" xml:space="preserve">
         <value>Attach to all graphical devices the application creates, a workspace is automatically created per device</value>
     </data>
+    <data name="Tool_Shaders" xml:space="preserve">
+        <value>All workspace shaders</value>
+    </data>
+    <data name="Tool_Pipelines" xml:space="preserve">
+        <value>All workspace pipelines</value>
+    </data>
+    <data name="Tool_Properties" xml:space="preserve">
+        <value>Instrumentation properties</value>
+    </data>
+    <data name="Tool_Workspaces" xml:space="preserve">
+        <value>All application workspaces</value>
+    </data>
+    <data name="Tool_Files" xml:space="preserve">
+        <value>Selected shader files</value>
+    </data>
+    <data name="Tool_Log" xml:space="preserve">
+        <value>Workspace logs</value>
+    </data>
 </root>

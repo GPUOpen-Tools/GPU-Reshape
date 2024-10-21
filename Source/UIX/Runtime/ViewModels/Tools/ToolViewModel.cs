@@ -35,5 +35,10 @@ namespace Runtime.ViewModels.Tools
         /// Tooling icon
         /// </summary>
         public abstract StreamGeometry? Icon { get; }
+        
+        /// <summary>
+        /// Tooling tip
+        /// </summary>
+        public abstract string? ToolTip { get; }
     }
 }

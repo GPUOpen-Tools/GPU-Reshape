@@ -12,6 +12,7 @@
                 <PathIcon
                     Margin="0 3 0 3"
                     Data="{Binding (tools:ToolViewModel).Icon}"
+                    ToolTip.Tip="{Binding (tools:ToolViewModel).ToolTip}"
                     Width="20"
                     Height="20" />
             </DataTemplate>
