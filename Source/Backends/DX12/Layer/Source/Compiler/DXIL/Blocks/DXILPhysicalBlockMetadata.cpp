@@ -298,31 +298,32 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         // Contained texel type
         const Backend::IL::Type* containedType{nullptr};
 
-        // Handle contained
-        switch (constantPointerType->pointee->kind) {
-            default: {
-                break;
-            }
-            case Backend::IL::TypeKind::Struct: {
-                auto* constantStruct = constantPointerType->pointee->As<Backend::IL::StructType>();
+        // Handle contained, only relevant for resource types
+        if (type == DXILShaderResourceClass::SRVs || type == DXILShaderResourceClass::UAVs) {
+            switch (constantPointerType->pointee->kind) {
+                default: {
+                    break;
+                }
+                case Backend::IL::TypeKind::Struct: {
+                    auto* constantStruct = constantPointerType->pointee->As<Backend::IL::StructType>();
 
-                // Get resource types
-                ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
-                containedType = constantStruct->memberTypes[0];
-                break;
-            }
-            case Backend::IL::TypeKind::Array: {
-                // Must be array of struct of
-                auto* constantArray = constantPointerType->pointee->As<Backend::IL::ArrayType>();
-                auto* constantStruct = constantArray->elementType->As<Backend::IL::StructType>();
+                    // Get resource types
+                    ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
+                    containedType = constantStruct->memberTypes[0];
+                    break;
+                }
+                case Backend::IL::TypeKind::Array: {
+                    // Must be array of struct of
+                    auto* constantArray = constantPointerType->pointee->As<Backend::IL::ArrayType>();
+                    auto* constantStruct = constantArray->elementType->As<Backend::IL::StructType>();
 
-                // Get resource types
-                ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
-                containedType = constantStruct->memberTypes[0];
-                break;
+                    // Get resource types
+                    ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
+                    containedType = constantStruct->memberTypes[0];
+                    break;
+                }
             }
         }
-
 
         // TODO: How on earth are the names stored?
         // uint64_t name = GetOperandU32Constant(resource.Op(2))->value;
