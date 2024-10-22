@@ -1599,7 +1599,16 @@ AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList
 }
 
 HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory) {
+    // Keep parent frame
+    const void* callee = _ReturnAddress();
+
+    // Hold for deferred initialization, must happen before IHV region checks due to foreign modules
     WaitForDeferredInitialization();
+    
+    // If this is an IHV region, just pass down the call-chain
+    if (IsIHVRegion(callee)) {
+        return DetourFunctionTable.next_CreateDXGIFactoryOriginal(riid, ppFactory);
+    }
 
     // Get safe next
     auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactoryOriginal, DetourFunctionTable.next_CreateDXGIFactoryOriginal);
@@ -1607,7 +1616,16 @@ HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory)
 }
 
 HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory) {
+    // Keep parent frame
+    const void* callee = _ReturnAddress();
+
+    // Hold for deferred initialization, must happen before IHV region checks due to foreign modules
     WaitForDeferredInitialization();
+    
+    // If this is an IHV region, just pass down the call-chain
+    if (IsIHVRegion(callee)) {
+        return DetourFunctionTable.next_CreateDXGIFactory1Original(riid, ppFactory);
+    }
 
     // Get safe next
     auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactory1Original, DetourFunctionTable.next_CreateDXGIFactory1Original);
@@ -1615,7 +1633,16 @@ HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory
 }
 
 HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory) {
+    // Keep parent frame
+    const void* callee = _ReturnAddress();
+
+    // Hold for deferred initialization, must happen before IHV region checks due to foreign modules
     WaitForDeferredInitialization();
+    
+    // If this is an IHV region, just pass down the call-chain
+    if (IsIHVRegion(callee)) {
+        return DetourFunctionTable.next_CreateDXGIFactory2Original(flags, riid, ppFactory);
+    }
 
     // Get safe next
     auto next = SafeLayerFunction(LayerFunctionTable.next_CreateDXGIFactory2Original, DetourFunctionTable.next_CreateDXGIFactory2Original);
