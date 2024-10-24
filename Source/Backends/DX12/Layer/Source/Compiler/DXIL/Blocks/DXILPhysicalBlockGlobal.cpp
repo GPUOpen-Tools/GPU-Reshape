@@ -262,6 +262,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
             case LLVMConstantRecord::CString:
             case LLVMConstantRecord::Cast:
             case LLVMConstantRecord::GEP:
+            case LLVMConstantRecord::BinOp:
             case LLVMConstantRecord::InBoundsGEP: {
                 // Emitting as unsorted is safe for DXIL resident types, as the IL has no applicable type anyway
                 constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
