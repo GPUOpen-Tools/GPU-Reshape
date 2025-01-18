@@ -531,4 +531,8 @@ namespace Backend::IL {
 
         return type;
     }
+
+    inline const Type* ResultOf(Program& program, const InsertInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->composite);
+    }
 }

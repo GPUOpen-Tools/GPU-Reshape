@@ -46,6 +46,11 @@ public:
     /// \return intrinsic function handle
     const DXILFunctionDeclaration* GetIntrinsic(const DXILIntrinsicSpec& spec);
 
+    /// Get or create a lib handle intrinsic from the expected type
+    /// \param type the expected type
+    /// \return intrinsic function handle
+    const DXILFunctionDeclaration* GetLibHandleIntrinsic(const Backend::IL::Type* type);
+
     /// Data types
     const Backend::IL::VoidType *voidType{nullptr};
     const Backend::IL::BoolType *i1Type{nullptr};
@@ -76,6 +81,9 @@ private:
         /// Declaration of this intrinsic
         const DXILFunctionDeclaration* declaration{nullptr};
     };
+
+    /// Library handle lookup map
+    std::unordered_map<std::string, const DXILFunctionDeclaration*> libHandleTypeMap;
 
     /// Existing intrinsics
     std::vector<IntrinsicEntry> intrinsics;

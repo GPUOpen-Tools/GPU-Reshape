@@ -27,11 +27,14 @@
 #pragma once
 
 // Backend
+#include <Backends/DX12/Command/ReconstructionFlag.h>
 #include <Backends/DX12/DX12.h>
 #include <Backends/DX12/Layer.h>
 
 // Forward declarations
 struct DeviceState;
+struct CommandListState;
+struct ShaderExportStreamState;
 
 /// Create all device command proxies
 /// \param state
@@ -41,6 +44,41 @@ void CreateDeviceCommandProxies(DeviceState *state);
 /// \param state
 /// \param featureSet
 void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet);
+
+/// Reconstruct the full pipeline state
+/// \param device owning device
+/// \param commandList target command list to reconstruct
+/// \param streamState command streaming state
+void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState);
+
+/// Reconstruct the render pass state
+/// \param device owning device
+/// \param commandList target command list to reconstruct
+/// \param streamState command streaming state
+void ReconstructRenderPassState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState);
+
+/// Reconstruct the specified user state
+/// \param device owning device
+/// \param commandList target command list to reconstruct
+/// \param streamState command streaming state
+/// \param flags specific reconstruction flags
+void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, ReconstructionFlagSet flags);
+
+/// Reconstruct all user state
+/// \param device owning device
+/// \param commandList target command list to reconstruct
+/// \param streamState command streaming state
+void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState);
+
+/// Commit all pending compute work
+/// \param device target device
+/// \param list command list to commit on
+void CommitCompute(DeviceState* device, CommandListState* list);
+
+/// Commit all pending graphics work
+/// \param device target device
+/// \param list command list to commit on
+void CommitGraphics(DeviceState* device, CommandListState* list);
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateCommandQueue(ID3D12Device *, const D3D12_COMMAND_QUEUE_DESC *, const IID &, void **);
@@ -61,6 +99,7 @@ void WINAPI HookID3D12CommandQueueCopyTileMappings(ID3D12CommandQueue* _this, ID
 HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12CommandAllocator *allocator, ID3D12PipelineState *state);
 HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list);
 void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D12PipelineState *pipeline);
+void WINAPI HookID3D12CommandListSetPipelineState1(ID3D12CommandList *list, ID3D12StateObject *stateObject);
 void WINAPI HookID3D12CommandListSetGraphicsRootSignature(ID3D12CommandList *list, ID3D12RootSignature *rootSignature);
 void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList *list, ID3D12RootSignature *rootSignature);
 void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList *list, UINT NumDescriptorHeaps, ID3D12DescriptorHeap *const *ppDescriptorHeaps);

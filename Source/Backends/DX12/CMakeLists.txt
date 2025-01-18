@@ -319,7 +319,8 @@ add_custom_command(
 )
 
 # Inbuilt modules
-Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModule.hlsl Layer/Include/Backends/DX12/Modules/InbuiltTemplateModule kSPIRVInbuiltTemplateModule)
+Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModule.hlsl Layer/Include/Backends/DX12/Modules/InbuiltTemplateModule kInbuiltTemplateModule)
+Project_AddHLSL(GeneratedInbuilt cs_6_0 "-O3" Layer/Modules/ShaderRecordPatching.hlsl Layer/Include/Backends/DX12/Modules/ShaderRecordPatching kShaderRecordPatching)
 
 # Create layer
 add_library(
@@ -332,9 +333,11 @@ add_library(
     Layer/Source/Fence.cpp
     Layer/Source/CommandList.cpp
     Layer/Source/RootSignature.cpp
+    Layer/Source/Raytracing.cpp
     Layer/Source/DescriptorHeap.cpp
     Layer/Source/Pipeline.cpp
     Layer/Source/PipelineLibrary.cpp
+    Layer/Source/StateObject.cpp
     Layer/Source/SwapChain.cpp
     Layer/Source/MemoryHeap.cpp
     Layer/Source/QueryHeap.cpp
@@ -355,6 +358,7 @@ add_library(
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockRootSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockInputSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockOutputSignature.cpp
+    Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockRuntimeData.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockFeatureInfo.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockDebug.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockShaderSourceInfo.cpp
@@ -387,10 +391,14 @@ add_library(
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
     Layer/Source/Export/ShaderExportDescriptorLayout.cpp
     Layer/Source/Export/ShaderExportConstantAllocator.cpp
+    Layer/Source/Export/ShaderExportDeviceAllocator.cpp
+    Layer/Source/Export/ShaderExportOwnedHeapAllocator.cpp
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
     Layer/Source/ShaderData/ShaderDataHost.cpp
+    Layer/Source/Programs/StateObjectPrograms.cpp
+    Layer/Source/Programs/Programs.cpp
     Layer/Source/Scheduler/Scheduler.cpp
     Layer/Source/IncrementalFence.cpp
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
@@ -460,6 +468,12 @@ ExternalProject_Link(GRS.Backends.DX12.Layer D3D12MA $<$<CONFIG:Debug>:D3D12MAd>
 target_include_directories(
     GRS.Backends.DX12.Layer PUBLIC
     Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include
+)
+
+# Private include directories
+target_include_directories(
+    GRS.Backends.DX12.Layer PRIVATE
+    Layer/Modules
 )
 
 #----- Service -----#

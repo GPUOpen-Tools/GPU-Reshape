@@ -103,6 +103,14 @@ struct DXStream {
         std::memcpy(stream.data() + offset, &value, sizeof(T));
     }
 
+    /// Align this stream, fills with zeros
+    /// \param align expected alignment
+    void AlignTo(uint32_t align) {
+        if (uint32_t miss = stream.size() % align) {
+            stream.resize(stream.size() + align - miss, 0);
+        }
+    }
+
     /// Get the word data
     template<typename T = uint8_t>
     T* GetMutableData() {

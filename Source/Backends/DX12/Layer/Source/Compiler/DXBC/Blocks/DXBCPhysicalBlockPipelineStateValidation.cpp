@@ -130,9 +130,9 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     uavs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::UnorderedAccessView,
-            .space = bindingInfo.space,
-            .low = bindingInfo.shaderExportBaseRegister,
-            .high = bindingInfo.shaderExportBaseRegister + (bindingInfo.shaderExportCount - 1u)
+            .space = bindingInfo.global.space,
+            .low = bindingInfo.global.shaderExportBaseRegister,
+            .high = bindingInfo.global.shaderExportBaseRegister + (bindingInfo.global.shaderExportCount - 1u)
         },
         .info1 = DXBCPSVBindInfo1{
             .kind = DXBCPSVBindInfoKind::TypedBuffer,
@@ -144,9 +144,9 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     srvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::ShaderResourceView,
-            .space = bindingInfo.space,
-            .low = bindingInfo.resourcePRMTBaseRegister,
-            .high = bindingInfo.resourcePRMTBaseRegister
+            .space = bindingInfo.global.space,
+            .low = bindingInfo.global.resourcePRMTBaseRegister,
+            .high = bindingInfo.global.resourcePRMTBaseRegister
         },
         .info1 = DXBCPSVBindInfo1{
             .kind = DXBCPSVBindInfoKind::TypedBuffer,
@@ -158,9 +158,9 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     srvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::ShaderResourceView,
-            .space = bindingInfo.space,
-            .low = bindingInfo.samplerPRMTBaseRegister,
-            .high = bindingInfo.samplerPRMTBaseRegister
+            .space = bindingInfo.global.space,
+            .low = bindingInfo.global.samplerPRMTBaseRegister,
+            .high = bindingInfo.global.samplerPRMTBaseRegister
         },
         .info1 = DXBCPSVBindInfo1{
             .kind = DXBCPSVBindInfoKind::TypedBuffer,
@@ -172,9 +172,9 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     cbvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::CBuffer,
-            .space = bindingInfo.space,
-            .low = bindingInfo.shaderDataConstantRegister,
-            .high = bindingInfo.shaderDataConstantRegister
+            .space = bindingInfo.global.space,
+            .low = bindingInfo.global.shaderDataConstantRegister,
+            .high = bindingInfo.global.shaderDataConstantRegister
         },
         .info1 = DXBCPSVBindInfo1{
             .kind = DXBCPSVBindInfoKind::CBuffer,
@@ -186,9 +186,9 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     cbvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::CBuffer,
-            .space = bindingInfo.space,
-            .low = bindingInfo.descriptorConstantBaseRegister,
-            .high = bindingInfo.descriptorConstantBaseRegister
+            .space = bindingInfo.global.space,
+            .low = bindingInfo.global.descriptorConstantBaseRegister,
+            .high = bindingInfo.global.descriptorConstantBaseRegister
         },
         .info1 = DXBCPSVBindInfo1{
             .kind = DXBCPSVBindInfoKind::CBuffer,
@@ -200,9 +200,9 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     cbvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::CBuffer,
-            .space = bindingInfo.space,
-            .low = bindingInfo.eventConstantBaseRegister,
-            .high = bindingInfo.eventConstantBaseRegister
+            .space = bindingInfo.global.space,
+            .low = bindingInfo.global.eventConstantBaseRegister,
+            .high = bindingInfo.global.eventConstantBaseRegister
         },
         .info1 = DXBCPSVBindInfo1{
             .kind = DXBCPSVBindInfoKind::CBuffer,
@@ -225,9 +225,9 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
         uavs.Add(DXBCPSVBindInfoRevision1 {
             .info0 = DXBCPSVBindInfo0{
                 .type = DXBCPSVBindInfoType::UnorderedAccessView,
-                .space = bindingInfo.space,
-                .low = bindingInfo.shaderResourceBaseRegister + dataOffset,
-                .high = bindingInfo.shaderResourceBaseRegister + dataOffset
+                .space = bindingInfo.global.space,
+                .low = bindingInfo.global.shaderResourceBaseRegister + dataOffset,
+                .high = bindingInfo.global.shaderResourceBaseRegister + dataOffset
             },
             .info1 = DXBCPSVBindInfo1{
                 .kind = DXBCPSVBindInfoKind::TypedBuffer,

@@ -32,6 +32,7 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockSection.h>
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILMetadataHandleEntry.h>
+#include <Backends/DX12/Compiler/DXIL/DXILIDType.h>
 
 // Std
 #include <string_view>
@@ -52,6 +53,12 @@ public:
     /// Set the declaration block
     /// \param block program block
     void SetDeclarationBlock(struct LLVMBlock *block);
+
+public:
+    /// Get the ID of an entry point
+    /// \param globalId global LLVM id, must be entry point
+    /// \return identifier
+    IL::ID GetEntryPointId(uint32_t globalId);
 
 public:
     /// Parse all instructions
@@ -120,12 +127,19 @@ private:
         /// Source record
         uint32_t source{~0u};
 
+        /// Type of this id
+        DXILIDType idType;
+
         /// Payload
         union {
             struct {
                 const Backend::IL::Type* type;
                 const IL::Constant* constant;
             } value;
+
+            const Backend::IL::Variable* variable;
+
+            IL::ID function;
         };
 
         /// Name associated
@@ -198,6 +212,13 @@ private:
     /// \return md index
     uint32_t FindOrAddOperandConstant(MetadataBlock& metadata, LLVMBlock* block, const Backend::IL::Constant* constant);
 
+    /// Find or add a new variable
+    /// \param metadata destination md
+    /// \param block destination block
+    /// \param variable variable to be added
+    /// \return md index
+    uint32_t FindOrAddOperandVariable(MetadataBlock& metadata, LLVMBlock* block, const Backend::IL::Variable* variable);
+
     /// Find or add a new u32 constant
     /// \param metadata destination md
     /// \param block destination block
@@ -239,9 +260,22 @@ private:
 public:
     /// Entrypoint
     struct EntryPoint {
+        /// The program metadata id
+        uint32_t programId{~0u};
+
+        /// The function value id
+        uint32_t functionId{~0u};
+
+        /// The IL id
+        IL::ID id = IL::InvalidID;
+    };
+    
+    /// Entrypoint
+    struct EntryPoints {
         uint32_t uid = ~0u;
-        uint32_t program = ~0u;
-    } entryPoint;
+        uint32_t signatoryEntryPoint = ~0u;
+        TrivialStackVector<EntryPoint, 4u> entries;
+    } entryPoints;
 
     /// All resource entries
     struct Resources {
@@ -302,6 +336,11 @@ public:
     /// \return nullptr if not found
     const DXILMetadataHandleEntry* GetHandle(DXILShaderResourceClass _class, int64_t space, int64_t rangeLowerBound, int64_t rangeUpperBound);
 
+    /// Get the metadata handle from a variable
+    /// \param variable associated variable, must exist
+    /// \return metadata handle
+    const DXILMetadataHandleEntry* GetHandleFromVariable(const Backend::IL::Variable* variable);
+
     /// Get the symbolic texture bindings, always valid
     IL::ID GetSymbolicTextureBindings() const {
         return symbolicTextureBindings;
@@ -337,6 +376,11 @@ private:
 
     /// All hosted metadata blocks
     Vector<MetadataBlock> metadataBlocks;
+
+private:
+    /// Resource variable to handle lookups
+    // TODO[rt]: Each physical block should just have a vector of id metadata
+    std::unordered_map<IL::ID, uint32_t> variableHandles;
 
 private:
     /// Symbolic bindings
@@ -381,6 +425,11 @@ public:
     /// Compile the event handles
     void CreateConstantsHandle(const DXCompileJob& job);
 
+    /// Create a lib resource variable
+    /// \param type expected type
+    /// \return variable
+    const Backend::IL::Variable* CreateExternLibResourceVariable(const Backend::IL::Type* type);
+
     /// Compile class record metadata
     LLVMRecordView CompileResourceClassRecord(const MappedRegisterClass& mapped);
 
@@ -419,8 +468,6 @@ public:
         /// Internal shader flags
         DXILProgramShaderFlagSet internalShaderFlags{ 0 };
     } programMetadata;
-
-    IL::ID entryPointId{IL::InvalidID};
 
 private:
     /// Declaration blocks

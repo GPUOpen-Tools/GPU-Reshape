@@ -32,10 +32,21 @@
 // Std
 #include <vector>
 
+struct RootSignatureRootMapping {
+    /// Type of this mapping
+    D3D12_ROOT_PARAMETER_TYPE type;
+
+    /// Assigned heap type
+    D3D12_DESCRIPTOR_HEAP_TYPE heapType;
+
+    /// Number of inline (root wise) dwords
+    uint32_t inlineDwordCount{0};
+};
+
 struct RootSignatureLogicalMapping {
     /// Number of root mappings
     uint32_t userRootCount{0};
     
-    /// Heap types of the root parameters
-    std::vector<D3D12_DESCRIPTOR_HEAP_TYPE> userRootHeapTypes;
+    /// Mappings types of the root parameters
+    std::vector<RootSignatureRootMapping> userRootMappings;
 };

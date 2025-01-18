@@ -212,7 +212,8 @@ private:
         /// Payload data
         union {
             struct {
-                bool isVoidReturn;
+                uint32_t parameterCount : 16;
+                uint32_t isVoidReturn   : 1;
             } function;
         };
     };
@@ -240,6 +241,17 @@ private:
 
     /// All values
     Vector<ThinValue> thinValues;
+
+private:
+    struct ThinFunction {
+        uint32_t thinType{~0u};
+    };
+
+    /// All functions, appear in linkage order
+    Vector<ThinFunction> thinFunctions;
+
+    /// Current linking index
+    uint32_t functionLinkIndex{0};
 
 private:
     Allocators allocators;

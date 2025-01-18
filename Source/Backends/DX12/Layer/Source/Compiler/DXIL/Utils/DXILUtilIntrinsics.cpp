@@ -153,20 +153,23 @@ const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrin
      *     dllstorageclass, comdat, prefixdata, personalityfn, preemptionspecifier]
      */
 
-    // Ensure enough space
-    if (spec.uid >= intrinsics.size()) {
-        intrinsics.resize(spec.uid + 1);
-    }
+    // Some intrinsics are unique
+    if (spec.uid != UINT32_MAX) {
+        // Ensure enough space
+        if (spec.uid >= intrinsics.size()) {
+            intrinsics.resize(spec.uid + 1);
+        }
 
-    // Already populated?
-    if (intrinsics[spec.uid].declaration) {
-        return intrinsics[spec.uid].declaration;
-    }
+        // Already populated?
+        if (intrinsics[spec.uid].declaration) {
+            return intrinsics[spec.uid].declaration;
+        }
 
-    // Existing declaration?
-    if (const DXILFunctionDeclaration* decl = table.function.FindDeclaration(spec.name)) {
-        intrinsics[spec.uid].declaration = decl;
-        return decl;
+        // Existing declaration?
+        if (const DXILFunctionDeclaration* decl = table.function.FindDeclaration(spec.name)) {
+            intrinsics[spec.uid].declaration = decl;
+            return decl;
+        }
     }
 
     // Root block
@@ -241,10 +244,95 @@ const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrin
     auto* decl = table.function.AddDeclaration(declaration);
 
     // Cache declaration
-    intrinsics[spec.uid].declaration = decl;
+    if (spec.uid != UINT32_MAX) {
+        intrinsics[spec.uid].declaration = decl;
+    }
 
     // OK
     return decl;
+}
+
+const DXILFunctionDeclaration* DXILUtilIntrinsics::GetLibHandleIntrinsic(const Backend::IL::Type* type) {
+    // Annotated by the type
+    std::string name = "dx.op.createHandleForLib." + std::string(table.type.typeMap.GetName(type));
+    
+    // Deduplicate it
+    const DXILFunctionDeclaration *&handle = libHandleTypeMap[name];
+    if (handle) {
+        return handle;
+    }
+    
+    // Root block
+    LLVMBlock *global = &table.scan.GetRoot();
+
+    // Get type map
+    Backend::IL::TypeMap &typeMap = program.GetTypeMap();
+
+    // Function signature
+    Backend::IL::FunctionType funcTy;
+    funcTy.returnType = GetType(DXILIntrinsicTypeSpec::Handle);
+
+    // Add parameters
+    funcTy.parameterTypes.push_back(GetType(DXILIntrinsicTypeSpec::I32));
+    funcTy.parameterTypes.push_back(type);
+
+    // Compile function type
+    const Backend::IL::FunctionType *fnType = typeMap.FindTypeOrAdd(funcTy);
+
+    // TODO: Intrinsic parameter group support
+    LLVMParameterGroupValue attributes[] = { LLVMParameterGroupValue::NoUnwind, LLVMParameterGroupValue::ReadOnly };
+
+    // Module scope function declaration
+    LLVMRecord record(LLVMModuleRecord::Function);
+    record.SetUser(true, ~0u, program.GetIdentifierMap().AllocID());
+    record.opCount = 15;
+    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+    record.ops[0] = table.type.typeMap.GetType(fnType);
+    record.ops[1] = static_cast<uint32_t>(LLVMCallingConvention::C);
+    record.ops[2] = 1;
+    record.ops[3] = static_cast<uint64_t>(LLVMLinkage::ExternalLinkage);
+    record.ops[4] = table.functionAttribute.FindOrCompileAttributeList(2, attributes);
+    record.ops[5] = 0;
+    record.ops[6] = 0;
+    record.ops[7] = 0;
+    record.ops[8] = 0;
+    record.ops[9] = 0;
+    record.ops[10] = 0;
+    record.ops[11] = 0;
+    record.ops[12] = 0;
+    record.ops[13] = 0;
+    record.ops[14] = 0;
+
+    // Insert after previous functions
+    const LLVMBlockElement* insertionPoint = global->FindPlacementReverse(LLVMBlockElementType::Record, LLVMModuleRecord::Function) + 1;
+    global->InsertRecord(insertionPoint, record);
+
+    // Symbol tab for linking
+    LLVMBlock *symTab = global->GetBlock(LLVMReservedBlock::ValueSymTab);
+
+    // Symbol entry
+    LLVMRecord syRecord(LLVMSymTabRecord::Entry);
+    syRecord.SetUser(false, ~0u, ~0u);
+    syRecord.opCount = 1u + name.length();
+    syRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(syRecord.opCount);
+    syRecord.ops[0] = DXILIDRemapper::EncodeUserOperand(record.result);
+
+    // Copy name
+    for (uint32_t i = 0; i < syRecord.opCount - 1; i++) {
+        syRecord.ops[1 + i] = name[i];
+    }
+
+    // Emit symbol
+    symTab->AddRecord(syRecord);
+
+    // Create function declaration
+    DXILFunctionDeclaration declaration(allocators);
+    declaration.id = DXILIDRemapper::EncodeUserOperand(record.result);
+    declaration.type = fnType;
+    declaration.linkage = LLVMLinkage::CommonLinkage;
+
+    // Add it!
+    return handle = table.function.AddDeclaration(declaration);
 }
 
 const Backend::IL::Type *DXILUtilIntrinsics::GetType(const DXILIntrinsicTypeSpec &type) {

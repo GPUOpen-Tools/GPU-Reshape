@@ -54,6 +54,7 @@ enum class DXBCPhysicalBlockType : uint32_t {
     DXIL = 'LIXD',
     InputSignature = '1GSI',
     OutputSignature = '1GSO',
+    RuntimeData = 'TADR',
 
     /// Unknown block
     Unexposed = ~0u

@@ -53,8 +53,10 @@ struct ShaderExportConstantSegment {
     /// Check if this staging buffer can accommodate for a given length
     /// \param length given length
     /// \return true if this segment can accommodate
-    bool CanAccomodate(size_t length) {
-        return head + length <= size;
+    bool CanAccomodate(size_t length, size_t align = 1) {
+        size_t headAligned = head;
+        headAligned = (headAligned + align - 1) & ~(align - 1);
+        return headAligned + length <= size;
     }
 
     /// Underlying allocation
@@ -75,7 +77,7 @@ struct ShaderExportConstantAllocator {
     /// \param deviceAllocator device allocator to be used
     /// \param length length of the allocation
     /// \return given allocation
-    ShaderExportConstantAllocation Allocate(const ComRef<DeviceAllocator>& deviceAllocator, size_t length);
+    ShaderExportConstantAllocation Allocate(const ComRef<DeviceAllocator>& deviceAllocator, size_t length, size_t align = 1);
 
     /// All staging buffers
     std::vector<ShaderExportConstantSegment> staging;

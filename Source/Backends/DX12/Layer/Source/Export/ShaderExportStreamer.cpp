@@ -72,7 +72,9 @@ ShaderExportStreamer::ShaderExportStreamer(DeviceState *device)
       queuePool(device->allocators),
       freeDescriptorDataSegmentEntries(allocators),
       freeConstantShaderDataBuffers(allocators),
-      freeConstantAllocators(allocators) {
+      freeConstantAllocators(allocators),
+      freeDeviceAllocators(allocators),
+      freeHeapAllocators(allocators) {
 
 }
 
@@ -336,6 +338,18 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
         state->constantAllocator = freeConstantAllocators.back();
         freeConstantAllocators.pop_back();
     }
+
+    // Pop device allocator if available
+    if (!freeDeviceAllocators.empty()) {
+        state->deviceAllocator = freeDeviceAllocators.back();
+        freeDeviceAllocators.pop_back();
+    }
+
+    // Pop device allocator if available
+    if (!freeHeapAllocators.empty()) {
+        state->heapAllocator = freeHeapAllocators.back();
+        freeHeapAllocators.pop_back();
+    }
 }
 
 void ShaderExportStreamer::CloseCommandList(ShaderExportStreamState *state) {
@@ -351,7 +365,7 @@ void ShaderExportStreamer::InvalidateHeapMappingsFor(ShaderExportStreamState *st
         // Check all
         for (uint32_t rootIndex = 0; bindState.rootSignature && rootIndex < bindState.rootSignature->logicalMapping.userRootCount; rootIndex++) {
             // Get the expected heap type
-            D3D12_DESCRIPTOR_HEAP_TYPE heapType = bindState.rootSignature->logicalMapping.userRootHeapTypes[rootIndex];
+            D3D12_DESCRIPTOR_HEAP_TYPE heapType = bindState.rootSignature->logicalMapping.userRootMappings[rootIndex].heapType;
 
             // If of same heap type, invalidate the parameter
             if (heapType == type) {
@@ -371,8 +385,8 @@ void ShaderExportStreamer::InvalidateDescriptorSlots(ShaderExportStreamState* st
     bindState.descriptorDataAllocator->ConditionalRoll();
 
     // Invalidate sampler bindings
-    for (size_t i = 0; i < rootSignature->logicalMapping.userRootHeapTypes.size(); i++) {
-        if (type != D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES && rootSignature->logicalMapping.userRootHeapTypes[i] != type) {
+    for (size_t i = 0; i < rootSignature->logicalMapping.userRootMappings.size(); i++) {
+        if (type != D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES && rootSignature->logicalMapping.userRootMappings[i].heapType != type) {
             continue;
         }
 
@@ -380,7 +394,7 @@ void ShaderExportStreamer::InvalidateDescriptorSlots(ShaderExportStreamState* st
         const uint32_t rootDWordOffset = rootSignature->physicalMapping->rootDWordOffsets[i];
 
         // Write invalidated slots
-        if (rootSignature->logicalMapping.userRootHeapTypes[i] == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+        if (rootSignature->logicalMapping.userRootMappings[i].heapType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
             bindState.descriptorDataAllocator->Set(rootDWordOffset, static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
         } else if (state->resourceHeap) {
             bindState.descriptorDataAllocator->Set(rootDWordOffset, static_cast<uint32_t>(i), state->resourceHeap->GetVirtualRangeBound());
@@ -529,6 +543,11 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     UpdateReservedHeapConstantData(state, commandList);
 }
 
+/// Does this derive from the compute binding space
+static bool IsComputeOrDerived(PipelineType type) {
+    return type == PipelineType::Compute || type == PipelineType::StateObject;
+}
+
 void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, ID3D12GraphicsCommandList* commandList) {
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
@@ -558,7 +577,7 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
     bindState.rootSignature = rootSignature;
 
     // Ensure the shader export states are bound
-    if (state->pipeline && state->pipeline->type == PipelineType::Compute && state->isInstrumented) {
+    if (state->pipeline && IsComputeOrDerived(state->pipeline->type) && state->isInstrumented) {
         BindShaderExport(state, state->pipeline, commandList);
     }
 }
@@ -643,6 +662,8 @@ ShaderExportStreamBindState& ShaderExportStreamer::GetBindStateFromPipeline(Shad
             slot = PipelineType::GraphicsSlot;
             break;
         case PipelineType::Compute:
+        case PipelineType::StateObject:
+            // Compute and StateObject types share the same bind slot
             slot = PipelineType::ComputeSlot;
             break;
     }
@@ -651,7 +672,21 @@ ShaderExportStreamBindState& ShaderExportStreamer::GetBindStateFromPipeline(Shad
     return state->bindStates[static_cast<uint32_t>(slot)];
 }
 
-void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, ID3D12GraphicsCommandList* commandList) {
+/// Decay the pipeline type to its binding space
+static PipelineType DecayPipelineType(PipelineType type) {
+    switch (type) {
+        default:
+            ASSERT(false, "Invalid pipeline");
+            return PipelineType::None;
+        case PipelineType::Graphics:
+            return PipelineType::Graphics;
+        case PipelineType::Compute:
+        case PipelineType::StateObject:
+            return PipelineType::Compute;
+    }
+}
+
+void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, IUnknown* pipelineObject, bool instrumented, ID3D12GraphicsCommandList* commandList) {
     // Get bind state from slot
     ShaderExportStreamBindState& bindState = GetBindStateFromPipeline(state, pipeline);
 
@@ -662,7 +697,7 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
 
     // Invalidated root signature?
     if (bindState.rootSignature != pipeline->signature) {
-        state->pipelineSegmentMask &= ~PipelineTypeSet(pipeline->type);
+        state->pipelineSegmentMask &= ~PipelineTypeSet(DecayPipelineType(pipeline->type));
 
         // Invalidate the signature itself if the hash changed
         if (bindState.rootSignature && bindState.rootSignature->physicalMapping->signatureHash != pipeline->signature->physicalMapping->signatureHash) {
@@ -684,6 +719,11 @@ void ShaderExportStreamer::Process() {
     {
         // Maintain lock hierarchy, streamer -> queue
         std::lock_guard guard(mutex);
+
+        // Update all device allocators, freeing old allocations
+        for (ShaderExportDeviceAllocator& allocator : freeDeviceAllocators) {
+            allocator.Update(deviceAllocator);
+        } 
         
         // Process queues
         // ! Linear view locks
@@ -726,6 +766,11 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     std::lock_guard guard(mutex);
     ASSERT(state->pending, "Recycling non-pending stream state");
 
+#ifndef NDEBUG
+    // Process debugging streams
+    ProcessStreamDebug(state);
+#endif // NDEBUG
+
     // Uses descriptors?
     if (state->hasDescriptorState) {
         // Move descriptor data ownership to segment
@@ -747,6 +792,12 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
         FreeConstantAllocator(state->constantAllocator);
     }
 
+    // Recycle the device allocator
+    FreeDeviceAllocator(state->deviceAllocator);
+
+    // Recycle the heap allocator
+    FreeHeapAllocator(state->heapAllocator);
+
     // Cleanup
     state->constantShaderDataBuffer = {};
     state->segmentDescriptors.clear();
@@ -767,12 +818,18 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, uint
         case PipelineType::Compute:
             commandList->SetComputeRootDescriptorTable(slot, state->currentSegment.gpuHandle);
             break;
+        case PipelineType::StateObject:
+            // TODO[rt]: What if the state object has both compute/graphics?
+            commandList->SetComputeRootDescriptorTable(slot, state->currentSegment.gpuHandle);
+            break;
     }
 }
 
 void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, const PipelineState *pipeline, ID3D12GraphicsCommandList* commandList) {
+    PipelineType decayedType = DecayPipelineType(pipeline->type);
+    
     // Skip if already mapped
-    if (state->pipelineSegmentMask & pipeline->type) {
+    if (state->pipelineSegmentMask & decayedType) {
         return;
     }
 
@@ -783,8 +840,35 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     BindShaderExport(state, bindState.rootSignature->logicalMapping.userRootCount, pipeline->type, commandList);
 
     // Mark as bound
-    state->pipelineSegmentMask |= pipeline->type;
+    state->pipelineSegmentMask |= decayedType;
 }
+
+#ifndef NDEBUG
+void ShaderExportStreamer::ProcessStreamDebug(ShaderExportStreamState* state) {
+    for (const ShaderExportStreamStateDebugStream& stream : state->debugStreams) {
+        // Map host content
+        uint8_t* mapped;
+        stream.resource->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
+
+        // For now, treat it all as dwords
+        auto* dwords = reinterpret_cast<uint32_t*>(mapped + stream.offset);
+
+        std::stringstream ss;
+        ss << "Debug Stream '" << stream.name << "':\n";
+
+        // Dump all dwords
+        for (uint32_t i = 0; i < stream.length / sizeof(uint32_t); i++) {
+            ss << "\t [" << i << "] " << dwords[i] << "\n";
+        }
+
+        // TODO[rt]: Non MSVC printing
+        OutputDebugStringA(ss.str().c_str());
+    }
+
+    // Cleanup
+    state->debugStreams.clear();
+}
+#endif // NDEBUG
 
 void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, const D3D12_CONSTANT_BUFFER_VIEW_DESC& constantsChunk) {
     // Null descriptor for missing heaps
@@ -1229,6 +1313,51 @@ void ShaderExportStreamer::FreeConstantAllocator(ShaderExportConstantAllocator& 
 
     // Erase local state
     allocator.staging.clear();
+}
+
+void ShaderExportStreamer::FreeDeviceAllocator(ShaderExportDeviceAllocator &allocator) {
+    // Free all lazy allocations
+    allocator.LazyFree();
+
+    // Update for the sake of good measure
+    allocator.Update(deviceAllocator);
+
+    // To the pool
+    freeDeviceAllocators.push_back(allocator);
+}
+
+void ShaderExportStreamer::FreeHeapAllocator(ShaderExportOwnedHeapAllocator& allocator) {
+    static constexpr size_t kLargeHeapThreshold = 32'000;
+    
+    // Cleanup the staging data
+    if (!allocator.segments.empty()) {
+        size_t trimCount = allocator.segments.size();
+
+        // If we're below the threshold, keep the last segment
+        // Large segments can easily accumulate as they're swapped between different streaming state
+        if (allocator.segments.back().count < kLargeHeapThreshold) {
+            trimCount--;
+        }
+        
+        // Free all staging heaps except the last
+        for (size_t i = 0; i < trimCount; i++) {
+            allocator.segments[i].heap->Release();
+        }
+
+        // Remove all but the last
+        allocator.segments.erase(allocator.segments.begin(), allocator.segments.begin() + trimCount);
+
+        // Reset head counter
+        if (!allocator.segments.empty()) {
+            allocator.segments.back().head = 0;
+        }
+    }
+
+    // To the pool
+    freeHeapAllocators.push_back(allocator);
+    
+    // Erase local state
+    allocator.segments.clear();
 }
 
 void ShaderExportStreamer::FreeDescriptorDataSegment(const DescriptorDataSegment &dataSegment) {

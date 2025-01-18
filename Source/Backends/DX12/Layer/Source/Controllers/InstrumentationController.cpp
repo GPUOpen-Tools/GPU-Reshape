@@ -34,6 +34,7 @@
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/DX12/CommandList.h>
 #include <Backends/DX12/Compiler/Diagnostic/DiagnosticPrettyPrint.h>
+#include <Backends/DX12/States/StateObjectState.h>
 
 // Backend
 #include <Backend/IFeature.h>
@@ -258,6 +259,7 @@ void InstrumentationController::ActivateAndCommitFeatures(uint64_t featureBitSet
 
 bool InstrumentationController::FilterPipeline(PipelineState *state, const FilterEntry &filter) {
     // Test type
+    // TODO[rt]: StateObject support!
     if (filter.type != PipelineType::None && filter.type != state->type) {
         return false;
     }
@@ -822,6 +824,7 @@ static uint32_t GetPipelineSlot(const PipelineState* state) {
         case PipelineType::Graphics:
             return static_cast<uint32_t>(PipelineType::GraphicsSlot);
         case PipelineType::Compute:
+        case PipelineType::StateObject:
             return static_cast<uint32_t>(PipelineType::ComputeSlot);
         default:
             ASSERT(false, "Invalid type");
@@ -868,24 +871,55 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
             CombineHash(instrumentationKey.combinedHash, state->instrumentationInfo.specializationHash);
             CombineHash(instrumentationKey.combinedHash, dependentObject->signature->physicalMapping->signatureHash);
 
-            // Attempt to reserve
-            if (!state->Reserve(instrumentationKey)) {
-                continue;
+            // All keys to append
+            TrivialStackVector<ShaderInstrumentationKey, 4u> keys;
+
+            // Shader may occur with different local root signatures in a state object
+            if (dependentObject->type == PipelineType::StateObject) {
+                auto stateObjectState = static_cast<StateObjectState*>(dependentObject);
+
+                // TODO[rt]: Let's not do a linear search...
+                for (const StateSubObject& subObject : stateObjectState->subObjects) {
+                    if (subObject.shader != state) {
+                        continue;
+                    }
+
+                    // Append the local mappings
+                    ShaderInstrumentationKey subObjectKey = instrumentationKey;
+                    subObjectKey.localPhysicalMapping = subObject.localRootSignature->physicalMapping;
+                    subObjectKey.bindingInfo.local = subObject.localRootSignature->rootBindingInfo.local;
+                    
+                    // Combine hashes
+                    CombineHash(subObjectKey.combinedHash, subObject.localRootSignature->physicalMapping->signatureHash);
+
+                    // Add for compilation
+                    keys.Add(subObjectKey);
+                }
+            } else {
+                keys.Add(instrumentationKey);
             }
 
-            // Increment counter
-            batch->stageCounters[GetPipelineSlot(dependentObject)]++;
+            // Push all jobs
+            for (const ShaderInstrumentationKey& key : keys) {
+                // Attempt to reserve
+                if (!state->Reserve(key)) {
+                    continue;
+                }
 
-            // Determine the shader module index within the dependent object
-            uint64_t dependentIndex = std::ranges::find(dependentObject->shaders, state) - dependentObject->shaders.begin();
+                // Increment counter
+                batch->stageCounters[GetPipelineSlot(dependentObject)]++;
 
-            // Inject the feedback state
-            shaderCompiler->Add(ShaderJob {
-                .state = state,
-                .instrumentationKey = instrumentationKey,
-                .diagnostic = &batch->shaderCompilerDiagnostic,
-                .dependentSpecialization = &dependentObject->dependentInstrumentationInfo.specializations[dependentIndex]
-            }, bucket);
+                // Determine the shader module index within the dependent object
+                uint64_t dependentIndex = std::ranges::find(dependentObject->shaders, state) - dependentObject->shaders.begin();
+
+                // Inject the feedback state
+                shaderCompiler->Add(ShaderJob {
+                    .state = state,
+                    .instrumentationKey = key,
+                    .diagnostic = &batch->shaderCompilerDiagnostic,
+                    .dependentSpecialization = &dependentObject->dependentInstrumentationInfo.specializations[dependentIndex],
+                }, bucket);
+            } 
         }
     }
 }
@@ -920,10 +954,11 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         // Setup the job
         PipelineJob& job = jobs[enqueuedJobs];
         job.state = state;
+        job.keyCount = static_cast<uint32_t>(state->shaders.size());
         job.combinedHash = 0x0;
 
-        // Allocate feature bit sets
-        job.shaderInstrumentationKeys = new (registry->GetAllocators(), kAllocInstrumentation) ShaderInstrumentationKey[state->shaders.size()];
+        // Allocate instrumentation keys
+        job.shaderInstrumentationKeys = new (registry->GetAllocators(), kAllocInstrumentation) PipelineJobKey[job.keyCount];
 
         // Super set
         uint64_t superFeatureBitSet{0};
@@ -943,28 +978,32 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             // Summarize
             superFeatureBitSet |= featureBitSet;
 
-            // Number root info
-            const RootRegisterBindingInfo& signatureBindingInfo = state->signature->rootBindingInfo;
-
             // Create the instrumentation key
             ShaderInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
             instrumentationKey.physicalMapping = state->signature->physicalMapping;
-            instrumentationKey.bindingInfo = signatureBindingInfo;
 
             // Combine hashes
             instrumentationKey.combinedHash = state->instrumentationInfo.specializationHash;
             CombineHash(instrumentationKey.combinedHash, shaderState->instrumentationInfo.specializationHash);
             CombineHash(instrumentationKey.combinedHash, state->signature->physicalMapping->signatureHash);
 
+            // Setup compilation key
+            PipelineJobKey pipelineKey{};
+            pipelineKey.shaderKey = instrumentationKey;
+            pipelineKey.shader = shaderState;
+
             // Assign key
-            job.shaderInstrumentationKeys[shaderIndex] = instrumentationKey;
+            // Note: The local root signatures are not appended here, but in the pipeline compiler during lookup
+            // It's easier to do the one-to-many mapping there instead of here, and is redundant, for now at least.
+            job.shaderInstrumentationKeys[shaderIndex] = pipelineKey;
 
             // Combine parent hash
             CombineHash(job.combinedHash, instrumentationKey.combinedHash);
             
             // Shader may have failed to compile for whatever reason, skip if need be
-            if (!shaderState->HasInstrument(instrumentationKey)) {
+            // Note: State objects are exempt due to LRS hashing
+            if (state->type != PipelineType::StateObject && !shaderState->HasInstrument(instrumentationKey)) {
                 rejectedKeys.push_back(std::make_pair(shaderState, instrumentationKey));
                 isSkipped = true;
             }
@@ -972,6 +1011,11 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
         // No features?
         if (!superFeatureBitSet) {
+            // If a state object, set the patch table to native
+            if (auto* stateObject = static_cast<StateObjectState*>(state); state->type == PipelineType::StateObject) {
+                stateObject->hotSwapPatchTable.store(nullptr);
+            }
+            
             // Set the hot swapped object to native
             state->hotSwapObject.store(nullptr);
             isSkipped = true;
@@ -1007,7 +1051,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
         // Compose keys
         for (auto&& kv : rejectedKeys) {
-            keyMessage << "\tShader " << kv.first->uid << " [" << kv.second.featureBitSet << "] with {s" << kv.second.bindingInfo.space << "} root binding\n";
+            keyMessage << "\tShader " << kv.first->uid << " [" << kv.second.featureBitSet << "] with {s" << kv.second.bindingInfo.global.space << "} root binding\n";
         }
 
         // Submit
@@ -1037,6 +1081,11 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Commit all pending entries
     for (Batch::CommitEntry entry : batch->commitEntries) {
         if (auto pipeline = entry.state->GetInstrument(entry.combinedHash)) {
+            // If a state object, replace the patch table
+            if (auto* stateObject = static_cast<StateObjectState*>(entry.state); entry.state->type == PipelineType::StateObject) {
+                stateObject->hotSwapPatchTable.store(stateObject->GetPatch(entry.combinedHash));
+            }
+            
             entry.state->hotSwapObject.store(pipeline);
         }
     }

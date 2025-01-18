@@ -37,7 +37,10 @@ enum class ReconstructionFlag {
     RootConstant = BIT(1),
 
     /// Reconstruct render pass data
-    RenderPass = BIT(2)
+    RenderPass = BIT(2),
+
+    /// Reconstruct heaps
+    Heap = BIT(3)
 };
 
 BIT_SET(ReconstructionFlag);

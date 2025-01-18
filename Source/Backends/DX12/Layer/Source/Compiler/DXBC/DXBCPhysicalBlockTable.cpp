@@ -45,6 +45,7 @@ DXBCPhysicalBlockTable::DXBCPhysicalBlockTable(const Allocators &allocators, IL:
     featureInfo(allocators, program, *this),
     inputSignature(allocators, program, *this),
     outputSignature(allocators, program, *this),
+    runtimeData(allocators, program, *this),
     debug(allocators, program, *this),
     allocators(allocators),
     program(program) {
@@ -73,6 +74,7 @@ bool DXBCPhysicalBlockTable::Parse(const DXParseJob& job) {
     featureInfo.Parse();
     inputSignature.Parse();
     outputSignature.Parse();
+    runtimeData.Parse();
 
     // Parse canonical program
     if (DXBCPhysicalBlock *dxilBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
@@ -125,6 +127,7 @@ bool DXBCPhysicalBlockTable::Compile(const DXCompileJob &job) {
     featureInfo.Compile();
     inputSignature.Compile();
     outputSignature.Compile();
+    runtimeData.Compile(job);
 
     // OK
     return true;
@@ -143,6 +146,7 @@ void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
     featureInfo.CopyTo(out.featureInfo);
     inputSignature.CopyTo(out.inputSignature);
     outputSignature.CopyTo(out.outputSignature);
+    runtimeData.CopyTo(out.runtimeData);
 
     // Keep the debug interface
     out.debugModule = debugModule;

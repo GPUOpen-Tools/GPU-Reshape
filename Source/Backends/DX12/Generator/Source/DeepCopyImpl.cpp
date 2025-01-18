@@ -305,36 +305,55 @@ static bool DeepCopyObjectTree(const GeneratorInfo& info, DeepCopyState &state, 
 
                 state.deepCopy << Pad(indent) << "}\n";
             }
-        } else if (memberType["name"] == "LPCSTR") {
+        } else if (memberType["name"] == "LPCSTR" || memberType["name"] == "LPCWSTR") {
+            const bool isWide = memberType["name"] == "LPCWSTR";
+            
+            // Wrap in check
+            // Note that SAL does provide optional hints, however I do not trust them
+            state.byteSize << Pad(indent) << "if (" << sourceAccessorPrefix + memberName << ") {\n";
+            state.deepCopy << Pad(indent) << "if (" << sourceAccessorPrefix + memberName << ") {\n";
+            indent++;
+            
             // Size variable
             std::string sizeVar = "size_lpcstr_" + std::to_string(state.counter++);
 
             // Accessor to the length (member)
-            std::string length = "std::strlen(" + sourceAccessorPrefix + memberName + ") + 1u";
+            std::string length = (isWide ? "std::wcslen(" : "std::strlen(") + sourceAccessorPrefix + memberName + ") + 1u";
+
+            // Size of each character
+            std::string typeSize = "sizeof(" + sourceAccessorPrefix + memberName + "[0])";
 
             // Emit size var
-            state.byteSize << Pad(indent) << "uint64_t " << sizeVar << " = " << length << ";\n";
+            state.byteSize << Pad(indent) << "uint64_t " << sizeVar << " = (" << length << ") * " << typeSize << ";\n";
 
             // Repeat for deep copy if scope requires it
             if (indent > 1) {
-                state.deepCopy << Pad(indent) << "uint64_t " << sizeVar << " = " << length << ";\n";
+                state.deepCopy << Pad(indent) << "uint64_t " << sizeVar << " = (" << length << ") * " << typeSize << ";\n";
             }
 
             // Emit byte size
-            state.byteSize << Pad(indent) << "blobSize += sizeof(char) * " << sizeVar << ";\n";
+            state.byteSize << Pad(indent) << "blobSize += " << sizeVar << ";\n";
 
             // Assign the indirection
             std::string mutableName = AssignPtrAndGetMutable(state, destAccessorPrefix, {
                 {"const", 0},
-                {"name", "char"},
+                {"name", isWide ? "wchar_t" : "char"},
                 {"type", "pod"}
             }, memberName, indent);
 
             state.deepCopy << Pad(indent) << "std::memcpy(" << mutableName << ", " << "" << sourceAccessorPrefix << memberName;
-            state.deepCopy << ", sizeof(char) * " << sizeVar << ");\n";
+            state.deepCopy << ", " << sizeVar << ");\n";
 
             // Offset
-            state.deepCopy << Pad(indent) << "blobOffset += sizeof(char) * " << sizeVar << ";\n";
+            state.deepCopy << Pad(indent) << "blobOffset += " << sizeVar << ";\n";
+
+            indent--;
+            state.byteSize << Pad(indent) << "}\n";
+
+            // If not specified, set mutable state to nullptr
+            state.deepCopy << Pad(indent) << "} else {\n";
+            state.deepCopy << Pad(indent + 1) << destAccessorPrefix << memberName << " = nullptr;\n";
+            state.deepCopy << Pad(indent) << "}\n";
         } else {
             // Name of the contained type
             std::string containedName = memberType["name"].get<std::string>();

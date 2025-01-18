@@ -416,15 +416,20 @@ static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState
     if (!initialState) {
         return nullptr;
     }
+    
+    // PipelineState0 only supports graphics/compute
+    PipelineState* state = GetState(initialState);
+    if (state->type != PipelineType::Graphics && state->type != PipelineType::Compute) {
+        return nullptr;
+    }
 
     // Available hot swap?
-    if (ID3D12PipelineState *hotSwap = GetState(initialState)->hotSwapObject.load()) {
+    if (ID3D12PipelineState *hotSwap = static_cast<ID3D12PipelineState*>(state->hotSwapObject.load())) {
         return hotSwap;
     }
 
     return nullptr;
 }
-
 
 static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12CommandAllocator* allocator, ID3D12PipelineState* initialState, ID3D12PipelineState* hotSwap, bool isHotSwap) {
     auto allocatorTable = GetTable(allocator);
@@ -938,7 +943,130 @@ void WINAPI HookID3D12CommandListEndRenderPass(ID3D12CommandList* list) {
     ResolveRenderPassForUserEnd(table.next, &table.state->streamState->renderPass);
 }
 
-static void CommitGraphics(DeviceState* device, CommandListState* list) {
+void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState) {
+    ShaderExportStreamBindState &bindState = streamState->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
+    // Reset signature if needed
+    if (bindState.rootSignature) {
+        commandList->SetComputeRootSignature(bindState.rootSignature->object);
+    }
+
+    // Existing pipeline?
+    IUnknown* pipelineObject{nullptr};
+    if (streamState->pipelineObject) {
+        pipelineObject = streamState->pipelineObject;
+    } else if (streamState->pipeline) {
+        pipelineObject = streamState->pipeline->object;
+    }
+
+    // Bind based on type
+    if (pipelineObject) {
+        if (streamState->pipeline->type == PipelineType::StateObject) {
+            // TODO[rt]: Cast is unsafe!
+            static_cast<ID3D12GraphicsCommandList4*>(commandList)->SetPipelineState1(static_cast<ID3D12StateObject *>(pipelineObject));
+        } else {
+            commandList->SetPipelineState(static_cast<ID3D12PipelineState *>(pipelineObject));
+        }
+    }
+    
+    // Reset root data if needed, invalidated by signature change
+    if (bindState.rootSignature) {
+        for (uint32_t i = 0; i < bindState.rootSignature->logicalMapping.userRootCount; i++) {
+            const ShaderExportRootParameterValue &value = bindState.persistentRootParameters[i];
+
+            // Get the expected heap type
+            D3D12_DESCRIPTOR_HEAP_TYPE heapType = bindState.rootSignature->logicalMapping.userRootMappings[i].heapType;
+            
+            switch (value.type) {
+                case ShaderExportRootParameterValueType::None: {
+                    break;
+                }
+                case ShaderExportRootParameterValueType::Descriptor: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || heapType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Unexpected heap type");
+                    commandList->SetComputeRootDescriptorTable(i, value.payload.descriptor);
+                    break;
+                }
+                case ShaderExportRootParameterValueType::SRV: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
+                    commandList->SetComputeRootShaderResourceView(i, value.payload.virtualAddress);
+                    break;
+                }
+                case ShaderExportRootParameterValueType::UAV: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
+                    commandList->SetComputeRootUnorderedAccessView(i, value.payload.virtualAddress);
+                    break;
+                }
+                case ShaderExportRootParameterValueType::CBV: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
+                    commandList->SetComputeRootConstantBufferView(i, value.payload.virtualAddress);
+                    break;
+                }
+                case ShaderExportRootParameterValueType::Constant: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES, "Unexpected heap type");
+                    commandList->SetComputeRoot32BitConstants(
+                        i,
+                        value.payload.constant.dataByteCount / sizeof(uint32_t),
+                        value.payload.constant.data,
+                        0
+                    );
+                    break;
+                }
+            }
+        }
+
+        // Compute overwritten at this point
+        streamState->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Compute);
+
+        // Rebind the export, invalidated by signature change
+        if (streamState->pipeline) {
+            device->exportStreamer->BindShaderExport(streamState, streamState->pipeline, commandList);
+        }
+    }
+}
+
+void ReconstructRenderPassState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState) {
+    BeginRenderPassForReconstruction(static_cast<ID3D12GraphicsCommandList4*>(commandList), &streamState->renderPass);
+}
+
+void ReconstructHeapState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState) {
+    TrivialStackVector<ID3D12DescriptorHeap*, 2u> heaps;
+
+    if (streamState->resourceHeap) {
+        heaps.Add(streamState->resourceHeap->object);
+    }
+    
+    if (streamState->samplerHeap) {
+        heaps.Add(streamState->samplerHeap->object);
+    }
+
+    commandList->SetDescriptorHeaps(static_cast<UINT>(heaps.Size()), heaps.Data());
+}
+
+void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, ReconstructionFlagSet flags) {
+    if (flags & ReconstructionFlag::Heap) {
+        ReconstructHeapState(device, commandList, streamState);
+    }
+    
+    if (flags & ReconstructionFlag::Pipeline) {
+        ReconstructPipelineState(device, commandList, streamState);
+    }
+
+    if (flags & ReconstructionFlag::RenderPass) {
+        ReconstructRenderPassState(device, commandList, streamState);
+    }
+}
+
+void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState) {
+    ReconstructionFlagSet flags = ReconstructionFlag::Pipeline | ReconstructionFlag::RootConstant | ReconstructionFlag::Heap;
+
+    if (streamState->renderPass.insideRenderPass) {
+        flags |= ReconstructionFlag::RenderPass;
+    }
+    
+    ReconstructState(device, commandList, streamState, flags);
+}
+
+void CommitGraphics(DeviceState* device, CommandListState* list) {
     // Commit all commands prior to binding
     CommitCommands(list);
 
@@ -964,7 +1092,7 @@ static void CommitGraphics(DeviceState* device, CommandListState* list) {
     }
 }
 
-static void CommitCompute(DeviceState* device, CommandListState* list) {
+void CommitCompute(DeviceState* device, CommandListState* list) {
     // Commit all commands prior to binding
     CommitCommands(list);
 
@@ -1195,16 +1323,17 @@ void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D1
 
     // Get pipeline
     PipelineState* pipelineState = GetState(pipeline);
+    ASSERT(pipelineState->type == PipelineType::Graphics || pipelineState->type == PipelineType::Compute, "Unexpected pipeline state");
     
     // Get hot swap
-    ID3D12PipelineState *hotSwap = pipelineState->hotSwapObject.load();
+    auto *hotSwap = static_cast<ID3D12PipelineState*>(pipelineState->hotSwapObject.load());
 
     // Conditionally wait for instrumentation if the pipeline has an outstanding request
     if (!hotSwap && pipelineState->HasInstrumentationRequest()) {
         device.state->instrumentationController->ConditionalWaitForCompletion();
 
         // Load new hot-object
-        hotSwap = pipelineState->hotSwapObject.load();
+        hotSwap = static_cast<ID3D12PipelineState *>(pipelineState->hotSwapObject.load());
     }
 
     // Pass down callchain
@@ -1212,6 +1341,34 @@ void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D1
 
     // Inform the streamer of a new pipeline
     device.state->exportStreamer->BindPipeline(table.state->streamState, pipelineState, hotSwap, hotSwap != nullptr, table.state->object);
+}
+
+void WINAPI HookID3D12CommandListSetPipelineState1(ID3D12CommandList *list, ID3D12StateObject *stateObject) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Get state
+    StateObjectState* stateObjectState = GetState(stateObject);
+    ASSERT(stateObjectState->type == PipelineType::StateObject, "Unexpected state object state");
+    
+    // Get hot swap
+    auto *hotSwap = static_cast<ID3D12StateObject*>(stateObjectState->hotSwapObject.load());
+
+    // Conditionally wait for instrumentation if the pipeline has an outstanding request
+    if (!hotSwap && stateObjectState->HasInstrumentationRequest()) {
+        device.state->instrumentationController->ConditionalWaitForCompletion();
+
+        // Load new hot-object
+        hotSwap = static_cast<ID3D12StateObject *>(stateObjectState->hotSwapObject.load());
+    }
+
+    // Pass down callchain
+    table.bottom->next_SetPipelineState1(table.next, hotSwap ? hotSwap : Next(stateObject));
+
+    // Inform the streamer of a new pipeline
+    device.state->exportStreamer->BindPipeline(table.state->streamState, stateObjectState, hotSwap, hotSwap != nullptr, table.state->object);
 }
 
 AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences) {

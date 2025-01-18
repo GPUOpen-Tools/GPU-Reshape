@@ -99,6 +99,25 @@ struct StateSubObjectWriter {
     /// Add a new sub object
     /// \param type given type
     /// \return data, length must be GetSize(type)
+    void DeepAdd(D3D12_STATE_SUBOBJECT_TYPE type, const void* data) {
+        void* dest = allocator.AllocateArray<uint8_t>(static_cast<uint32_t>(GetSize(type)));
+
+        /// Get serialized type
+        uint64_t blobSize = SerializeOpaque(type, data, dest, nullptr);
+
+        /// Serialize against blob
+        SerializeOpaque(type, data, dest, allocator.AllocateArray<uint8_t>(static_cast<uint32_t>(blobSize)));
+        
+        // Add entry
+        subObjects.push_back(D3D12_STATE_SUBOBJECT {
+            .Type = type,
+            .pDesc = dest
+        });
+    }
+    
+    /// Add a new sub object
+    /// \param type given type
+    /// \return data, length must be GetSize(type)
     void Add(D3D12_STATE_SUBOBJECT_TYPE type, const void* data) {
         // Add entry
         subObjects.push_back(D3D12_STATE_SUBOBJECT {
@@ -129,6 +148,11 @@ struct StateSubObjectWriter {
         Add(type, &ptr);
     }
 
+    /// Get the number of subobjects
+    uint64_t SubObjectCount() {
+       return subObjects.size();
+    }
+
     /// Embed data
     /// \param value value to be embedded
     /// \return embedded pointer
@@ -141,7 +165,7 @@ struct StateSubObjectWriter {
     /// \param data data pointer
     /// \param size byte length of data
     /// \return embedded pointer
-    const void* Embed(const void* data, uint32_t size) {
+    void* Embed(const void* data, uint32_t size) {
         void* dest = allocator.AllocateArray<uint8_t>(size);
         std::memcpy(dest, data, size);
         return dest;
@@ -156,6 +180,85 @@ struct StateSubObjectWriter {
         desc.NumSubobjects = static_cast<uint32_t>(subObjects.size());
         desc.pSubobjects = subObjects.data();
         return desc;
+    }
+
+private:
+    /// Serialize a POD sub object
+    /// \return additional size
+    template<typename T>
+    size_t SerializePOD(D3D12_STATE_SUBOBJECT_TYPE type, const void* source, void* dest) {
+        ASSERT(GetSize(type) == sizeof(T), "Unexpected type");
+        std::memcpy(dest, source, sizeof(T));
+        return 0;
+    }
+    
+    /// Serialize an opque type
+    /// \param type chunk type
+    /// \param source source data, used for serialization
+    /// \param dest serialization target
+    /// \param blob optional, sub-data blob
+    /// \return byte size of sub-data
+    size_t SerializeOpaque(D3D12_STATE_SUBOBJECT_TYPE type, const void* source, void* dest, void* blob) {
+        switch (type) {
+            default:
+                return 0;
+            case D3D12_STATE_SUBOBJECT_TYPE_STATE_OBJECT_CONFIG:
+                return Serialize(*static_cast<const D3D12_STATE_OBJECT_CONFIG *>(source), *static_cast<D3D12_STATE_OBJECT_CONFIG *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE:
+                return Serialize(*static_cast<const D3D12_GLOBAL_ROOT_SIGNATURE *>(source), *static_cast<D3D12_GLOBAL_ROOT_SIGNATURE *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE:
+                return Serialize(*static_cast<const D3D12_LOCAL_ROOT_SIGNATURE *>(source), *static_cast<D3D12_LOCAL_ROOT_SIGNATURE *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_NODE_MASK:
+                return Serialize(*static_cast<const D3D12_NODE_MASK *>(source), *static_cast<D3D12_NODE_MASK *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY:
+                return Serialize(*static_cast<const D3D12_DXIL_LIBRARY_DESC *>(source), *static_cast<D3D12_DXIL_LIBRARY_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_EXISTING_COLLECTION:
+                return Serialize(*static_cast<const D3D12_EXISTING_COLLECTION_DESC *>(source), *static_cast<D3D12_EXISTING_COLLECTION_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION:
+                return Serialize(*static_cast<const D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION *>(source), *static_cast<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION:
+                return Serialize(*static_cast<const D3D12_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION *>(source), *static_cast<D3D12_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG:
+                return Serialize(*static_cast<const D3D12_RAYTRACING_SHADER_CONFIG *>(source), *static_cast<D3D12_RAYTRACING_SHADER_CONFIG *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG:
+                return Serialize(*static_cast<const D3D12_RAYTRACING_PIPELINE_CONFIG *>(source), *static_cast<D3D12_RAYTRACING_PIPELINE_CONFIG *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP:
+                return Serialize(*static_cast<const D3D12_HIT_GROUP_DESC *>(source), *static_cast<D3D12_HIT_GROUP_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG1:
+                return Serialize(*static_cast<const D3D12_RAYTRACING_PIPELINE_CONFIG1 *>(source), *static_cast<D3D12_RAYTRACING_PIPELINE_CONFIG1 *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH:
+                return Serialize(*static_cast<const D3D12_WORK_GRAPH_DESC *>(source), *static_cast<D3D12_WORK_GRAPH_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_STREAM_OUTPUT:
+                return Serialize(*static_cast<const D3D12_STREAM_OUTPUT_DESC *>(source), *static_cast<D3D12_STREAM_OUTPUT_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_BLEND:
+                return SerializePOD<D3D12_BLEND>(type, source, dest);
+            case D3D12_STATE_SUBOBJECT_TYPE_SAMPLE_MASK:
+                return SerializePOD<D3D12_SAMPLE_MASK>(type, source, dest);
+            case D3D12_STATE_SUBOBJECT_TYPE_RASTERIZER:
+                return Serialize(*static_cast<const D3D12_RASTERIZER_DESC *>(source), *static_cast<D3D12_RASTERIZER_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL:
+                return Serialize(*static_cast<const D3D12_DEPTH_STENCIL_DESC *>(source), *static_cast<D3D12_DEPTH_STENCIL_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT:
+                return Serialize(*static_cast<const D3D12_INPUT_LAYOUT_DESC *>(source), *static_cast<D3D12_INPUT_LAYOUT_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_IB_STRIP_CUT_VALUE:
+                return Serialize(*static_cast<const D3D12_IB_STRIP_CUT_VALUE *>(source), *static_cast<D3D12_IB_STRIP_CUT_VALUE *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY:
+                return SerializePOD<D3D12_PRIMITIVE_TOPOLOGY>(type, source, dest);
+            case D3D12_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS:
+                return Serialize(*static_cast<const D3D12_RT_FORMAT_ARRAY *>(source), *static_cast<D3D12_RT_FORMAT_ARRAY *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT:
+                return SerializePOD<D3D12_DEPTH_STENCIL_FORMAT>(type, source, dest);
+            case D3D12_STATE_SUBOBJECT_TYPE_SAMPLE_DESC:
+                return SerializePOD<DXGI_SAMPLE_DESC>(type, source, dest);
+            case D3D12_STATE_SUBOBJECT_TYPE_FLAGS:
+                return SerializePOD<D3D12_PIPELINE_STATE_FLAGS>(type, source, dest);
+            case D3D12_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL1:
+                return Serialize(*static_cast<const D3D12_DEPTH_STENCIL_DESC1 *>(source), *static_cast<D3D12_DEPTH_STENCIL_DESC1 *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING:
+                return Serialize(*static_cast<const D3D12_VIEW_INSTANCING_DESC *>(source), *static_cast<D3D12_VIEW_INSTANCING_DESC *>(dest), blob);
+            case D3D12_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL2:
+                return Serialize(*static_cast<const D3D12_DEPTH_STENCIL_DESC2 *>(source), *static_cast<D3D12_DEPTH_STENCIL_DESC2 *>(dest), blob);
+        }
     }
 
 private:

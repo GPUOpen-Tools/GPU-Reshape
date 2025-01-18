@@ -31,6 +31,7 @@
 #include <Backends/DX12/Export/ShaderExportStreamState.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorLayout.h>
 #include <Backends/DX12/Export/ShaderExportConstantAllocator.h>
+#include <Backends/DX12/Export/ShaderExportDeviceAllocator.h>
 
 // Common
 #include <Common/IComponent.h>
@@ -158,7 +159,7 @@ public:
     /// \param pipelineObject active backend state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandList the command list
-    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, ID3D12GraphicsCommandList* list);
+    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, IUnknown* pipelineObject, bool instrumented, ID3D12GraphicsCommandList* list);
 
     /// Map a stream state pre submission
     /// \param state the stream state
@@ -251,6 +252,13 @@ public:
     /// \param commandList the command list
     void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, ID3D12GraphicsCommandList* commandList);
 
+private:
+#ifndef NDEBUG
+    /// Process all streaming debug chunks
+    /// \param state the stream state
+    void ProcessStreamDebug(ShaderExportStreamState* state);
+#endif // NDEBUG
+
 public:
     /// Whole device sync point
     void Process();
@@ -279,6 +287,12 @@ private:
 
     /// Free a constant allocator
     void FreeConstantAllocator(ShaderExportConstantAllocator& allocator);
+
+    /// Free a device allocator
+    void FreeDeviceAllocator(ShaderExportDeviceAllocator& allocator);
+
+    /// Free a heap allocator
+    void FreeHeapAllocator(ShaderExportOwnedHeapAllocator& allocator);
 
     /// Free a descriptor data segment
     void FreeDescriptorDataSegment(const DescriptorDataSegment& dataSegment);
@@ -348,8 +362,10 @@ private:
     /// All free constant buffers
     Vector<ConstantShaderDataBuffer> freeConstantShaderDataBuffers;
 
-    /// All free constant allocators
+    /// All free allocators
     Vector<ShaderExportConstantAllocator> freeConstantAllocators;
+    Vector<ShaderExportDeviceAllocator> freeDeviceAllocators;
+    Vector<ShaderExportOwnedHeapAllocator> freeHeapAllocators;
 
     /// Components
     ComRef<DeviceAllocator> deviceAllocator{nullptr};

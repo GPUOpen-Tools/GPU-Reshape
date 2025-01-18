@@ -88,11 +88,29 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Create function
-    ASSERT(table.metadata.entryPointId != IL::InvalidID, "Expected entrypoint");
-    IL::Function *fn = program.GetFunctionList().AllocFunction(table.metadata.entryPointId);
+    IL::Function *fn = program.GetFunctionList().AllocFunction(table.metadata.GetEntryPointId(static_cast<uint32_t>(declaration->anchor)));
 
     // Set the type
     fn->SetFunctionType(declaration->type);
+
+    // Create parameter mappings
+    // Note: Function values are declared *before* child blocks
+    for (uint32_t i = 0; i < declaration->type->parameterTypes.size(); i++) {
+        declaration->parameters.Add(table.idMap.GetAnchor());
+
+        // Alloc id
+        IL::ID id = table.idMap.AllocMappedID(DXILIDType::Parameter);
+
+        // Set type by the function type
+        ilTypeMap.SetType(id, declaration->type->parameterTypes[i]);
+
+        // Allocate variable
+        fn->GetParameters().Add(new (allocators) Backend::IL::Variable {
+            .id = id,
+            .addressSpace = Backend::IL::AddressSpace::Function,
+            .type = declaration->type->parameterTypes[i]
+        });
+    }
 
     // Visit child blocks
     for (LLVMBlock *fnBlock: block->blocks) {
@@ -105,12 +123,6 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 break;
             }
         }
-    }
-
-    // Create parameter mappings
-    for (uint32_t i = 0; i < declaration->type->parameterTypes.size(); i++) {
-        declaration->parameters.Add(table.idMap.GetAnchor());
-        table.idMap.AllocMappedID(DXILIDType::Parameter);
     }
 
     // Allocate basic block
@@ -389,42 +401,29 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstInsertELT: {
-                ASSERT(false, "Untested path, validate and remove");
+                // Get values
+                uint32_t compositeValue = reader.GetMappedRelativeValue(anchor);
+                uint32_t elementValue   = reader.GetMappedRelativeValue(anchor);
+                uint32_t indexValue     = reader.GetMappedRelative(anchor);
 
-                // Get composite
-                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp32());
-                uint32_t compositeValue = reader.GetMappedRelative(anchor);
-
-                // Get index
-                const Backend::IL::Type* indexType = table.type.typeMap.GetType(reader.ConsumeOp32());
-                uint32_t indexValue = reader.GetMappedRelative(anchor);
-
-                // Unused
-                GRS_SINK(compositeType);
-                GRS_SINK(indexType);
-
+                // Create type mapping
+                ilTypeMap.SetType(result, program.GetTypeMap().GetType(compositeValue));
+                
                 IL::InsertInstruction instr{};
                 instr.opCode = IL::OpCode::Insert;
                 instr.result = result;
                 instr.source = IL::Source::User(recordIdx);
                 instr.composite = compositeValue;
-                instr.value = indexValue;
+                instr.value = elementValue;
+                instr.index = indexValue;
                 basicBlock->Append(instr);
                 break;
             }
 
             case LLVMFunctionRecord::InstExtractELT: {
-                ASSERT(false, "Untested path, validate and remove");
-
-                // Get composite
-                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp32());
-                uint32_t compositeValue = reader.GetMappedRelative(anchor);
-
-                // Get index
-                uint32_t indexValue = reader.GetMappedRelative(anchor);
-
-                // Unused
-                GRS_SINK(compositeType);
+                // Get values
+                uint32_t compositeValue = reader.GetMappedRelativeValue(anchor);
+                uint32_t indexValue = reader.GetMappedRelativeValue(anchor);
 
                 auto *instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(1u));
                 instr->opCode = IL::OpCode::Extract;
@@ -432,8 +431,46 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr->source = IL::Source::User(recordIdx);
                 instr->composite = compositeValue;
                 instr->chains.count = 1u;
-                instr->chains[0].index = program.GetConstants().UInt(indexValue)->id;
+                instr->chains[0].index = indexValue;
                 basicBlock->Append(instr);
+
+                // Get the composite type
+                const Backend::IL::Type *type = program.GetTypeMap().GetType(compositeValue);
+
+                // Walk the type with the index
+                switch (type->kind) {
+                    default: {
+                        ASSERT(false, "Unexpected extract composite type");
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Vector: {
+                        type = type->As<Backend::IL::VectorType>()->containedType;
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Matrix: {
+                        type = type->As<Backend::IL::MatrixType>()->containedType;
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Pointer:{
+                        type = type->As<Backend::IL::PointerType>()->pointee;
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Array:{
+                        type = type->As<Backend::IL::ArrayType>()->elementType;
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Struct: {
+                        const Backend::IL::Constant* constant = program.GetConstants().GetConstant(indexValue);
+                        ASSERT(constant, "GEP struct chains must be constant");
+
+                        uint32_t memberIdx = static_cast<uint32_t>(constant->As<Backend::IL::IntConstant>()->value);
+                        type = type->As<Backend::IL::StructType>()->memberTypes[memberIdx];
+                        break;
+                    }
+                }
+
+                // Create type mapping
+                ilTypeMap.SetType(result, type);
                 break;
             }
 
@@ -1172,7 +1209,8 @@ void DXILPhysicalBlockFunction::MigrateConstantBlocks() {
         DXILFunctionDeclaration *declaration = functions[linkedIndex];
 
         // Constant offset
-        uint32_t constantOffset = 0;
+        // TODO[rt]: Save the relative anchor instead of assuming the local segment offsets
+        uint32_t constantOffset = static_cast<uint32_t>(declaration->type->parameterTypes.size());
 
         // Move all constant data
         for (LLVMBlock *fnBlock: block->blocks) {
@@ -1592,7 +1630,36 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             basicBlock->Append(instr);
             return true;
         }
+        
+        case DXILOpcodes::CreateHandleForLib: {
+            uint32_t handleId = reader.GetMappedRelative(anchor);
 
+            // Expecting load
+            auto loadInstr = IL::InstructionRef<>(program.GetIdentifierMap().Get(handleId))->Cast<IL::LoadInstruction>();
+            ASSERT(loadInstr, "Expected source load for CreateHandleForLib");
+
+            // Expecting load on variable
+            const Backend::IL::Variable *variable = program.GetVariableList().GetVariable(loadInstr->address);
+            ASSERT(variable, "Expected variable address for CreateHandleForLib source load");
+
+            // Set as pointee type
+            const DXILMetadataHandleEntry *mdHandle = table.metadata.GetHandleFromVariable(variable);
+            ilTypeMap.SetType(result, mdHandle->type);
+
+            // TODO[rt]: Handle divergence in libs
+            // IL::MetadataMap& metadata = program.GetMetadataMap();
+            // metadata.AddMetadata(result, IL::MetadataType::DivergentResourceIndex);
+            
+            // Keep the original record
+            IL::UnexposedInstruction instr{};
+            instr.opCode = IL::OpCode::Unexposed;
+            instr.result = result;
+            instr.source = IL::Source::User(recordIdx);
+            instr.symbol = "dx.op.createHandleForLib";
+            basicBlock->Append(instr);
+            return true;
+        }
+        
         /*
          * DXIL Specification
          *   overloads: SM5.1: f16|f32|i16|i32,  SM6.0: f16|f32|f64|i8|i16|i32|i64
@@ -5249,10 +5316,20 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
     // Create snapshot
     DXILIDRemapper::StitchSnapshot idRemapperSnapshot = table.idRemapper.CreateStitchSnapshot();
 
+    // Create parameter mappings
+    // Note: Function values are declared *before* child blocks
+    for (uint32_t i = 0; i < declaration->parameters.Size(); i++) {
+        table.idRemapper.AllocSourceMapping(declaration->parameters[i]);
+    }
+
     // Visit child blocks
     for (LLVMBlock *fnBlock: block->blocks) {
         switch (static_cast<LLVMReservedBlock>(fnBlock->id)) {
             default: {
+                break;
+            }
+            case LLVMReservedBlock::ValueSymTab: {
+                table.symbol.StitchSymTab(fnBlock);
                 break;
             }
             case LLVMReservedBlock::Constants: {
@@ -5264,11 +5341,6 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
                 break;
             }
         }
-    }
-
-    // Create parameter mappings
-    for (uint32_t i = 0; i < declaration->parameters.Size(); i++) {
-        table.idRemapper.AllocSourceMapping(declaration->parameters[i]);
     }
 
     // Visit function records, pass one, allocates results
@@ -5315,6 +5387,19 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstExtractVal: {
+                writer.RemapRelativeValue(anchor);
+                break;
+            }
+
+            case LLVMFunctionRecord::InstExtractELT: {
+                writer.RemapRelativeValue(anchor);
+                writer.RemapRelativeValue(anchor);
+                break;
+            }
+
+            case LLVMFunctionRecord::InstInsertELT: {
+                writer.RemapRelativeValue(anchor);
+                writer.RemapRelative(anchor);
                 writer.RemapRelativeValue(anchor);
                 break;
             }
@@ -5505,8 +5590,8 @@ void DXILPhysicalBlockFunction::CreateExportHandle(const DXCompileJob &job, stru
         block,
         exportCounterHandle,
         DXILShaderResourceClass::UAVs,
-        table.bindingInfo.shaderExportHandleId,
-        table.bindingInfo.bindingInfo.shaderExportBaseRegister
+        table.bindingInfo.global.shaderExportHandleId,
+        table.bindingInfo.bindingInfo.global.shaderExportBaseRegister
     );
 
     // Allocate all export streams
@@ -5518,8 +5603,8 @@ void DXILPhysicalBlockFunction::CreateExportHandle(const DXCompileJob &job, stru
             block,
             streamHandle,
             DXILShaderResourceClass::UAVs,
-            table.bindingInfo.shaderExportHandleId,
-            table.bindingInfo.bindingInfo.shaderExportBaseRegister + (i + 1)
+            table.bindingInfo.global.shaderExportHandleId,
+            table.bindingInfo.bindingInfo.global.shaderExportBaseRegister + (i + 1)
         );
     }
 }
@@ -5539,8 +5624,98 @@ DXILFunctionDeclaration *DXILPhysicalBlockFunction::AddDeclaration(const DXILFun
 }
 
 void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, uint32_t result, DXILShaderResourceClass _class, uint32_t handleId, uint32_t registerBase) {
+    // Library collection?
+    if (table.metadata.shadingModel._class == DXILShadingModelClass::Lib) {
+        const uint32_t loadGlobal = program.GetIdentifierMap().AllocID();
+
+        // TODO[rt]: Handle 6.6 changes!
+        
+        // Get the handle
+        const DXILMetadataHandleEntry* entry = table.metadata.GetHandleFromMetadata(_class, handleId);
+
+        // Is this an array handle?
+        const bool isArray = entry->registerRange > 1;
+
+        // The current target
+        uint32_t loadTarget = entry->libVariable->id;
+
+        // The expected load type
+        const Backend::IL::Type *loadType = entry->libVariable->type->As<Backend::IL::PointerType>()->pointee;
+
+        // If it's an array, we need to index into the array
+        if (isArray) {
+            const uint32_t gep = program.GetIdentifierMap().AllocID();
+
+            // The indexing offset
+            uint32_t registerOffset = registerBase - entry->registerBase;
+            
+            // GEP into the specific handle
+            LLVMRecord record(LLVMFunctionRecord::InstGEP);
+            record.SetUser(true, ~0u, gep);
+            record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstGEP);
+            record.opCount = 5;
+            record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+            record.ops[0] = true;
+            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(loadType));
+            record.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(entry->libVariable->id);
+
+            // Pointer indirection chain
+            record.ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                Backend::IL::IntConstant{.value = 0}
+            )->id);
+            
+            record.ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                Backend::IL::IntConstant{.value = registerOffset}
+            )->id);
+
+            block->AddRecord(record);
+
+            // Set new load target
+            loadTarget = gep;
+
+            // Type is the element type
+            loadType = loadType->As<Backend::IL::ArrayType>()->elementType;
+        }
+
+        // Load the global
+        {
+            LLVMRecord record(LLVMFunctionRecord::InstLoad);
+            record.SetUser(true, ~0u, loadGlobal);
+            record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstLoad);
+            record.opCount = 4u;
+            record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(loadTarget);
+            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(loadType));
+            record.ops[2] = 0;
+            record.ops[3] = false;
+            block->AddRecord(record);
+        }
+
+        // Create handle from lib
+        {
+            // Get intrinsic
+            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetLibHandleIntrinsic(loadType);
+
+            uint64_t ops[2];
+
+            // OpCode
+            ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CreateHandleForLib)}
+            )->id);
+
+            // Load
+            ops[1] = table.idRemapper.EncodeRedirectedUserOperand(loadGlobal);
+
+            // Create lib handle
+            block->AddRecord(CompileIntrinsicCall(result, intrinsic, 2, ops));
+        }
+    }
+    
     // Are we on SM6.6 or beyond?
-    if (table.metadata.SatisfiesShadingModel(6, 6)) {
+    else if (table.metadata.SatisfiesShadingModel(6, 6)) {
         const uint32_t bindingHandle = program.GetIdentifierMap().AllocID();
 
         // Allocate handle
@@ -5563,7 +5738,7 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
                     .members = {
                         program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = registerBase}),
                         program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = registerBase}),
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.space}),
+                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.global.space}),
                         program.GetConstants().FindConstantOrAdd(table.intrinsics.i8Type, Backend::IL::IntConstant{.value = static_cast<uint32_t>(_class)})
                     }
                 }
@@ -5717,8 +5892,8 @@ void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXCompileJob &job, struct
         block,
         resourcePRMTHandle,
         DXILShaderResourceClass::SRVs,
-        table.bindingInfo.resourcePRMTHandleId,
-        table.bindingInfo.bindingInfo.resourcePRMTBaseRegister
+        table.bindingInfo.global.resourcePRMTHandleId,
+        table.bindingInfo.bindingInfo.global.resourcePRMTBaseRegister
     );
 
     // Create sampler handle
@@ -5726,23 +5901,35 @@ void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXCompileJob &job, struct
         block,
         samplerPRMTHandle,
         DXILShaderResourceClass::SRVs,
-        table.bindingInfo.samplerPRMTHandleId,
-        table.bindingInfo.bindingInfo.samplerPRMTBaseRegister
+        table.bindingInfo.global.samplerPRMTHandleId,
+        table.bindingInfo.bindingInfo.global.samplerPRMTBaseRegister
     );
 }
 
 void DXILPhysicalBlockFunction::CreateDescriptorHandle(const DXCompileJob &job, struct LLVMBlock *block) {
-    // Allocate sharted counter
+    // Allocate shared counter
     descriptorHandle = program.GetIdentifierMap().AllocID();
+    localDescriptorHandle = program.GetIdentifierMap().AllocID();
     
     // Create handle
     CreateUniversalHandle(
         block,
         descriptorHandle,
         DXILShaderResourceClass::CBVs,
-        table.bindingInfo.descriptorConstantsHandleId,
-        table.bindingInfo.bindingInfo.descriptorConstantBaseRegister
+        table.bindingInfo.global.descriptorConstantsHandleId,
+        table.bindingInfo.bindingInfo.global.descriptorConstantBaseRegister
     );
+    
+    // Create local handle
+    if (job.instrumentationKey.localPhysicalMapping) {
+        CreateUniversalHandle(
+            block,
+            localDescriptorHandle,
+            DXILShaderResourceClass::CBVs,
+            table.bindingInfo.local.descriptorConstantsHandleId,
+            table.bindingInfo.bindingInfo.local.descriptorConstantBaseRegister
+        );
+    }
 }
 
 void DXILPhysicalBlockFunction::CreateEventHandle(const DXCompileJob &job, struct LLVMBlock *block) {
@@ -5756,8 +5943,8 @@ void DXILPhysicalBlockFunction::CreateEventHandle(const DXCompileJob &job, struc
         block,
         eventHandle,
         DXILShaderResourceClass::CBVs,
-        table.bindingInfo.eventConstantsHandleId,
-        table.bindingInfo.bindingInfo.eventConstantBaseRegister
+        table.bindingInfo.global.eventConstantsHandleId,
+        table.bindingInfo.bindingInfo.global.eventConstantBaseRegister
     );
 
     // Requested dword count
@@ -5848,8 +6035,8 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
         block,
         constantHandle,
         DXILShaderResourceClass::CBVs,
-        table.bindingInfo.shaderDataConstantsHandleId,
-        table.bindingInfo.bindingInfo.shaderDataConstantRegister
+        table.bindingInfo.global.shaderDataConstantsHandleId,
+        table.bindingInfo.bindingInfo.global.shaderDataConstantRegister
     );
 
     // Requested dword count
@@ -5993,8 +6180,8 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXCompileJob &job, 
             block,
             variable->id,
             DXILShaderResourceClass::UAVs,
-            table.bindingInfo.shaderDataHandleId + registerOffset,
-            table.bindingInfo.bindingInfo.shaderResourceBaseRegister + registerOffset
+            table.bindingInfo.global.shaderDataHandleId + registerOffset,
+            table.bindingInfo.bindingInfo.global.shaderResourceBaseRegister + registerOffset
         );
 
         // Next
@@ -6164,6 +6351,40 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
             metadata.rangeConstantOrValue = table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(5));
             break;
         }
+        case DXILOpcodes::CreateHandleForLib: {
+            IL::ID id = table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(5));
+
+            // Get the target handle
+            IL::InstructionRef<> targetInstr = program.GetIdentifierMap().Get(id);
+            const LLVMRecord *targetRecord = &source[targetInstr->source.codeOffset];
+
+            // Indexing into the global?
+            switch (static_cast<LLVMFunctionRecord>(targetRecord->id)) {
+                default: {
+                    ASSERT(false, "Unexpected handle target");
+                    break;
+                }
+                case LLVMFunctionRecord::InstGEP: {
+                    id = table.idMap.GetMappedRelative(targetRecord->sourceAnchor, targetRecord->Op32(2));
+                    metadata.rangeConstantOrValue = table.idMap.GetMappedRelative(targetRecord->sourceAnchor, targetRecord->Op32(4));
+                    break;
+                }
+                case LLVMFunctionRecord::InstLoad: {
+                    id = table.idMap.GetMappedRelative(targetRecord->sourceAnchor, targetRecord->Op32(0));
+                    metadata.rangeConstantOrValue = program.GetConstants().UInt(0)->id;
+                    break;
+                }
+            }
+
+            // Must be a variable at this point
+            const Backend::IL::Variable *variable = program.GetVariableList().GetVariable(id);
+            ASSERT(variable, "Unexpected handle target");
+
+            // Set metadata
+            metadata.entry = table.metadata.GetHandleFromVariable(variable);
+            metadata._class = metadata.entry->_class;
+            break;
+        }
     }
 
     // OK
@@ -6233,15 +6454,42 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
         case DXILShadingModelClass::MS:
             rootVisibility = RootParameterVisibility::Mesh;
             break;
+        case DXILShadingModelClass::Lib:
+            // TODO[rt]: ... Is this right? Surely it depends on the shader itself no?
+            rootVisibility = RootParameterVisibility::Compute;
+            break;
     }
 
-    // Get user space
-    const RootSignatureVisibilityClass& visibilityClass = job.instrumentationKey.physicalMapping->visibility[static_cast<uint32_t>(rootVisibility)];
-    const RootSignatureUserClass&       userClass       = visibilityClass.spaces[static_cast<uint32_t>(classType)];
-    const RootSignatureUserSpace&       userSpace       = userClass.spaces.at(metadata.entry->bindSpace);
+    // Try all available physical spaces, resource may be present in any of the root signatures
+    if (!TryGetResourceUserMappingFromPhysicalSpace(block, job.instrumentationKey.physicalMapping, rootVisibility, classType, metadata, out) &&
+        !TryGetResourceUserMappingFromPhysicalSpace(block, job.instrumentationKey.localPhysicalMapping, rootVisibility, classType, metadata, out)) {
+        ASSERT(false, "Failed to associate register space to physical space");
+    }
 
-    // Get mapping
-    out.source = &userSpace.mappings.at(metadata.entry->registerBase);
+    // OK
+    return out;
+}
+
+bool DXILPhysicalBlockFunction::TryGetResourceUserMappingFromPhysicalSpace(LLVMBlock* block, RootSignaturePhysicalMapping* physicalMapping, RootParameterVisibility rootVisibility, RootSignatureUserClassType classType, const HandleMetadata& metadata, DynamicRootSignatureUserMapping& out) {
+    // Get user space
+    const RootSignatureVisibilityClass& visibilityClass = physicalMapping->visibility[static_cast<uint32_t>(rootVisibility)];
+    const RootSignatureUserClass&       userClass       = visibilityClass.spaces[static_cast<uint32_t>(classType)];
+
+    // Try to find user space
+    auto userSpaceIt = userClass.spaces.find(metadata.entry->bindSpace);
+    if (userSpaceIt == userClass.spaces.end()) {
+        return false;
+    }
+
+    // Try to find mapping
+    auto mappingIt = userSpaceIt->second.mappings.find(metadata.entry->registerBase);
+    if (mappingIt == userSpaceIt->second.mappings.end()) {
+        return false;
+    }
+    
+    // Set source
+    out.physicalMapping = physicalMapping;
+    out.source          = &mappingIt->second;
 
     // Check if base, i.e. the offset is the register base
     bool isBaseRegister = false;
@@ -6268,7 +6516,7 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
     }
 
     // OK
-    return out;
+    return true;
 }
 
 void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
@@ -6339,6 +6587,14 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             // Get intrinsic
             const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCBufferLoadLegacyI32);
 
+            // Select descriptor data based on the physical mapping
+            uint32_t handle{};
+            if (userMapping.physicalMapping == job.instrumentationKey.localPhysicalMapping) {
+                handle = localDescriptorHandle;
+            } else {
+                handle = descriptorHandle;
+            }
+
             /*
               *  ; overloads: SM5.1: f32|i32|f64,  future SM: possibly deprecated
               *    %dx.types.CBufRet.f32 = type { float, float, float, float }
@@ -6355,7 +6611,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
             )->id);
 
-            ops[1] = table.idRemapper.EncodeRedirectedUserOperand(descriptorHandle);
+            ops[1] = table.idRemapper.EncodeRedirectedUserOperand(handle);
 
             ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                 program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),

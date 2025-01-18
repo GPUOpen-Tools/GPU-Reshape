@@ -32,6 +32,7 @@ enum class PipelineType {
     None = 0,
     Graphics = BIT(1),
     Compute = BIT(2),
+    StateObject = BIT(3),
     GraphicsSlot = 0,
     ComputeSlot = 1,
     Count = 2

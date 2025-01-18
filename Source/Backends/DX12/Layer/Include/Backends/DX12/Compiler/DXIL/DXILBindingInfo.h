@@ -34,25 +34,32 @@
 #include <cstdint>
 
 struct DXILBindingInfo {
-    /// Handle for shader export data
-    uint32_t shaderExportHandleId{};
+    struct {
+        /// Handle for shader export data
+        uint32_t shaderExportHandleId{};
 
-    /// Handles for PRMT relocation
-    uint32_t resourcePRMTHandleId{};
-    uint32_t samplerPRMTHandleId{};
+        /// Handles for PRMT relocation
+        uint32_t resourcePRMTHandleId{};
+        uint32_t samplerPRMTHandleId{};
 
-    /// Handle for constant data
-    uint32_t shaderDataConstantsHandleId{};
+        /// Handle for constant data
+        uint32_t shaderDataConstantsHandleId{};
 
-    /// Handle for descriptor data
-    uint32_t descriptorConstantsHandleId{};
+        /// Handle for descriptor data
+        uint32_t descriptorConstantsHandleId{};
 
-    /// Handle for event data
-    uint32_t eventConstantsHandleId{};
+        /// Handle for event data
+        uint32_t eventConstantsHandleId{};
 
-    /// Handle for shader datas
-    uint32_t shaderDataHandleId{};
+        /// Handle for shader datas
+        uint32_t shaderDataHandleId{};
+    } global;
 
+    struct {
+        /// Handle for descriptor data
+        uint32_t descriptorConstantsHandleId{};
+    } local;
+    
     /// Pipeline binding info
     RootRegisterBindingInfo bindingInfo{};
 

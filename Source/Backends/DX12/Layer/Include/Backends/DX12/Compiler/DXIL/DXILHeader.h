@@ -104,7 +104,8 @@ enum class DXILShadingModelClass {
     HS,
     DS,
     AS,
-    MS
+    MS,
+    Lib
 };
 
 enum class DXILProgramShaderFlag {

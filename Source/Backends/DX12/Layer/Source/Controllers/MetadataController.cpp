@@ -144,6 +144,7 @@ void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
     file->name.Set(name);
 
     // Translate type
+    // TODO[rt]: StateObject
     switch (pipeline->type) {
         default:
             file->type = 0;

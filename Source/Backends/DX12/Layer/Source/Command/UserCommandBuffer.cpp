@@ -39,90 +39,6 @@
 // Common
 #include "Common/Enum.h"
 
-static void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState &state) {
-    ShaderExportStreamBindState &bindState = streamState->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
-
-    // Reset signature if needed
-    if (bindState.rootSignature) {
-        commandList->SetComputeRootSignature(bindState.rootSignature->object);
-    }
-
-    // Set PSO if needed
-    if (streamState->pipelineObject) {
-        commandList->SetPipelineState(streamState->pipelineObject);
-    } else if (streamState->pipeline) {
-        commandList->SetPipelineState(streamState->pipeline->object);
-    }
-    
-    // Reset root data if needed, invalidated by signature change
-    if (bindState.rootSignature) {
-        for (uint32_t i = 0; i < bindState.rootSignature->logicalMapping.userRootCount; i++) {
-            const ShaderExportRootParameterValue &value = bindState.persistentRootParameters[i];
-
-            // Get the expected heap type
-            D3D12_DESCRIPTOR_HEAP_TYPE heapType = bindState.rootSignature->logicalMapping.userRootHeapTypes[i];
-            
-            switch (value.type) {
-                case ShaderExportRootParameterValueType::None: {
-                    break;
-                }
-                case ShaderExportRootParameterValueType::Descriptor: {
-                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || heapType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Unexpected heap type");
-                    commandList->SetComputeRootDescriptorTable(i, value.payload.descriptor);
-                    break;
-                }
-                case ShaderExportRootParameterValueType::SRV: {
-                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
-                    commandList->SetComputeRootShaderResourceView(i, value.payload.virtualAddress);
-                    break;
-                }
-                case ShaderExportRootParameterValueType::UAV: {
-                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
-                    commandList->SetComputeRootUnorderedAccessView(i, value.payload.virtualAddress);
-                    break;
-                }
-                case ShaderExportRootParameterValueType::CBV: {
-                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
-                    commandList->SetComputeRootConstantBufferView(i, value.payload.virtualAddress);
-                    break;
-                }
-                case ShaderExportRootParameterValueType::Constant: {
-                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES, "Unexpected heap type");
-                    commandList->SetComputeRoot32BitConstants(
-                        i,
-                        value.payload.constant.dataByteCount / sizeof(uint32_t),
-                        value.payload.constant.data,
-                        0
-                    );
-                    break;
-                }
-            }
-        }
-
-        // Compute overwritten at this point
-        streamState->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Compute);
-
-        // Rebind the export, invalidated by signature change
-        if (streamState->pipeline) {
-            device->exportStreamer->BindShaderExport(streamState, streamState->pipeline, commandList);
-        }
-    }
-}
-
-static void ReconstructRenderPassState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState& state) {
-    BeginRenderPassForReconstruction(static_cast<ID3D12GraphicsCommandList4*>(commandList), &streamState->renderPass);
-}
-
-static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState &state) {
-    if (state.reconstructionFlags & ReconstructionFlag::Pipeline) {
-        ReconstructPipelineState(device, commandList, streamState, state);
-    }
-
-    if (state.reconstructionFlags & ReconstructionFlag::RenderPass) {
-        ReconstructRenderPassState(device, commandList, streamState, state);
-    }
-}
-
 void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
     // Early out if no commands
     if (!buffer.Count()) {
@@ -351,7 +267,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
     }
     
     // Reconstruct user state
-    ReconstructState(device, commandList, streamState, state);
+    ReconstructState(device, commandList, streamState, state.reconstructionFlags);
 }
 
 void CommitCommands(CommandListState* state) {

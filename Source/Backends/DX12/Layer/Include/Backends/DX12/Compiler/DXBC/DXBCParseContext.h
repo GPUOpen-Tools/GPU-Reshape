@@ -98,6 +98,11 @@ struct DXBCParseContext {
         return ptr - start;
     }
 
+    /// Number of pending bytes from the current offset
+    size_t PendingBytes() {
+        return end - ptr;
+    }
+
     /// Set current offset
     void SetOffset(size_t offset) {
         ptr = start + offset;

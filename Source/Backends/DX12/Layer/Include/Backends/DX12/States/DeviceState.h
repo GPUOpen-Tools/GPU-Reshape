@@ -60,6 +60,7 @@ struct ShaderState;
 struct CommandQueueState;
 struct ResourceState;
 struct PipelineState;
+struct Programs;
 class InstrumentationController;
 class FeatureController;
 class MetadataController;
@@ -160,6 +161,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// User programs
     ComRef<ShaderProgramHost> shaderProgramHost{nullptr};
+
+    /// Internal programs
+    Programs* programs{nullptr};
 
     /// Shared remapping table
     EventDataStack::RemappingTable eventRemappingTable;

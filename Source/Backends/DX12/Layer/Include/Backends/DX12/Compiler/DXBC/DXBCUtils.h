@@ -26,6 +26,12 @@
 
 #pragma once
 
+// Layer
+#include <Backends/DX12/Compiler/DXBC/DXBCExport.h>
+
+// Common
+#include <Common/Containers/TrivialStackVector.h>
+
 // Std
 #include <cstdint>
 
@@ -58,3 +64,16 @@ bool IsDXBCNative(const void* byteCode, uint64_t byteLength);
 /// \param digest given digest
 /// \param buffer output buffer
 void DXBCShaderDigestToString(const DXILDigest& digest, char buffer[kDXBCShaderDigestStringLength]);
+
+/// Check if a given byte code is DXBC native
+/// \param byteCode shader code
+/// \param byteLength byte length of shader code
+/// \return true if pure DXBC
+bool IsDXBCNative(const void* byteCode, uint64_t byteLength);
+
+/// Scan for all contained RDAT exports
+/// \param byteCode shader code
+/// \param byteLength byte length of shader code
+/// \param out all exports
+/// \return success code, false if no RDAT was found
+bool ScanDXBCShaderExports(const void* byteCode, uint64_t byteLength, TrivialStackVector<DXBCExport, 4u>& out);

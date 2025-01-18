@@ -27,9 +27,9 @@
 #include <Backends/DX12/Export/ShaderExportConstantAllocator.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 
-ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const ComRef<DeviceAllocator>& deviceAllocator, size_t length) {
+ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const ComRef<DeviceAllocator>& deviceAllocator, size_t length, size_t align) {
     // Needs a staging roll?
-    if (staging.empty() || !staging.back().CanAccomodate(length)) {
+    if (staging.empty() || !staging.back().CanAccomodate(length, align)) {
         // Next byte count
         const size_t lastByteCount = staging.empty() ? 16'384 : staging.back().size;
         const size_t byteCount = static_cast<size_t>(static_cast<float>(std::max<size_t>(length, lastByteCount)) * 1.5f);
@@ -63,6 +63,9 @@ ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const Com
 
     // Assume last staging
     ShaderExportConstantSegment& segment = staging.back();
+
+    // Align to expectations
+    segment.head = (segment.head + align - 1) & ~(align - 1);
 
     // Create sub-allocation
     ShaderExportConstantAllocation out;

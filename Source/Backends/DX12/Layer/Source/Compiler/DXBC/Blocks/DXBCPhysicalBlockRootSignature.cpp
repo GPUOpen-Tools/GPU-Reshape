@@ -127,17 +127,17 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         // Create export range
         DXBCRootSignatureDescriptorRange1& exportRange = parameter.descriptorTable.ranges.emplace_back();
         exportRange.type = DXBCRootSignatureRangeType::UAV;
-        exportRange.space = bindingInfo.space;
-        exportRange._register = bindingInfo.shaderExportBaseRegister;
-        exportRange.descriptorCount = bindingInfo.shaderExportCount;
+        exportRange.space = bindingInfo.global.space;
+        exportRange._register = bindingInfo.global.shaderExportBaseRegister;
+        exportRange.descriptorCount = bindingInfo.global.shaderExportCount;
         exportRange.flags = 0x0;
         exportRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
         // Create PRMT range
         DXBCRootSignatureDescriptorRange1& resourcePRMTRange = parameter.descriptorTable.ranges.emplace_back();
         resourcePRMTRange.type = DXBCRootSignatureRangeType::SRV;
-        resourcePRMTRange.space = bindingInfo.space;
-        resourcePRMTRange._register = bindingInfo.resourcePRMTBaseRegister;
+        resourcePRMTRange.space = bindingInfo.global.space;
+        resourcePRMTRange._register = bindingInfo.global.resourcePRMTBaseRegister;
         resourcePRMTRange.descriptorCount = 1u;
         resourcePRMTRange.flags = 0x0;
         resourcePRMTRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -145,8 +145,8 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         // Create PRMT range
         DXBCRootSignatureDescriptorRange1& samplerPRMTRange = parameter.descriptorTable.ranges.emplace_back();
         samplerPRMTRange.type = DXBCRootSignatureRangeType::SRV;
-        samplerPRMTRange.space = bindingInfo.space;
-        samplerPRMTRange._register = bindingInfo.samplerPRMTBaseRegister;
+        samplerPRMTRange.space = bindingInfo.global.space;
+        samplerPRMTRange._register = bindingInfo.global.samplerPRMTBaseRegister;
         samplerPRMTRange.descriptorCount = 1u;
         samplerPRMTRange.flags = 0x0;
         samplerPRMTRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -154,8 +154,8 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         // Create shader data constant range
         DXBCRootSignatureDescriptorRange1& constantRange = parameter.descriptorTable.ranges.emplace_back();
         constantRange.type = DXBCRootSignatureRangeType::CBV;
-        constantRange.space = bindingInfo.space;
-        constantRange._register = bindingInfo.shaderDataConstantRegister;
+        constantRange.space = bindingInfo.global.space;
+        constantRange._register = bindingInfo.global.shaderDataConstantRegister;
         constantRange.descriptorCount = 1u;
         constantRange.flags = 0x0;
         constantRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -163,9 +163,9 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         // Create user range
         DXBCRootSignatureDescriptorRange1& userRange = parameter.descriptorTable.ranges.emplace_back();
         userRange.type = DXBCRootSignatureRangeType::UAV;
-        userRange.space = bindingInfo.space;
-        userRange._register = bindingInfo.shaderResourceBaseRegister;
-        userRange.descriptorCount = bindingInfo.shaderResourceCount;
+        userRange.space = bindingInfo.global.space;
+        userRange._register = bindingInfo.global.shaderResourceBaseRegister;
+        userRange.descriptorCount = bindingInfo.global.shaderResourceCount;
         userRange.flags = 0x0;
         userRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     }
@@ -176,8 +176,8 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         RootParameter& parameter = parameters.emplace_back(allocators);
         parameter.type = DXBCRootSignatureParameterType::CBV;
         parameter.visibility = DXBCRootSignatureVisibility::All;
-        parameter.parameter1.space = bindingInfo.space;
-        parameter.parameter1._register = bindingInfo.descriptorConstantBaseRegister;
+        parameter.parameter1.space = bindingInfo.global.space;
+        parameter.parameter1._register = bindingInfo.global.descriptorConstantBaseRegister;
         parameter.parameter1.flags = 0x0;
     }
 
@@ -187,8 +187,8 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         RootParameter& parameter = parameters.emplace_back(allocators);
         parameter.type = DXBCRootSignatureParameterType::Constant32;
         parameter.visibility = DXBCRootSignatureVisibility::All;
-        parameter.constant.space = bindingInfo.space;
-        parameter.constant._register = bindingInfo.eventConstantBaseRegister;
+        parameter.constant.space = bindingInfo.global.space;
+        parameter.constant._register = bindingInfo.global.eventConstantBaseRegister;
         parameter.constant.dwordCount = 1u;
     }
 }

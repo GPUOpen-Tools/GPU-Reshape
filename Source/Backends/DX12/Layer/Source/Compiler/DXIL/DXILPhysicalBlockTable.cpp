@@ -116,7 +116,6 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
         }
     }
 
-
     // Visit all blocks
     for (LLVMBlock *block: root.blocks) {
         switch (static_cast<LLVMReservedBlock>(block->id)) {
@@ -289,6 +288,9 @@ bool DXILPhysicalBlockTable::Compile(const DXCompileJob &job) {
 
     // Compile dynamic global metadata
     metadata.CompileMetadata(job);
+
+    // Compile dynamic global variables
+    global.CompileGlobalVariables();
 
     // Trim all unused functions
     compliance.TrimFunctions();

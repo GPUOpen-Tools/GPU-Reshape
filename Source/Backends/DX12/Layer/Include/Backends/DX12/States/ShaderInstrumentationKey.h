@@ -52,6 +52,9 @@ struct ShaderInstrumentationKey {
     /// Root signature mapping
     RootSignaturePhysicalMapping* physicalMapping{nullptr};
 
+    /// Optional, local root signature mapping
+    RootSignaturePhysicalMapping* localPhysicalMapping{nullptr};
+
     /// Signature root binding info
     RootRegisterBindingInfo bindingInfo{};
 };

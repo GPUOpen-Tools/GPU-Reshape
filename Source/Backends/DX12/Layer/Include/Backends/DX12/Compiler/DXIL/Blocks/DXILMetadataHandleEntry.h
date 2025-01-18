@@ -41,6 +41,9 @@ struct DXILMetadataHandleEntry {
     /// Resource type
     const Backend::IL::Type* type{nullptr};
 
+    /// Optional, library specific variable
+    const Backend::IL::Variable* libVariable{nullptr};
+
     /// Binding class
     DXILShaderResourceClass _class{};
 

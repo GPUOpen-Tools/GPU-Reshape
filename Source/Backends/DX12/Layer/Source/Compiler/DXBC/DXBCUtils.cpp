@@ -118,6 +118,80 @@ bool IsDXBCNative(const void *byteCode, uint64_t byteLength) {
     return true;
 }
 
+bool ScanDXBCShaderExports(const void *byteCode, uint64_t byteLength, TrivialStackVector<DXBCExport, 4u>& out) {
+    DXBCParseContext ctx(byteCode, byteLength);
+    
+    // Consume header
+    auto header = ctx.Consume<DXBCHeader>();
+    
+    // Must be DXBC
+    if (header.identifier != 'CBXD') {
+        return false;
+    }
+
+    // Handle all chunks
+    for (uint32_t chunkIndex = 0; chunkIndex < header.chunkCount; chunkIndex++) {
+        auto chunk = ctx.Consume<DXBCChunkEntryHeader>();
+
+        // Only care about RDAT
+        auto chunkHeader = ctx.ReadAt<DXBCChunkHeader>(chunk.offset);
+        if (chunkHeader->type != static_cast<uint32_t>(DXBCPhysicalBlockType::RuntimeData)) {
+            continue;
+        }
+
+        DXBCParseContext chunkCtx(ctx.ReadAt<void>(chunk.offset + sizeof(DXBCChunkHeader)), chunkHeader->size);
+
+        // Get header
+        auto rdatHeader = chunkCtx.Consume<DXBCRuntimeDataHeader>();
+
+        // Determine part offsets
+        TrivialStackVector<uint32_t, 8u> partOffsets;
+        for (uint32_t i = 0; i < rdatHeader.partCount; i++) {
+            partOffsets.Add(chunkCtx.Consume<uint32_t>());
+        }
+
+        // String buffer, RDAT is emitted in a specific order so it's always guaranteed to exist before
+        const char* stringBufferStart = nullptr;
+        
+        // Parse each part
+        for (uint32_t i = 0; i < rdatHeader.partCount; i++) {
+            chunkCtx.SetOffset(partOffsets[i]);
+
+            // Handle part type
+            auto partHeader = chunkCtx.Consume<DXBCRuntimeDataPartHeader>();
+            switch (partHeader.type) {
+                default: {
+                    break;
+                }
+                case DXBCRuntimeDataPartType::String: {
+                    stringBufferStart = chunkCtx.ReadAtOffset<const char>(0);
+                    break;
+                }
+                case DXBCRuntimeDataPartType::FunctionTable: {
+                    auto tableHeader = chunkCtx.Consume<DXBCRuntimeDataTableHeader>();
+
+                    // Find all functions
+                    for (uint64_t recordIdx = 0; recordIdx < partHeader.size / tableHeader.recordStride; recordIdx++) {
+                        auto record = chunkCtx.Consume<DXBCRuntimeDataFunctionRecord>();
+
+                        // Always report it, regardless of kind
+                        DXBCExport &exportEntry = out.Add();
+                        exportEntry.name = stringBufferStart + record.unmangledNameOffset;
+                        exportEntry.kind = record.shaderKind;
+                    }
+                    break;
+                }
+            }
+        }
+
+        // OK
+        return true;
+    }
+
+    // No matching block
+    return false;
+}
+
 static char PartAsHex(int32_t part) {
     if (part < 10) {
         return static_cast<char>('0' + part);

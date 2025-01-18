@@ -59,8 +59,8 @@ bool ShaderProgramHost::Install() {
 
     // Prepare job
     DXParseJob job;
-    job.byteCode = reinterpret_cast<const uint32_t*>(kSPIRVInbuiltTemplateModuleD3D12);
-    job.byteLength = static_cast<uint32_t>(sizeof(kSPIRVInbuiltTemplateModuleD3D12));
+    job.byteCode = reinterpret_cast<const uint32_t*>(kInbuiltTemplateModuleD3D12);
+    job.byteLength = static_cast<uint32_t>(sizeof(kInbuiltTemplateModuleD3D12));
     job.pdbController = device->pdbController;
 
     // Attempt to parse template data

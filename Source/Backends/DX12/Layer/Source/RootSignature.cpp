@@ -41,7 +41,7 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
 
     // Preallocate
     outLogical->userRootCount = source.NumParameters;
-    outLogical->userRootHeapTypes.resize(source.NumParameters);
+    outLogical->userRootMappings.resize(source.NumParameters);
     
     // Get the user bound
     for (uint32_t i = 0; i < source.NumParameters; i++) {
@@ -61,30 +61,49 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
                         case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
                         case D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
                         case D3D12_DESCRIPTOR_RANGE_TYPE_CBV:
-                            outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+                            outLogical->userRootMappings[i] = {
+                                .type = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+                                .heapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+                            };
                             break;
                         case D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER: 
-                            outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+                            outLogical->userRootMappings[i] = {
+                                .type = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+                                .heapType = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER
+                            };
                             break;
                     }
                 } else {
-                    outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
+                    outLogical->userRootMappings[i] = {
+                        .type = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+                        .heapType = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES
+                    };
                 }
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
-                outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
+                outLogical->userRootMappings[i] = {
+                    .type = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+                    .heapType = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES,
+                    .inlineDwordCount = parameter.Constants.Num32BitValues
+                };
                 userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Constants.RegisterSpace + 1);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV:
-            case D3D12_ROOT_PARAMETER_TYPE_SRV: {
-                outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+                case D3D12_ROOT_PARAMETER_TYPE_SRV: {
+                outLogical->userRootMappings[i] = {
+                    .type = parameter.ParameterType,
+                    .heapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+                };
                 userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Descriptor.RegisterSpace + 1);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
-                outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+                outLogical->userRootMappings[i] = {
+                    .type = D3D12_ROOT_PARAMETER_TYPE_UAV,
+                    .heapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+                };
                 userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Descriptor.RegisterSpace + 1);
                 break;
             }
@@ -98,44 +117,55 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
 
     // Prepare space
     RootRegisterBindingInfo bindingInfo;
-    bindingInfo.space = userRegisterSpaceBound;
 
     // Current register offset
     uint32_t registerOffset = 0;
 
-    // Set base register for shader exports
-    bindingInfo.shaderExportBaseRegister = registerOffset;
-    bindingInfo.shaderExportCount = static_cast<uint32_t>(state->features.size()) + 1u;
-    registerOffset += bindingInfo.shaderExportCount;
+    // Local root signatures just need extra metadata regarding the bindings
+    if (source.Flags & D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE) {
+        // TODO[rt]: No magical constants!
+        bindingInfo.local.space = 2574461486;
+        
+        // Set base register for descriptor constants
+        bindingInfo.local.descriptorConstantBaseRegister = registerOffset;
+        registerOffset += 1u;
+    } else {
+        bindingInfo.global.space = userRegisterSpaceBound;
+            
+        // Set base register for shader exports
+        bindingInfo.global.shaderExportBaseRegister = registerOffset;
+        bindingInfo.global.shaderExportCount = static_cast<uint32_t>(state->features.size()) + 1u;
+        registerOffset += bindingInfo.global.shaderExportCount;
 
-    // Set base register for resource prmt data
-    bindingInfo.resourcePRMTBaseRegister = registerOffset;
-    registerOffset += 1u;
+        // Set base register for resource prmt data
+        bindingInfo.global.resourcePRMTBaseRegister = registerOffset;
+        registerOffset += 1u;
 
-    // Set base register for sampler prmt data
-    bindingInfo.samplerPRMTBaseRegister = registerOffset;
-    registerOffset += 1u;
+        // Set base register for sampler prmt data
+        bindingInfo.global.samplerPRMTBaseRegister = registerOffset;
+        registerOffset += 1u;
 
-    // Set base register for shader data constants
-    bindingInfo.shaderDataConstantRegister = registerOffset;
-    registerOffset += 1u;
+        // Set base register for shader data constants
+        bindingInfo.global.shaderDataConstantRegister = registerOffset;
+        registerOffset += 1u;
 
-    // Set base register for descriptor constants
-    bindingInfo.descriptorConstantBaseRegister = registerOffset;
-    registerOffset += 1u;
+        // Set base register for descriptor constants
+        bindingInfo.global.descriptorConstantBaseRegister = registerOffset;
+        registerOffset += 1u;
 
-    // Set base register for event constants
-    bindingInfo.eventConstantBaseRegister = registerOffset;
-    registerOffset += 1u;
+        // Set base register for event constants
+        bindingInfo.global.eventConstantBaseRegister = registerOffset;
+        registerOffset += 1u;
 
-    // Get number of resources
-    uint32_t resourceCount{0};
-    state->shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
+        // Get number of resources
+        uint32_t resourceCount{0};
+        state->shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
 
-    // Set base register for shader exports
-    bindingInfo.shaderResourceBaseRegister = registerOffset;
-    bindingInfo.shaderResourceCount = std::max(1u, resourceCount);
-    registerOffset += bindingInfo.shaderResourceCount;
+        // Set base register for shader exports
+        bindingInfo.global.shaderResourceBaseRegister = registerOffset;
+        bindingInfo.global.shaderResourceCount = std::max(1u, resourceCount);
+        registerOffset += bindingInfo.global.shaderResourceCount;
+    }
 
     return bindingInfo;
 }
@@ -464,98 +494,112 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     using DescriptorTable = decltype(Parameter::DescriptorTable);
     using Range = std::remove_const_t<std::remove_pointer_t<decltype(DescriptorTable::pDescriptorRanges)>>;
 
-    // Number of parameters
-    uint32_t parameterCount = source.NumParameters + 3u;
-
-    // Copy parameters
-    auto* parameters = ALLOCA_ARRAY(Parameter, parameterCount);
-    std::memcpy(parameters, source.pParameters, sizeof(Parameter) * source.NumParameters);
+    // All parameters
+    TrivialStackVector<Parameter, 32> parameters;
 
     // TODO: Root signatures need to be recompiled on the fly as well, to avoid needless worst-case cost
 
-    // Base ranges
-    Range ranges[] = {
-        // Shader export range
-        {
-            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-            .NumDescriptors = 1u + state->exportHost->GetBound(),
-            .BaseShaderRegister = outRoot->shaderExportBaseRegister,
-            .RegisterSpace = outRoot->space,
-            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-        },
+    // Local root signatures just need extra metadata regarding the bindings
+    if (source.Flags & D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE) {
+        // Local signatures post-fix one parameter
+        parameters.Resize(source.NumParameters + 1u);
+        std::memcpy(parameters.Data(), source.pParameters, sizeof(Parameter) * source.NumParameters);
 
-        // Resource PRMT range
-        {
-            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-            .NumDescriptors = 1u,
-            .BaseShaderRegister = outRoot->resourcePRMTBaseRegister,
-            .RegisterSpace = outRoot->space,
-            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-        },
+        // Descriptor constant parameter
+        Parameter& localConstantParameter = parameters[source.NumParameters] = {};
+        localConstantParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        localConstantParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        localConstantParameter.Descriptor.ShaderRegister = outRoot->local.descriptorConstantBaseRegister;
+        localConstantParameter.Descriptor.RegisterSpace = outRoot->local.space;
+    } else {
+        // Global signatures post-fix three parameters
+        parameters.Resize(source.NumParameters + 3u);
+        std::memcpy(parameters.Data(), source.pParameters, sizeof(Parameter) * source.NumParameters);
 
-        // Sampler PRMT range
-        {
-            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-            .NumDescriptors = 1u,
-            .BaseShaderRegister = outRoot->samplerPRMTBaseRegister,
-            .RegisterSpace = outRoot->space,
-            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-        },
+        // Base ranges
+        Range ranges[] = {
+            // Shader export range
+            {
+                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+                .NumDescriptors = 1u + state->exportHost->GetBound(),
+                .BaseShaderRegister = outRoot->global.shaderExportBaseRegister,
+                .RegisterSpace = outRoot->global.space,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+            },
 
-        // Constant range
-        {
-            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-            .NumDescriptors = 1u,
-            .BaseShaderRegister = outRoot->shaderDataConstantRegister,
-            .RegisterSpace = outRoot->space,
-            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-        },
+            // Resource PRMT range
+            {
+                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                .NumDescriptors = 1u,
+                .BaseShaderRegister = outRoot->global.resourcePRMTBaseRegister,
+                .RegisterSpace = outRoot->global.space,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+            },
 
-        // Shader Data range
-        {
-            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-            .NumDescriptors = outRoot->shaderResourceCount,
-            .BaseShaderRegister = outRoot->shaderResourceBaseRegister,
-            .RegisterSpace = outRoot->space,
-            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+            // Sampler PRMT range
+            {
+                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                .NumDescriptors = 1u,
+                .BaseShaderRegister = outRoot->global.samplerPRMTBaseRegister,
+                .RegisterSpace = outRoot->global.space,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+            },
+
+            // Constant range
+            {
+                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+                .NumDescriptors = 1u,
+                .BaseShaderRegister = outRoot->global.shaderDataConstantRegister,
+                .RegisterSpace = outRoot->global.space,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+            },
+
+            // Shader Data range
+            {
+                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+                .NumDescriptors = outRoot->global.shaderResourceCount,
+                .BaseShaderRegister = outRoot->global.shaderResourceBaseRegister,
+                .RegisterSpace = outRoot->global.space,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+            }
+        };
+
+        // Shader export parameter
+        Parameter& exportParameter = parameters[source.NumParameters + 0u] = {};
+        exportParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        exportParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        exportParameter.DescriptorTable.NumDescriptorRanges = 5u;
+        exportParameter.DescriptorTable.pDescriptorRanges = ranges;
+
+        // Range version 1.1 assumes STATIC registers and data (CBV), explicitly say otherwise
+        if constexpr(std::is_same_v<T, D3D12_ROOT_SIGNATURE_DESC1>) {
+            // TODO: Generalize the register mappings, these magic constants are horrible
+            ranges[0].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+            ranges[3].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
         }
-    };
 
-    // Shader export parameter
-    Parameter& exportParameter = parameters[source.NumParameters + 0u] = {};
-    exportParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-    exportParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    exportParameter.DescriptorTable.NumDescriptorRanges = 5u;
-    exportParameter.DescriptorTable.pDescriptorRanges = ranges;
+        // Descriptor constant parameter
+        Parameter& descriptorParameter = parameters[source.NumParameters + 1u] = {};
+        descriptorParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        descriptorParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        descriptorParameter.Descriptor.ShaderRegister = outRoot->global.descriptorConstantBaseRegister;
+        descriptorParameter.Descriptor.RegisterSpace = outRoot->global.space;
 
-    // Range version 1.1 assumes STATIC registers and data (CBV), explicitly say otherwise
-    if constexpr(std::is_same_v<T, D3D12_ROOT_SIGNATURE_DESC1>) {
-        // TODO: Generalize the register mappings, these magic constants are horrible
-        ranges[0].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
-        ranges[3].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
+        // Get number of events
+        uint32_t eventCount{0};
+        state->shaderDataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
+
+        // Event constant parameter
+        Parameter& eventParameter = parameters[source.NumParameters + 2u] = {};
+        eventParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        eventParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        eventParameter.Constants.ShaderRegister = outRoot->global.eventConstantBaseRegister;
+        eventParameter.Constants.RegisterSpace = outRoot->global.space;
+        eventParameter.Constants.Num32BitValues = eventCount;
     }
-
-    // Descriptor constant parameter
-    Parameter& descriptorParameter = parameters[source.NumParameters + 1u] = {};
-    descriptorParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-    descriptorParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    descriptorParameter.Descriptor.ShaderRegister = outRoot->descriptorConstantBaseRegister;
-    descriptorParameter.Descriptor.RegisterSpace = outRoot->space;
-
-    // Get number of events
-    uint32_t eventCount{0};
-    state->shaderDataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
-
-    // Event constant parameter
-    Parameter& eventParameter = parameters[source.NumParameters + 2u] = {};
-    eventParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-    eventParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-    eventParameter.Constants.ShaderRegister = outRoot->eventConstantBaseRegister;
-    eventParameter.Constants.RegisterSpace = outRoot->space;
-    eventParameter.Constants.Num32BitValues = eventCount;
-
+    
     // Create mappings
-    *outMapping = CreateRootPhysicalMappings(state, parameters, parameterCount, source.pStaticSamplers, source.NumStaticSamplers);
+    *outMapping = CreateRootPhysicalMappings(state, parameters.Data(), static_cast<uint32_t>(parameters.Size()), source.pStaticSamplers, source.NumStaticSamplers);
 
     // All deny flags
     constexpr D3D12_ROOT_SIGNATURE_FLAGS denyFlags =
@@ -574,13 +618,13 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     // Copy signatures
     if constexpr(std::is_same_v<T, D3D12_ROOT_SIGNATURE_DESC1>) {
         versioned.Desc_1_1 = source;
-        versioned.Desc_1_1.pParameters = parameters;
-        versioned.Desc_1_1.NumParameters = parameterCount;
+        versioned.Desc_1_1.pParameters = parameters.Data();
+        versioned.Desc_1_1.NumParameters = static_cast<uint32_t>(parameters.Size());
         versioned.Desc_1_1.Flags &= ~denyFlags;
     } else {
         versioned.Desc_1_0 = source;
-        versioned.Desc_1_0.pParameters = parameters;
-        versioned.Desc_1_0.NumParameters = parameterCount;
+        versioned.Desc_1_0.pParameters = parameters.Data();
+        versioned.Desc_1_0.NumParameters = static_cast<uint32_t>(parameters.Size());
         versioned.Desc_1_0.Flags &= ~denyFlags;
     }
 

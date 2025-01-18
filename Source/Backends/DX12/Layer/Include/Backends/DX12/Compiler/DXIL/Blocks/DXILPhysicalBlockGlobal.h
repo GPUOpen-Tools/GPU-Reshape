@@ -68,6 +68,9 @@ public:
     /// \param record record
     void CompileAlias(struct LLVMRecord& record);
 
+    /// Compile all global variables
+    void CompileGlobalVariables();
+    
 public:
     /// Stitch a constant block
     /// \param block block
@@ -84,6 +87,9 @@ public:
 public:
     /// Underlying constants
     DXILConstantMap constantMap;
+    
+    /// IL Variable to DXIL value table
+    Vector<uint64_t> variableLookup;
 
 private:
     /// All pending resolves

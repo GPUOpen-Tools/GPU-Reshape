@@ -352,129 +352,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     return S_OK;
 }
 
-static uint32_t GetSubObjectIndex(const D3D12_STATE_OBJECT_DESC* desc, const D3D12_STATE_SUBOBJECT* subObject) {
-    for (uint32_t i = 0; i < desc->NumSubobjects; i++) {
-        if (&desc->pSubobjects[i] == subObject) {
-            return i;
-        }
-    }
-
-    ASSERT(false, "Failed to find sub-object");
-    return ~0u; 
-}
-
-static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, ID3D12StateObject* existingStateObject, const IID& riid, void** ppStateObject) {
-    auto table = GetTable(device);
-
-    // Create writer
-    StateSubObjectWriter writer(table.state->allocators);
-
-    // Reserve on the actual sub-object count
-    writer.Reserve(pDesc->NumSubobjects);
-
-    // Unwrap objects
-    for (uint32_t i = 0; i < pDesc->NumSubobjects; i++) {
-        const D3D12_STATE_SUBOBJECT& subObject = pDesc->pSubobjects[i];
-        switch (subObject.Type) {
-            default: {
-                writer.Add(subObject.Type, subObject.pDesc);
-                break;
-            }
-            case D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION: {
-                auto contained = StateSubObjectWriter::Read<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>(subObject);
-
-                // Rewrite sub-object association to future address
-                contained.pSubobjectToAssociate = writer.FutureAddressOf(GetSubObjectIndex(pDesc, contained.pSubobjectToAssociate));
-                
-                writer.Add(subObject.Type, contained);
-                break;
-            }
-            case D3D12_STATE_SUBOBJECT_TYPE_EXISTING_COLLECTION: {
-                auto object = StateSubObjectWriter::Read<D3D12_EXISTING_COLLECTION_DESC>(subObject);
-
-                writer.Add(subObject.Type, D3D12_EXISTING_COLLECTION_DESC {
-                    .pExistingCollection = Next(object.pExistingCollection),
-                    .NumExports = object.NumExports,
-                    .pExports = object.pExports
-                });
-                break;
-            }
-            case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE: {
-                auto object = StateSubObjectWriter::Read<D3D12_GLOBAL_ROOT_SIGNATURE>(subObject);
-
-                writer.Add(subObject.Type, D3D12_GLOBAL_ROOT_SIGNATURE {
-                    .pGlobalRootSignature = GetState(object.pGlobalRootSignature)->object
-                });
-                break;
-            }
-            case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE: {
-                auto object = StateSubObjectWriter::Read<D3D12_LOCAL_ROOT_SIGNATURE>(subObject);
-                
-                writer.Add(subObject.Type, D3D12_LOCAL_ROOT_SIGNATURE {
-                    .pLocalRootSignature = GetState(object.pLocalRootSignature)->nativeObject
-                });
-                break;
-            }
-        }
-    }
-
-    // Create description
-    D3D12_STATE_OBJECT_DESC desc = writer.GetDesc(pDesc->Type);
-
-    // Object
-    ID3D12StateObject* stateObject{nullptr};
-
-    // Pass down callchain(s)
-    if (existingStateObject) {
-        HRESULT hr = table.next->AddToStateObject(&desc, Next(existingStateObject), __uuidof(ID3D12StateObject), reinterpret_cast<void**>(&stateObject));
-        if (FAILED(hr)) {
-            return hr;
-        }
-    } else {
-        HRESULT hr = table.next->CreateStateObject(&desc, __uuidof(ID3D12StateObject), reinterpret_cast<void**>(&stateObject));
-        if (FAILED(hr)) {
-            return hr;
-        }
-    }
-
-    // Create state
-    auto* state = new (table.state->allocators, kAllocStateFence) StateObjectState();
-    state->allocators = table.state->allocators;
-    state->parent = device;
-
-    // Create detours
-    stateObject = CreateDetour(state->allocators, stateObject, state);
-
-    // Query to external object if requested
-    if (ppStateObject) {
-        HRESULT hr = stateObject->QueryInterface(riid, ppStateObject);
-        if (FAILED(hr)) {
-            return hr;
-        }
-    }
-
-    // Cleanup
-    stateObject->Release();
-
-    // OK
-    return S_OK;
-}
-
-HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, const IID& riid, void** ppStateObject) {
-    return CreateOrAddToStateObject(device, pDesc, nullptr, riid, ppStateObject);
-}
-
-HRESULT WINAPI HookID3D12DeviceAddToStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pAddition, ID3D12StateObject* pStateObjectToGrowFrom, const IID& riid, void** ppNewStateObject) {
-    return CreateOrAddToStateObject(device, pAddition, pStateObjectToGrowFrom, riid, ppNewStateObject);
-}
-
-HRESULT WINAPI HookID3D12StateObjectGetDevice(ID3D12StateObject* _this, REFIID riid, void **ppDevice) {
-    auto table = GetTable(_this);
-
-    // Pass to device query
-    return table.state->parent->QueryInterface(riid, ppDevice);
-}
-
 HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc, const IID &riid, void **pPipeline) {
     auto table = GetTable(device);
 
@@ -555,7 +432,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     state->deepCopy->VS = {};
 
     // Create detours
-    ID3D12PipelineState* detourPipeline = CreateDetour(state->allocators, state->object, state);
+    ID3D12PipelineState* detourPipeline = CreateDetour(state->allocators, static_cast<ID3D12PipelineState *>(state->object), state);
 
     // Query to external object if requested
     if (pPipeline) {
@@ -631,7 +508,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     state->deepCopy->CS = {};
 
     // Create detours
-    ID3D12PipelineState* detourPipeline = CreateDetour(state->allocators, state->object, state);
+    ID3D12PipelineState* detourPipeline = CreateDetour(state->allocators, static_cast<ID3D12PipelineState *>(state->object), state);
 
     // Query to external object if requested
     if (pPipeline) {

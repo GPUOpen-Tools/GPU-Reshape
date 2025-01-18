@@ -34,6 +34,8 @@
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
 #include <Backends/DX12/Compiler/DXCodeOffsetTraceback.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
+#include <Backends/DX12/States/RootParameterVisibility.h>
+#include <Backends/DX12/States/RootSignatureUserClassType.h>
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 
 // Common
@@ -45,6 +47,7 @@
 // Forward declarations
 struct DXCompileJob;
 struct DXILValueReader;
+struct RootSignaturePhysicalMapping;
 
 /// Function block
 struct DXILPhysicalBlockFunction : public DXILPhysicalBlockSection {
@@ -189,6 +192,9 @@ private:
     uint32_t eventHandle;
     uint32_t constantHandle;
 
+    /// Local handles
+    uint32_t localDescriptorHandle{UINT32_MAX};
+
     /// All stream handles
     TrivialStackVector<uint32_t, 64> exportStreamHandles;
 
@@ -237,6 +243,9 @@ private:
         /// Source mapping
         const struct RootSignatureUserMapping* source{nullptr};
 
+        /// The originating physical mapping
+        RootSignaturePhysicalMapping* physicalMapping{nullptr};
+
         /// Dynamic, sequential, offset due to dynamic indexing
         IL::ID dynamicOffset{IL::InvalidID};
     };
@@ -265,6 +274,16 @@ private:
     /// \param resource resource to be fetched
     /// \return empty if not found
     DynamicRootSignatureUserMapping GetResourceUserMapping(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, IL::ID resource);
+
+    /// Try to get a resource from a particular physical space
+    /// \param block source block
+    /// \param physicalMapping current physical mappings to try to extract from
+    /// \param rootVisibility expected visibility
+    /// \param classType expected class type
+    /// \param metadata handle metadata
+    /// \param out user mapping, if found
+    /// \return true if found
+    bool TryGetResourceUserMappingFromPhysicalSpace(LLVMBlock* block, RootSignaturePhysicalMapping* physicalMapping, RootParameterVisibility rootVisibility, RootSignatureUserClassType classType, const HandleMetadata& metadata, DynamicRootSignatureUserMapping& out);
 
     /// Get a resource type from annotation
     /// \param properties resource properties

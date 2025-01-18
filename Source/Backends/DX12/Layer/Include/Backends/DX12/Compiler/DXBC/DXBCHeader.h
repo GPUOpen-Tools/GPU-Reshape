@@ -539,6 +539,134 @@ struct DXILSourceInfoSourceContentsEntry {
     uint32_t contentByteSize;
 };
 
+struct DXBCRuntimeDataHeader {
+    uint32_t version;
+    uint32_t partCount;
+};
+
+enum class DXBCRuntimeDataPartType : uint32_t {
+    None = 0,
+    String = 1,
+    IndexArray = 2,
+    ResourceTable = 3,
+    FunctionTable = 4,
+    RawBytes = 5,
+    SubObjectTable = 6
+};
+
+struct DXBCRuntimeDataPartHeader {
+    DXBCRuntimeDataPartType type;
+    uint32_t size;
+};
+
+struct DXBCRuntimeDataTableHeader {
+    uint32_t recordCount;
+    uint32_t recordStride;
+};
+
+enum class DXBCRuntimeDataResourceFlag : uint32_t {
+    GloballyCoherent = BIT(0),
+    Counter = BIT(1),
+    ROV = BIT(2),
+    DynamicIndexing = BIT(3),
+    Atomic64 = BIT(4)
+};
+
+struct DXBCRuntimeDataResourceRecord {
+    uint32_t _class;
+    uint32_t shape;
+    uint32_t id;
+    uint32_t space;
+    uint32_t lower;
+    uint32_t upper;
+    uint32_t nameOffset;
+    uint32_t flags;
+};
+
+enum class DXBCRuntimeDataShaderKind : uint32_t {
+    Pixel = 0,
+    Vertex = 1,
+    Geometry = 2,
+    Hull = 3,
+    Domain = 4,
+    Compute = 5,
+    Library = 6,
+    RayGeneration = 7,
+    Intersection = 8,
+    AnyHit = 9,
+    ClosestHit = 10,
+    Miss = 11,
+    Callable = 12,
+    Mesh = 13,
+    Amplification = 14
+};
+
+struct DXBCRuntimeDataFunctionRecord {
+    uint32_t nameOffset;
+    uint32_t unmangledNameOffset;
+    uint32_t resourceRecordIndex;
+    uint32_t dependenciesStringIndex;
+    DXBCRuntimeDataShaderKind shaderKind;
+    uint32_t payloadByteSize;
+    uint32_t attributeByteSize;
+    uint32_t featureInfo1;
+    uint32_t featureInfo2;
+    uint32_t shaderStageFlags;
+    uint32_t minShaderTarget;
+};
+
+enum class DXBCRuntimeDataSubObjectKind : uint32_t {
+    StateObjectConfig = 0,
+    GlobalRootSignature = 1,
+    LocalRootSignature = 2,
+    SubObjectToExportsAssociation = 8,
+    RaytracingShaderConfig = 9,
+    RaytracingPipelineConfig = 10,
+    HitGroup = 11,
+    RaytracingPipelineConfig1 = 12
+};
+
+struct DXBCRuntimeDataSubObjectRecord {
+    DXBCRuntimeDataSubObjectKind subObjectKind;
+    uint32_t nameOffset;
+    union {
+        struct {
+            uint32_t flags;
+        } stateObjectConfig;
+
+        struct {
+            uint32_t dataOffset;
+            uint32_t dataSize;
+        } rootSignature;
+
+        struct {
+            uint32_t subObjectStringOffset;
+            uint32_t exportsStringOffset;
+        } subObjectToExportsAssociation;
+
+        struct {
+            uint32_t maxPayloadByteSize;
+            uint32_t maxAttributeByteSize;
+        } raytracingShaderConfig;
+        
+        struct {
+            uint32_t maxTraceDepth;
+        } raytracingPipelineConfig;
+
+        struct {
+            uint32_t maxTraceDepth;
+            uint32_t flags;
+        } raytracingPipelineConfig1;
+
+        struct {
+            uint32_t type;
+            uint32_t anyHitStringOffset;
+            uint32_t closestHitStringOffset;
+            uint32_t intersectionStringOffset;
+        } hitGroup;
+    };
+};
+
 // MSVC tight packing
 #ifdef _MSC_VER
 #pragma pack(pop)

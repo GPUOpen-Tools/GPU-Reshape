@@ -44,6 +44,7 @@
 DXILPhysicalBlockGlobal::DXILPhysicalBlockGlobal(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table) :
     DXILPhysicalBlockSection(allocators, program, table),
     constantMap(allocators, program.GetConstants(), program.GetIdentifierMap(), table.type.typeMap),
+    variableLookup(allocators),
     initializerResolves(allocators) {
 
 }
@@ -323,6 +324,12 @@ void DXILPhysicalBlockGlobal::ParseGlobalVar(struct LLVMRecord& record) {
 
     // Allocate
     IL::ID id = table.idMap.AllocMappedID(DXILIDType::Variable);
+    if (id >= variableLookup.size()) {
+        variableLookup.resize(id + 1, UINT32_MAX);
+    }
+
+    // Lookup to the anchor
+    variableLookup[id] = record.sourceAnchor;
 
     // Set type, IL programs have no concept of globals for now
     const Backend::IL::Type* pointeeType = table.type.typeMap.GetType(static_cast<uint32_t>(record.Op(0)));
@@ -458,6 +465,33 @@ void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
     }
 }
 
+void DXILPhysicalBlockGlobal::CompileGlobalVariables() {
+    LLVMBlock& root = table.scan.GetRoot();
+
+    // Compile all new variables
+    for (const Backend::IL::Variable* variable : program.GetVariableList()) {
+        // If existing, just ignore it, it'll be stitched later
+        if (variable->id < variableLookup.size() && variableLookup[variable->id] != UINT32_MAX) {
+            continue;
+        }
+        
+        LLVMRecord record(LLVMModuleRecord::GlobalVar);
+        record.SetUser(true, ~0u, variable->id);
+        record.opCount = 6;
+        record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+        record.ops[0] = table.type.typeMap.GetType(variable->type->As<Backend::IL::PointerType>());
+        record.ops[1] = 1 | (static_cast<uint32_t>(DXILAddressSpace::Constant) << 2);
+        record.ops[2] = 0; // Initializer
+        record.ops[3] = 0; // Extern
+        record.ops[4] = 3; // Alignment
+        record.ops[5] = 0; // Section
+
+        // Insert after last global variable
+        const LLVMBlockElement* insertionPoint = root.FindPlacementReverse(LLVMBlockElementType::Record, LLVMModuleRecord::GlobalVar) + 1;
+        root.InsertRecord(insertionPoint, record);
+    }
+}
+
 void DXILPhysicalBlockGlobal::StitchGlobalVar(LLVMRecord &record) {
     /*
      * LLVM Specification
@@ -483,4 +517,6 @@ void DXILPhysicalBlockGlobal::StitchAlias(LLVMRecord &record) {
 
 void DXILPhysicalBlockGlobal::CopyTo(DXILPhysicalBlockGlobal &out) {
     constantMap.CopyTo(out.constantMap);
+
+    out.variableLookup = variableLookup;
 }

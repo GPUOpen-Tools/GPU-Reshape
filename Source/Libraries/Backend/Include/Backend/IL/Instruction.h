@@ -539,10 +539,11 @@ namespace IL {
     };
 
     struct InsertInstruction : public Instruction {
-        static constexpr OpCode kOpCode = OpCode::Extract;
+        static constexpr OpCode kOpCode = OpCode::Insert;
 
         ID composite;
         ID value;
+        ID index;
     };
 
     struct SelectInstruction : public Instruction {

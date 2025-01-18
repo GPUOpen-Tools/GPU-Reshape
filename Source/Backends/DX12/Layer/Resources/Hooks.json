@@ -8,6 +8,7 @@
     "DescriptorHeap.h",
     "Pipeline.h",
     "PipelineLibrary.h",
+    "Raytracing.h",
     "Fence.h",
     "CommandList.h",
     "SwapChain.h",
@@ -198,6 +199,7 @@
         "Reset",
         "Close",
         "SetPipelineState",
+        "SetPipelineState1",
         "SetDescriptorHeaps",
         "SetGraphicsRootSignature",
         "SetComputeRootSignature",
@@ -225,6 +227,7 @@
         "ExecuteIndirect",
         "CopyTiles",
         "DispatchMesh",
+        "DispatchRays",
         "GetDevice",
         "GetType"
       ],

@@ -32,13 +32,14 @@
 // Common
 #include <Common/FileSystem.h>
 
-DXILDebugModule::DXILDebugModule(const Allocators &allocators, const DXBCPhysicalBlockShaderSourceInfo& shaderSourceInfo)
+DXILDebugModule::DXILDebugModule(const Allocators &allocators, const DXBCPhysicalBlockShaderSourceInfo &shaderSourceInfo)
     : scan(allocators),
       sourceFragments(allocators),
       instructionMetadata(allocators),
       metadata(allocators),
       thinTypes(allocators),
       thinValues(allocators),
+      thinFunctions(allocators),
       allocators(allocators),
       shaderSourceInfo(shaderSourceInfo) { }
 
@@ -229,6 +230,9 @@ void DXILDebugModule::ParseTypes(LLVMBlock *block) {
                 // Void return type?
                 type.function.isVoidReturn = thinTypes.at(record.Op(1)).type == LLVMTypeRecord::Void;
 
+                // Number of parameters
+                type.function.parameterCount = record.opCount - 2;
+
                 // Inherit non-semantic from parameters
                 for (uint32_t i = 2; i < record.opCount; i++) {
                     type.bIsNonSemantic |= thinTypes.at(record.Op(i)).bIsNonSemantic;
@@ -246,6 +250,13 @@ void DXILDebugModule::ParseModuleFunction(const LLVMRecord& record) {
     // Set type
     value.thinType = record.Op32(0);
 
+    // Prototype?
+    if (!record.Op32(2)) {
+        thinFunctions.push_back(ThinFunction {
+            .thinType = value.thinType
+        });
+    }
+
     // Inherit non-semantic from type
     value.bIsNonSemantic |= thinTypes.at(value.thinType).bIsNonSemantic;
 }
@@ -253,6 +264,14 @@ void DXILDebugModule::ParseModuleFunction(const LLVMRecord& record) {
 void DXILDebugModule::ParseFunction(LLVMBlock *block) {
     // Keep current head
     const size_t valueHead = thinValues.size();
+
+    // Get type, appears in linkage order
+    const ThinFunction& function = thinFunctions[functionLinkIndex++];
+
+    // Create value per parameter
+    for (uint32_t i = 0; i < thinTypes[function.thinType].function.parameterCount; i++) {
+        thinValues.emplace_back();
+    }
     
     for(LLVMBlock* child : block->blocks) {
         switch (child->As<LLVMReservedBlock>()) {

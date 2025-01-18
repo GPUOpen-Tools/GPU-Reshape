@@ -43,12 +43,23 @@ struct DeviceState;
 class Dispatcher;
 struct DispatcherBucket;
 
+struct PipelineJobKey {
+    /// Instrumentation key
+    ShaderInstrumentationKey shaderKey{};
+
+    /// Optional, owning shader to the key
+    ShaderState* shader{nullptr};
+};
+
 struct PipelineJob {
     /// Parent state
     PipelineState* state{ nullptr };
 
     /// TODO: Stack fallback
-    ShaderInstrumentationKey* shaderInstrumentationKeys{nullptr};
+    PipelineJobKey* shaderInstrumentationKeys{nullptr};
+
+    /// Total number of keys
+    uint32_t keyCount{0};
 
     /// Pipeline specific hash
     uint64_t combinedHash{ 0 };
@@ -87,11 +98,12 @@ protected:
     /// Compile a given job
     void CompileGraphics(const PipelineJobBatch& job);
     void CompileCompute(const PipelineJobBatch& job);
-    void CompileMeshShader(const PipelineJobBatch &job);
+    void CompileStateObject(const PipelineJobBatch& job);
 
     /// Worker entry
     void WorkerGraphics(void* userData);
     void WorkerCompute(void* userData);
+    void WorkerStateObject(void* userData);
 
 private:
     DeviceState *device;
@@ -102,6 +114,7 @@ private:
     /// Job buckets
     Vector<PipelineJob> graphicsJobs;
     Vector<PipelineJob> computeJobs;
+    Vector<PipelineJob> stateObjectJobs;
 
     /// Async dispatcher
     ComRef<Dispatcher> dispatcher{nullptr};

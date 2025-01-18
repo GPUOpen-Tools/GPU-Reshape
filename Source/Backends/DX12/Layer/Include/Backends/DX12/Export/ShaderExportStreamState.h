@@ -32,8 +32,10 @@
 #include <Backends/DX12/States/ImmediateCommandList.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorInfo.h>
 #include <Backends/DX12/Export/ShaderExportConstantAllocator.h>
+#include <Backends/DX12/Export/ShaderExportDeviceAllocator.h>
 #include <Backends/DX12/Controllers/Versioning.h>
 #include <Backends/DX12/ShaderData/ConstantShaderDataBuffer.h>
+#include <Backends/DX12/Export/ShaderExportOwnedHeapAllocator.h>
 
 // Backend
 #include <Backend/CommandContextHandle.h>
@@ -174,6 +176,22 @@ struct ShaderExportSegmentDescriptorEntry {
     ShaderExportSegmentDescriptorAllocation segment{};
 };
 
+#ifndef NDEBUG
+struct ShaderExportStreamStateDebugStream {
+    /// Identifying name
+    std::string name;
+
+    /// Resource to be mapped
+    ID3D12Resource* resource{nullptr};
+
+    /// Offset to map from
+    uint64_t offset{0};
+
+    /// Number of bytes to map from the offset
+    uint64_t length{0};
+};
+#endif // NDEBUG
+
 /// Single stream state
 struct ShaderExportStreamState {
     ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators), referencedHeaps(allocators) {
@@ -206,7 +224,7 @@ struct ShaderExportStreamState {
     const PipelineState* pipeline{nullptr};
 
     /// Currently instrumented pipeline
-    ID3D12PipelineState* pipelineObject{nullptr};
+    IUnknown* pipelineObject{nullptr};
 
     /// Is the current pipeline instrumented?
     bool isInstrumented{false};
@@ -221,10 +239,25 @@ struct ShaderExportStreamState {
     ConstantShaderDataBuffer constantShaderDataBuffer;
 
     /// Shared constants allocator
+    /// Useful for small transient allocations
     ShaderExportConstantAllocator constantAllocator;
+
+    /// Shared device allocator
+    /// Useful for larger, stateful allocations
+    ShaderExportDeviceAllocator deviceAllocator;
+
+    /// Shared heap allocator
+    /// Useful for larger descriptor allocations that shouldnt pollute the small reserved region
+    /// Does however require user heap reconstruction when used
+    ShaderExportOwnedHeapAllocator heapAllocator;
 
     /// Top level context handle
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
+
+#ifndef NDEBUG
+    /// All pending debug streams
+    std::vector<ShaderExportStreamStateDebugStream> debugStreams;
+#endif // NDEBUG
 };
 
 struct ShaderExportStreamSegmentUserContext {
