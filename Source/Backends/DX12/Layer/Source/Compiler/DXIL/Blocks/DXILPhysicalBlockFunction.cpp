@@ -5585,6 +5585,9 @@ void DXILPhysicalBlockFunction::CreateExportHandle(const DXCompileJob &job, stru
     // Allocate sharted counter
     exportCounterHandle = program.GetIdentifierMap().AllocID();
 
+    // Cleanup
+    exportStreamHandles.Clear();
+
     // Create handle
     CreateUniversalHandle(
         block,
