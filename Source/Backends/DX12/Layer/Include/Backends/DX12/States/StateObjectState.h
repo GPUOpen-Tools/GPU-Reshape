@@ -99,7 +99,7 @@ struct StateShaderSubObjectExport {
     RootSignatureState* localSignature{nullptr};
 
     /// All inlined associations
-    TrivialStackVector<StateSubObjectAssociation, 1u> associations;
+    std::vector<StateSubObjectAssociation> associations;
 };
 
 struct StateShaderSubObject {
@@ -107,7 +107,7 @@ struct StateShaderSubObject {
     ShaderState* shader{nullptr};
 
     /// All exports of this sub-object
-    TrivialStackVector<StateShaderSubObjectExport, 4u> exports;
+    std::vector<StateShaderSubObjectExport> exports;
 };
 
 struct StateSubObjectIndex {

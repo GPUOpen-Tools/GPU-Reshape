@@ -412,7 +412,7 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                     // Associate the object
                     switch (contained.pSubobjectToAssociate->Type) {
                         default: {
-                            StateSubObjectAssociation &association = _export->associations.Add();
+                            StateSubObjectAssociation &association = _export->associations.emplace_back();
                             association.type = contained.pSubobjectToAssociate->Type;
                             association.data.Resize(StateSubObjectWriter::GetSize(association.type));
                             std::memcpy(association.data.Data(), contained.pSubobjectToAssociate->pDesc, sizeof(association.data.Size()));
@@ -488,7 +488,7 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                 // Create new subobject
                 StateShaderSubObject& stateSubObject = state->shaderSubObjects.emplace_back();
                 stateSubObject.shader = GetOrCreateShaderState(table.state, object.DXILLibrary);
-                stateSubObject.exports.Reserve(object.NumExports);
+                stateSubObject.exports.reserve(object.NumExports);
 
                 // We need to know the export names and shader kinds, so scan the DXBC for it
                 TrivialStackVector<DXBCExport, 4u> dxbcExports;
@@ -512,7 +512,7 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                     LPCWSTR name = exports[exportIndex].c_str();
 
                     // Add to sub-object exports
-                    StateShaderSubObjectExport &_export = stateSubObject.exports.Add();
+                    StateShaderSubObjectExport &_export = stateSubObject.exports.emplace_back();
                     _export.name = name;
 
                     // Try to find the DXBC eqv.
