@@ -259,9 +259,22 @@ void DXBCPhysicalBlockRuntimeData::Compile(const DXCompileJob &job) {
         return;
     }
 
+    // Determine which functions have a local root signature and which do not
+    // This is only known at compile time
+    for (FunctionEntry& function : functionRecords.records) {
+        for (uint32_t i = 0; i < job.instrumentationKey.localKeyCount; i++) {
+            const ShaderLocalInstrumentationKey &key = job.instrumentationKey.localKeys[i];
+            
+            if (key.mangledName == function.name) {
+                function.hasLocalRootSignature = key.localPhysicalMapping != nullptr;
+                break;
+            }
+        }
+    }
+
     // Compile resources
     CompileResources(job);
-    CompileResourceVisibility();
+    CompileResourceVisibility(job);
 
     // Resources need to be relocated to maintain DXC ordering, this map holds the new indices
     std::vector<uint32_t> resourcePatchMap;
@@ -461,10 +474,16 @@ void DXBCPhysicalBlockRuntimeData::Compile(const DXCompileJob &job) {
     }
 }
 
-void DXBCPhysicalBlockRuntimeData::AddResourceVisibility(uint32_t index) {
-    // By default we load all resources, so they're all "visible"
+void DXBCPhysicalBlockRuntimeData::AddResourceVisibility(const DXCompileJob& job, uint32_t index) {
+    // By default, we load all resources, so they're all "visible"
     // Will be improved in the future
     for (FunctionEntry& function : functionRecords.records) {
+        // If this is a local resource, and no LRS is present, skip it
+        if (!function.hasLocalRootSignature && resourceRecords.records[index].isLocal) {
+            continue;
+        }
+
+        // Visible!
         function.resources.push_back(index);
     }
 }
@@ -544,7 +563,7 @@ void DXBCPhysicalBlockRuntimeData::CompileResources(const DXCompileJob &job) {
         .name = "CBufferDescriptorData"
     });
 
-    if (job.instrumentationKey.localPhysicalMapping) {
+    if (job.instrumentationKey.localKeys) {
         resourceRecords.records.push_back(ResourceEntry {
             .record = DXBCRuntimeDataResourceRecord {
                 ._class = static_cast<uint32_t>(DXILShaderResourceClass::CBVs),
@@ -555,6 +574,7 @@ void DXBCPhysicalBlockRuntimeData::CompileResources(const DXCompileJob &job) {
                 .upper = dxil.bindingInfo.local.descriptorConstantBaseRegister,
                 .flags =  0
             },
+            .isLocal = true,
             .name = "CBufferDescriptorDataLocal"
         });
     }
@@ -602,7 +622,7 @@ void DXBCPhysicalBlockRuntimeData::CompileResources(const DXCompileJob &job) {
     }
 }
 
-void DXBCPhysicalBlockRuntimeData::CompileResourceVisibility() {
+void DXBCPhysicalBlockRuntimeData::CompileResourceVisibility(const DXCompileJob& job) {
     // Categorize resources
     // New ones will appear last
     for (uint64_t i = 0; i < resourceRecords.records.size(); i++) {
@@ -616,7 +636,7 @@ void DXBCPhysicalBlockRuntimeData::CompileResourceVisibility() {
         
         for (uint32_t index : bucket.indices) {
             if (index >= userResourcesEnd) {
-                AddResourceVisibility(index);
+                AddResourceVisibility(job, index);
             }
         } 
     }

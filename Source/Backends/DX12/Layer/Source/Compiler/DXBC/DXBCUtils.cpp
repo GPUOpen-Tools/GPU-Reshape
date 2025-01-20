@@ -176,7 +176,8 @@ bool ScanDXBCShaderExports(const void *byteCode, uint64_t byteLength, TrivialSta
 
                         // Always report it, regardless of kind
                         DXBCExport &exportEntry = out.Add();
-                        exportEntry.name = stringBufferStart + record.unmangledNameOffset;
+                        exportEntry.mangledName = stringBufferStart + record.nameOffset;
+                        exportEntry.unmangledName = stringBufferStart + record.unmangledNameOffset;
                         exportEntry.kind = record.shaderKind;
                     }
                     break;

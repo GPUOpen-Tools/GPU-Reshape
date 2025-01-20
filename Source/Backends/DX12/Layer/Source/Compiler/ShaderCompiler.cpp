@@ -117,6 +117,11 @@ void ShaderCompiler::Worker(void *data) {
     if (!CompileShader(*job)) {
         job->state->RemoveInstrument(job->instrumentationKey);
     }
+
+    // Cleanup keys
+    if (job->instrumentationKey.localKeys) {
+        destroy(job->instrumentationKey.localKeys, allocators);
+    }
     
     destroy(job, allocators);
 }

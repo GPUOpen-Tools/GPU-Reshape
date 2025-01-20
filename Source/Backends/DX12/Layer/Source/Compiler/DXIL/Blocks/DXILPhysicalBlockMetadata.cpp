@@ -1483,7 +1483,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
     }
 
     // Local handle, if supported
-    if(job.instrumentationKey.localPhysicalMapping) {
+    if(job.instrumentationKey.localKeys) {
         // Create handle
         DXILMetadataHandleEntry& handle = handles.emplace_back();
         handle.name = "CBufferDescriptorDataLocal";

@@ -2987,7 +2987,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
     // Get function definition
     DXILFunctionDeclaration *declaration = functions[linkedIndex];
-
+    
     // Branching handling for multi function setups
     if (RequiresValueMapSegmentation()) {
         // Merge the id value segment
@@ -3072,7 +3072,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
     block->InsertRecord(block->elements.data(), declareBlocks);
 
     // Add binding handles
-    CreateHandles(job, block);
+    CreateHandles(job, block, declaration);
 
     // Compile all blocks
     for (const IL::BasicBlock *bb: fn->GetBasicBlocks()) {
@@ -5876,7 +5876,25 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
     }
 }
 
-void DXILPhysicalBlockFunction::CreateHandles(const DXCompileJob &job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CreateHandles(const DXCompileJob &job, struct LLVMBlock *block, const DXILFunctionDeclaration* function) {
+    // Cleanup
+    localPhysicalMappings = nullptr;
+    
+    // Has local keys?
+    if (job.instrumentationKey.localKeys) {
+        // Get name of the function
+        LLVMRecordStringView name = table.symbol.GetValueString(static_cast<uint32_t>(function->anchor));
+
+        // Find key on mangled name
+        for (uint32_t i = 0; i < job.instrumentationKey.localKeyCount; i++) {
+            const ShaderLocalInstrumentationKey &key = job.instrumentationKey.localKeys[i];
+            if (name == key.mangledName) {
+                localPhysicalMappings = key.localPhysicalMapping;
+                break;
+            }
+        }
+    }
+        
     CreateExportHandle(job, block);
     CreatePRMTHandle(job, block);
     CreateDescriptorHandle(job, block);
@@ -5924,7 +5942,7 @@ void DXILPhysicalBlockFunction::CreateDescriptorHandle(const DXCompileJob &job, 
     );
     
     // Create local handle
-    if (job.instrumentationKey.localPhysicalMapping) {
+    if (localPhysicalMappings) {
         CreateUniversalHandle(
             block,
             localDescriptorHandle,
@@ -6463,13 +6481,18 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
             break;
     }
 
-    // Try all available physical spaces, resource may be present in any of the root signatures
-    if (!TryGetResourceUserMappingFromPhysicalSpace(block, job.instrumentationKey.physicalMapping, rootVisibility, classType, metadata, out) &&
-        !TryGetResourceUserMappingFromPhysicalSpace(block, job.instrumentationKey.localPhysicalMapping, rootVisibility, classType, metadata, out)) {
-        ASSERT(false, "Failed to associate register space to physical space");
+    // Try global physical space
+    if (TryGetResourceUserMappingFromPhysicalSpace(block, job.instrumentationKey.physicalMapping, rootVisibility, classType, metadata, out)) {
+        return out;
+    }
+    
+    // Found a matching export name, try the space
+    if (localPhysicalMappings && TryGetResourceUserMappingFromPhysicalSpace(block, localPhysicalMappings, rootVisibility, classType, metadata, out)) {
+        return out;
     }
 
-    // OK
+    // Failed
+    ASSERT(false, "Failed to associate register space to physical space");
     return out;
 }
 
@@ -6592,10 +6615,10 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
 
             // Select descriptor data based on the physical mapping
             uint32_t handle{};
-            if (userMapping.physicalMapping == job.instrumentationKey.localPhysicalMapping) {
-                handle = localDescriptorHandle;
-            } else {
+            if (userMapping.physicalMapping == job.instrumentationKey.physicalMapping) {
                 handle = descriptorHandle;
+            } else {
+                handle = localDescriptorHandle;
             }
 
             /*

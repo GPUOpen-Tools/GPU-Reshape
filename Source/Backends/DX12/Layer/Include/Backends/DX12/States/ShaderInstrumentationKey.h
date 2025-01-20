@@ -34,6 +34,14 @@
 #include <cstdint>
 #include <tuple>
 
+struct ShaderLocalInstrumentationKey {
+    /// Name for which this key applies
+    const char* mangledName{nullptr};
+    
+    /// Local root signature mapping
+    RootSignaturePhysicalMapping* localPhysicalMapping{nullptr};
+};
+
 struct ShaderInstrumentationKey {
     auto AsTuple() const {
         return std::make_tuple(featureBitSet, combinedHash);
@@ -52,8 +60,11 @@ struct ShaderInstrumentationKey {
     /// Root signature mapping
     RootSignaturePhysicalMapping* physicalMapping{nullptr};
 
-    /// Optional, local root signature mapping
-    RootSignaturePhysicalMapping* localPhysicalMapping{nullptr};
+    /// Optional, local keys for libraries
+    ShaderLocalInstrumentationKey* localKeys{nullptr};
+
+    /// Number of local keys
+    uint32_t localKeyCount = 0;
 
     /// Signature root binding info
     RootRegisterBindingInfo bindingInfo{};

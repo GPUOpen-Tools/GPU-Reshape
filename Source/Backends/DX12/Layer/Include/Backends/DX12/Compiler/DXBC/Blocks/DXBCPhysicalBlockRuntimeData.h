@@ -82,6 +82,9 @@ private:
         /// Serialized record
         DXBCRuntimeDataResourceRecord record;
 
+        /// From the local root signature?
+        bool isLocal = false;
+
         /// Extracted name
         std::string name;
     };
@@ -89,6 +92,9 @@ private:
     struct FunctionEntry {
         /// Serialized record
         DXBCRuntimeDataFunctionRecord record;
+
+        /// Has a local root signature?
+        bool hasLocalRootSignature = false;
 
         /// Extracted name
         std::string name;
@@ -126,8 +132,9 @@ private:
 
 private:
     /// Add a resource to all functions
+    /// \param job the parent job
     /// \param index resource index to add
-    void AddResourceVisibility(uint32_t index);
+    void AddResourceVisibility(const DXCompileJob& job, uint32_t index);
 
     /// Compile all resources
     /// \param job parent job
@@ -135,7 +142,8 @@ private:
 
     /// Compile the visibility of all resources
     /// Ordering according to the expected layout
-    void CompileResourceVisibility();
+    /// \param job the parent job
+    void CompileResourceVisibility(const DXCompileJob& job);
 
 private:
     struct StringSet {

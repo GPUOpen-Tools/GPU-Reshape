@@ -35,7 +35,7 @@
 struct StateSubObjectWriter {
     /// Constructor
     /// \param desc given description
-    StateSubObjectWriter(const Allocators& allocators) : subObjects(allocators), allocator(allocators) {
+    StateSubObjectWriter(const Allocators& allocators) : subObjects(allocators), allocator(allocators), pendingAssociations(allocators) {
         
     }
 
@@ -93,13 +93,14 @@ struct StateSubObjectWriter {
     /// \return address
     const D3D12_STATE_SUBOBJECT* FutureAddressOf(uint32_t index) {
         ASSERT(subObjects.capacity() > index, "Out of bounds address");
-        return subObjects.data() + index;
+        return reinterpret_cast<const D3D12_STATE_SUBOBJECT *>(subObjects.data()) + index;
     }
     
     /// Add a new sub object
     /// \param type given type
     /// \return data, length must be GetSize(type)
-    void DeepAdd(D3D12_STATE_SUBOBJECT_TYPE type, const void* data) {
+    template<typename T = void>
+    const T* DeepAdd(D3D12_STATE_SUBOBJECT_TYPE type, const T* data) {
         void* dest = allocator.AllocateArray<uint8_t>(static_cast<uint32_t>(GetSize(type)));
 
         /// Get serialized type
@@ -109,10 +110,12 @@ struct StateSubObjectWriter {
         SerializeOpaque(type, data, dest, allocator.AllocateArray<uint8_t>(static_cast<uint32_t>(blobSize)));
         
         // Add entry
-        subObjects.push_back(D3D12_STATE_SUBOBJECT {
-            .Type = type,
-            .pDesc = dest
+        subObjects.push_back(SubObject {
+            .type = type,
+            .desc = dest
         });
+
+        return static_cast<const T *>(dest);
     }
     
     /// Add a new sub object
@@ -120,9 +123,9 @@ struct StateSubObjectWriter {
     /// \return data, length must be GetSize(type)
     void Add(D3D12_STATE_SUBOBJECT_TYPE type, const void* data) {
         // Add entry
-        subObjects.push_back(D3D12_STATE_SUBOBJECT {
-            .Type = type,
-            .pDesc = Embed(data, static_cast<uint32_t>(GetSize(type)))
+        subObjects.push_back(SubObject {
+            .type = type,
+            .desc = Embed(data, static_cast<uint32_t>(GetSize(type)))
         });
     }
 
@@ -134,9 +137,9 @@ struct StateSubObjectWriter {
         ASSERT(GetSize(type) == sizeof(value), "Unexpected size");
         
         // Add entry
-        subObjects.push_back(D3D12_STATE_SUBOBJECT {
-            .Type = type,
-            .pDesc = Embed(&value, static_cast<uint32_t>(GetSize(type)))
+        subObjects.push_back(SubObject {
+            .type = type,
+            .desc = Embed(&value, static_cast<uint32_t>(GetSize(type)))
         });
     }
 
@@ -157,29 +160,61 @@ struct StateSubObjectWriter {
     /// \param value value to be embedded
     /// \return embedded pointer
     template<typename T>
-    const T* Embed(const T& value) {
-        return static_cast<const T*>(Embed(&value, sizeof(T)));
+    T* Embed(const T& value) {
+        return static_cast<T*>(Embed(&value, sizeof(T)));
     }
 
     /// Embed data
     /// \param data data pointer
     /// \param size byte length of data
     /// \return embedded pointer
-    void* Embed(const void* data, uint32_t size) {
+    template<typename T = void>
+    T* Embed(const T* data, uint32_t size) {
         void* dest = allocator.AllocateArray<uint8_t>(size);
         std::memcpy(dest, data, size);
-        return dest;
+        return static_cast<T*>(dest);
     }
 
     /// Get the description
     /// \param type state object type
     /// \return final description
     D3D12_STATE_OBJECT_DESC GetDesc(D3D12_STATE_OBJECT_TYPE type) {
+        // Resolve all pending associations
+        for (const PendingAssociation& association : pendingAssociations) {
+            auto* object = static_cast<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION *>(subObjects[association.subObject].desc);
+            object->pSubobjectToAssociate = reinterpret_cast<const D3D12_STATE_SUBOBJECT *>(&subObjects[association.associatedObject]);
+        }
+
         D3D12_STATE_OBJECT_DESC desc;
         desc.Type = type;
         desc.NumSubobjects = static_cast<uint32_t>(subObjects.size());
-        desc.pSubobjects = subObjects.data();
+        desc.pSubobjects = reinterpret_cast<const D3D12_STATE_SUBOBJECT *>(subObjects.data());
         return desc;
+    }
+
+    /// Add a new sub-object association, to be resolved later
+    /// \param names associated names
+    /// \param count number of names
+    /// \param index sub-object index to associate to
+    void SubObjectAssociation(const LPCWSTR* names, uint32_t count, uint32_t index) {
+        Add(D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION, D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION {
+            .pSubobjectToAssociate = nullptr,
+            .NumExports = 1,
+            .pExports = Embed<LPCWSTR>(names, sizeof(LPCWSTR) * count)
+        });
+
+        // Resolve it later
+        pendingAssociations.push_back(PendingAssociation {
+            .subObject = static_cast<uint32_t>(subObjects.size()) - 1,
+            .associatedObject = index
+        });
+    }
+
+    /// Add a new sub-object association, to be resolved later
+    /// \param name associated name
+    /// \param index sub-object index to associate to
+    void SubObjectAssociation(LPCWSTR name, uint32_t index) {
+        SubObjectAssociation(&name, 1u, index);
     }
 
 private:
@@ -262,8 +297,22 @@ private:
     }
 
 private:
+    struct PendingAssociation {
+        uint32_t subObject        = 0;
+        uint32_t associatedObject = 0;
+    };
+
+private:
+    struct SubObject {
+        D3D12_STATE_SUBOBJECT_TYPE type;
+        void *desc{nullptr};
+    };
+    
     /// All pending entries
-    Vector<D3D12_STATE_SUBOBJECT> subObjects;
+    Vector<SubObject> subObjects;
+
+    /// All pending associations
+    Vector<PendingAssociation> pendingAssociations;
 
     /// Internal allocator
     LinearBlockAllocator<4096> allocator;

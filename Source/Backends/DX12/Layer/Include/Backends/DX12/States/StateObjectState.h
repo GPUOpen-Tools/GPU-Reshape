@@ -89,27 +89,40 @@ struct StateSubObjectAssociation {
     TrivialStackVector<uint32_t, sizeof(uint32_t) * 4> data;
 };
 
-struct StateSubObject {
-    /// Shader of this subobject
-    ShaderState* shader{nullptr};
+struct StateShaderSubObjectExport {
+    std::wstring name;
+    
+    /// Scanned export
+    DXBCExport dxbc;
 
-    /// Local root signature of this subobject
-    RootSignatureState* localRootSignature{nullptr};
+    /// Signatures are associated with the exports themselves
+    RootSignatureState* localSignature{nullptr};
 
     /// All inlined associations
     TrivialStackVector<StateSubObjectAssociation, 1u> associations;
+};
 
-    /// All scanned DXBC exports, lines up with the exports
-    TrivialStackVector<DXBCExport, 4u> dxbcExports;
+struct StateShaderSubObject {
+    /// Shader of this sub-object
+    ShaderState* shader{nullptr};
 
-    /// All exports
-    TrivialStackVector<std::wstring, 4u> exports;
+    /// All exports of this sub-object
+    TrivialStackVector<StateShaderSubObjectExport, 4u> exports;
+};
+
+struct StateSubObjectIndex {
+    /// Type of the object
+    D3D12_STATE_SUBOBJECT_TYPE type{};
+
+    /// Container index
+    uint32_t index{0};
 };
 
 struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState : public PipelineState {
     StateObjectState(const Allocators &allocators) :
         PipelineState(allocators),
-        subObjects(allocators),
+        shaderSubObjects(allocators),
+        hitGroupSubobjects(allocators),
         functionExports(allocators),
         identifierExports(allocators),
         writer(allocators) {
@@ -145,7 +158,10 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
     StateObjectShaderIdentifierTable* identifierTable{nullptr};
 
     /// All shader subobjects
-    Vector<StateSubObject> subObjects;
+    Vector<StateShaderSubObject> shaderSubObjects;
+
+    /// All hit groups
+    Vector<D3D12_HIT_GROUP_DESC> hitGroupSubobjects;
 
     /// Current hot patch table
     std::atomic<StateObjectShaderIdentifierPatch*> hotSwapPatchTable{nullptr};
@@ -162,7 +178,7 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
     Vector<std::wstring> identifierExports;
 
     /// Export name to sub object lookup
-    std::unordered_map<std::wstring, uint32_t> subObjectMap;
+    std::unordered_map<std::wstring, StateSubObjectIndex> subObjectMap;
 
     /// Defacto deep copy for this state object
     StateSubObjectWriter writer;

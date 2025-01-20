@@ -382,8 +382,8 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             }
 
             // AS and MS not supported yet
-            assert(!graphicsState->as);
-            assert(!graphicsState->ms);
+            ASSERT(!graphicsState->as, "Not supported");
+            ASSERT(!graphicsState->ms, "Not supported");
 
             // Attempt to create pipeline
             HRESULT result = device->object->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipeline));
@@ -552,10 +552,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
         std::vector<LPCWSTR>           localNames;
 
         // All associations that have yet to be pushed
-        std::vector<const StateSubObject*> pendingAssociations;
-
-        // Number of inline associations to be added
-        uint32_t inlineSubObjectCount = 0;
+        std::vector<const StateShaderSubObject*> pendingAssociations;
 
         // Source, unwrapped, writer for inheriting configurations
         auto originalDesc = stateObjectState->writer.GetDesc(stateObjectState->stateObjectType);
@@ -570,8 +567,8 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
             }
 
             // TODO[rt]: Lookup time might not be ok, consider having a one-to-many lookup
-            for (uint32_t subObjectIndex = 0; subObjectIndex < stateObjectState->subObjects.size(); subObjectIndex++) {
-                const StateSubObject& subObject = stateObjectState->subObjects[subObjectIndex];
+            for (uint32_t subObjectIndex = 0; subObjectIndex < stateObjectState->shaderSubObjects.size(); subObjectIndex++) {
+                const StateShaderSubObject& subObject = stateObjectState->shaderSubObjects[subObjectIndex];
 
                 // Not the replaced shader? Skip
                 if (subObject.shader != key.shader) {
@@ -580,10 +577,13 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
                 // Append the local mappings
                 ShaderInstrumentationKey localKey = key.shaderKey;
-                localKey.localPhysicalMapping = subObject.localRootSignature->physicalMapping;
-                    
+
                 // Combine hashes
-                CombineHash(localKey.combinedHash, subObject.localRootSignature->physicalMapping->signatureHash);
+                for (const StateShaderSubObjectExport& _export : subObject.exports) {
+                    if (_export.localSignature) {
+                        CombineHash(localKey.combinedHash, _export.localSignature->physicalMapping->signatureHash);
+                    }
+                }
                 
                 // Get the instrumented blob
                 D3D12_SHADER_BYTECODE byteCode = subObject.shader->GetInstrument(localKey);
@@ -594,13 +594,13 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
                 }
 
                 // We implicitly instrument all exports, so pull them all in
-                for (const std::wstring& name : subObject.exports) {
+                for (const StateShaderSubObjectExport& _export : subObject.exports) {
                     localExports.push_back(D3D12_EXPORT_DESC{
-                        .Name = name.c_str()
+                        .Name = _export.name.c_str()
                     });
 
                     // Do not inherit this export
-                    replacedExports.insert(name);
+                    replacedExports.insert(_export.name);
                 } 
 
                 // Add instrumented library
@@ -612,7 +612,6 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
                 // Associate later
                 pendingAssociations.push_back(&subObject);
-                inlineSubObjectCount += static_cast<uint32_t>(subObject.associations.Size());
 
                 // Cleanup
                 localExports.clear();
@@ -658,53 +657,24 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
             writer.DeepAdd(subObject.Type, subObject.pDesc);
         }
 
-        // At this point we need to start referencing the sub-object addresses, so all insertion has to be pre-allocated
-        // Inherit (1), Associations (LRS, ASSOT, 1 per)
-        uint32_t exportedSubObjectCount = static_cast<uint32_t>(writer.SubObjectCount());
-        uint32_t pendingSubObjectCount  = static_cast<uint32_t>(pendingAssociations.size()) * 2 + inlineSubObjectCount * 2;
-        writer.Reserve(exportedSubObjectCount + pendingSubObjectCount);
-
         // Write associations
-        for (const StateSubObject *subObject: pendingAssociations) {
-            uint32_t subObjectOffset = static_cast<uint32_t>(writer.SubObjectCount());
+        for (const StateShaderSubObject *subObject: pendingAssociations) {
+            // Associate all export specific states
+            for (const StateShaderSubObjectExport& _export : subObject->exports) {
+                // Rewrite local root signature, if any
+                if (_export.localSignature) {
+                    writer.Add(D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE, D3D12_LOCAL_ROOT_SIGNATURE { .pLocalRootSignature = _export.localSignature->object });
+                    writer.SubObjectAssociation(_export.name.c_str(), static_cast<uint32_t>(writer.SubObjectCount()) - 1);
+                }
 
-            // Mostly just need the local root signature
-            writer.Add(D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE, D3D12_LOCAL_ROOT_SIGNATURE {
-                .pLocalRootSignature = subObject->localRootSignature->object
-            });
-
-            // Write inline subobjects
-            for (const StateSubObjectAssociation& association : subObject->associations) {
-                writer.Add(association.type, static_cast<const void*>(association.data.Data()));
+                // Rewrite all inline associations
+                for (const StateSubObjectAssociation& association : _export.associations) {
+                    writer.Add(association.type, static_cast<const void*>(association.data.Data()));
+                    writer.SubObjectAssociation(_export.name.c_str(), static_cast<uint32_t>(writer.SubObjectCount()) - 1);
+                }
             }
-
-            // Associate with all the original names
-            for (const std::wstring& name : subObject->exports) {
-                localNames.push_back(name.c_str());
-            }
-
-            // Embed them!
-            auto* localNamesEmbed = static_cast<LPCWSTR*>(writer.Embed(localNames.data(), static_cast<uint32_t>(localNames.size() * sizeof(LPCWSTR))));
-
-            // End index for iterating
-            uint32_t subObjectEnd = static_cast<uint32_t>(writer.SubObjectCount());
-
-            // Associate!
-            for (uint32_t i = subObjectOffset; i < subObjectEnd; i++) {
-                writer.Add(D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION, D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION {
-                    .pSubobjectToAssociate = writer.FutureAddressOf(i),
-                    .NumExports = static_cast<UINT>(localNames.size()),
-                    .pExports = localNamesEmbed
-                });
-            }
-
-            // Cleanup
-            localNames.clear();
         }
 
-        // Validate counts
-        ASSERT(writer.SubObjectCount() == exportedSubObjectCount + pendingSubObjectCount, "Mismatch between expected sub-object count and actual");
-        
         // Create description
         D3D12_STATE_OBJECT_DESC desc = writer.GetDesc(stateObjectState->stateObjectType);
 

@@ -43,6 +43,47 @@
 // Common
 #include <Common/String.h>
 
+static RootSignatureState* GetLocalRootSignatureForIdentifier(StateObjectState* state, LPCWSTR _export) {
+    StateSubObjectIndex index = state->subObjectMap[_export];
+
+    switch (index.type) {
+        default: {
+            ASSERT(false, "Invalid type");
+            break;
+        }
+        case D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP: {
+            const D3D12_HIT_GROUP_DESC &hitGroup = state->hitGroupSubobjects[index.index];
+
+            if (hitGroup.IntersectionShaderImport) {
+                return GetLocalRootSignatureForIdentifier(state, hitGroup.IntersectionShaderImport);
+            }
+                            
+            if (hitGroup.ClosestHitShaderImport) {
+                return GetLocalRootSignatureForIdentifier(state, hitGroup.ClosestHitShaderImport);
+            }
+                            
+            if (hitGroup.AnyHitShaderImport) {
+                return GetLocalRootSignatureForIdentifier(state, hitGroup.AnyHitShaderImport);
+            }
+            break;
+        }
+        case D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY: {
+            StateShaderSubObject& stateSubObject = state->shaderSubObjects[index.index];
+
+            // Find the specific export in this library
+            for (StateShaderSubObjectExport& subObjectExport : stateSubObject.exports) {
+                if (subObjectExport.name == _export) {
+                    return subObjectExport.localSignature;
+                }
+            }
+            break;
+        }
+    }
+
+    // Not found
+    return nullptr;
+}
+
 static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObjectState* state) {
     state->identifierTable = new StateObjectShaderIdentifierTable();
     
@@ -127,10 +168,10 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
         entry.Key = ShaderIdentifierHash(entry.Identifier);
 
         // The state object being queried
-        const StateSubObject& stateSubObject = state->subObjects[state->subObjectMap[name]];
+        RootSignatureState* localRootSignature = GetLocalRootSignatureForIdentifier(state, name.c_str());
 
         // Create local root signature addressing masks
-        if (stateSubObject.localRootSignature) {
+        if (localRootSignature) {
             std::memset(entry.SBTSourceDWordVAddrBitmasks, 0u, sizeof(entry.SBTSourceDWordVAddrBitmasks));
             std::memset(entry.SBTSourceDWordSamplerBitmasks, 0u, sizeof(entry.SBTSourceDWordSamplerBitmasks));
 
@@ -138,8 +179,8 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
             uint32_t localDwordOffset = 0;
 
             // Create vaddr masks for resource and sampler spaces
-            for (uint32_t i = 0; i < stateSubObject.localRootSignature->logicalMapping.userRootCount; i++) {
-                const RootSignatureRootMapping &mapping = stateSubObject.localRootSignature->logicalMapping.userRootMappings[i];
+            for (uint32_t i = 0; i < localRootSignature->logicalMapping.userRootCount; i++) {
+                const RootSignatureRootMapping &mapping = localRootSignature->logicalMapping.userRootMappings[i];
         
                 uint32_t element = localDwordOffset / 32;
                 uint32_t bit     = 1u << (localDwordOffset % 32);
@@ -284,6 +325,17 @@ static uint32_t GetSubObjectIndex(const D3D12_STATE_OBJECT_DESC* desc, const D3D
     return ~0u; 
 }
 
+static StateShaderSubObjectExport* FindStateObjectExport(StateShaderSubObject& shader, LPCWSTR name) {
+    for (StateShaderSubObjectExport& _export : shader.exports) {
+        if (_export.name == name) {
+            return &_export;
+        }
+    }
+
+    ASSERT(false, "Failed to find export");
+    return nullptr;
+}
+
 static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, ID3D12StateObject* existingStateObject, const IID& riid, void** ppStateObject) {
     auto table = GetTable(device);
 
@@ -307,17 +359,60 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
             case D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION: {
                 auto contained = StateSubObjectWriter::Read<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>(subObject);
 
+                // All functions to associate
+                TrivialStackVector<const wchar_t*, 4u> associatedFunctions;
+
                 // One-to-many
                 for (uint32_t exportIndex = 0; exportIndex < contained.NumExports; exportIndex++) {
                     LPCWSTR exportName = contained.pExports[exportIndex];
 
+                    const StateSubObjectIndex &index = state->subObjectMap.at(exportName);
+                    switch (index.type) {
+                        default: {
+                            ASSERT(false, "Invalid type");
+                            break;
+                        }
+                        case D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP: {
+                            const D3D12_HIT_GROUP_DESC &hitGroup = state->hitGroupSubobjects[index.index];
+
+                            if (hitGroup.IntersectionShaderImport) {
+                                associatedFunctions.Add(hitGroup.IntersectionShaderImport);
+                            }
+                            
+                            if (hitGroup.ClosestHitShaderImport) {
+                                associatedFunctions.Add(hitGroup.ClosestHitShaderImport);
+                            }
+                            
+                            if (hitGroup.AnyHitShaderImport) {
+                                associatedFunctions.Add(hitGroup.AnyHitShaderImport);
+                            }
+                            break;
+                        }
+                        case D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY: {
+                            associatedFunctions.Add(exportName);
+                            break;
+                        }
+                    }
+                }
+
+                // Now that it's resolved, associate them
+                for (LPCWSTR function : associatedFunctions) {
+                    StateSubObjectIndex subObjectIndex = state->subObjectMap.at(function);
+                    ASSERT(subObjectIndex.type == D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, "Unexpected index");
+                    
                     // Find the object
-                    StateSubObject& referencedSubObject = state->subObjects[state->subObjectMap.at(exportName)];
+                    StateShaderSubObject& referencedSubObject = state->shaderSubObjects[subObjectIndex.index];
+
+                    // Find export
+                    StateShaderSubObjectExport* _export = FindStateObjectExport(referencedSubObject, function);
+                    if (!_export) {
+                        continue;
+                    }
 
                     // Associate the object
                     switch (contained.pSubobjectToAssociate->Type) {
                         default: {
-                            StateSubObjectAssociation &association = referencedSubObject.associations.Add();
+                            StateSubObjectAssociation &association = _export->associations.Add();
                             association.type = contained.pSubobjectToAssociate->Type;
                             association.data.Resize(StateSubObjectWriter::GetSize(association.type));
                             std::memcpy(association.data.Data(), contained.pSubobjectToAssociate->pDesc, sizeof(association.data.Size()));
@@ -326,7 +421,11 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                         case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE: {
                             auto referencedContained = StateSubObjectWriter::Read<D3D12_LOCAL_ROOT_SIGNATURE>(*contained.pSubobjectToAssociate);
                             referencedContained.pLocalRootSignature->AddRef();
-                            referencedSubObject.localRootSignature = GetState(referencedContained.pLocalRootSignature);
+
+                            auto signatureState = GetState(referencedContained.pLocalRootSignature);
+
+                            ASSERT(!_export->localSignature || _export->localSignature == signatureState, "Unexpected signature assignment");
+                            _export->localSignature = signatureState;
                             break;
                         }
                     }
@@ -354,15 +453,18 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                 state->identifierExports.insert(state->identifierExports.end(), collectionTable.state->identifierExports.begin(), collectionTable.state->identifierExports.end());
 
                 // Preallocate subobject data
-                state->subObjects.reserve(state->subObjects.size() + collectionTable.state->subObjects.size());
+                state->shaderSubObjects.reserve(state->shaderSubObjects.size() + collectionTable.state->shaderSubObjects.size());
 
                 // Inherit from existing collection
-                for (StateSubObject& collectionSubObject: collectionTable.state->subObjects) {
-                    state->subObjects.push_back(collectionSubObject);
+                for (StateShaderSubObject& collectionSubObject: collectionTable.state->shaderSubObjects) {
+                    state->shaderSubObjects.push_back(collectionSubObject);
 
                     // Populate lookups
-                    for (const std::wstring& name : collectionSubObject.exports) {
-                        state->subObjectMap[name] = static_cast<uint32_t>(state->subObjects.size()) - 1;
+                    for (const StateShaderSubObjectExport& _export : collectionSubObject.exports) {
+                        state->subObjectMap[_export.name] = StateSubObjectIndex {
+                            .type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
+                            .index = static_cast<uint32_t>(state->shaderSubObjects.size()) - 1
+                        };
                     }
 
                     // Keep linear set for instrumentation purposes
@@ -384,44 +486,63 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                 auto object = StateSubObjectWriter::Read<D3D12_DXIL_LIBRARY_DESC>(subObject);
 
                 // Create new subobject
-                StateSubObject& stateSubObject = state->subObjects.emplace_back();
+                StateShaderSubObject& stateSubObject = state->shaderSubObjects.emplace_back();
                 stateSubObject.shader = GetOrCreateShaderState(table.state, object.DXILLibrary);
                 stateSubObject.exports.Reserve(object.NumExports);
 
                 // We need to know the export names and shader kinds, so scan the DXBC for it
-                ScanDXBCShaderExports(object.DXILLibrary.pShaderBytecode, object.DXILLibrary.BytecodeLength, stateSubObject.dxbcExports);
+                TrivialStackVector<DXBCExport, 4u> dxbcExports;
+                ScanDXBCShaderExports(object.DXILLibrary.pShaderBytecode, object.DXILLibrary.BytecodeLength, dxbcExports);
+
+                // Get all exports, if none supplied, assume the dxbc exports
+                // TODO[rt]: The constant wide/single swaps are a killer!
+                TrivialStackVector<std::wstring, 4u> exports;
+                if (object.NumExports) {
+                    for (uint32_t exportIndex = 0; exportIndex < object.NumExports; exportIndex++) {
+                        exports.Add(object.pExports[exportIndex].Name);
+                    }
+                } else {
+                    for (const DXBCExport& dxbcExport : dxbcExports) {
+                        exports.Add(std::wstring(dxbcExport.unmangledName, dxbcExport.unmangledName + std::strlen(dxbcExport.unmangledName)));
+                    } 
+                }
 
                 // Handle all exports
-                for (uint32_t exportIndex = 0; exportIndex < object.NumExports; exportIndex++) {
-                    LPCWSTR name = object.pExports[exportIndex].Name;
+                for (uint32_t exportIndex = 0; exportIndex < exports.Size(); exportIndex++) {
+                    LPCWSTR name = exports[exportIndex].c_str();
 
                     // Add to sub-object exports
-                    stateSubObject.exports.Add(name);
-
-                    // Add to state exports
-                    state->functionExports.push_back(name);
+                    StateShaderSubObjectExport &_export = stateSubObject.exports.Add();
+                    _export.name = name;
 
                     // Try to find the DXBC eqv.
-                    auto it = std::ranges::find_if(stateSubObject.dxbcExports, [&](const DXBCExport& _export) {
-                        return std::wcac_equals(name, _export.name);
-                    });
+                    auto it = std::ranges::find_if(dxbcExports, [&](const DXBCExport& _export) { return std::wcac_equals(name, _export.unmangledName); });
+                    ASSERT(it != dxbcExports.end(), "Associated export must exist in the DXBC");
 
                     // Found it?
-                    if (it != stateSubObject.dxbcExports.end()) {
+                    if (it != dxbcExports.end()) {
+                        _export.dxbc = *it;
+
+                        // Callable?
                         switch (it->kind) {
                             default:
                                 break;
                             case DXBCRuntimeDataShaderKind::RayGeneration:
                             case DXBCRuntimeDataShaderKind::Miss:
                             case DXBCRuntimeDataShaderKind::Callable:
-                                // This is a callable export
                                 state->identifierExports.push_back(name);
                                 break;
                         }
                     }
 
+                    // Add to state exports
+                    state->functionExports.push_back(name);
+
                     // Name based lookup
-                    state->subObjectMap[name] = static_cast<uint32_t>(state->subObjects.size()) - 1;
+                    state->subObjectMap[name] = StateSubObjectIndex {
+                        .type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
+                        .index = static_cast<uint32_t>(state->shaderSubObjects.size()) - 1
+                    };
                 }
 
                 // Keep linear set for instrumentation purposes
@@ -437,7 +558,15 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
             }
             case D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP: {
                 auto object = StateSubObjectWriter::Read<D3D12_HIT_GROUP_DESC>(subObject);
+
                 state->identifierExports.push_back(object.HitGroupExport);
+                state->hitGroupSubobjects.push_back(object);
+
+                state->subObjectMap[object.HitGroupExport] = StateSubObjectIndex {
+                    .type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
+                    .index = static_cast<uint32_t>(state->hitGroupSubobjects.size()) - 1
+                };
+                
                 state->writer.DeepAdd(subObject.Type, &object);
                 break;
             }

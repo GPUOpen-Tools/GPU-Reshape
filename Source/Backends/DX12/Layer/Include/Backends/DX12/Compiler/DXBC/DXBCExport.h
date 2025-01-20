@@ -34,7 +34,10 @@ enum class DXBCRuntimeDataShaderKind : uint32_t;
 
 struct DXBCExport {
     /// Lifetime is tied to the DXBC blob
-    const char* name{nullptr};
+    const char* mangledName{nullptr};
+    
+    /// Lifetime is tied to the DXBC blob
+    const char* unmangledName{nullptr};
 
     /// Kind of the export
     DXBCRuntimeDataShaderKind kind;

@@ -198,6 +198,9 @@ private:
     /// All stream handles
     TrivialStackVector<uint32_t, 64> exportStreamHandles;
 
+    /// Resolved local physical mappings
+    RootSignaturePhysicalMapping* localPhysicalMappings{nullptr};
+
     /// Create a universal handle
     /// \param block appended block
     /// \param result allocated result
@@ -208,7 +211,7 @@ private:
 
     /// Create an export handle
     /// \param block appended block
-    void CreateHandles(const DXCompileJob &job, struct LLVMBlock* block);
+    void CreateHandles(const DXCompileJob &job, struct LLVMBlock* block, const DXILFunctionDeclaration* function);
 
     /// Create an export handle
     /// \param block appended block

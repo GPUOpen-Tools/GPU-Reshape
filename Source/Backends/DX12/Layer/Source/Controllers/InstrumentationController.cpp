@@ -879,18 +879,35 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
                 auto stateObjectState = static_cast<StateObjectState*>(dependentObject);
 
                 // TODO[rt]: Let's not do a linear search...
-                for (const StateSubObject& subObject : stateObjectState->subObjects) {
+                for (const StateShaderSubObject& subObject : stateObjectState->shaderSubObjects) {
                     if (subObject.shader != state) {
                         continue;
                     }
 
-                    // Append the local mappings
+                    // Append the local keys
                     ShaderInstrumentationKey subObjectKey = instrumentationKey;
-                    subObjectKey.localPhysicalMapping = subObject.localRootSignature->physicalMapping;
-                    subObjectKey.bindingInfo.local = subObject.localRootSignature->rootBindingInfo.local;
-                    
-                    // Combine hashes
-                    CombineHash(subObjectKey.combinedHash, subObject.localRootSignature->physicalMapping->signatureHash);
+                    subObjectKey.localKeyCount = static_cast<uint32_t>(subObject.exports.Size());
+                    subObjectKey.localKeys = new (allocators) ShaderLocalInstrumentationKey[subObject.exports.Size()];
+
+                    for (uint32_t exportIndex = 0; exportIndex < subObject.exports.Size(); exportIndex++) {
+                        const StateShaderSubObjectExport& _export = subObject.exports[exportIndex];
+
+                        // Setup local key
+                        ShaderLocalInstrumentationKey& localKey = subObjectKey.localKeys[exportIndex];
+                        localKey.mangledName = _export.dxbc.mangledName;
+
+                        // Local signatures are optional
+                        if (_export.localSignature) {
+                            localKey.localPhysicalMapping = _export.localSignature->physicalMapping;
+
+                            // There is a single, register wise, binding group for the local root signature data
+                            // While the actual mappings may be different for each export, the actual binding info must be the same
+                            subObjectKey.bindingInfo.local = _export.localSignature->rootBindingInfo.local;
+
+                            // Combine hashes
+                            CombineHash(subObjectKey.combinedHash, localKey.localPhysicalMapping->signatureHash);
+                        }
+                    }
 
                     // Add for compilation
                     keys.Add(subObjectKey);
