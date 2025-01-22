@@ -30,27 +30,20 @@
 #include "Int.h"
 
 struct SBTPatchConstantData {
-    /// Resource heap
-    UInt64 ResourceHeapOffset;
     uint ResourceHeapStride;
-
-    /// Sampler heap
-    UInt64 SamplerHeapOffset;
     uint SamplerHeapStride;
-
-    /// Expected dword strides
     uint SourceDWordStride;
     uint PatchedDWordStride;
-
-    /// Descriptor constant data
-    UInt64 DescriptorConstantStart;
+    
     uint DescriptorConstantStride;
-
-    /// Number of identifiers in the lookup table
     uint SBTIdentifierTableSize;
-
-    /// Total number of records to process
     uint SBTRecordCount;
+    uint Pad0;
+    
+    UInt64 ResourceHeapOffset;
+    UInt64 SamplerHeapOffset;
+    UInt64 DescriptorConstantStart;
+    UInt64 Pad1;
 };
 
 struct SBTIdentifier {
@@ -111,7 +104,7 @@ struct SBTIdentifierTableEntry {
     uint Metadata;
     uint Key;
     uint Index;
-    uint Pad;
+    uint SBTDWords;
 
     /// Identifier data
     SBTIdentifier Identifier;

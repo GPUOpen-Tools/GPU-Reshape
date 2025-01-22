@@ -159,6 +159,9 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
         // The index assigned to this export, must be 1:1 to identifierExports
         SBTIdentifierTableEntry& entry = identifiers.emplace_back();
         entry.Index = static_cast<uint>(i);
+        entry.SBTDWords = 0;
+        std::memset(entry.SBTSourceDWordVAddrBitmasks, 0u, sizeof(entry.SBTSourceDWordVAddrBitmasks));
+        std::memset(entry.SBTSourceDWordSamplerBitmasks, 0u, sizeof(entry.SBTSourceDWordSamplerBitmasks));
 
         // Copy identifier dwords
         static_assert(sizeof(entry.Identifier.DWords) == D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, "Unexpected identifier size");
@@ -172,8 +175,8 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
 
         // Create local root signature addressing masks
         if (localRootSignature) {
-            std::memset(entry.SBTSourceDWordVAddrBitmasks, 0u, sizeof(entry.SBTSourceDWordVAddrBitmasks));
-            std::memset(entry.SBTSourceDWordSamplerBitmasks, 0u, sizeof(entry.SBTSourceDWordSamplerBitmasks));
+            // Number of dwords, mostly used for appending things
+            entry.SBTDWords = localRootSignature->physicalMapping->rootDWordCount;
 
             // Current dword offset
             uint32_t localDwordOffset = 0;

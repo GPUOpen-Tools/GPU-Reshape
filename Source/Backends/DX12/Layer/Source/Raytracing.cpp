@@ -41,7 +41,7 @@ static void PatchShaderRecordsRegionDWords(
     const StateObjectState* pipeline,
     StateObjectShaderIdentifierPatch* patchTable,
     const ShaderExportOwnedHeapAllocation& heapAllocation,
-    ID3D12Resource* sharedAllocation, uint64_t descriptorOffset,
+    ID3D12Resource* sharedAllocation, uint64_t descriptorOffset, uint64_t descriptorStride,
     const D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE& patched,
     const D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE& source) {
     // No records? Nothing to patch
@@ -71,7 +71,7 @@ static void PatchShaderRecordsRegionDWords(
     data->SourceDWordStride = static_cast<uint>(source.StrideInBytes / sizeof(uint32_t));
     data->PatchedDWordStride = static_cast<uint>(patched.StrideInBytes / sizeof(uint32_t));
     data->DescriptorConstantStart = sharedAllocation->GetGPUVirtualAddress() + descriptorOffset;
-    data->DescriptorConstantStride = static_cast<uint>(recordCount * sizeof(uint32_t));
+    data->DescriptorConstantStride = static_cast<uint>(descriptorStride / sizeof(uint32_t));
     data->SBTIdentifierTableSize = static_cast<uint>(pipeline->identifierTable->tableCount);
     data->SBTRecordCount = static_cast<uint>(recordCount);
 
@@ -265,7 +265,7 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     PatchShaderRecordsRegionDWords(
         device, state, pipeline, patchTable,
         heapAllocation.Advance(descriptorCount * 0),
-        allocation.allocation.resource, rayGenDescriptorOffset,
+        allocation.allocation.resource, rayGenDescriptorOffset, rayGenDescriptorLength,
         D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE{
             .StartAddress = patched.RayGenerationShaderRecord.StartAddress,
             .SizeInBytes = patched.RayGenerationShaderRecord.SizeInBytes,
@@ -282,7 +282,7 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     PatchShaderRecordsRegionDWords(
         device, state, pipeline, patchTable,
         heapAllocation.Advance(descriptorCount * 1),
-        allocation.allocation.resource, callableDescriptorOffset,
+        allocation.allocation.resource, callableDescriptorOffset, callableDescriptorLength,
         patched.CallableShaderTable, desc.CallableShaderTable
     );
 
@@ -290,7 +290,7 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     PatchShaderRecordsRegionDWords(
         device, state, pipeline, patchTable,
         heapAllocation.Advance(descriptorCount * 2),
-        allocation.allocation.resource, hitDescriptorOffset,
+        allocation.allocation.resource, hitDescriptorOffset, hitDescriptorLength,
         patched.HitGroupTable, desc.HitGroupTable
     );
 
@@ -298,7 +298,7 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     PatchShaderRecordsRegionDWords(
         device, state, pipeline, patchTable,
         heapAllocation.Advance(descriptorCount * 3),
-        allocation.allocation.resource, missDescriptorOffset,
+        allocation.allocation.resource, missDescriptorOffset, missDescriptorLength,
         patched.MissShaderTable, desc.MissShaderTable
     );
 
