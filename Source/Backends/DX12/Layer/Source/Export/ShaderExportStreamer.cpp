@@ -374,19 +374,42 @@ void ShaderExportStreamer::InvalidateHeapMappingsFor(ShaderExportStreamState *st
         }
 
         // If there's a currently set root signature, all bindings have become invalidated
+        // except for root descriptors such as buffers, cbvs, etc. These exist independent of
+        // the currently bound heap.
         if (bindState.rootSignature) {
-            InvalidateDescriptorSlots(state, bindState, bindState.rootSignature, type);
+            InvalidateDescriptorSlots(state, bindState, bindState.rootSignature, type, false);
         }
     }
 }
 
-void ShaderExportStreamer::InvalidateDescriptorSlots(ShaderExportStreamState* state, ShaderExportStreamBindState& bindState, const RootSignatureState* rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE type) {
+static bool IsRootDescriptorType(D3D12_ROOT_PARAMETER_TYPE type) {
+    switch (type) {
+        default: {
+            ASSERT(false, "Invalid type");
+            return false;
+        }
+        case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+        case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
+            return false;
+        case D3D12_ROOT_PARAMETER_TYPE_CBV:
+        case D3D12_ROOT_PARAMETER_TYPE_SRV:
+        case D3D12_ROOT_PARAMETER_TYPE_UAV:
+            return true;
+    }
+}
+
+void ShaderExportStreamer::InvalidateDescriptorSlots(ShaderExportStreamState* state, ShaderExportStreamBindState& bindState, const RootSignatureState* rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE type, bool rootInvalidation) {
     // As the bindings have been invalidated, we must roll the chunk
     bindState.descriptorDataAllocator->ConditionalRoll();
 
     // Invalidate sampler bindings
     for (size_t i = 0; i < rootSignature->logicalMapping.userRootMappings.size(); i++) {
         if (type != D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES && rootSignature->logicalMapping.userRootMappings[i].heapType != type) {
+            continue;
+        }
+
+        // Root descriptor parameters may not be invalidated depending on what state was reset
+        if (!rootInvalidation && IsRootDescriptorType(rootSignature->logicalMapping.userRootMappings[i].type)) {
             continue;
         }
 
@@ -570,7 +593,7 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
         }
 
         // Invalidate all descriptor slots
-        InvalidateDescriptorSlots(state, bindState, rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES);
+        InvalidateDescriptorSlots(state, bindState, rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES, true);
     }
     
     // Keep state
@@ -604,7 +627,7 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
         }
 
         // Invalidate all descriptor slots
-        InvalidateDescriptorSlots(state, bindState, rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES);
+        InvalidateDescriptorSlots(state, bindState, rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES, true);
     }
     
     // Keep state

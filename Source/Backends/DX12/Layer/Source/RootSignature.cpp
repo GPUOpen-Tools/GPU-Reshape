@@ -47,6 +47,10 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
     for (uint32_t i = 0; i < source.NumParameters; i++) {
         const auto& parameter = source.pParameters[i];
         switch (parameter.ParameterType) {
+            default: {
+                ASSERT(false, "Unexpected type");
+                break;
+            }
             case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
                 for (uint32_t j = 0; j < parameter.DescriptorTable.NumDescriptorRanges; j++) {
                     const auto& range = parameter.DescriptorTable.pDescriptorRanges[j];
@@ -91,7 +95,7 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV:
-                case D3D12_ROOT_PARAMETER_TYPE_SRV: {
+            case D3D12_ROOT_PARAMETER_TYPE_SRV: {
                 outLogical->userRootMappings[i] = {
                     .type = parameter.ParameterType,
                     .heapType = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV

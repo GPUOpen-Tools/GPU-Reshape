@@ -316,7 +316,8 @@ private:
     /// \param bindState target bind state
     /// \param rootSignature root signature to clear for
     /// \param type type to invalidate for
-    void InvalidateDescriptorSlots(ShaderExportStreamState* state, ShaderExportStreamBindState& bindState, const RootSignatureState* rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE type);
+    /// \param rootInvalidation should root descriptors be invalidated
+    void InvalidateDescriptorSlots(ShaderExportStreamState* state, ShaderExportStreamBindState& bindState, const RootSignatureState* rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE type, bool rootInvalidation);
 
 private:
     /// Update all reserved heap data
