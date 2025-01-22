@@ -6520,24 +6520,34 @@ bool DXILPhysicalBlockFunction::TryGetResourceUserMappingFromPhysicalSpace(LLVMB
     // Check if base, i.e. the offset is the register base
     bool isBaseRegister = false;
     if (auto constant = program.GetConstants().GetConstant<IL::IntConstant>(metadata.rangeConstantOrValue)) {
-        isBaseRegister = constant->value == metadata.entry->registerBase;
+        // Library offsets occur from 0, otherwise from the base register
+        // We could unify the representation, but at the cost of more instructions
+        if (metadata.entry->libVariable) {
+            isBaseRegister = constant->value == 0;
+        } else {
+            isBaseRegister = constant->value == metadata.entry->registerBase;
+        }
     }
 
     // If at the base register, no need to perform dynamic indexing
     if (!isBaseRegister) {
-        // Set dynamic offset (always base from the register range)
-        // DynamicOffset - RegBaseOffset
-        out.dynamicOffset = program.GetIdentifierMap().AllocID();
-        {
-            LLVMRecord subRecord;
-            subRecord.SetUser(true, ~0u, out.dynamicOffset);
-            subRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
-            subRecord.opCount = 3u;
-            subRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-            subRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(metadata.rangeConstantOrValue);
-            subRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(metadata.entry->registerBase)->id);
-            subRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Sub);
-            block->AddRecord(subRecord);
+        if (metadata.entry->libVariable) {
+            out.dynamicOffset = metadata.rangeConstantOrValue;
+        } else {
+            // Set dynamic offset (always base from the register range)
+            // DynamicOffset - RegBaseOffset
+            out.dynamicOffset = program.GetIdentifierMap().AllocID();
+            {
+                LLVMRecord subRecord;
+                subRecord.SetUser(true, ~0u, out.dynamicOffset);
+                subRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+                subRecord.opCount = 3u;
+                subRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                subRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(metadata.rangeConstantOrValue);
+                subRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(metadata.entry->registerBase)->id);
+                subRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Sub);
+                block->AddRecord(subRecord);
+            }
         }
     }
 
