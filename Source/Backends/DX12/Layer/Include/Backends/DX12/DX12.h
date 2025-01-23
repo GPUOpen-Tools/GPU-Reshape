@@ -79,6 +79,7 @@ static constexpr AllocationTag kAllocStateFence = "DX12.State.Fence"_AllocTag;
 static constexpr AllocationTag kAllocStateShader = "DX12.State.Shader"_AllocTag;
 static constexpr AllocationTag kAllocStatePipeline = "DX12.State.Pipeline"_AllocTag;
 static constexpr AllocationTag kAllocStatePipelineLibrary = "DX12.State.PipelineLibrary"_AllocTag;
+static constexpr AllocationTag kAllocStateStateObject = "DX12.State.StateObject"_AllocTag;
 static constexpr AllocationTag kAllocStateResource = "DX12.State.Resource"_AllocTag;
 static constexpr AllocationTag kAllocStateSwapchain = "DX12.State.Swapchain"_AllocTag;
 static constexpr AllocationTag kAllocShaderExport = "DX12.ShaderExport"_AllocTag;

@@ -342,8 +342,11 @@ static StateShaderSubObjectExport* FindStateObjectExport(StateShaderSubObject& s
 static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, ID3D12StateObject* existingStateObject, const IID& riid, void** ppStateObject) {
     auto table = GetTable(device);
 
+    // Tag all allocations
+    auto allocators = table.state->allocators.Tag(kAllocStateStateObject);
+
     // Create state
-    auto* state = new (table.state->allocators, kAllocStateFence) StateObjectState(table.state->allocators);
+    auto* state = new (allocators) StateObjectState(allocators);
     state->parent = device;
     state->type = PipelineType::StateObject;
     state->stateObjectType = pDesc->Type;
@@ -549,6 +552,7 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                 }
 
                 // Keep linear set for instrumentation purposes
+                // Note: This holds the reference, not the sub-object
                 state->shaders.push_back(stateSubObject.shader);
 
                 // Write object

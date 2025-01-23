@@ -53,7 +53,7 @@ struct ShaderState;
 static constexpr uint64_t kInvalidPipelineUID = ~0ull;
 
 struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : public ReferenceObject {
-    PipelineState(const Allocators& allocators) : shaders(allocators), subObjectWriter(allocators) {
+    PipelineState(const Allocators& allocators) : allocators(allocators), shaders(allocators), subObjectWriter(allocators) {
         
     }
     
