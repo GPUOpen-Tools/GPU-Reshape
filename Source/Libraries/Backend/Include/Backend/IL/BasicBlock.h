@@ -42,6 +42,9 @@
 #undef OPAQUE
 
 namespace IL {
+    /// Forward declarations
+    struct Function;
+
     /// Instruction reference
     /// \tparam T instruction type
     /// \tparam OPAQUE opaque reference type
@@ -862,6 +865,16 @@ namespace IL {
             return static_cast<const T*>(instruction);
         }
 
+        /// Set the owning function
+        void SetFunction(Function* value) {
+            function = value;
+        }
+
+        /// Get the function this block resides in
+        Function* GetFunction() const {
+            return function;
+        }
+
         /// Get the identifier map
         IdentifierMap& GetIdentifierMap() const {
             return map;
@@ -991,6 +1004,9 @@ namespace IL {
 
         /// Relocation block allocator
         RelocationAllocator relocationAllocator;
+
+        /// Function this block exists in
+        Function* function{nullptr};
 
         /// Block flags
         mutable BasicBlockFlagSet flags{0};

@@ -32,14 +32,20 @@
 // Std
 #include <string_view>
 
+/// Forward declarations
+namespace IL {
+    struct Function;
+}
+
 class IDXDebugModule {
 public:
     virtual ~IDXDebugModule() = default;
 
     /// Get the source association from a given code offset
+    /// \param function the owning function to lookup for
     /// \param codeOffset the instruction (i.e. record) code offset
     /// \return default if failed
-    virtual DXSourceAssociation GetSourceAssociation(uint32_t codeOffset) = 0;
+    virtual DXSourceAssociation GetSourceAssociation(const IL::Function* function, uint32_t codeOffset) = 0;
 
     /// Get a source view of a line
     /// \param fileUID originating file uid

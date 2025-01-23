@@ -64,9 +64,13 @@ public:
     const char* GetLanguage() override;
 
     /// Get the binding info
-    /// \return
     const DXILBindingInfo& GetBindingInfo() {
         return table.bindingInfo;
+    }
+
+    /// Get the table
+    DXILPhysicalBlockTable& GetTable() {
+        return table;
     }
 
 private:

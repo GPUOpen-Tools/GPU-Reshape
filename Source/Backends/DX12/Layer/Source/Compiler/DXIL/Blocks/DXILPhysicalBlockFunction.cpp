@@ -89,6 +89,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
     // Create function
     IL::Function *fn = program.GetFunctionList().AllocFunction(table.metadata.GetEntryPointId(static_cast<uint32_t>(declaration->anchor)));
+    declaration->functionId = fn->GetID();
 
     // Set the type
     fn->SetFunctionType(declaration->type);
@@ -1345,7 +1346,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
 
     // Set id
     function->anchor = record.sourceAnchor;
-    function->id = DXILIDRemapper::EncodeUserOperand(id);
+    function->dxilId = DXILIDRemapper::EncodeUserOperand(id);
 
     // Hash name
     function->hash = std::hash<std::string_view>{}(function->name);
@@ -1379,8 +1380,32 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration
     return functions[table.idMap.GetDataIndex(id)];
 }
 
+const DXILFunctionDeclaration * DXILPhysicalBlockFunction::GetFunctionDeclarationFromIL(IL::ID id) {
+    for (DXILFunctionDeclaration* function : functions) {
+        if (function->functionId == id) {
+            return function;
+        }
+    }
+
+    ASSERT(false, "Invalid id");
+    return nullptr;
+}
+
 const DXILFunctionDeclaration * DXILPhysicalBlockFunction::GetFunctionDeclarationFromIndex(uint32_t index) {
     return functions[index];
+}
+
+uint32_t DXILPhysicalBlockFunction::GetNonPrototypeFunctionIndex(IL::ID id) {
+    for (uint32_t linkIndex = 0; linkIndex < static_cast<uint32_t>(internalLinkedFunctions.Size()); linkIndex++) {
+        uint32_t functionIndex = internalLinkedFunctions[linkIndex];
+        
+        if (functions[functionIndex]->functionId == id) {
+            return linkIndex;
+        }
+    }
+    
+    ASSERT(false, "Invalid id");
+    return UINT32_MAX;
 }
 
 DXCodeOffsetTraceback DXILPhysicalBlockFunction::GetCodeOffsetTraceback(uint32_t codeOffset) {
@@ -5562,7 +5587,7 @@ LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(IL::ID result, const 
     record.ops[1] |= (1u << 15u);
 
     record.ops[2] = table.type.typeMap.GetType(decl->type);
-    record.ops[3] = decl->id;
+    record.ops[3] = decl->dxilId;
 
     // Emit call operands
     for (uint32_t i = 0; i < opCount; i++) {

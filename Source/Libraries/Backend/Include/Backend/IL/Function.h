@@ -48,7 +48,8 @@ namespace IL {
             allocators(allocators), id(id), map(map),
             basicBlocks(allocators, map),
             parameters(allocators, map) {
-            /* */
+            // Keep a backwards reference for basic blocks
+            basicBlocks.SetFunction(this);
         }
 
         /// Allow move

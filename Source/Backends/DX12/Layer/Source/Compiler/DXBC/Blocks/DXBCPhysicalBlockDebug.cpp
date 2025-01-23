@@ -105,7 +105,7 @@ bool DXBCPhysicalBlockDebug::Parse(const DXParseJob& job) {
     // Unfortunately basing the main program off the ILDB is more trouble than it's worth,
     // as stripping the debug data after recompilation is quite troublesome.
     if (ildbBlock) {
-        auto* dxilDebugModule = new(allocators, kAllocModuleDXILDebug) DXILDebugModule(allocators.Tag(kAllocModuleDXILDebug), pdbShaderSourceInfo);
+        auto* dxilDebugModule = new(allocators, kAllocModuleDXILDebug) DXILDebugModule(allocators.Tag(kAllocModuleDXILDebug), table.dxilModule, pdbShaderSourceInfo);
 
         // Attempt to parse the module
         if (!dxilDebugModule->Parse(ildbBlock->ptr, ildbBlock->length)) {

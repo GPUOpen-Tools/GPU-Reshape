@@ -72,8 +72,14 @@ public:
     /// Get the declaration associated with an id
     const DXILFunctionDeclaration* GetFunctionDeclaration(uint32_t id);
 
+    /// Get the declaration associated with an IL id
+    const DXILFunctionDeclaration* GetFunctionDeclarationFromIL(IL::ID id);
+
     /// Get the declaration associated with an index
     const DXILFunctionDeclaration* GetFunctionDeclarationFromIndex(uint32_t index);
+
+    /// Get the link index of an IL id
+    uint32_t GetNonPrototypeFunctionIndex(IL::ID id);
 
     /// Get a source traceback
     /// \param codeOffset given offset, must originate from the same function

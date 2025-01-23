@@ -238,7 +238,7 @@ const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrin
 
     // Create function declaration
     DXILFunctionDeclaration declaration(allocators);
-    declaration.id = DXILIDRemapper::EncodeUserOperand(record.result);
+    declaration.dxilId = DXILIDRemapper::EncodeUserOperand(record.result);
     declaration.type = fnType;
     declaration.linkage = LLVMLinkage::CommonLinkage;
     auto* decl = table.function.AddDeclaration(declaration);
@@ -327,7 +327,7 @@ const DXILFunctionDeclaration* DXILUtilIntrinsics::GetLibHandleIntrinsic(const B
 
     // Create function declaration
     DXILFunctionDeclaration declaration(allocators);
-    declaration.id = DXILIDRemapper::EncodeUserOperand(record.result);
+    declaration.dxilId = DXILIDRemapper::EncodeUserOperand(record.result);
     declaration.type = fnType;
     declaration.linkage = LLVMLinkage::CommonLinkage;
 

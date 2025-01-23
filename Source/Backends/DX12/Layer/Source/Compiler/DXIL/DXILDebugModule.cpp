@@ -28,19 +28,24 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordStringView.h>
 #include <Backends/DX12/Compiler/DXBC/Blocks/DXBCPhysicalBlockShaderSourceInfo.h>
+#include <Backends/DX12/Compiler/DXIL/DXILModule.h>
+
+// Backend
+#include <Backend/IL/Function.h>
 
 // Common
 #include <Common/FileSystem.h>
 
-DXILDebugModule::DXILDebugModule(const Allocators &allocators, const DXBCPhysicalBlockShaderSourceInfo &shaderSourceInfo)
+DXILDebugModule::DXILDebugModule(const Allocators &allocators, DXILModule* module, const DXBCPhysicalBlockShaderSourceInfo &shaderSourceInfo)
     : scan(allocators),
       sourceFragments(allocators),
-      instructionMetadata(allocators),
+      functionMetadata(allocators),
       metadata(allocators),
       thinTypes(allocators),
       thinValues(allocators),
       thinFunctions(allocators),
       allocators(allocators),
+      module(module),
       shaderSourceInfo(shaderSourceInfo) { }
 
 static std::string SanitizeCompilerPath(const std::string_view& view) {
@@ -55,12 +60,18 @@ static std::string SanitizeCompilerPath(const std::string_view& view) {
     return path;
 }
 
-DXSourceAssociation DXILDebugModule::GetSourceAssociation(uint32_t codeOffset) {
-    if (codeOffset >= instructionMetadata.size()) {
+DXSourceAssociation DXILDebugModule::GetSourceAssociation(const IL::Function* function, uint32_t codeOffset) {
+    DXILPhysicalBlockTable& table = module->GetTable();
+
+    // Get the linked index
+    uint32_t index = table.function.GetNonPrototypeFunctionIndex(function->GetID());
+
+    FunctionMetadata& md = functionMetadata[index];
+    if (codeOffset >= md.instructionMetadata.size()) {
         return {};
     }
 
-    return instructionMetadata[codeOffset].sourceAssociation;
+    return md.instructionMetadata[codeOffset].sourceAssociation;
 }
 
 std::string_view DXILDebugModule::GetLine(uint32_t fileUID, uint32_t line) {
@@ -164,40 +175,42 @@ bool DXILDebugModule::Parse(const void *byteCode, uint64_t byteLength) {
 }
 
 void DXILDebugModule::RemapLineScopes() {
-    for (InstructionMetadata& md : instructionMetadata) {
-        // Unmapped or invalid?
-        if (md.sourceAssociation.fileUID == UINT16_MAX ||
-            md.sourceAssociation.fileUID >= sourceFragments.size()) {
-            continue;
-        }
+    for (FunctionMetadata& functionMd : functionMetadata) {
+        for (InstructionMetadata& md : functionMd.instructionMetadata) {
+            // Unmapped or invalid?
+            if (md.sourceAssociation.fileUID == UINT16_MAX ||
+                md.sourceAssociation.fileUID >= sourceFragments.size()) {
+                continue;
+                }
 
-        // The parent fragment
-        SourceFragment& targetFragment = sourceFragments.at(md.sourceAssociation.fileUID);
+            // The parent fragment
+            SourceFragment& targetFragment = sourceFragments.at(md.sourceAssociation.fileUID);
 
-        // Current directive
-        SourceFragmentDirective candidateDirective;
+            // Current directive
+            SourceFragmentDirective candidateDirective;
 
-        // Check all preprocessed fragments
-        for (const SourceFragmentDirective& directive : targetFragment.preprocessedDirectives) {
-            if (directive.directiveLineOffset > md.sourceAssociation.line) {
-                break;
+            // Check all preprocessed fragments
+            for (const SourceFragmentDirective& directive : targetFragment.preprocessedDirectives) {
+                if (directive.directiveLineOffset > md.sourceAssociation.line) {
+                    break;
+                }
+
+                // Consider candidate
+                candidateDirective = directive;
             }
 
-            // Consider candidate
-            candidateDirective = directive;
+            // No match? (Part of the primary fragment)
+            if (candidateDirective.fileUID == UINT16_MAX) {
+                continue;
+            }
+
+            // Offset within the directive file
+            const uint32_t intraDirectiveOffset = md.sourceAssociation.line - candidateDirective.directiveLineOffset;
+
+            // Remap the association
+            md.sourceAssociation.fileUID = candidateDirective.fileUID;
+            md.sourceAssociation.line = candidateDirective.fileLineOffset + intraDirectiveOffset; 
         }
-
-        // No match? (Part of the primary fragment)
-        if (candidateDirective.fileUID == UINT16_MAX) {
-            continue;
-        }
-
-        // Offset within the directive file
-        const uint32_t intraDirectiveOffset = md.sourceAssociation.line - candidateDirective.directiveLineOffset;
-
-        // Remap the association
-        md.sourceAssociation.fileUID = candidateDirective.fileUID;
-        md.sourceAssociation.line = candidateDirective.fileLineOffset + intraDirectiveOffset; 
     }
 }
 
@@ -268,6 +281,9 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
     // Get type, appears in linkage order
     const ThinFunction& function = thinFunctions[functionLinkIndex++];
 
+    // Create new metadata entry
+    FunctionMetadata& functionMd = functionMetadata.emplace_back();
+
     // Create value per parameter
     for (uint32_t i = 0; i < thinTypes[function.thinType].function.parameterCount; i++) {
         thinValues.emplace_back();
@@ -316,7 +332,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                 }
 
                 // Add metadata and consume
-                instructionMetadata.emplace_back();
+                functionMd.instructionMetadata.emplace_back();
                 break;
             }
 
@@ -327,7 +343,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
 
                 // Ignore non-semantic instructions from cross-referencing
                 if (!called.bIsNonSemantic) {
-                    instructionMetadata.emplace_back();
+                    functionMd.instructionMetadata.emplace_back();
                 }
                 
                 // Allocate return value if need be
@@ -348,16 +364,16 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                     metadata.sourceAssociation.fileUID = static_cast<uint16_t>(GetLinearFileUID(scope - 1));
                 }
 
-                if (instructionMetadata.size()) {
-                    instructionMetadata.back() = metadata;
+                if (functionMd.instructionMetadata.size()) {
+                    functionMd.instructionMetadata.back() = metadata;
                 }
                 break;
             }
 
             case LLVMFunctionRecord::DebugLOCAgain: {
                 // Repush pending
-                if (instructionMetadata.size()) {
-                    instructionMetadata.back() = metadata;
+                if (functionMd.instructionMetadata.size()) {
+                    functionMd.instructionMetadata.back() = metadata;
                 }
                 break;
             }

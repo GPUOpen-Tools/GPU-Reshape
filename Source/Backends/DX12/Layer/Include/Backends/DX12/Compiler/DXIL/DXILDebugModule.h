@@ -37,10 +37,11 @@
 #include <string>
 
 // Forward declarations
+class DXILModule;
 struct DXBCPhysicalBlockShaderSourceInfo;
 
 struct DXILDebugModule final : public IDXDebugModule {
-    DXILDebugModule(const Allocators &allocators, const DXBCPhysicalBlockShaderSourceInfo& shaderSourceInfo);
+    DXILDebugModule(const Allocators &allocators, DXILModule* module, const DXBCPhysicalBlockShaderSourceInfo& shaderSourceInfo);
 
     /// Parse the DXIL bytecode
     /// \param byteCode code start
@@ -49,7 +50,7 @@ struct DXILDebugModule final : public IDXDebugModule {
     bool Parse(const void* byteCode, uint64_t byteLength);
 
     ///Overrides
-    DXSourceAssociation GetSourceAssociation(uint32_t codeOffset) override;
+    DXSourceAssociation GetSourceAssociation(const IL::Function* function, uint32_t codeOffset) override;
     std::string_view GetLine(uint32_t fileUID, uint32_t line) override;
     std::string_view GetFilename() override;
     std::string_view GetSourceFilename(uint32_t fileUID) override;
@@ -161,8 +162,13 @@ private:
         DXSourceAssociation sourceAssociation;
     };
 
-    /// All instruction data, used for cross referencing
-    Vector<InstructionMetadata> instructionMetadata;
+    struct FunctionMetadata {
+        /// All instruction data, used for cross referencing
+        std::vector<InstructionMetadata> instructionMetadata;
+    };
+
+    /// All function metadata, ordered by link index
+    Vector<FunctionMetadata> functionMetadata;
 
 private:
     struct Metadata {
@@ -255,6 +261,9 @@ private:
 
 private:
     Allocators allocators;
+
+    /// Source module
+    DXILModule* module{nullptr};
 
     /// Optional, source info block
     const DXBCPhysicalBlockShaderSourceInfo& shaderSourceInfo;

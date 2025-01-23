@@ -48,7 +48,10 @@ struct DXILFunctionDeclaration {
     uint64_t anchor;
 
     /// DXIL identifier of this declaration
-    uint64_t id;
+    uint64_t dxilId;
+
+    /// IL identifier of the function
+    IL::ID functionId = IL::InvalidID;
 
     /// Name of this declaration
     std::string_view name;
