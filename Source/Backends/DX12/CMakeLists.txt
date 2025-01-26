@@ -353,6 +353,7 @@ add_library(
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockScan.cpp
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockTable.cpp
     Layer/Source/Compiler/DXBC/DXBCUtils.cpp
+    Layer/Source/Compiler/DXBC/DXBCRDATRootSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockShader.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockPipelineStateValidation.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockRootSignature.cpp

@@ -579,7 +579,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
                 ShaderInstrumentationKey localKey = key.shaderKey;
 
                 // Combine hashes
-                for (const StateShaderSubObjectExport& _export : subObject.exports) {
+                for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
                     if (_export.localSignature) {
                         CombineHash(localKey.combinedHash, _export.localSignature->physicalMapping->signatureHash);
                     }
@@ -594,7 +594,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
                 }
 
                 // We implicitly instrument all exports, so pull them all in
-                for (const StateShaderSubObjectExport& _export : subObject.exports) {
+                for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
                     localExports.push_back(D3D12_EXPORT_DESC{
                         .Name = _export.name.c_str()
                     });
@@ -660,7 +660,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
         // Write associations
         for (const StateShaderSubObject *subObject: pendingAssociations) {
             // Associate all export specific states
-            for (const StateShaderSubObjectExport& _export : subObject->exports) {
+            for (const StateShaderSubObjectExport& _export : subObject->functionExports) {
                 // Rewrite local root signature, if any
                 if (_export.localSignature) {
                     writer.Add(D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE, D3D12_LOCAL_ROOT_SIGNATURE { .pLocalRootSignature = _export.localSignature->object });

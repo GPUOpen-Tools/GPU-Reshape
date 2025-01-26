@@ -107,7 +107,7 @@ struct StateShaderSubObject {
     ShaderState* shader{nullptr};
 
     /// All exports of this sub-object
-    std::vector<StateShaderSubObjectExport> exports;
+    std::vector<StateShaderSubObjectExport> functionExports;
 };
 
 struct StateSubObjectIndex {
@@ -170,6 +170,7 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
     std::map<uint64_t, StateObjectShaderIdentifierPatch*> instrumentPatchTables;
 
     // TODO[rt]: Separate allocation isn't needed, subobject can hold the memory
+    // TODO[rt]: This is too micro-allocation heavy
 
     /// All DXIL function exports, not all are identifiable
     Vector<std::wstring> functionExports;
@@ -179,6 +180,9 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
 
     /// Export name to sub object lookup
     std::unordered_map<std::wstring, StateSubObjectIndex> subObjectMap;
+
+    /// The state object may inline some states, such as those that come from DXIL libraries
+    std::vector<IUnknown*> inlinedSubObjectStates;
 
     /// Defacto deep copy for this state object
     StateSubObjectWriter writer;

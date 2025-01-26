@@ -166,6 +166,11 @@ std::string_view DXBCPhysicalBlockRuntimeData::GetString(uint32_t offset) {
 }
 
 uint32_t DXBCPhysicalBlockRuntimeData::InsertString(const std::string_view &str, StringSet &out) {
+    // Zero is always mapped to a null terminated string
+    if (!str.length()) {
+        return 0;
+    }
+    
     // Deduplicate strings
     auto it = out.lookup.find(std::string(str));
     if (it != out.lookup.end()) {
@@ -372,7 +377,7 @@ void DXBCPhysicalBlockRuntimeData::Compile(const DXCompileJob &job) {
                 // Copy over the strings
                 TrivialStackVector<uint32_t, 8> exportIndices;
                 for (uint32_t i = 0; i < indexCount; i++) {
-                    std::string_view exportName = GetString(indexBuffer[subObject.record.subObjectToExportsAssociation.exportsStringOffset + i]);
+                    std::string_view exportName = GetString(indexBuffer[subObject.record.subObjectToExportsAssociation.exportsStringOffset + i + 1]);
                     exportIndices.Add(InsertString(exportName, patchedStrings));
                 }
 

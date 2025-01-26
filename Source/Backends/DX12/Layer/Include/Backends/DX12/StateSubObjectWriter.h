@@ -121,6 +121,14 @@ struct StateSubObjectWriter {
     /// Add a new sub object
     /// \param type given type
     /// \return data, length must be GetSize(type)
+    template<typename T = void, typename = std::enable_if_t<!std::is_pointer_v<T>>>
+    const T* DeepAdd(D3D12_STATE_SUBOBJECT_TYPE type, const T& data) {
+        return DeepAdd(type, &data);
+    }
+    
+    /// Add a new sub object
+    /// \param type given type
+    /// \return data, length must be GetSize(type)
     void Add(D3D12_STATE_SUBOBJECT_TYPE type, const void* data) {
         // Add entry
         subObjects.push_back(SubObject {
@@ -132,7 +140,7 @@ struct StateSubObjectWriter {
     /// Add a new sub object
     /// \param type given type
     /// \return data, length must be GetSize(type)
-    template<typename T>
+    template<typename T = void, typename = std::enable_if_t<!std::is_pointer_v<T>>>
     void Add(D3D12_STATE_SUBOBJECT_TYPE type, const T& value) {
         ASSERT(GetSize(type) == sizeof(value), "Unexpected size");
         
@@ -175,6 +183,14 @@ struct StateSubObjectWriter {
         return static_cast<T*>(dest);
     }
 
+    /// Allocate data
+    /// \param size byte length of data
+    /// \return allocated pointer
+    template<typename T = void>
+    T* Alloc(uint32_t size) {
+        return reinterpret_cast<T*>(allocator.AllocateArray<uint8_t>(size));
+    }
+
     /// Get the description
     /// \param type state object type
     /// \return final description
@@ -192,15 +208,30 @@ struct StateSubObjectWriter {
         return desc;
     }
 
+    /// Get the description
+    /// \return final description
+    D3D12_STATE_OBJECT_DESC GetUnresolvedDesc() const {
+        D3D12_STATE_OBJECT_DESC desc{};
+        desc.NumSubobjects = static_cast<uint32_t>(subObjects.size());
+        desc.pSubobjects = reinterpret_cast<const D3D12_STATE_SUBOBJECT *>(subObjects.data());
+        return desc;
+    }
+
     /// Add a new sub-object association, to be resolved later
     /// \param names associated names
     /// \param count number of names
     /// \param index sub-object index to associate to
     void SubObjectAssociation(const LPCWSTR* names, uint32_t count, uint32_t index) {
+        // Copy over all export strings
+        TrivialStackVector<LPCWSTR, 4u> exports;
+        for (uint32_t i = 0; i < count; i++) {
+            exports.Add(Embed<wchar_t>(names[i], static_cast<uint32_t>(sizeof(wchar_t) * (std::wcslen(names[i]) + 1))));
+        }
+        
         Add(D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION, D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION {
             .pSubobjectToAssociate = nullptr,
-            .NumExports = 1,
-            .pExports = Embed<LPCWSTR>(names, sizeof(LPCWSTR) * count)
+            .NumExports = count,
+            .pExports = Embed<LPCWSTR>(exports.Data(), sizeof(LPCWSTR) * count)
         });
 
         // Resolve it later

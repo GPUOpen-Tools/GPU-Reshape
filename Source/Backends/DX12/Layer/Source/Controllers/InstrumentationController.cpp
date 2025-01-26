@@ -886,15 +886,15 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
 
                     // Append the local keys
                     ShaderInstrumentationKey subObjectKey = instrumentationKey;
-                    subObjectKey.localKeyCount = static_cast<uint32_t>(subObject.exports.size());
-                    subObjectKey.localKeys = new (allocators) ShaderLocalInstrumentationKey[subObject.exports.size()];
+                    subObjectKey.localKeyCount = static_cast<uint32_t>(subObject.functionExports.size());
+                    subObjectKey.localKeys = new (allocators) ShaderLocalInstrumentationKey[subObject.functionExports.size()];
 
-                    for (uint32_t exportIndex = 0; exportIndex < subObject.exports.size(); exportIndex++) {
-                        const StateShaderSubObjectExport& _export = subObject.exports[exportIndex];
+                    for (uint32_t exportIndex = 0; exportIndex < subObject.functionExports.size(); exportIndex++) {
+                        const StateShaderSubObjectExport& _export = subObject.functionExports[exportIndex];
 
                         // Setup local key
                         ShaderLocalInstrumentationKey& localKey = subObjectKey.localKeys[exportIndex];
-                        localKey.mangledName = _export.dxbc.mangledName;
+                        localKey.mangledName = _export.dxbc.function.mangledName;
 
                         // Local signatures are optional
                         if (_export.localSignature) {
