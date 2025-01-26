@@ -868,6 +868,14 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
 
 #ifndef NDEBUG
 void ShaderExportStreamer::ProcessStreamDebug(ShaderExportStreamState* state) {
+    if (state->debugStreams.empty()) {
+        return;
+    }
+
+    // Always serial
+    static std::mutex mutex;
+    std::lock_guard guard(mutex);
+    
     for (const ShaderExportStreamStateDebugStream& stream : state->debugStreams) {
         // Map host content
         uint8_t* mapped;

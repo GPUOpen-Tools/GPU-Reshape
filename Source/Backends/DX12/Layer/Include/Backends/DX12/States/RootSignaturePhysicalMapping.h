@@ -38,6 +38,9 @@ struct RootSignaturePhysicalMapping {
     /// Number of dwords required by the root signature
     uint32_t rootDWordCount{0};
 
+    /// Number of descriptor dwords required by the root signature
+    uint32_t rootDescriptorDWordCount{0};
+
     /// DWord offset for each root parameter
     uint32_t rootDWordOffsets[MaxRootSignatureDWord]{};
 

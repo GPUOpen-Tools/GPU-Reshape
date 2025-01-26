@@ -318,6 +318,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
     // The dword offset for immediate descriptor data
     uint32_t rootDWordOffset = 0;
 
+    // The dword offset for descriptor offsets
+    uint32_t rootDescriptorDWordOffset = 0;
+
     // Number of dwords per inline token metadata
     constexpr uint32_t kTokenMetadataDWordCount = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
 
@@ -397,6 +400,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
                 // Occupies one dword (indirection)
                 rootDWordOffset += 1u;
+
+                // Descriptor is a VAddr
+                rootDescriptorDWordOffset += 2u;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
@@ -413,6 +419,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 
                 // Occupies one dword (dummy)
                 rootDWordOffset += 1u;
+
+                // Descriptor is a set of dwords
+                rootDescriptorDWordOffset += parameter.Constants.Num32BitValues;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV: {
@@ -429,6 +438,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
                 // Occupies entire metadata range, this is an inline root constant
                 rootDWordOffset += kTokenMetadataDWordCount;
+
+                // Descriptor is a VAddr
+                rootDescriptorDWordOffset += 2u;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_SRV: {
@@ -445,6 +457,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 
                 // Occupies entire metadata range, this is an inline root constant
                 rootDWordOffset += kTokenMetadataDWordCount;
+
+                // Descriptor is a VAddr
+                rootDescriptorDWordOffset += 2u;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
@@ -461,6 +476,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 
                 // Occupies entire metadata range, this is an inline root constant
                 rootDWordOffset += kTokenMetadataDWordCount;
+
+                // Descriptor is a VAddr
+                rootDescriptorDWordOffset += 2u;
                 break;
             }
         }
@@ -484,6 +502,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
     // Set total number of dwords needed
     mapping->rootDWordCount = rootDWordOffset;
+    mapping->rootDescriptorDWordCount = rootDescriptorDWordOffset;
     
     // OK
     return mapping;
@@ -491,8 +510,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
 template<typename T>
 HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION version, const T& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, RootSignatureLogicalMapping* outLogical, RootSignaturePhysicalMapping** outMapping, ID3DBlob** outError) {
+    // Get the binding info
     *outRoot = GetBindingInfo(state, source, outLogical);
     
+    // Create mappings
+    *outMapping = CreateRootPhysicalMappings(state, source.pParameters, source.NumParameters, source.pStaticSamplers, source.NumStaticSamplers);
+
     // Types
     using Parameter = std::remove_const_t<std::remove_pointer_t<decltype(T::pParameters)>>;
     using DescriptorTable = decltype(Parameter::DescriptorTable);
@@ -602,9 +625,6 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
         eventParameter.Constants.Num32BitValues = eventCount;
     }
     
-    // Create mappings
-    *outMapping = CreateRootPhysicalMappings(state, parameters.Data(), static_cast<uint32_t>(parameters.Size()), source.pStaticSamplers, source.NumStaticSamplers);
-
     // All deny flags
     constexpr D3D12_ROOT_SIGNATURE_FLAGS denyFlags =
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |

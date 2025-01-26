@@ -207,7 +207,7 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
         // Create local root signature addressing masks
         if (localRootSignature) {
             // Number of dwords, mostly used for appending things
-            entry.SBTDWords = localRootSignature->physicalMapping->rootDWordCount;
+            entry.SBTDWords = localRootSignature->physicalMapping->rootDescriptorDWordCount;
 
             // Current dword offset
             uint32_t localDwordOffset = 0;
