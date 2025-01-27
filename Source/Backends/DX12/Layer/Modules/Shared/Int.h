@@ -35,21 +35,21 @@ using UInt64 = uint64_t;
 #else // __cplusplus 
 using UInt64 = uint2;
 
-uint High(UInt64 a) {
+uint Low(UInt64 a) {
     return a.x;
 }
 
-uint Low(UInt64 a) {
+uint High(UInt64 a) {
     return a.y;
 }
 
 UInt64 AddUInt64_64(UInt64 a, UInt64 b) {
     uint low = Low(a) + Low(b);
-    return UInt64(High(a) + High(b) + ((Low(a) < Low(b)) ? 1 : 0), low);
+    return UInt64(low, High(a) + High(b) + ((low < Low(a)) ? 1 : 0));
 }
 
 UInt64 SubUInt64_64(UInt64 a, UInt64 b) {
     uint low = Low(a) - Low(b);
-    return UInt64(High(a) - High(b) - ((Low(a) < Low(b)) ? 1 : 0), low);
+    return UInt64(low, High(a) - High(b) - ((Low(a) < Low(b)) ? 1 : 0));
 }
 #endif // __cplusplus

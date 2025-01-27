@@ -41,7 +41,7 @@ static void PatchShaderRecordsRegionDWords(
     const StateObjectState* pipeline,
     StateObjectShaderIdentifierPatch* patchTable,
     const ShaderExportOwnedHeapAllocation& heapAllocation,
-    ID3D12Resource* sharedAllocation, uint64_t descriptorOffset, uint64_t descriptorStride,
+    ID3D12Resource* sharedAllocation, uint64_t descriptorOffset, uint64_t descriptorLength,
     const D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE& patched,
     const D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE& source) {
     // No records? Nothing to patch
@@ -54,6 +54,7 @@ static void PatchShaderRecordsRegionDWords(
 
     // Total number of records
     uint64_t recordCount = source.SizeInBytes / source.StrideInBytes;
+    uint64_t descriptorStride = descriptorLength / recordCount;
 
     // Patch constants size
     uint32_t constantAlignSub1 = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1;

@@ -136,7 +136,6 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
 
     // Descriptor PRM offsets
     uint DescriptorWriteStart  = ShaderRecordIndex * Constants.DescriptorConstantStride;
-    uint DescriptorWriteOffset = DescriptorWriteStart;
 
     // Hash lookup of the shader record
     SBTIdentifierTableEntry IdentifierEntry = GetShaderIdentifierIndex(GetSourceIdentifier(SourceDWordOffset));
@@ -152,19 +151,23 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
     PatchedDWordOffset += 8;
     SourceDWordOffset  += 8;
 
+    // Local address indexing
+    uint VAddrIndex = 0;
+
     // Iterate over dwords
     // We don't actually modify the source dwords (and their vaddr's), but we do write the PRM's
     for (uint DWordIndex = 0; DWordIndex < IdentifierEntry.SBTDWords; DWordIndex++) {
         // Copy dword to patched
-        uint DWordHi = SBTSourceDWords[SourceDWordOffset + DWordIndex];
-        RWSBTPatchedDWords[PatchedDWordOffset + DWordIndex] = DWordHi;
+        uint DWordLow = SBTSourceDWords[SourceDWordOffset + DWordIndex];
+        RWSBTPatchedDWords[PatchedDWordOffset + DWordIndex] = DWordLow;
 
         // Not a VAddr? Skip it, including the low parts.
+        // TODO[rt]: I don't think this makes sense with root typed srvs...
         if (!IsSet(IdentifierEntry.SBTSourceDWordVAddrBitmasks, DWordIndex)) {
             continue;
         }
 
-        UInt64 VAddr = UInt64(DWordHi, SBTSourceDWords[SourceDWordOffset + DWordIndex + 1]);
+        UInt64 VAddr = UInt64(DWordLow, SBTSourceDWords[SourceDWordOffset + DWordIndex + 1]);
 
         // Determine physical resource mapping offset, (VAddr - Base) / Stride
         // With the current descriptor limits, we can just assume the low part after subtracting base
@@ -176,11 +179,12 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
         }
 
         // Write the offset linearly
-        RWDescriptorData[DescriptorWriteOffset++] = PRMOffset;
+        uint DescriptorDWordOffset = IdentifierEntry.SBTSourceDWordOffsets[VAddrIndex++];
+        RWDescriptorData[DescriptorWriteStart + DescriptorDWordOffset] = PRMOffset;
     }
 
     // Write the descriptor address to the patched SBT
-    UInt64 DescriptorVAddr = AddUInt64_64(Constants.DescriptorConstantStart, UInt64(0, DescriptorWriteStart * 4));
-    RWSBTPatchedDWords[PatchedDWordOffset + IdentifierEntry.SBTDWords + 0] = DescriptorVAddr.y;
-    RWSBTPatchedDWords[PatchedDWordOffset + IdentifierEntry.SBTDWords + 1] = DescriptorVAddr.x;
+    UInt64 DescriptorVAddr = AddUInt64_64(Constants.DescriptorConstantStart, UInt64(DescriptorWriteStart * 4, 0));
+    RWSBTPatchedDWords[PatchedDWordOffset + IdentifierEntry.SBTDWords + 0] = Low(DescriptorVAddr);
+    RWSBTPatchedDWords[PatchedDWordOffset + IdentifierEntry.SBTDWords + 1] = High(DescriptorVAddr);
 }

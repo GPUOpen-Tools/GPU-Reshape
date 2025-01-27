@@ -212,10 +212,13 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
             // Current dword offset
             uint32_t localDwordOffset = 0;
 
+            // Current address offset
+            uint32_t vaddrOffset = 0;
+
             // Create vaddr masks for resource and sampler spaces
             for (uint32_t i = 0; i < localRootSignature->logicalMapping.userRootCount; i++) {
                 const RootSignatureRootMapping &mapping = localRootSignature->logicalMapping.userRootMappings[i];
-        
+
                 uint32_t element = localDwordOffset / 32;
                 uint32_t bit     = 1u << (localDwordOffset % 32);
 
@@ -225,6 +228,7 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
                     case D3D12_ROOT_PARAMETER_TYPE_UAV:
                     case D3D12_ROOT_PARAMETER_TYPE_SRV: {
                         entry.SBTSourceDWordVAddrBitmasks[element] |= bit;
+                        entry.SBTSourceDWordOffsets[vaddrOffset++] = localRootSignature->physicalMapping->rootDWordOffsets[i];
                         localDwordOffset += 2;
                         break;
                     }

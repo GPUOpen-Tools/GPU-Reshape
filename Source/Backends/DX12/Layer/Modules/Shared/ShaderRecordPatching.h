@@ -110,8 +110,10 @@ struct SBTIdentifierTableEntry {
     SBTIdentifier Identifier;
 
     /// Local root signature addressing data
+    /// TODO[rt]: While global's are limited to 64 dwords, I don't think locals are...
     uint SBTSourceDWordVAddrBitmasks[2];
     uint SBTSourceDWordSamplerBitmasks[2];
+    uint SBTSourceDWordOffsets[64];
 };
 
 struct SBTIdentifierPatch {
