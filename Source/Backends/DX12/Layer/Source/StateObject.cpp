@@ -65,9 +65,17 @@ struct StateObjectInlineExport {
     DXBCSubObjectExport subObject;
 };
 
+struct StateObjectEntry {
+    /// Write index for associations
+    uint32_t index{UINT32_MAX};
+
+    /// Has this been associated?
+    bool associated = false;
+};
+
 struct StateObjectCache {
-    /// Associate sub-objects to indices
-    std::unordered_map<const D3D12_STATE_SUBOBJECT*, uint32_t> subObjectIndices;
+    /// Metadata for original objects
+    std::unordered_map<const D3D12_STATE_SUBOBJECT*, StateObjectEntry> subObjects;
 };
 
 /// Prototypes
@@ -510,6 +518,9 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
         case D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION: {
             auto contained = StateSubObjectWriter::Read<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>(*subObject);
 
+            // Mark the sub-object as associated
+            cache.subObjects.at(contained.pSubobjectToAssociate).associated = true;
+
             // All functions to associate
             TrivialStackVector<const wchar_t*, 4u> associatedFunctions;
 
@@ -582,7 +593,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                 }
             }
             
-            state->writer.SubObjectAssociation(contained.pExports, contained.NumExports, cache.subObjectIndices.at(contained.pSubobjectToAssociate));
+            state->writer.SubObjectAssociation(contained.pExports, contained.NumExports, cache.subObjects.at(contained.pSubobjectToAssociate).index);
             break;
         }
         case D3D12_STATE_SUBOBJECT_TYPE_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION: {
@@ -630,7 +641,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             });
 
             // Association lookup
-            cache.subObjectIndices[subObject] = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
+            cache.subObjects[subObject].index = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
             break;
         }
         case D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY: {
@@ -738,7 +749,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             });
 
             // Association lookup
-            cache.subObjectIndices[subObject] = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
+            cache.subObjects[subObject].index = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
 
             // Finally, handle all the inlined exports
             if (inlineExports.Size()) {
@@ -763,7 +774,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             };
 
             // Association lookup
-            cache.subObjectIndices[subObject] = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
+            cache.subObjects[subObject].index = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
             break;
         }
         case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE: {
@@ -781,7 +792,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             });
 
             // Association lookup
-            cache.subObjectIndices[subObject] = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
+            cache.subObjects[subObject].index = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
             break;
         }
         case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE: {
@@ -794,8 +805,45 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             });
 
             // Association lookup
-            cache.subObjectIndices[subObject] = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
+            cache.subObjects[subObject].index = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
             break;
+        }
+    }
+}
+
+void CreateDefaultAssociation(StateObjectState* state, const D3D12_STATE_SUBOBJECT* subObject, StateObjectCache& cache) {
+    // Find entry, may not exist
+    auto&& entryIt = cache.subObjects.find(subObject);
+    if (entryIt == cache.subObjects.end()) {
+        return;
+    }
+
+    // If associated, ignore
+    StateObjectEntry& entry = entryIt->second;
+    if (entry.associated) {
+        return;
+    }
+
+    // This sub-object hasn't been associated, check if it's a candidate for default association
+    switch (subObject->Type) {
+        default: {
+            break;
+        }
+        case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE: {
+            auto referencedContained = StateSubObjectWriter::Read<D3D12_LOCAL_ROOT_SIGNATURE>(*subObject);
+            referencedContained.pLocalRootSignature->AddRef();
+
+            // Get state
+            auto signatureState = GetState(referencedContained.pLocalRootSignature);
+
+            // Associate all shaders with the local signature, unless already specified
+            for (StateShaderSubObject& shader : state->shaderSubObjects) {
+                for (StateShaderSubObjectExport& _export : shader.functionExports) {
+                    if (!_export.localSignature) {
+                        _export.localSignature = signatureState;
+                    }
+                } 
+            } 
         }
     }
 }
@@ -807,6 +855,11 @@ void CreateStateSubObjects(const DeviceTable& table, StateObjectState* state, co
     // Unwrap objects
     for (uint32_t i = 0; i < pDesc->NumSubobjects; i++) {
         CreateStateSubObject(table, state, &pDesc->pSubobjects[i], cache);
+    }
+
+    // Create default associations
+    for (uint32_t i = 0; i < pDesc->NumSubobjects; i++) {
+        CreateDefaultAssociation(state, &pDesc->pSubobjects[i], cache);
     }
 }
 
