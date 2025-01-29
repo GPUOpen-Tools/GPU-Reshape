@@ -559,7 +559,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
         
         // Handle all keys
         for (uint32_t keyIndex = 0; keyIndex < job.keyCount; keyIndex++) {
-            const PipelineJobKey& key = job.shaderInstrumentationKeys[i];
+            const PipelineJobKey& key = job.shaderInstrumentationKeys[keyIndex];
 
             // May not be instrumented, just keep the sub-object as is
             if (!key.shaderKey.featureBitSet) {
@@ -641,8 +641,8 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
         }
 
         // Append configurations
-        for (uint32_t i = 0; i < originalDesc.NumSubobjects; i++) {
-            const D3D12_STATE_SUBOBJECT& subObject = originalDesc.pSubobjects[i];
+        for (uint32_t subObjectIndex = 0; subObjectIndex < originalDesc.NumSubobjects; subObjectIndex++) {
+            const D3D12_STATE_SUBOBJECT& subObject = originalDesc.pSubobjects[subObjectIndex];
 
             // Either directly handled or inherited
             if (subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION ||
