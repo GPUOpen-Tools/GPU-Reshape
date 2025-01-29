@@ -174,9 +174,17 @@ bool DXILSigner::SignWithValidation(void *code, uint64_t length) {
         Microsoft::WRL::ComPtr<IDxcBlobEncoding> errorBufferUTF8;
         library->GetBlobAsUtf8(errorBuffer.Get(), errorBufferUTF8.GetAddressOf());
 
+        // Get contents
+        const char* contents = static_cast<const char*>(errorBufferUTF8->GetBufferPointer());
+
+        // Later validation introduced by DXC which may fail on earlier shaders
+        if (std::strstr(contents, "Internal declaration '<null>' is unused")) {
+            return true;
+        }
+
         // Compose error
         std::stringstream ss;
-        ss << "DXIL Signing failed: " << static_cast<const char*>(errorBufferUTF8->GetBufferPointer());
+        ss << "DXIL Signing failed: " << contents;
         ASSERT(false, ss.str().c_str());
 #endif // NDEBUG
 
