@@ -91,7 +91,7 @@ struct StateSubObjectAssociation {
 
 struct StateShaderSubObjectExport {
     std::wstring name;
-    
+
     /// Scanned export
     DXBCExport dxbc;
 
@@ -123,7 +123,6 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
         PipelineState(allocators),
         shaderSubObjects(allocators),
         hitGroupSubobjects(allocators),
-        functionExports(allocators),
         identifierExports(allocators),
         writer(allocators) {
         
@@ -171,9 +170,6 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
 
     // TODO[rt]: Separate allocation isn't needed, subobject can hold the memory
     // TODO[rt]: This is too micro-allocation heavy
-
-    /// All DXIL function exports, not all are identifiable
-    Vector<std::wstring> functionExports;
 
     /// All identifier exports, all callable
     Vector<std::wstring> identifierExports;

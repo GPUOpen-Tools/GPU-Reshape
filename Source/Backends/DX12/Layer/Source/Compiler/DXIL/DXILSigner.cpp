@@ -179,7 +179,7 @@ bool DXILSigner::SignWithValidation(void *code, uint64_t length) {
 
         // Later validation introduced by DXC which may fail on earlier shaders
         if (std::strstr(contents, "Internal declaration '<null>' is unused")) {
-            return true;
+            return false;
         }
 
         // Compose error

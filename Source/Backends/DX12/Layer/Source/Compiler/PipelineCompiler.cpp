@@ -596,7 +596,8 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
                 // We implicitly instrument all exports, so pull them all in
                 for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
                     localExports.push_back(D3D12_EXPORT_DESC{
-                        .Name = _export.name.c_str()
+                        .Name = _export.name.c_str(),
+                        .ExportToRename = writer.EmbedAnsi(_export.dxbc.unmangledName)
                     });
 
                     // Do not inherit this export
@@ -620,14 +621,17 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
         // All exports to inherit
         std::vector<D3D12_EXPORT_DESC> inheritedExports;
-        inheritedExports.reserve(stateObjectState->functionExports.size());
+        inheritedExports.reserve(stateObjectState->shaderSubObjects.size());
 
         // Filter out the instrumented export names
-        for (const std::wstring& name : stateObjectState->functionExports) {
-            if (!replacedExports.contains(name)) {
-                inheritedExports.push_back(D3D12_EXPORT_DESC {
-                    .Name = name.c_str()
-                });
+        for (StateShaderSubObject& subObject : stateObjectState->shaderSubObjects) {
+            for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
+                if (!replacedExports.contains(_export.name)) {
+                    inheritedExports.push_back(D3D12_EXPORT_DESC {
+                        .Name = _export.name.c_str(),
+                        .ExportToRename = writer.EmbedAnsi(_export.dxbc.unmangledName)
+                    });
+                }
             }
         }
 

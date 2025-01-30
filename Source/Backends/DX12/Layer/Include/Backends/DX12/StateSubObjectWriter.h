@@ -191,6 +191,34 @@ struct StateSubObjectWriter {
         return reinterpret_cast<T*>(allocator.AllocateArray<uint8_t>(size));
     }
 
+    /// Embed an ansi string, null terminated
+    /// \param str string to embed
+    /// \param len view length
+    /// \return embedded string
+    LPCWSTR EmbedAnsi(const char* str, uint64_t len) {
+        auto* wide = Alloc<wchar_t>(static_cast<uint32_t>(sizeof(wchar_t) * (len + 1)));
+        for (uint64_t i = 0; i < len; i++) {
+            // TODO[rt]: Actually handle locale
+            wide[i] = static_cast<wchar_t>(str[i]);
+        }
+    
+        // OK
+        wide[len] = 0;
+        return wide;
+    }
+
+    /// Embed an ansi string, null terminated
+    /// \param str string to embed
+    /// \return embedded string
+    LPCWSTR EmbedAnsi(const char* str) {
+        if (!str || !str[0]) {
+            return nullptr;
+        }
+
+        // OK
+        return EmbedAnsi(str, std::strlen(str));
+    }
+
     /// Get the description
     /// \param type state object type
     /// \return final description

@@ -57,6 +57,14 @@ struct StateObjectInlineAssociation {
     TrivialStackVector<StateObjectInlineAssociationEntry, 4u> entries;
 };
 
+struct StateObjectExportEntry {
+    /// DXBC name
+    std::wstring exportName;
+
+    /// Associated name
+    std::wstring name;
+};
+
 struct StateObjectInlineExport {
     /// Name of the inline export
     LPCWSTR name;
@@ -371,29 +379,6 @@ static StateShaderSubObjectExport* FindStateObjectExport(StateShaderSubObject& s
     return nullptr;
 }
 
-static LPCWSTR EmbedWideAnsiString(StateSubObjectWriter& writer, const char* str, uint64_t len) {
-    // Embed the wide string
-    // TODO[rt]: Not dealing with any locale stuff
-    auto* wide = writer.Alloc<wchar_t>(static_cast<uint32_t>(sizeof(wchar_t) * (len + 1)));
-    for (uint64_t i = 0; i < len; i++) {
-        wide[i] = static_cast<wchar_t>(str[i]);
-    }
-    
-    // OK
-    wide[len] = 0;
-    return wide;
-}
-
-static LPCWSTR EmbedWideAnsiString(StateSubObjectWriter& writer, const char* str) {
-    // Do not embed null strings
-    if (!str || !str[0]) {
-        return nullptr;
-    }
-
-    // OK
-    return EmbedWideAnsiString(writer, str, std::strlen(str));
-}
-
 static ID3D12RootSignature* CreateInlineSubObjectRootSignature(StateObjectState* state, const DXBCSubObjectExport& _export) {
     // First, serialize it into a runtime format
     ID3DBlob* serialized;
@@ -441,7 +426,7 @@ static void CreateStateObjectInlineSubStream(StateObjectState* state, StateSubOb
             // Copy over all export strings
             TrivialStackVector<LPCWSTR, 4u> exports;
             for (uint32_t i = 0; i < inlineExport.subObject.subObjectToExportsAssociation.exportView.indexCount; i++) {
-                exports.Add(EmbedWideAnsiString(writer, inlineExport.subObject.subObjectToExportsAssociation.exportView[i]));
+                exports.Add(writer.EmbedAnsi(inlineExport.subObject.subObjectToExportsAssociation.exportView[i]));
             }
 
             // Find the referenced sub-object by name
@@ -470,9 +455,9 @@ static void CreateStateObjectInlineSubStream(StateObjectState* state, StateSubOb
             writer.Add(D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, D3D12_HIT_GROUP_DESC {
                 .HitGroupExport = inlineExport.name,
                 .Type = static_cast<D3D12_HIT_GROUP_TYPE>(inlineExport.subObject.hitGroup.type),
-                .AnyHitShaderImport = EmbedWideAnsiString(writer, inlineExport.subObject.hitGroup.anyHitExport),
-                .ClosestHitShaderImport = EmbedWideAnsiString(writer, inlineExport.subObject.hitGroup.closestHitExport),
-                .IntersectionShaderImport = EmbedWideAnsiString(writer, inlineExport.subObject.hitGroup.intersectionExport)
+                .AnyHitShaderImport = writer.EmbedAnsi(inlineExport.subObject.hitGroup.anyHitExport),
+                .ClosestHitShaderImport = writer.EmbedAnsi(inlineExport.subObject.hitGroup.closestHitExport),
+                .IntersectionShaderImport = writer.EmbedAnsi(inlineExport.subObject.hitGroup.intersectionExport)
             });
             break;
         }
@@ -608,7 +593,6 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             auto collectionTable = GetTable(object.pExistingCollection);
 
             // Blindly inherit all exports, we never remove any
-            state->functionExports.insert(state->functionExports.end(), collectionTable.state->functionExports.begin(), collectionTable.state->functionExports.end());
             state->identifierExports.insert(state->identifierExports.end(), collectionTable.state->identifierExports.begin(), collectionTable.state->identifierExports.end());
 
             // Preallocate subobject data
@@ -658,14 +642,22 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
 
             // Get all exports, if none supplied, assume the dxbc exports
             // TODO[rt]: The constant wide/single swaps are a killer!
-            TrivialStackVector<std::wstring, 4u> exports;
+            std::vector<StateObjectExportEntry> exports;
             if (object.NumExports) {
                 for (uint32_t exportIndex = 0; exportIndex < object.NumExports; exportIndex++) {
-                    exports.Add(object.pExports[exportIndex].Name);
+                    D3D12_EXPORT_DESC _export = object.pExports[exportIndex];
+                    exports.emplace_back(StateObjectExportEntry {
+                        .exportName = _export.ExportToRename ? _export.ExportToRename : _export.Name,
+                        .name = _export.Name
+                    });
                 }
             } else {
                 for (const DXBCExport& dxbcExport : dxbcExports) {
-                    exports.Add(std::wstring(dxbcExport.unmangledName, dxbcExport.unmangledName + std::strlen(dxbcExport.unmangledName)));
+                    std::wstring unmangledWide(dxbcExport.unmangledName, dxbcExport.unmangledName + std::strlen(dxbcExport.unmangledName));
+                    exports.emplace_back(StateObjectExportEntry {
+                        .exportName = unmangledWide,
+                        .name = unmangledWide
+                    });
                 } 
             }
 
@@ -676,11 +668,15 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             TrivialStackVector<StateObjectInlineExport, 4u> inlineExports;
 
             // Handle all exports
-            for (uint32_t exportIndex = 0; exportIndex < exports.Size(); exportIndex++) {
-                LPCWSTR name = exports[exportIndex].c_str();
+            for (uint64_t exportIndex = 0; exportIndex < exports.size(); exportIndex++) {
+                const StateObjectExportEntry& exportEntry = exports[exportIndex];
+
+                // CStrings
+                LPCWSTR exportNameWide = exportEntry.exportName.c_str();
+                LPCWSTR nameWide       = exportEntry.name.c_str();
 
                 // Try to find the DXBC eqv.
-                auto it = std::ranges::find_if(dxbcExports, [&](const DXBCExport& entry) { return std::wcac_equals(name, entry.unmangledName); });
+                auto it = std::ranges::find_if(dxbcExports, [&](const DXBCExport& entry) { return std::wcac_equals(exportNameWide, entry.unmangledName); });
                 ASSERT(it != dxbcExports.end(), "Associated export must exist in the DXBC");
 
                 // It has to exist, anything but that is a bug
@@ -695,37 +691,35 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                         case DXBCRuntimeDataShaderKind::RayGeneration:
                         case DXBCRuntimeDataShaderKind::Miss:
                         case DXBCRuntimeDataShaderKind::Callable:
-                            state->identifierExports.push_back(name);
+                            state->identifierExports.push_back(nameWide);
                             break;
                     }
 
                     // Add to sub object exports
                     StateShaderSubObjectExport _export;
-                    _export.name = name;
+                    _export.name = nameWide;
                     _export.dxbc = dxbc;
                     stateSubObject.functionExports.push_back(_export);
-
-                    // Add to state exports
-                    state->functionExports.push_back(name);
 
                     // Keep this export in the writer
                     if (object.NumExports) {
                         writeExports.Add(object.pExports[exportIndex]);
                     } else {
                         writeExports.Add(D3D12_EXPORT_DESC {
-                            .Name = state->writer.Embed<wchar_t>(name, static_cast<uint32_t>(sizeof(wchar_t) * (std::wcslen(name) + 1)))
+                            .Name = state->writer.Embed<wchar_t>(nameWide, static_cast<uint32_t>(sizeof(wchar_t) * (std::wcslen(nameWide) + 1))),
+                            .ExportToRename = state->writer.Embed<wchar_t>(exportNameWide, static_cast<uint32_t>(sizeof(wchar_t) * (std::wcslen(exportNameWide) + 1)))
                         });
                     }
 
                     // Name based lookup
-                    state->subObjectMap[name] = StateSubObjectIndex {
+                    state->subObjectMap[nameWide] = StateSubObjectIndex {
                         .type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
                         .index = static_cast<uint32_t>(state->shaderSubObjects.size()) - 1
                     };
                 } else {
                     // Handle inline sub-objects after writing the exports
                     inlineExports.Add(StateObjectInlineExport {
-                        .name = name,
+                        .name = nameWide,
                         .subObject = dxbc.subObject
                     });
                 }
