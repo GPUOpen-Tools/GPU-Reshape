@@ -144,7 +144,23 @@ static void AlignInPlace(uint64_t& value, uint64_t align) {
     value = (value + align - 1) & ~(align - 1);
 }
 
-static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device, CommandListState* state, const D3D12_DISPATCH_RAYS_DESC& desc) {
+static void PatchShaderRecordsSourceImplicits(D3D12_DISPATCH_RAYS_DESC& desc) {
+    // TODO[rt]: We're patching the strides... But this is actually valid if we dont want to advance the record, fix it!
+    
+    if (!desc.HitGroupTable.StrideInBytes) {
+        desc.HitGroupTable.StrideInBytes = desc.HitGroupTable.SizeInBytes;
+    }
+
+    if (!desc.MissShaderTable.StrideInBytes) {
+        desc.MissShaderTable.StrideInBytes = desc.MissShaderTable.SizeInBytes;
+    }
+
+    if (!desc.CallableShaderTable.StrideInBytes) {
+        desc.CallableShaderTable.StrideInBytes = desc.CallableShaderTable.SizeInBytes;
+    }
+}
+
+static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device, CommandListState* state, D3D12_DISPATCH_RAYS_DESC desc) {
     // Get the state object
     ASSERT(state->streamState->pipeline->type == PipelineType::StateObject, "Unexpected pipeline state");
     auto pipeline = static_cast<const StateObjectState*>(state->streamState->pipeline);
@@ -155,6 +171,9 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     if (!patchTable) {
         return desc;
     }
+
+    // Patch the implicits
+    PatchShaderRecordsSourceImplicits(desc);
 
     // We really just need two dwords, but alignment requirements mean that we have to increment by the full alignment
     uint32_t recordUdStride = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
