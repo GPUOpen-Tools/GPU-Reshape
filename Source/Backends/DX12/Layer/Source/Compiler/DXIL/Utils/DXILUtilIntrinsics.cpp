@@ -253,8 +253,17 @@ const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrin
 }
 
 const DXILFunctionDeclaration* DXILUtilIntrinsics::GetLibHandleIntrinsic(const Backend::IL::Type* type) {
-    // Annotated by the type
-    std::string name = "dx.op.createHandleForLib." + std::string(table.type.typeMap.GetName(type));
+    std::string name;
+
+    // TODO[rt]: Just create the declaration once
+    if (table.metadata.SatisfiesShadingModel(6, 6)) {
+        type = table.intrinsics.handleType;
+        name = "dx.op.createHandleForLib.dx.types.Handle";
+    } else {
+        // Annotated by the type
+        name = "dx.op.createHandleForLib." + std::string(table.type.typeMap.GetName(type));
+    }
+    
     
     // Deduplicate it
     const DXILFunctionDeclaration *&handle = libHandleTypeMap[name];

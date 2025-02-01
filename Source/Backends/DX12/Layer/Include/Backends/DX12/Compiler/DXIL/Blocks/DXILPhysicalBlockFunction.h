@@ -207,6 +207,14 @@ private:
     /// Resolved local physical mappings
     RootSignaturePhysicalMapping* localPhysicalMappings{nullptr};
 
+    /// Create the handle annotation
+    /// \param block appended block
+    /// \param result allocated result
+    /// \param _class designated class
+    /// \param handleId metadata handle
+    /// \param bindingHandle the binding to annotate
+    void CreateHandleAnnotation(struct LLVMBlock *block, uint32_t result, DXILShaderResourceClass _class, uint32_t handleId, uint32_t bindingHandle);
+
     /// Create a universal handle
     /// \param block appended block
     /// \param result allocated result

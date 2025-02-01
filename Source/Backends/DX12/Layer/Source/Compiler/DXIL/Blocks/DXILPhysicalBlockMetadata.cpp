@@ -1323,9 +1323,9 @@ void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job
     const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
 
     // {i32}
-    const Backend::IL::Type* retTy = program.GetTypeMap().AddUnsortedType(program.GetIdentifierMap().AllocID(), Backend::IL::StructType {
+    const Backend::IL::Type* retTy = table.type.typeMap.FindNamedTypeOrAdd(Backend::IL::StructType {
         .memberTypes = { i32 }
-    });
+    }, "class.RWBuffer<unsigned int>");
 
     // {i32}[count]
     const Backend::IL::Type* retArrayTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType{
@@ -1333,11 +1333,8 @@ void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job
         .count = job.instrumentationKey.bindingInfo.global.shaderExportCount
     });
 
-    // Compile as named
-    table.type.typeMap.CompileNamedType(retTy, "class.RWBuffer<unsigned int>");
-
     // {i32}*
-    const Backend::IL::Type* retTyPtr = program.GetTypeMap().AddUnsortedType(program.GetIdentifierMap().AllocID(), Backend::IL::PointerType{
+    const Backend::IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
         .pointee = retArrayTy,
         .addressSpace = Backend::IL::AddressSpace::Function
     });
@@ -1370,12 +1367,9 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
     const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
 
     // {i32}
-    const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
+    const Backend::IL::Type* retTy = table.type.typeMap.FindNamedTypeOrAdd(Backend::IL::StructType {
         .memberTypes = { i32 }
-    });
-
-    // Compile as named
-    table.type.typeMap.CompileNamedType(retTy, "class.Buffer<unsigned int>");
+    }, "class.Buffer<unsigned int>");
 
     // {i32}*
     const Backend::IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
@@ -1440,7 +1434,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
     const Backend::IL::Type *i32x4 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{.containedType=i32, .dimension=4});
 
     // {[i32 x 4]}
-    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
+    const Backend::IL::Type* cbufferType = table.type.typeMap.AddUniqueNamedType(Backend::IL::StructType {
         .memberTypes = {
             // [i32 x 4]
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType {
@@ -1448,10 +1442,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
                 .count = (job.instrumentationKey.physicalMapping->rootDWordCount + 3) / 4u
             })
         }
-    });
-
-    // Compile as named
-    table.type.typeMap.CompileNamedType(cbufferType, "CBufferDescriptorData");
+    }, "CBufferDescriptorData");
 
     // {[i32 x 4]}*
     const Backend::IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
@@ -1551,10 +1542,7 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXCompileJob &job) {
     }
 
     // {[4xN] N-1}
-    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(eventStruct);
-
-    // Compile as named
-    table.type.typeMap.CompileNamedType(cbufferType, "CBufferEventData");
+    const Backend::IL::Type* cbufferType = table.type.typeMap.AddUniqueNamedType(eventStruct, "CBufferEventData");
 
     // {...}*
     const Backend::IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
@@ -1631,10 +1619,7 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     }
 
     // {[4xN] N-1}
-    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(constantStruct);
-
-    // Compile as named
-    table.type.typeMap.CompileNamedType(cbufferType, "CBufferConstantData");
+    const Backend::IL::Type* cbufferType = table.type.typeMap.AddUniqueNamedType(constantStruct, "CBufferConstantData");
 
     // {...}*
     const Backend::IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
@@ -1664,11 +1649,19 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
 }
 
 const Backend::IL::Variable * DXILPhysicalBlockMetadata::CreateExternLibResourceVariable(const Backend::IL::Type* type) {
+    // If 6.6, just points to the handle type
+    if (table.metadata.SatisfiesShadingModel(6, 6)) {
+        type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+            .pointee = table.intrinsics.handleType,
+            .addressSpace = Backend::IL::AddressSpace::Constant
+        });
+    }
+
     // Create variable
     auto* variable = new Backend::IL::Variable {
         .id = program.GetIdentifierMap().AllocID(),
         .addressSpace = Backend::IL::AddressSpace::Constant,
-        .type = Backend::IL::GetComponentType(type),
+        .type = type,
         .initializer = nullptr
     };
 
@@ -1706,12 +1699,9 @@ void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXCompileJob& job)
         const auto* pointerType = variable->type->As<Backend::IL::PointerType>();
 
         // {format}
-        const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
+        const Backend::IL::Type* retTy = table.type.typeMap.FindNamedTypeOrAdd(Backend::IL::StructType {
             .memberTypes = { pointerType->pointee->As<Backend::IL::BufferType>()->elementType }
-        });
-
-        // Compile as named
-        table.type.typeMap.CompileNamedType(retTy, "class.Buffer<Format>");
+        }, "class.Buffer<Format>");
 
         // {format}*
         const Backend::IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{

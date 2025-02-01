@@ -177,14 +177,16 @@ bool DXILSigner::SignWithValidation(void *code, uint64_t length) {
         // Get contents
         const char* contents = static_cast<const char*>(errorBufferUTF8->GetBufferPointer());
 
+        // Compose error
+        std::stringstream ss;
+        ss << "DXIL Signing failed: " << contents;
+        
         // Later validation introduced by DXC which may fail on earlier shaders
         if (std::strstr(contents, "Internal declaration '<null>' is unused")) {
             return false;
         }
 
-        // Compose error
-        std::stringstream ss;
-        ss << "DXIL Signing failed: " << contents;
+        // Not a known issue, instrumentation issue! (probably)
         ASSERT(false, ss.str().c_str());
 #endif // NDEBUG
 

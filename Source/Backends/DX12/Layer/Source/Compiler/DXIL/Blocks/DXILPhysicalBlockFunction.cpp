@@ -1663,8 +1663,16 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             auto loadInstr = IL::InstructionRef<>(program.GetIdentifierMap().Get(handleId))->Cast<IL::LoadInstruction>();
             ASSERT(loadInstr, "Expected source load for CreateHandleForLib");
 
+            // May be addressing into the array
+            IL::ID loadId = loadInstr->address;
+            if (auto instr = IL::InstructionRef<>(program.GetIdentifierMap().Get(loadId))) {
+                if (auto gepInstr = instr->Cast<IL::AddressChainInstruction>()) {
+                    loadId = gepInstr->composite;
+                }
+            }
+            
             // Expecting load on variable
-            const Backend::IL::Variable *variable = program.GetVariableList().GetVariable(loadInstr->address);
+            const Backend::IL::Variable *variable = program.GetVariableList().GetVariable(loadId);
             ASSERT(variable, "Expected variable address for CreateHandleForLib source load");
 
             // Set as pointee type
@@ -5411,6 +5419,10 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
                 break;
             }
 
+            case LLVMFunctionRecord::InstUnreachable: {
+                break;
+            }
+
             case LLVMFunctionRecord::InstExtractVal: {
                 writer.RemapRelativeValue(anchor);
                 break;
@@ -5651,7 +5663,71 @@ DXILFunctionDeclaration *DXILPhysicalBlockFunction::AddDeclaration(const DXILFun
     return functions.Add(new (allocators, kAllocModuleDXIL) DXILFunctionDeclaration(declaration));
 }
 
+void DXILPhysicalBlockFunction::CreateHandleAnnotation(struct LLVMBlock *block, uint32_t result, DXILShaderResourceClass _class, uint32_t handleId, uint32_t bindingHandle) {
+    // Get intrinsic
+    const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpAnnotateHandle);
+
+    // Get the handle
+    const DXILMetadataHandleEntry* entry = table.metadata.GetHandleFromMetadata(_class, handleId);
+
+    // Populate resource properties
+    DXILResourceProperties properties{};
+    switch (_class) {
+        default:
+            ASSERT(false, "Invalid class");
+            break;
+        case DXILShaderResourceClass::SRVs:
+            properties.basic.shape = static_cast<uint8_t>(entry->srv.shape);
+            properties.typed.resource.componentType = static_cast<uint8_t>(entry->srv.componentType);
+            properties.typed.resource.componentCount = static_cast<uint8_t>(GetShapeComponentCount(entry->srv.shape));
+            properties.typed.resource.sampleCount = 1u;
+            break;
+        case DXILShaderResourceClass::UAVs:
+            properties.basic.shape = static_cast<uint8_t>(entry->uav.shape);
+            properties.basic.isUAV = true;
+            properties.basic.isGloballyCoherent = true;
+            properties.typed.resource.componentType = static_cast<uint8_t>(entry->uav.componentType);
+            properties.typed.resource.componentCount = static_cast<uint8_t>(GetShapeComponentCount(entry->uav.shape));
+            properties.typed.resource.sampleCount = 1u;
+            break;
+        case DXILShaderResourceClass::CBVs:
+            properties.basic.shape = static_cast<uint8_t>(DXILShaderResourceShape::CBuffer);
+            properties.typed.cbufferByteSize = static_cast<uint32_t>(Backend::IL::GetPODNonAlignedTypeByteSize(entry->type->As<Backend::IL::PointerType>()->pointee));
+            break;
+        case DXILShaderResourceClass::Samplers:
+            properties.basic.shape = static_cast<uint8_t>(DXILShaderResourceShape::Sampler);
+            break;
+    }
+    
+    uint64_t ops[3];
+
+    // OpCode
+    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AnnotateHandle)}
+        )->id);
+
+    // Handle
+    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(bindingHandle);
+
+    // Properties
+    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        table.intrinsics.resourceProperties,
+        Backend::IL::StructConstant{
+            .members = {
+                program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = properties.basic.opaque}),
+                program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = properties.typed.opaque})
+            }
+        }
+    )->id);
+
+    // Create 6.6 annotation
+    block->AddRecord(CompileIntrinsicCall(result, intrinsic, 3, ops));
+}
+
 void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, uint32_t result, DXILShaderResourceClass _class, uint32_t handleId, uint32_t registerBase) {
+    const bool isSm66 = table.metadata.SatisfiesShadingModel(6, 6);
+    
     // Library collection?
     if (table.metadata.shadingModel._class == DXILShadingModelClass::Lib) {
         const uint32_t loadGlobal = program.GetIdentifierMap().AllocID();
@@ -5721,6 +5797,14 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
             block->AddRecord(record);
         }
 
+        // SM6.6 needs to annotate the handles
+        uint32_t handleResult;
+        if (isSm66) {
+            handleResult = program.GetIdentifierMap().AllocID();
+        } else {
+            handleResult = result;
+        }
+
         // Create handle from lib
         {
             // Get intrinsic
@@ -5738,12 +5822,17 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
             ops[1] = table.idRemapper.EncodeRedirectedUserOperand(loadGlobal);
 
             // Create lib handle
-            block->AddRecord(CompileIntrinsicCall(result, intrinsic, 2, ops));
+            block->AddRecord(CompileIntrinsicCall(handleResult, intrinsic, 2, ops));
+        }
+
+        // Annotate!
+        if (isSm66) {
+            CreateHandleAnnotation(block, result, _class, handleId, handleResult);
         }
     }
     
     // Are we on SM6.6 or beyond?
-    else if (table.metadata.SatisfiesShadingModel(6, 6)) {
+    else if (isSm66) {
         const uint32_t bindingHandle = program.GetIdentifierMap().AllocID();
 
         // Allocate handle
@@ -5787,69 +5876,8 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
             // Create SM6.6 handle
             block->AddRecord(CompileIntrinsicCall(bindingHandle, intrinsic, 4, ops));
         }
-
-        // Annotate the handle
-        {
-            // Get intrinsic
-            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpAnnotateHandle);
-
-            // Get the handle
-            const DXILMetadataHandleEntry* entry = table.metadata.GetHandleFromMetadata(_class, handleId);
-
-            // Populate resource properties
-            DXILResourceProperties properties{};
-            switch (_class) {
-                default:
-                    ASSERT(false, "Invalid class");
-                    break;
-                case DXILShaderResourceClass::SRVs:
-                    properties.basic.shape = static_cast<uint8_t>(entry->srv.shape);
-                    properties.typed.resource.componentType = static_cast<uint8_t>(entry->srv.componentType);
-                    properties.typed.resource.componentCount = static_cast<uint8_t>(GetShapeComponentCount(entry->srv.shape));
-                    properties.typed.resource.sampleCount = 1u;
-                    break;
-                case DXILShaderResourceClass::UAVs:
-                    properties.basic.shape = static_cast<uint8_t>(entry->uav.shape);
-                    properties.basic.isUAV = true;
-                    properties.basic.isGloballyCoherent = true;
-                    properties.typed.resource.componentType = static_cast<uint8_t>(entry->uav.componentType);
-                    properties.typed.resource.componentCount = static_cast<uint8_t>(GetShapeComponentCount(entry->uav.shape));
-                    properties.typed.resource.sampleCount = 1u;
-                    break;
-                case DXILShaderResourceClass::CBVs:
-                    properties.basic.shape = static_cast<uint8_t>(DXILShaderResourceShape::CBuffer);
-                    properties.typed.cbufferByteSize = static_cast<uint32_t>(Backend::IL::GetPODNonAlignedTypeByteSize(entry->type->As<Backend::IL::PointerType>()->pointee));
-                    break;
-                case DXILShaderResourceClass::Samplers:
-                    properties.basic.shape = static_cast<uint8_t>(DXILShaderResourceShape::Sampler);
-                    break;
-            }
-            
-            uint64_t ops[3];
-
-            // OpCode
-            ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AnnotateHandle)}
-                )->id);
-
-            // Handle
-            ops[1] = table.idRemapper.EncodeRedirectedUserOperand(bindingHandle);
-
-            // Properties
-            ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                table.intrinsics.resourceProperties,
-                Backend::IL::StructConstant{
-                    .members = {
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = properties.basic.opaque}),
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = properties.typed.opaque})
-                    }
-                }
-            )->id);
-
-            // Create 6.6 annotation
-            block->AddRecord(CompileIntrinsicCall(result, intrinsic, 3, ops));
-        }
+        
+        CreateHandleAnnotation(block, result, _class, handleId, bindingHandle);
     } else {
         // Get intrinsic
         const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCreateHandle);
@@ -6401,25 +6429,22 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
             IL::ID id = table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(5));
 
             // Get the target handle
-            IL::InstructionRef<> targetInstr = program.GetIdentifierMap().Get(id);
+            IL::InstructionRef<IL::LoadInstruction> targetInstr = program.GetIdentifierMap().Get(id);
             const LLVMRecord *targetRecord = &source[targetInstr->source.codeOffset];
 
-            // Indexing into the global?
-            switch (static_cast<LLVMFunctionRecord>(targetRecord->id)) {
-                default: {
-                    ASSERT(false, "Unexpected handle target");
-                    break;
-                }
-                case LLVMFunctionRecord::InstGEP: {
-                    id = table.idMap.GetMappedRelative(targetRecord->sourceAnchor, targetRecord->Op32(2));
-                    metadata.rangeConstantOrValue = table.idMap.GetMappedRelative(targetRecord->sourceAnchor, targetRecord->Op32(4));
-                    break;
-                }
-                case LLVMFunctionRecord::InstLoad: {
-                    id = table.idMap.GetMappedRelative(targetRecord->sourceAnchor, targetRecord->Op32(0));
-                    metadata.rangeConstantOrValue = program.GetConstants().UInt(0)->id;
-                    break;
-                }
+            // Load target
+            id = table.idMap.GetMappedRelative(targetRecord->sourceAnchor, targetRecord->Op32(0));
+
+            // Is GEP?
+            if (IL::InstructionRef<IL::AddressChainInstruction> gepInstr = program.GetIdentifierMap().Get(id)) {
+                const LLVMRecord *gepRecord = &source[gepInstr->source.codeOffset];
+
+                // Get index and range offset
+                id = table.idMap.GetMappedRelative(gepRecord->sourceAnchor, gepRecord->Op32(2));
+                metadata.rangeConstantOrValue = table.idMap.GetMappedRelative(gepRecord->sourceAnchor, gepRecord->Op32(4));
+            } else {
+                // No range offset
+                metadata.rangeConstantOrValue = program.GetConstants().UInt(0)->id;
             }
 
             // Must be a variable at this point

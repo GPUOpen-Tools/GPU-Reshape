@@ -70,6 +70,7 @@ public:
         out.indexLookup = indexLookup;
         out.typeLookup = typeLookup;
         out.namedLookup = namedLookup;
+        out.typeNameLookup = typeNameLookup;
     }
 
     /// Add a type
@@ -113,6 +114,7 @@ public:
 
         // Named mapping
         namedLookup[name] = type;
+        typeNameLookup[type] = name;
 
         // OK
         return type;
@@ -139,11 +141,12 @@ public:
         return id;
     }
 
-    /// Compile a named type
-    /// \param type given type, must be namable
-    /// \param name given name
+    /// Find a named type or add a new one
+    /// \param typeDecl expected declaration
+    /// \param name name of the type
+    /// \return type
     template<typename T>
-    const T* CompileNamedType(const T* type, const char* name) {
+    const T* FindNamedTypeOrAdd(const T& typeDecl, const char* name) {
         auto&& it = namedLookup.find(name);
 
         // Named types use name as key
@@ -155,6 +158,9 @@ public:
                 return it->second->As<T>();
             }
         }
+
+        // Not found, allocate the type
+        const T* type = programMap.AddUnsortedType(identifierMap.AllocID(), typeDecl);
 
         // Only certain named types
         switch (type->kind) {
@@ -168,6 +174,16 @@ public:
 
         // OK
         return type;
+    }
+
+    /// Add a named type, must be unique
+    /// \param typeDecl expected declaration
+    /// \param name name of the type
+    /// \return type
+    template<typename T>
+    const T* AddUniqueNamedType(const T& typeDecl, const char* name) {
+        ASSERT(!namedLookup.contains(name), "Duplicate unique named type");
+        return FindNamedTypeOrAdd(typeDecl, name);
     }
 
     /// Get the compiled name of a type
