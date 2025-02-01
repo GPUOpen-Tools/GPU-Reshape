@@ -50,6 +50,8 @@
 #include <Backends/DX12/Resource/DescriptorData.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
 #include <Backends/DX12/CommandListRenderPassScope.h>
+#include <Backends/DX12/Export/ShaderExportStreamStateBarrierTracking.h>
+#include <Backends/DX12/Export/ShaderExportStreamStateRaytracingCache.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -793,6 +795,16 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     // Process debugging streams
     ProcessStreamDebug(state);
 #endif // NDEBUG
+
+    // Clear tracking state
+    if (state->barrierTracking) {
+        state->barrierTracking->Clear();
+    }
+
+    // Clear raytracing state
+    if (state->raytracingCache) {
+        state->raytracingCache->Clear();
+    }
 
     // Uses descriptors?
     if (state->hasDescriptorState) {

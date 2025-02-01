@@ -42,6 +42,8 @@
 #include <Backends/DX12/QueueSegmentAllocator.h>
 #include <Backends/DX12/IncrementalFence.h>
 #include <Backends/DX12/Scheduler/Scheduler.h>
+#include <Backends/DX12/Export/ShaderExportStreamStateBarrierTracking.h>
+#include <Backends/DX12/Export/ShaderExportStreamStateRaytracingCache.h>
 
 // Backend
 #include <Backend/SubmissionContext.h>
@@ -741,6 +743,59 @@ void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList* list, cons
     table.bottom->next_CopyTextureRegion(table.next, &dst, DstX, DstY, DstZ, &src, pSrcBox);
 }
 
+ShaderExportStreamStateBarrierTracking* GetBarrierTracking(CommandListState* state) {
+    // Allocate on demand
+    if (!state->streamState->barrierTracking) {
+        state->streamState->barrierTracking = new (state->allocators) ShaderExportStreamStateBarrierTracking();
+    }
+
+    // OK
+    return state->streamState->barrierTracking;
+}
+
+ShaderExportStreamStateRaytracingCache* GetRaytracingCache(CommandListState* state) {
+    // Allocate on demand
+    if (!state->streamState->raytracingCache) {
+        state->streamState->raytracingCache = new (state->allocators) ShaderExportStreamStateRaytracingCache();
+    }
+
+    // OK
+    return state->streamState->raytracingCache;
+}
+
+static void HandleBarrierCacheInvalidation(CommandListState* state, ResourceState* resource) {
+    // No tracking? No invalidation
+    if (!state->streamState->barrierTracking) {
+        return;
+    }
+
+    // Find entry
+    auto it = state->streamState->barrierTracking->resources.find(resource);
+    if (it == state->streamState->barrierTracking->resources.end()) {
+        return;
+    }
+
+    // Invalidate raytracing state
+    if (it->second & ShaderExportStreamStateBarrierFlag::Raytracing) {
+        state->streamState->raytracingCache->Invalidate(resource);
+    }
+
+    // No longer tracked
+    state->streamState->barrierTracking->resources.erase(it);
+}
+
+static void HandleGlobalBarrierCacheInvalidation(CommandListState* state) {
+    // Remove all tracking
+    if (ShaderExportStreamStateBarrierTracking *tracking = state->streamState->barrierTracking) {
+        tracking->Clear();
+    }
+
+    // Clean all raytracing caches
+    if (ShaderExportStreamStateRaytracingCache *cache = state->streamState->raytracingCache) {
+        cache->Clear();
+    }
+}
+
 void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT NumBarriers, const D3D12_RESOURCE_BARRIER* pBarriers) {
     auto table = GetTable(list);
 
@@ -752,7 +807,12 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
         switch (pBarriers[i].Type) {
             case D3D12_RESOURCE_BARRIER_TYPE_TRANSITION: {
                 D3D12_RESOURCE_BARRIER barrier = pBarriers[i];
-                barrier.Transition.pResource = Next(barrier.Transition.pResource);
+                
+                // Invalidate dependent caching
+                auto resourceTable = GetTable(barrier.Transition.pResource);
+                HandleBarrierCacheInvalidation(table.state, resourceTable.state);
+                
+                barrier.Transition.pResource = resourceTable.next;
                 barriers.Add(barrier);
                 break;
             }
@@ -761,6 +821,9 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
                 
                 if (barrier.Aliasing.pResourceBefore) {
                     auto resourceTable = GetTable(barrier.Aliasing.pResourceBefore);
+
+                    // Invalidate dependent caching
+                    HandleBarrierCacheInvalidation(table.state, resourceTable.state);
 
                     // If emulated, this barrier is irrelevant
                     if (resourceTable.state->isEmulatedComitted) {
@@ -772,6 +835,9 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
                 
                 if (barrier.Aliasing.pResourceAfter) {
                     auto resourceTable = GetTable(barrier.Aliasing.pResourceAfter);
+
+                    // Invalidate dependent caching
+                    HandleBarrierCacheInvalidation(table.state, resourceTable.state);
                     
                     // If emulated, this barrier is irrelevant
                     if (resourceTable.state->isEmulatedComitted) {
@@ -788,7 +854,14 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
                 D3D12_RESOURCE_BARRIER barrier = pBarriers[i];
                 
                 if (barrier.UAV.pResource) {
-                    barrier.UAV.pResource = Next(barrier.Transition.pResource);
+                    auto resourceTable = GetTable(barrier.Transition.pResource);
+                    barrier.UAV.pResource = resourceTable.next;
+
+                    // Invalidate dependent caching
+                    HandleBarrierCacheInvalidation(table.state, resourceTable.state);
+                } else {
+                    // Since we don't know what resource was referenced, just invalidate everything
+                    HandleGlobalBarrierCacheInvalidation(table.state);
                 }
                 
                 barriers.Add(barrier);
@@ -864,6 +937,9 @@ void WINAPI HookID3D12CommandListBarrier(ID3D12CommandList *list, UINT NumBarrie
                 for (uint32_t barrierIndex = 0; barrierIndex < source.NumBarriers; barrierIndex++) {
                     globalBarriers[globalBarrierOffset + barrierIndex] = source.pGlobalBarriers[barrierIndex];
                 }
+
+                // Invalidate all caching
+                HandleGlobalBarrierCacheInvalidation(table.state);
                 
                 dest.pGlobalBarriers = globalBarriers.Data() + globalBarrierOffset;
                 globalBarrierOffset += source.NumBarriers;
@@ -873,7 +949,12 @@ void WINAPI HookID3D12CommandListBarrier(ID3D12CommandList *list, UINT NumBarrie
                 // Unwrap texture
                 for (uint32_t barrierIndex = 0; barrierIndex < source.NumBarriers; barrierIndex++) {
                     D3D12_TEXTURE_BARRIER barrier = source.pTextureBarriers[barrierIndex];
-                    barrier.pResource = Next(barrier.pResource);
+                    auto resourceTable = GetTable(barrier.pResource);
+
+                    // Invalidate dependent caching
+                    HandleBarrierCacheInvalidation(table.state, resourceTable.state);
+                    
+                    barrier.pResource = resourceTable.next;
                     textureBarriers[textureBarrierOffset + barrierIndex] = barrier;
                 }
                 
@@ -885,7 +966,12 @@ void WINAPI HookID3D12CommandListBarrier(ID3D12CommandList *list, UINT NumBarrie
                 // Unwrap buffer
                 for (uint32_t barrierIndex = 0; barrierIndex < source.NumBarriers; barrierIndex++) {
                     D3D12_BUFFER_BARRIER barrier = source.pBufferBarriers[barrierIndex];
-                    barrier.pResource = Next(barrier.pResource);
+                    auto resourceTable = GetTable(barrier.pResource);
+
+                    // Invalidate dependent caching
+                    HandleBarrierCacheInvalidation(table.state, resourceTable.state);
+                    
+                    barrier.pResource = resourceTable.next;
                     bufferBarriers[bufferBarrierOffset + barrierIndex] = barrier;
                 }
                 

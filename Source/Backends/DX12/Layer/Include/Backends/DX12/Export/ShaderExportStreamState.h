@@ -52,6 +52,8 @@
 // Forward declarations
 struct RootSignatureState;
 struct ShaderExportSegmentInfo;
+struct ShaderExportStreamStateRaytracingCache;
+struct ShaderExportStreamStateBarrierTracking;
 struct IncrementalFence;
 class ShaderExportFixedTwoSidedDescriptorAllocator;
 struct FenceState;
@@ -250,6 +252,12 @@ struct ShaderExportStreamState {
     /// Useful for larger descriptor allocations that shouldnt pollute the small reserved region
     /// Does however require user heap reconstruction when used
     ShaderExportOwnedHeapAllocator heapAllocator;
+
+    /// Per-state barrier tracking for cache invalidation, allocated on demand
+    ShaderExportStreamStateBarrierTracking* barrierTracking{nullptr};
+
+    /// Per-state caches, allocated on demand
+    ShaderExportStreamStateRaytracingCache* raytracingCache{nullptr};
 
     /// Top level context handle
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};

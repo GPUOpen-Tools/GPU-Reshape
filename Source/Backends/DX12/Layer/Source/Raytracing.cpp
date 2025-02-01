@@ -27,6 +27,8 @@
 // Layer
 #include <Backends/DX12/Export/ShaderExportFixedTwoSidedDescriptorAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamState.h>
+#include <Backends/DX12/Export/ShaderExportStreamStateBarrierTracking.h>
+#include <Backends/DX12/Export/ShaderExportStreamStateRaytracingCache.h>
 #include <Backends/DX12/Programs/Programs.h>
 #include <Backends/DX12/Raytracing.h>
 #include <Backends/DX12/CommandList.h>
@@ -335,9 +337,73 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     return patched;
 }
 
-static D3D12_DISPATCH_RAYS_DESC PatchShaderRecords(DeviceTable& device, CommandListState* state, const D3D12_DISPATCH_RAYS_DESC& Desc) {
-    // TODO[rt]: Actual caching
-    return PatchShaderRecordsImmediate(device, state, Desc);
+static void CombineHash(uint64_t& hash, const D3D12_GPU_VIRTUAL_ADDRESS_RANGE& desc) {
+    CombineHash(hash, desc.StartAddress);
+    CombineHash(hash, desc.SizeInBytes);
+}
+
+static void CombineHash(uint64_t& hash, const D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE& desc) {
+    CombineHash(hash, desc.StartAddress);
+    CombineHash(hash, desc.SizeInBytes);
+    CombineHash(hash, desc.StrideInBytes);
+}
+
+static void CombineHash(uint64_t& hash, const D3D12_DISPATCH_RAYS_DESC& desc) {
+    CombineHash(hash, desc.RayGenerationShaderRecord);
+    CombineHash(hash, desc.MissShaderTable);
+    CombineHash(hash, desc.HitGroupTable);
+    CombineHash(hash, desc.CallableShaderTable);
+    CombineHash(hash, desc.Width);
+    CombineHash(hash, desc.Height);
+    CombineHash(hash, desc.Depth);
+}
+
+void AddCachedNativeObject(CommandListState* state, ShaderExportStreamStateRaytracingPatchEntry& entry, ResourceState* resource) {
+    // Deduplicate, faster lookup times
+    for (ResourceState* other : entry.resources) {
+        if (other == resource) {
+            return;
+        }
+    }
+
+    // Not found, add
+    entry.resources.Add(resource);
+
+    // Mark as tracked in raytracing
+    ShaderExportStreamStateBarrierTracking *tracking = GetBarrierTracking(state);
+    tracking->resources[resource] |= ShaderExportStreamStateBarrierFlag::Raytracing;
+}
+
+static D3D12_DISPATCH_RAYS_DESC PatchShaderRecords(DeviceTable& device, CommandListState* state, const D3D12_DISPATCH_RAYS_DESC& desc) {
+    ShaderExportStreamStateRaytracingCache *cache = GetRaytracingCache(state);
+
+    // Get hash
+    uint64_t hash = 0;
+    CombineHash(hash, desc);
+
+    // Try to find cached entry
+    for (const ShaderExportStreamStateRaytracingPatchEntry& entry : cache->patchEntries) {
+        if (entry.hash == hash) {
+            return entry.patched;
+        }
+    }
+
+    // Patch the actual records
+    D3D12_DISPATCH_RAYS_DESC patched = PatchShaderRecordsImmediate(device, state, desc);
+
+    // Create cache entry
+    ShaderExportStreamStateRaytracingPatchEntry& entry = cache->patchEntries.emplace_back();
+    entry.hash = hash;
+    entry.patched = patched;
+
+    // Add all referenced native objects for barrier tracking
+    AddCachedNativeObject(state, entry, device.state->virtualAddressTable.Find(desc.RayGenerationShaderRecord.StartAddress));
+    AddCachedNativeObject(state, entry, device.state->virtualAddressTable.Find(desc.HitGroupTable.StartAddress));
+    AddCachedNativeObject(state, entry, device.state->virtualAddressTable.Find(desc.MissShaderTable.StartAddress));
+    AddCachedNativeObject(state, entry, device.state->virtualAddressTable.Find(desc.CallableShaderTable.StartAddress));
+
+    // OK
+    return patched;
 }
 
 void HookID3D12CommandListDispatchRays(ID3D12GraphicsCommandList4* list, const D3D12_DISPATCH_RAYS_DESC* pDesc) {

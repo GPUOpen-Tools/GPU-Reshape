@@ -41,6 +41,8 @@
 struct DeviceState;
 struct ShaderExportStreamState;
 class DescriptorDataAppendAllocator;
+struct ShaderExportStreamStateBarrierTracking;
+struct ShaderExportStreamStateRaytracingCache;
 
 struct __declspec(uuid("8270D898-4356-4503-8DEB-9CD73BB31B21")) CommandListState {
     ~CommandListState();
@@ -72,3 +74,7 @@ struct __declspec(uuid("8270D898-4356-4503-8DEB-9CD73BB31B21")) CommandListState
     /// Object
     ID3D12GraphicsCommandList* object{nullptr};
 };
+
+/// On-demand cache getters
+ShaderExportStreamStateBarrierTracking* GetBarrierTracking(CommandListState* state);
+ShaderExportStreamStateRaytracingCache* GetRaytracingCache(CommandListState* state);
