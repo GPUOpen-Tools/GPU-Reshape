@@ -68,6 +68,9 @@ public:
     /// \param deviceAllocator owning device allocator
     void Update(const ComRef<DeviceAllocator>& deviceAllocator);
 
+    /// Clear allocations, does not free
+    void Clear();
+
 private:
     struct AllocationEntry {
         /// Actual allocation

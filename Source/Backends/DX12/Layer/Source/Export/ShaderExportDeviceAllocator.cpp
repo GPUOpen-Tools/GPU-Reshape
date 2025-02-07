@@ -36,7 +36,13 @@ ShaderExportDeviceAllocation ShaderExportDeviceAllocator::Allocate(const ComRef<
     // Free allocation?
     if (!bucket.entries.empty()) {
         AllocationEntry entry = bucket.entries.back();
+        entry.allocation.index = static_cast<uint32_t>(allocations.size());
         bucket.entries.pop_back();
+
+        // Keep track of it for lazy frees
+        allocations.push_back(LazyAllocationEntry {
+            .allocation = entry.allocation
+        });
 
         return entry.allocation;
     }
@@ -112,6 +118,11 @@ void ShaderExportDeviceAllocator::Update(const ComRef<DeviceAllocator>& deviceAl
              return true;
         }),  bucket.entries.end());
     }
+}
+
+void ShaderExportDeviceAllocator::Clear() {
+    allocations.clear();
+    buckets.clear();
 }
 
 ShaderExportDeviceAllocator::Bucket& ShaderExportDeviceAllocator::GetBucket(size_t length) {

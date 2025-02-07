@@ -1367,6 +1367,9 @@ void ShaderExportStreamer::FreeDeviceAllocator(ShaderExportDeviceAllocator &allo
 
     // To the pool
     freeDeviceAllocators.push_back(allocator);
+
+    // Cleanup
+    allocator.Clear();
 }
 
 void ShaderExportStreamer::FreeHeapAllocator(ShaderExportOwnedHeapAllocator& allocator) {
