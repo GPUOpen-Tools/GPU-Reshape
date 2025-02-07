@@ -339,7 +339,7 @@ HRESULT WINAPI HookIDXGISwapChainGetBuffer(IDXGISwapChain1 * swapchain, UINT Buf
     auto table = GetTable(swapchain);
 
     // Bounds check
-    if (Buffer > table.state->buffers.size()) {
+    if (Buffer >= table.state->buffers.size()) {
         return E_FAIL;
     }
 
