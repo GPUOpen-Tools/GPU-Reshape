@@ -27,57 +27,14 @@
 #pragma once
 
 // Shared
+#include "Cxx.h"
 #include "ShaderRecordPatching.h"
-
-#ifdef __cplusplus
-#   define HLSL_REF(X) X&
-#   define HLSL_MAX(A, B) std::max(A, B)
-#   define HLSL_INLINE inline
-#else // __cplusplus
-#   define HLSL_REF(X) inout X
-#   define HLSL_MAX(A, B) max(A, B)
-#   define HLSL_INLINE 
-#   define D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT  64
-#   define D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT 32
-#   define D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES         32
-#endif // __cplusplus
 
 /// Command constants
 static const uint RaytracingIndirectSetupCommandByteStride   = 64;
 static const uint RaytracingIndirectSetupCommandDWordStride  = RaytracingIndirectSetupCommandByteStride / sizeof(uint);
 static const uint RaytracingIndirectSetupCommandRangeStride  = 5;
 static const uint RaytracingIndirectSetupCommandRangeCount   = 4;
-static const uint RaytracingIndirectSetupCommandCount        = RaytracingIndirectSetupCommandRangeCount * RaytracingIndirectSetupCommandRangeStride;
-
-/// HLSL side struct eqv.
-#ifndef __cplusplus
-struct D3D12_GPU_VIRTUAL_ADDRESS_RANGE {
-    UInt64 StartAddress;
-    UInt64 SizeInBytes;
-};
-
-struct D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE {
-    UInt64 StartAddress;
-    UInt64 SizeInBytes;
-    UInt64 StrideInBytes;
-};
-
-struct D3D12_DISPATCH_RAYS_DESC {
-    D3D12_GPU_VIRTUAL_ADDRESS_RANGE RayGenerationShaderRecord;
-    D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE MissShaderTable;
-    D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE HitGroupTable;
-    D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE CallableShaderTable;
-    uint Width;
-    uint Height;
-    uint Depth;
-};
-
-struct D3D12_DISPATCH_ARGUMENTS {
-    uint ThreadGroupCountX;
-    uint ThreadGroupCountY;
-    uint ThreadGroupCountZ;
-};
-#endif // __cplusplus
 
 struct SBTIndirectSetupConstantData {
     uint ScratchByteCount;
@@ -111,7 +68,7 @@ struct SBTSharedAllocationContext {
     UInt64 AllocationSize;
 };
 
-HLSL_INLINE void AlignInPlace(HLSL_REF(UInt64) value, uint align32) {
+HLSL_INLINE void SBTAlignInPlace(HLSL_REF(UInt64) value, uint align32) {
     if (Low(value) % align32 == 0) {
         return;
     }
@@ -168,13 +125,13 @@ HLSL_INLINE UInt64 SBTContextSetup(HLSL_REF(SBTSharedAllocationContext) Context,
 
     // Total allocation size for patched records
     Context.AllocationSize = 0;
-    AlignInPlace(Context.AllocationSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    SBTAlignInPlace(Context.AllocationSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
     Context.AllocationSize = AddUInt64_64(Context.AllocationSize, Context.Dispatch.RayGenerationShaderRecord.SizeInBytes);
-    AlignInPlace(Context.AllocationSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    SBTAlignInPlace(Context.AllocationSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
     Context.AllocationSize = AddUInt64_64(Context.AllocationSize, Context.Dispatch.CallableShaderTable.SizeInBytes);
-    AlignInPlace(Context.AllocationSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    SBTAlignInPlace(Context.AllocationSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
     Context.AllocationSize = AddUInt64_64(Context.AllocationSize, Context.Dispatch.HitGroupTable.SizeInBytes);
-    AlignInPlace(Context.AllocationSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    SBTAlignInPlace(Context.AllocationSize, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
     Context.AllocationSize = AddUInt64_64(Context.AllocationSize, Context.Dispatch.MissShaderTable.SizeInBytes);
     Context.AllocationSize = AddUInt64_64(Context.AllocationSize, Context.RayGenDescriptorLength);
     Context.AllocationSize = AddUInt64_64(Context.AllocationSize, Context.CallableDescriptorLength);
@@ -193,22 +150,22 @@ HLSL_INLINE D3D12_DISPATCH_RAYS_DESC SBTContextPatch(HLSL_REF(SBTSharedAllocatio
     UInt64 patchedOffset = 0;
 
     // Offset into ray generation
-    AlignInPlace(patchedOffset, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    SBTAlignInPlace(patchedOffset, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
     Context.Dispatch.RayGenerationShaderRecord.StartAddress = AddUInt64_64(BaseAddress, patchedOffset);
     patchedOffset = AddUInt64_64(patchedOffset, Context.Dispatch.RayGenerationShaderRecord.SizeInBytes);
 
     // Offset into callable
-    AlignInPlace(patchedOffset, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    SBTAlignInPlace(patchedOffset, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
     Context.Dispatch.CallableShaderTable.StartAddress = AddUInt64_64(BaseAddress, patchedOffset);
     patchedOffset = AddUInt64_64(patchedOffset, Context.Dispatch.CallableShaderTable.SizeInBytes);
 
     // Offset into hits
-    AlignInPlace(patchedOffset, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    SBTAlignInPlace(patchedOffset, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
     Context.Dispatch.HitGroupTable.StartAddress = AddUInt64_64(BaseAddress, patchedOffset);
     patchedOffset = AddUInt64_64(patchedOffset, Context.Dispatch.HitGroupTable.SizeInBytes);
 
     // Offset into misses
-    AlignInPlace(patchedOffset, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    SBTAlignInPlace(patchedOffset, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
     Context.Dispatch.MissShaderTable.StartAddress = AddUInt64_64(BaseAddress, patchedOffset);
     patchedOffset = AddUInt64_64(patchedOffset, Context.Dispatch.MissShaderTable.SizeInBytes);
 

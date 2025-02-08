@@ -28,11 +28,14 @@
 
 #ifdef __cplusplus
 #include <cstdint>
-
 using uint   = uint32_t;
 using uint3  = uint32_t[3];
 using UInt64 = uint64_t;
+#else // __cplusplus
+using UInt64 = uint2;
+#endif // __cplusplus
 
+#ifdef __cplusplus
 inline uint Low(UInt64 a) {
     return a & 0xFFFFFFFF;
 }
@@ -61,8 +64,6 @@ inline UInt64 MulUInt64_64_Low(UInt64 a, UInt64 b) {
     return a * b;
 }
 #else // __cplusplus 
-using UInt64 = uint2;
-
 uint Low(UInt64 a) {
     return a.x;
 }

@@ -26,43 +26,50 @@
 
 #pragma once
 
-// Shared
-#include "Int.h"
-#include "Cxx.h"
-
-/// Token constants
-HLSL_CONSTEXPR uint BackendMessageTokenNone            = 0;
-HLSL_CONSTEXPR uint BackendMessageTokenScratchOverflow = 1;
-
-/// Buffer constants
-HLSL_CONSTEXPR uint BackendMessageBufferSize       = 1024;
-HLSL_CONSTEXPR uint BackendMessageBufferDWordCount = BackendMessageBufferSize / sizeof(uint);
-
+/// Qualifiers and helpers
 #ifdef __cplusplus
-struct BackendMessage {
-    uint Token  : 8;
-    uint DWords : 24;
-};
-
-struct BackendScratchOverflowMessage : public BackendMessage {
-    uint RequestedBytes;
-};
-
-static_assert(sizeof(BackendMessage) == sizeof(uint), "Unexpected size");
+#   define HLSL_REF(X) X&
+#   define HLSL_MAX(A, B) std::max(A, B)
+#   define HLSL_INLINE inline
+#   define HLSL_CONSTEXPR static constexpr
 #else // __cplusplus
-uint PackMessageHeader(uint Token, uint DWords) {
-    uint Packed = 0;
-    Packed |= Token;
-    Packed |= DWords << 8;
-    return Packed;
-}
+#   define HLSL_REF(X) inout X
+#   define HLSL_MAX(A, B) max(A, B)
+#   define HLSL_INLINE 
+#   define HLSL_CONSTEXPR static const
+#endif // __cplusplus
 
-void SendScratchOverflowMessage(in RWStructuredBuffer<uint> Out, uint RequestedBytes) {
-    uint Head;
-    InterlockedAdd(Out[0], 2u, Head);
+/// HLSL side struct equivalents
+#ifndef __cplusplus
+struct D3D12_GPU_VIRTUAL_ADDRESS_RANGE {
+    UInt64 StartAddress;
+    UInt64 SizeInBytes;
+};
 
-    // Note: Pre-increment to skip dword count
-    Out[++Head] = PackMessageHeader(BackendMessageTokenScratchOverflow, 2u);
-    Out[++Head] = RequestedBytes;
-}
+struct D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE {
+    UInt64 StartAddress;
+    UInt64 SizeInBytes;
+    UInt64 StrideInBytes;
+};
+
+struct D3D12_DISPATCH_RAYS_DESC {
+    D3D12_GPU_VIRTUAL_ADDRESS_RANGE RayGenerationShaderRecord;
+    D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE MissShaderTable;
+    D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE HitGroupTable;
+    D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE CallableShaderTable;
+    uint Width;
+    uint Height;
+    uint Depth;
+};
+
+struct D3D12_DISPATCH_ARGUMENTS {
+    uint ThreadGroupCountX;
+    uint ThreadGroupCountY;
+    uint ThreadGroupCountZ;
+};
+
+/// Constants
+#define D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT  64
+#define D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT 32
+#define D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES         32
 #endif // __cplusplus

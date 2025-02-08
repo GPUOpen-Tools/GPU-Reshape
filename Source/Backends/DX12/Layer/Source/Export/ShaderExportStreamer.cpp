@@ -917,7 +917,7 @@ void ShaderExportStreamer::ProcessBackendMessages(ShaderExportStreamState *state
                 ASSERT(false, "Unsupported token");
                 break;
             }
-            case MessageTokenScratchOverflow: {
+            case BackendMessageTokenScratchOverflow: {
                 auto* message = static_cast<BackendScratchOverflowMessage*>(header);
                 Backend::DiagnosticFatal(
                     "ExecuteIndirect Scratch Exhaustion",

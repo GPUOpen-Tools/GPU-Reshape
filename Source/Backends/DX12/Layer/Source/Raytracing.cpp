@@ -137,13 +137,6 @@ static void CreateImmutablePatchDescriptors(DeviceTable& device, const StateObje
     device.state->object->CreateShaderResourceView(patchTable->listAllocation.resource, &sbtIdentifierPatchTable, heapAllocation.CPU(2));
 }
 
-static void UAVBarrier(CommandListState* state) {
-    D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    barrier.UAV.pResource = nullptr;
-    state->object->ResourceBarrier(1u, &barrier);
-}
-
 static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device, CommandListState* state, D3D12_DISPATCH_RAYS_DESC desc) {
     // Get the state object
     ASSERT(state->streamState->pipeline->type == PipelineType::StateObject, "Unexpected pipeline state");
@@ -222,7 +215,10 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     );
 
     // Barrier for next commands
-    UAVBarrier(state);
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barrier.UAV.pResource = nullptr;
+    state->object->ResourceBarrier(1u, &barrier);
 
     // OK
     return patched;
@@ -483,12 +479,12 @@ void HookID3D12CommandListDispatchRays(ID3D12GraphicsCommandList4* list, const D
     D3D12_DISPATCH_RAYS_DESC patched;
     if (table.state->streamState->isInstrumented) {
         patched = PatchShaderRecords(device, table.state, *pDesc);
+
+        // Reconstruct the previous command state
+        ReconstructState(device.state, table.state->object, table.state->streamState);
     } else {
         patched = *pDesc;
     }
-
-    // Reconstruct the previous command state
-    ReconstructState(device.state, table.state->object, table.state->streamState);
 
     // Commit all pending compute
     CommitCompute(device.state, table.state);
@@ -523,6 +519,9 @@ void HookID3D12CommandListExecuteIndirectRaytracing(ID3D12CommandList *list, ID3
             pArgumentBuffer, ArgumentBufferOffset,
             pCountBuffer, CountBufferOffset
         );
+
+        // Reconstruct the previous command state
+        ReconstructState(device.state, table.state->object, table.state->streamState);
     }
 
     // If not instrumented, or failed, pass through
@@ -530,9 +529,6 @@ void HookID3D12CommandListExecuteIndirectRaytracing(ID3D12CommandList *list, ID3
         patched       = Next(pArgumentBuffer);
         patchedOffset = ArgumentBufferOffset;
     }
-
-    // Reconstruct the previous command state
-    ReconstructState(device.state, table.state->object, table.state->streamState);
 
     // Commit compute
      device.state->exportStreamer->CommitCompute(table.state->streamState, table.state->object);
