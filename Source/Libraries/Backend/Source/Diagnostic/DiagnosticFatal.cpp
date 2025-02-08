@@ -33,12 +33,18 @@
 #   error Not implemented
 #endif // _WIN32
 
+// Std
+#include <thread>
+
 void Backend::DiagnosticFatal(const char* subject, const char* message) {
 #if _WIN32
     std::string title = Format("GPU Reshape - {}", subject);
     
     // Display fault
-    MessageBoxA(nullptr, message, title.c_str(), 0x0);
+    // Launch it on a separate thread to avoid message processing re-entry issues
+    std::thread([=] {
+        MessageBoxA(nullptr, message, title.c_str(), 0x0);
+    }).join();
 
     // There is no defined behaviour at this point, abort
     ExitProcess(1u);
