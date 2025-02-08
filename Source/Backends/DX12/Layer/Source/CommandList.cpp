@@ -44,6 +44,10 @@
 #include <Backends/DX12/Scheduler/Scheduler.h>
 #include <Backends/DX12/Export/ShaderExportStreamStateBarrierTracking.h>
 #include <Backends/DX12/Export/ShaderExportStreamStateRaytracingCache.h>
+#include <Backends/DX12/Allocation/DeviceAllocator.h>
+
+// Shared
+#include <Shared/ShaderBackendMessage.h>
 
 // Backend
 #include <Backend/SubmissionContext.h>
@@ -246,9 +250,13 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
     state->allocators = table.state->allocators;
     state->parent = device;
     state->object = commandSignature;
+    state->byteStride = pDesc->ByteStride;
+    state->arguments.reserve(pDesc->NumArgumentDescs);
 
     // Filter arguments
     for (uint32_t i = 0; i < pDesc->NumArgumentDescs; i++) {
+        state->arguments.push_back(pDesc->pArgumentDescs[i]);
+        
         switch (pDesc->pArgumentDescs[i].Type) {
             default:
                 break;
@@ -265,7 +273,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
                 state->activeTypes = PipelineType::Graphics;
                 break;
             case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS:
-                // No active types as there's no instrumentation yet
+                state->activeTypes = PipelineType::StateObject;
                 break;
         }
     }
@@ -743,6 +751,44 @@ void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList* list, cons
     table.bottom->next_CopyTextureRegion(table.next, &dst, DstX, DstY, DstZ, &src, pSrcBox);
 }
 
+ID3D12Resource* GetStreamingStateBackendMessages(CommandListState *state) {
+    auto device = GetTable(state->parent);
+
+    // Target messages
+    ShaderExportStreamStateBackendMessages& messages = state->streamState->backendMessages;
+
+    // Create if needed
+    if (!messages.allocation.resource) {
+        // Allocate buffer
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        desc.Alignment = 0;
+        desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        desc.Width = BackendMessageBufferSize;
+        desc.Height = 1;
+        desc.DepthOrArraySize = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        desc.Format = DXGI_FORMAT_UNKNOWN;
+        desc.MipLevels = 1;
+        desc.SampleDesc.Quality = 0;
+        desc.SampleDesc.Count = 1;
+        messages.allocation = device.state->deviceAllocator->Allocate(desc, AllocationResidency::HostVisible);
+    }
+
+    // Lazy clear
+    if (messages.pendingInitialization) {
+        uint32_t data = 0;
+        state->streamState->constantAllocator.StageData(
+            device.state->deviceAllocator, state->object,
+            messages.allocation.resource, 0,
+            &data, sizeof(data)
+        );
+    }
+
+    // OK
+    return messages.allocation.resource;
+}
+
 ShaderExportStreamStateBarrierTracking* GetBarrierTracking(CommandListState* state) {
     // Allocate on demand
     if (!state->streamState->barrierTracking) {
@@ -762,6 +808,52 @@ ShaderExportStreamStateRaytracingCache* GetRaytracingCache(CommandListState* sta
     // OK
     return state->streamState->raytracingCache;
 }
+
+#ifndef NDEBUG
+void AddDebugStream(CommandListState *state, ID3D12Resource *resource, uint64_t offset, uint64_t length, D3D12_RESOURCE_STATES layout, const std::string &name) {
+    auto device = GetTable(state->parent);
+
+    // Transition to copy source
+    if (layout != D3D12_RESOURCE_STATE_COPY_SOURCE) {
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = resource;
+        barrier.Transition.StateBefore = layout;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        state->object->ResourceBarrier(1u, &barrier);
+    }
+
+    // Copy over device to host data
+    ShaderExportConstantAllocation hostAllocation = state->streamState->constantAllocator.Allocate(device.state->deviceAllocator, length);
+    state->object->CopyBufferRegion(
+        hostAllocation.resource, hostAllocation.offset,
+        resource, 0,
+        length
+    );
+
+    // Add to pending streaming
+    state->streamState->debugStreams.push_back(ShaderExportStreamStateDebugStream {
+        .name = name,
+        .resource = hostAllocation.resource,
+        .offset = hostAllocation.offset,
+        .length = length
+    });
+
+    // Transition to original
+    if (layout != D3D12_RESOURCE_STATE_COPY_SOURCE) {
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = resource;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        barrier.Transition.StateAfter = layout;
+        state->object->ResourceBarrier(1u, &barrier);
+    }
+}
+
+void AddDebugStream(CommandListState* state, const ShaderExportDeviceAllocation& allocation, D3D12_RESOURCE_STATES layout, const std::string& name) {
+    AddDebugStream(state, allocation.allocation.resource, 0, allocation.length, layout, name);
+}
+#endif // NDEBUG
 
 static void HandleBarrierCacheInvalidation(CommandListState* state, ResourceState* resource) {
     // No tracking? No invalidation
@@ -1317,25 +1409,31 @@ void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12
     // Get signature
     auto signatureTable = GetTable(pCommandSignature);
 
-    // Commit compute if needed
-    if (signatureTable.state->activeTypes & PipelineType::Compute) {
-        device.state->exportStreamer->CommitCompute(table.state->streamState, table.state->object);
-    }
+    // State object (raytracing) EI's require patching
+    if (signatureTable.state->activeTypes & PipelineType::StateObject) {
+        // Let the indirect raytracing handle it
+        HookID3D12CommandListExecuteIndirectRaytracing(list, pCommandSignature, MaxCommandCount, pArgumentBuffer, ArgumentBufferOffset, pCountBuffer, CountBufferOffset);
+    } else {
+        // Commit compute if needed
+        if (signatureTable.state->activeTypes & PipelineType::Compute) {
+            device.state->exportStreamer->CommitCompute(table.state->streamState, table.state->object);
+        }
     
-    // Commit graphics if needed
-    if (signatureTable.state->activeTypes & PipelineType::Graphics) {
-        device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state->object);
+        // Commit graphics if needed
+        if (signatureTable.state->activeTypes & PipelineType::Graphics) {
+            device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state->object);
+        }
+        
+        // No patching, just pass down callchain
+        table.next->ExecuteIndirect(
+            signatureTable.next, 
+            MaxCommandCount, 
+            Next(pArgumentBuffer), 
+            ArgumentBufferOffset, 
+            Next(pCountBuffer), 
+            CountBufferOffset
+        );
     }
-
-    // Pass down callchain
-    table.next->ExecuteIndirect(
-        signatureTable.next, 
-        MaxCommandCount, 
-        Next(pArgumentBuffer), 
-        ArgumentBufferOffset, 
-        Next(pCountBuffer), 
-        CountBufferOffset
-    );
 }
 
 void WINAPI HookID3D12CommandListCopyTiles(ID3D12CommandList *list, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags) {

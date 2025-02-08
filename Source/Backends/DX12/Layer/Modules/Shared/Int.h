@@ -32,6 +32,34 @@
 using uint   = uint32_t;
 using uint3  = uint32_t[3];
 using UInt64 = uint64_t;
+
+inline uint Low(UInt64 a) {
+    return a & 0xFFFFFFFF;
+}
+
+inline uint High(UInt64 a) {
+    return a >> 32;
+}
+
+inline UInt64 Make64(uint low, uint high) {
+    return static_cast<UInt64>(low) | (static_cast<UInt64>(high) << 32ull);
+}
+
+inline UInt64 AddUInt64_64(UInt64 a, UInt64 b) {
+    return a + b;
+}
+
+inline UInt64 SubUInt64_64(UInt64 a, UInt64 b) {
+    return a - b;
+}
+
+inline UInt64 DivUInt64_64_Low(UInt64 a, UInt64 b) {
+    return a / b;
+}
+
+inline UInt64 MulUInt64_64_Low(UInt64 a, UInt64 b) {
+    return a * b;
+}
 #else // __cplusplus 
 using UInt64 = uint2;
 
@@ -43,13 +71,33 @@ uint High(UInt64 a) {
     return a.y;
 }
 
+UInt64 Make64(uint low, uint high) {
+    return UInt64(low, high);
+}
+
 UInt64 AddUInt64_64(UInt64 a, UInt64 b) {
     uint low = Low(a) + Low(b);
     return UInt64(low, High(a) + High(b) + ((low < Low(a)) ? 1 : 0));
 }
 
+UInt64 AddUInt64_64(UInt64 a, uint b) {
+    return AddUInt64_64(a, UInt64(b, 0));
+}
+
 UInt64 SubUInt64_64(UInt64 a, UInt64 b) {
     uint low = Low(a) - Low(b);
     return UInt64(low, High(a) - High(b) - ((Low(a) < Low(b)) ? 1 : 0));
+}
+
+UInt64 SubUInt64_64(UInt64 a, uint b) {
+    return SubUInt64_64(a, UInt64(b, 0));
+}
+
+UInt64 DivUInt64_64_Low(UInt64 a, UInt64 b) {
+    return UInt64(Low(a) / Low(b), 0);
+}
+
+UInt64 MulUInt64_64_Low(UInt64 a, UInt64 b) {
+    return UInt64(Low(a) * Low(b), 0);
 }
 #endif // __cplusplus

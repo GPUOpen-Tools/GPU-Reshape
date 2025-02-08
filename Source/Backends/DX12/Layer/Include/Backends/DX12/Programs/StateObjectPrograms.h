@@ -31,9 +31,17 @@
 
 struct StateObjectPrograms {
     ~StateObjectPrograms();
-    
-    ID3D12RootSignature* rootSignature{nullptr};
-    ID3D12PipelineState* pipelineState{nullptr};
+
+    /// SBT patching
+    ID3D12RootSignature* sbtPatchRootSignature{nullptr};
+    ID3D12PipelineState* sbtPatchPipelineState{nullptr};
+
+    /// Indirect execution setup 
+    ID3D12RootSignature* raytracingIndirectSetupRootSignature{nullptr};
+    ID3D12PipelineState* raytracingIndirectSetupPipelineState{nullptr};
+
+    /// SBT Patching command signature for Indirect setup
+    ID3D12CommandSignature* raytracingIndirectSetupCommandSignature{nullptr};
 };
 
 /// Create all programs for state object manipulation

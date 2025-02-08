@@ -75,6 +75,15 @@ struct __declspec(uuid("8270D898-4356-4503-8DEB-9CD73BB31B21")) CommandListState
     ID3D12GraphicsCommandList* object{nullptr};
 };
 
+/// On-demand backend messages
+ID3D12Resource* GetStreamingStateBackendMessages(CommandListState* state);
+
 /// On-demand cache getters
 ShaderExportStreamStateBarrierTracking* GetBarrierTracking(CommandListState* state);
 ShaderExportStreamStateRaytracingCache* GetRaytracingCache(CommandListState* state);
+
+#ifndef NDEBUG
+/// Debug streaming helpers
+void AddDebugStream(CommandListState* state, ID3D12Resource* resource, uint64_t offset, uint64_t length, D3D12_RESOURCE_STATES layout, const std::string& name);
+void AddDebugStream(CommandListState* state, const struct ShaderExportDeviceAllocation& allocation, D3D12_RESOURCE_STATES layout, const std::string& name);
+#endif // NDEBUG

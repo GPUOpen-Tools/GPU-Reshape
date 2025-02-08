@@ -194,6 +194,14 @@ struct ShaderExportStreamStateDebugStream {
 };
 #endif // NDEBUG
 
+struct ShaderExportStreamStateBackendMessages {
+    /// Optional, allocated if the application requires patching that needs feedback
+    Allocation allocation;
+
+    /// If true, requires initialization before use
+    bool pendingInitialization = true;
+};
+
 /// Single stream state
 struct ShaderExportStreamState {
     ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators), referencedHeaps(allocators) {
@@ -258,6 +266,9 @@ struct ShaderExportStreamState {
 
     /// Per-state caches, allocated on demand
     ShaderExportStreamStateRaytracingCache* raytracingCache{nullptr};
+
+    /// All backend messages
+    ShaderExportStreamStateBackendMessages backendMessages;
 
     /// Top level context handle
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};

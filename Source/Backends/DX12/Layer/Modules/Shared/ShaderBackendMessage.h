@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,32 +26,47 @@
 
 #pragma once
 
-// Layer
-#include <Backends/DX12/Detour.Gen.h>
-#include "PipelineType.h"
+// Shared
+#include "Int.h"
 
-// Common
-#include <Common/Allocators.h>
+#ifdef __cpluscplus
+#define HLSL_CONSTEXPR static constexpr
+#else // __cpluscplus
+#define HLSL_CONSTEXPR static const
+#endif // __cpluscplus
 
-struct __declspec(uuid("077406A2-E417-48A3-B2F1-A147CAEF4CB3")) CommandSignatureState {
-    /// Parent state
-    ID3D12Device* parent{nullptr};
+/// Token constants
+HLSL_CONSTEXPR uint MessageTokenNone            = 0;
+HLSL_CONSTEXPR uint MessageTokenScratchOverflow = 1;
 
-    /// Owning allocator
-    Allocators allocators;
+/// Buffer constants
+HLSL_CONSTEXPR uint BackendMessageBufferSize = 1024;
+HLSL_CONSTEXPR uint BackendMessageBufferDWordCount = BackendMessageBufferSize / sizeof(uint);
 
-    /// Object
-    ID3D12CommandSignature* object{nullptr};
-
-    /// Active stages
-    PipelineTypeSet activeTypes = PipelineType::None;
-
-    /// All arguments
-    std::vector<D3D12_INDIRECT_ARGUMENT_DESC> arguments;
-
-    /// Byte stride of this signature
-    uint32_t byteStride{0};
-
-    /// Unique ID
-    uint64_t uid{0};
+#ifdef __cplusplus
+struct BackendMessage {
+    uint Token  : 8;
+    uint DWords : 24;
 };
+
+struct BackendScratchOverflowMessage : public BackendMessage {
+    uint RequestedBytes;
+};
+
+static_assert(sizeof(BackendMessage) == sizeof(uint), "Unexpected size");
+#else // __cplusplus
+uint PackMessageHeader(uint Token, uint DWords) {
+    uint Packed = 0;
+    Packed |= Token;
+    Packed |= DWords << 8;
+    return Packed;
+}
+
+void SendScratchOverflowMessage(in RWStructuredBuffer<uint> Out, uint RequestedBytes) {
+    uint Head;
+    InterlockedAdd(Out[0], 2u, Head);
+
+    Out[++Head] = PackMessageHeader(MessageTokenScratchOverflow, 2u);
+    Out[++Head] = RequestedBytes;
+}
+#endif // __cplusplus

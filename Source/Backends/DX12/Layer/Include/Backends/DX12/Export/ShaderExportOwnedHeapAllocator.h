@@ -56,12 +56,12 @@ struct ShaderExportOwnedHeapSegment {
 
 struct ShaderExportOwnedHeapAllocation {
     /// Get the GPU handle for an offset
-    D3D12_CPU_DESCRIPTOR_HANDLE CPU(uint32_t offset) const {
+    D3D12_CPU_DESCRIPTOR_HANDLE CPU(uint32_t offset = 0) const {
         return {cpu.ptr + offset * stride};
     }
     
     /// Get the CPU handle for an offset
-    D3D12_GPU_DESCRIPTOR_HANDLE GPU(uint32_t offset) const {
+    D3D12_GPU_DESCRIPTOR_HANDLE GPU(uint32_t offset = 0) const {
         return {gpu.ptr + offset * stride};
     }
 

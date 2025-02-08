@@ -321,6 +321,7 @@ add_custom_command(
 # Inbuilt modules
 Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModule.hlsl Layer/Include/Backends/DX12/Modules/InbuiltTemplateModule kInbuiltTemplateModule)
 Project_AddHLSL(GeneratedInbuilt cs_6_0 "-O3" Layer/Modules/ShaderRecordPatching.hlsl Layer/Include/Backends/DX12/Modules/ShaderRecordPatching kShaderRecordPatching)
+Project_AddHLSL(GeneratedInbuilt cs_6_0 "-O3" Layer/Modules/RaytracingIndirectSetup.hlsl Layer/Include/Backends/DX12/Modules/RaytracingIndirectSetup kRaytracingIndirectSetup)
 
 # Create layer
 add_library(

@@ -31,3 +31,4 @@
 
 /// Hooks
 void HookID3D12CommandListDispatchRays(ID3D12GraphicsCommandList4* list, const D3D12_DISPATCH_RAYS_DESC* pDesc);
+void HookID3D12CommandListExecuteIndirectRaytracing(ID3D12CommandList* list, ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset);

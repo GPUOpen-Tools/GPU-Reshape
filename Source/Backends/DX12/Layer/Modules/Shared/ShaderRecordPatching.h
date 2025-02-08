@@ -39,11 +39,13 @@ struct SBTPatchConstantData {
     uint SBTIdentifierTableSize;
     uint SBTRecordCount;
     uint Pad0;
-    
+
     UInt64 ResourceHeapOffset;
     UInt64 SamplerHeapOffset;
     UInt64 DescriptorConstantStart;
     UInt64 Pad1;
+
+    uint CBAlignPadding[64-16];
 };
 
 struct SBTIdentifier {

@@ -79,3 +79,12 @@ ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const Com
     // OK
     return out;
 }
+
+void ShaderExportConstantAllocator::StageData(const ComRef<DeviceAllocator> &deviceAllocator, ID3D12GraphicsCommandList* list, ID3D12Resource *resource, uint64_t offset, const void *data, size_t length) {
+    // Copy over the data
+    ShaderExportConstantAllocation hostAlloc = Allocate(deviceAllocator, length, 4u);
+    std::memcpy(hostAlloc.staging, data, length);
+
+    // Copy to device
+    list->CopyBufferRegion(resource, offset, hostAlloc.resource, hostAlloc.offset, length);
+}

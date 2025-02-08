@@ -52,6 +52,7 @@
 #include <Backends/DX12/CommandListRenderPassScope.h>
 #include <Backends/DX12/Export/ShaderExportStreamStateBarrierTracking.h>
 #include <Backends/DX12/Export/ShaderExportStreamStateRaytracingCache.h>
+#include <Backends/DX12/Controllers/ConfigController.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -59,10 +60,14 @@
 // Backend
 #include <Backend/IShaderExportHost.h>
 #include <Backend/FeatureHookTable.h>
+#include <Backend/Diagnostic/DiagnosticFatal.h>
 
 // Message
 #include <Message/IMessageStorage.h>
 #include <Message/MessageStream.h>
+
+// Shared
+#include <Shared/ShaderBackendMessage.h>
 
 // Common
 #include <Common/Registry.h>
@@ -796,6 +801,9 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     ProcessStreamDebug(state);
 #endif // NDEBUG
 
+    // Process backend messages
+    ProcessBackendMessages(state);
+
     // Clear tracking state
     if (state->barrierTracking) {
         state->barrierTracking->Clear();
@@ -876,6 +884,60 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
 
     // Mark as bound
     state->pipelineSegmentMask |= decayedType;
+}
+
+void ShaderExportStreamer::ProcessBackendMessages(ShaderExportStreamState *state) {
+    if (!state->backendMessages.allocation.resource) {
+        return;
+    }
+
+    uint32_t* exports = nullptr;
+
+    // Map messages
+    D3D12_RANGE range;
+    range.Begin = 0;
+    range.End = BackendMessageBufferSize;
+    state->backendMessages.allocation.resource->Map(0, &range, reinterpret_cast<void**>(&exports));
+
+    // Total exported dwords
+    uint32_t dwordCount = exports[0];
+
+    // Parse all messages
+    for (uint32_t offset = 1; offset < dwordCount + 1;) {
+        auto* header = reinterpret_cast<BackendMessage*>(exports + offset);
+
+        // Ignore partial messages
+        if (offset + header->DWords > BackendMessageBufferDWordCount) {
+            break;
+        }
+
+        // Handle backend message
+        switch (header->Token) {
+            default: {
+                ASSERT(false, "Unsupported token");
+                break;
+            }
+            case MessageTokenScratchOverflow: {
+                auto* message = static_cast<BackendScratchOverflowMessage*>(header);
+                Backend::DiagnosticFatal(
+                    "ExecuteIndirect Scratch Exhaustion",
+                    "GPU Reshape has run out of scratch memory for ExecuteIndirect patching "
+                    "trying to allocate {} bytes with a scratch size of {} bytes\n\n"
+                    "Please increase the indirect scratch memory.",
+                    message->RequestedBytes, device->configController->indirect.scratchByteCount
+                );
+                break;
+            }
+        }
+
+        offset += header->DWords;
+    }
+
+    // OK
+    state->backendMessages.allocation.resource->Unmap(0, &range);
+
+    // Clear next time
+    state->backendMessages.pendingInitialization = true;
 }
 
 #ifndef NDEBUG

@@ -45,6 +45,7 @@
 #include <Backends/DX12/Controllers/MetadataController.h>
 #include <Backends/DX12/Controllers/VersioningController.h>
 #include <Backends/DX12/Controllers/PDBController.h>
+#include <Backends/DX12/Controllers/ConfigController.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
@@ -354,9 +355,13 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         state->versioningController = state->registry.AddNew<VersioningController>(state);
         ENSURE(state->versioningController->Install(), "Failed to install versioning controller");
 
-        // Install the versioning controller
+        // Install the pdb controller
         state->pdbController = state->registry.AddNew<PDBController>(state);
         ENSURE(state->pdbController->Install(), "Failed to install PDB controller");
+
+        // Install the config controller
+        state->configController = state->registry.AddNew<ConfigController>(state);
+        ENSURE(state->configController->Install(), "Failed to install config controller");
 
         // Install all user programs, done after feature creation for data pooling
         ENSURE(state->shaderProgramHost->InstallPrograms(), "Failed to install shader program host programs");

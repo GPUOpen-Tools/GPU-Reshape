@@ -253,6 +253,10 @@ public:
     void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, ID3D12GraphicsCommandList* commandList);
 
 private:
+    /// Process all streaming backend chunks
+    /// \param state the stream state
+    void ProcessBackendMessages(ShaderExportStreamState* state);
+    
 #ifndef NDEBUG
     /// Process all streaming debug chunks
     /// \param state the stream state

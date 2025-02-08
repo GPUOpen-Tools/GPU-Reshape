@@ -24,34 +24,54 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+#include <Backends/DX12/Controllers/ConfigController.h>
 
-// Layer
-#include <Backends/DX12/Detour.Gen.h>
-#include "PipelineType.h"
+// Schemas
+#include <Schemas/Indirect.h>
+
+// Bridge
+#include <Bridge/IBridge.h>
 
 // Common
-#include <Common/Allocators.h>
+#include <Common/Registry.h>
 
-struct __declspec(uuid("077406A2-E417-48A3-B2F1-A147CAEF4CB3")) CommandSignatureState {
-    /// Parent state
-    ID3D12Device* parent{nullptr};
+ConfigController::ConfigController(DeviceState* device) : device(device) {
 
-    /// Owning allocator
-    Allocators allocators;
+}
 
-    /// Object
-    ID3D12CommandSignature* object{nullptr};
+bool ConfigController::Install() {
+    // Install bridge
+    bridge = registry->Get<IBridge>().GetUnsafe();
+    if (!bridge) {
+        return false;
+    }
 
-    /// Active stages
-    PipelineTypeSet activeTypes = PipelineType::None;
+    // Install this listener
+    bridge->Register(this);
 
-    /// All arguments
-    std::vector<D3D12_INDIRECT_ARGUMENT_DESC> arguments;
+    // OK
+    return true;
+}
 
-    /// Byte stride of this signature
-    uint32_t byteStride{0};
+void ConfigController::Uninstall() {
+    // Uninstall this listener
+    bridge->Deregister(this);
+}
 
-    /// Unique ID
-    uint64_t uid{0};
-};
+void ConfigController::Handle(const MessageStream *streams, uint32_t count) {
+    std::lock_guard guard(mutex);
+
+    for (uint32_t i = 0; i < count; i++) {
+        ConstMessageStreamView view(streams[i]);
+
+        // Visit all ordered messages
+        for (ConstMessageStreamView<>::ConstIterator it = view.GetIterator(); it; ++it) {
+            switch (it.GetID()) {
+                case SetIndirectConfigMessage::kID: {
+                    indirect = *it.Get<SetIndirectConfigMessage>();
+                    break;
+                }
+            }
+        }
+    }
+}

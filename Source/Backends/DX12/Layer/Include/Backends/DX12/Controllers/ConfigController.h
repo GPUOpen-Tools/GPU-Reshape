@@ -27,31 +27,51 @@
 #pragma once
 
 // Layer
-#include <Backends/DX12/Detour.Gen.h>
-#include "PipelineType.h"
+#include <Backends/DX12/Controllers/IController.h>
 
-// Common
-#include <Common/Allocators.h>
+// Message
+#include <Message/MessageStream.h>
 
-struct __declspec(uuid("077406A2-E417-48A3-B2F1-A147CAEF4CB3")) CommandSignatureState {
-    /// Parent state
-    ID3D12Device* parent{nullptr};
+// Schemas
+#include <Schemas/Indirect.h>
 
-    /// Owning allocator
-    Allocators allocators;
+// Bridge
+#include <Bridge/IBridgeListener.h>
 
-    /// Object
-    ID3D12CommandSignature* object{nullptr};
+// Std
+#include <vector>
+#include <mutex>
 
-    /// Active stages
-    PipelineTypeSet activeTypes = PipelineType::None;
+// Forward declarations
+class Registry;
+class IBridge;
+struct DeviceState;
 
-    /// All arguments
-    std::vector<D3D12_INDIRECT_ARGUMENT_DESC> arguments;
+class ConfigController final : public IController, public IBridgeListener {
+public:
+    COMPONENT(ConfigController);
 
-    /// Byte stride of this signature
-    uint32_t byteStride{0};
+    ConfigController(DeviceState* device);
 
-    /// Unique ID
-    uint64_t uid{0};
+    /// Install the controller
+    bool Install();
+
+    /// Uninstall the controller
+    void Uninstall();
+
+    /// Overrides
+    void Handle(const MessageStream *streams, uint32_t count) final;
+
+public:
+    /// Config entries
+    SetIndirectConfigMessage indirect;
+
+private:
+    DeviceState* device;
+
+    /// Owning bridge, stored as naked pointer for referencing reasons
+    IBridge* bridge{nullptr};
+    
+    /// Shared lock
+    std::mutex mutex;
 };

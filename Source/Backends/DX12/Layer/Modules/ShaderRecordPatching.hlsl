@@ -63,28 +63,28 @@
 /// All constant data
 ConstantBuffer<SBTPatchConstantData> Constants : register(b0);
 
-/// The user / source shader binding table
-Buffer<uint> SBTSourceDWords : register(t1);
-
-/// The patched shader binding table
-RWBuffer<uint> RWSBTPatchedDWords : register(u2);
-
-/// The PRM descriptor data buffer
-RWBuffer<uint> RWDescriptorData : register(u3);
-
 /// Effectively a hash map, but points to a start+end pair
 /// No probing nor checking required
-Buffer<uint2> SBTIdentifierTable : register(t4);
+Buffer<uint2> SBTIdentifierTable : register(t1);
 
 /// Indexed by the hash map indices
-StructuredBuffer<SBTIdentifierTableEntry> SBTIdentifierList : register(t5);
+StructuredBuffer<SBTIdentifierTableEntry> SBTIdentifierList : register(t2);
 
 /// The linear patch identifiers
-StructuredBuffer<SBTIdentifierPatch> SBTPatchedIdentifiers : register(t6);
+StructuredBuffer<SBTIdentifierPatch> SBTPatchedIdentifiers : register(t3);
+
+/// The user / source shader binding table
+StructuredBuffer<uint> SBTSourceDWords : register(t4);
+
+/// The patched shader binding table
+RWStructuredBuffer<uint> RWSBTPatchedDWords : register(u5);
+
+/// The PRM descriptor data buffer
+RWStructuredBuffer<uint> RWDescriptorData : register(u6);
 
 /// Check if a dword is set in the addressing masks
 bool IsSet(in uint Masks[2], uint dword) {
-    return (Masks[dword / 32] & (1 << (dword % 32))) != 0x0;
+    return (Masks[dword / 32] & (1u << (dword % 32))) != 0x0;
 }
 
 /// Read a source identifier
