@@ -259,7 +259,6 @@ void InstrumentationController::ActivateAndCommitFeatures(uint64_t featureBitSet
 
 bool InstrumentationController::FilterPipeline(PipelineState *state, const FilterEntry &filter) {
     // Test type
-    // TODO[rt]: StateObject support!
     if (filter.type != PipelineType::None && filter.type != state->type) {
         return false;
     }

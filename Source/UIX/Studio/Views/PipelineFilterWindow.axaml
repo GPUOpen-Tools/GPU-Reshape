@@ -97,7 +97,7 @@ type
 name
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" Grid.Column="1">
-- Pipeline type (graphics, compute)
+- Pipeline type (graphics, compute, stateobject)
 - Pipeline name
                                     </TextBlock>
                                 </Grid>
