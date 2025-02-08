@@ -119,6 +119,7 @@
         <!-- Stage brushes -->
         <SolidColorBrush x:Key="StageGraphics">#435140</SolidColorBrush>
         <SolidColorBrush x:Key="StageCompute">#385151</SolidColorBrush>
+        <SolidColorBrush x:Key="StageStateObject">#513A3A</SolidColorBrush>
         <SolidColorBrush x:Key="InstrumentationStageGraphics">#346733</SolidColorBrush>
         <SolidColorBrush x:Key="InstrumentationStageCompute">#268487</SolidColorBrush>
         

@@ -528,6 +528,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 case 2:
                     it->type = PipelineType::Compute;
                     break;
+                case 3:
+                    it->type = PipelineType::StateObject;
+                    break;
             }
 
             // Copy info
@@ -618,6 +621,9 @@ void InstrumentationController::OnStateRequest(const struct GetStateMessage &mes
                         break;
                     case PipelineType::Compute:
                         response->type = 2;
+                        break;
+                    case PipelineType::StateObject:
+                        response->type = 3;
                         break;
                 }
             }

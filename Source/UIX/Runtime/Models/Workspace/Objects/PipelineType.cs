@@ -41,6 +41,11 @@ namespace Studio.Models.Workspace.Objects
         /// <summary>
         /// Compute only
         /// </summary>
-        Compute
+        Compute,
+        
+        /// <summary>
+        /// State object only
+        /// </summary>
+        StateObject
     }
 }
