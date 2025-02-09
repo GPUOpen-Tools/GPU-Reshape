@@ -182,7 +182,7 @@ bool ScanDXBCShaderExports(const void *byteCode, uint64_t byteLength, TrivialSta
 
                     // Find all functions
                     for (uint64_t recordIdx = 0; recordIdx < partHeader.size / tableHeader.recordStride; recordIdx++) {
-                        auto record = chunkCtx.Consume<DXBCRuntimeDataFunctionRecord>();
+                        auto record = chunkCtx.Get<DXBCRuntimeDataFunctionRecord>();
 
                         // Always report it, regardless of kind
                         DXBCExport &exportEntry = out.Add();
@@ -190,6 +190,8 @@ bool ScanDXBCShaderExports(const void *byteCode, uint64_t byteLength, TrivialSta
                         exportEntry.type = DXBCType::Function;
                         exportEntry.function.kind = record.shaderKind;
                         exportEntry.function.mangledName = stringBufferStart + record.nameOffset;
+
+                        chunkCtx.Skip(tableHeader.recordStride);
                     }
                     break;
                 }
@@ -198,7 +200,7 @@ bool ScanDXBCShaderExports(const void *byteCode, uint64_t byteLength, TrivialSta
 
                     // Find all sub-objects
                     for (uint64_t recordIdx = 0; recordIdx < partHeader.size / tableHeader.recordStride; recordIdx++) {
-                        auto record = chunkCtx.Consume<DXBCRuntimeDataSubObjectRecord>();
+                        auto record = chunkCtx.Get<DXBCRuntimeDataSubObjectRecord>();
 
                         DXBCExport &exportEntry = out.Add();
                         exportEntry.unmangledName = stringBufferStart + record.nameOffset;
@@ -239,6 +241,8 @@ bool ScanDXBCShaderExports(const void *byteCode, uint64_t byteLength, TrivialSta
                                 std::memcpy(&exportEntry.subObject.pipelineConfig1, &record.raytracingPipelineConfig1, sizeof(D3D12_RAYTRACING_PIPELINE_CONFIG1));
                                 break;
                         }
+
+                        chunkCtx.Skip(tableHeader.recordStride);
                     }
                     break;
                 }
