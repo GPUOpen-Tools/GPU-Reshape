@@ -617,6 +617,17 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                 collectionSubObject.shader->AddUser();
             }
 
+            // Inherit hit groups from existing collection
+            for (D3D12_HIT_GROUP_DESC hitGroup : collectionTable.state->hitGroupSubobjects) {
+                state->hitGroupSubobjects.push_back(hitGroup);
+
+                // Add hit group lookup
+                state->subObjectMap[hitGroup.HitGroupExport] = StateSubObjectIndex {
+                    .type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
+                    .index = static_cast<uint32_t>(state->hitGroupSubobjects.size()) - 1
+                };
+            }
+
             // Write new object
             state->writer.DeepAdd(subObject->Type, D3D12_EXISTING_COLLECTION_DESC {
                 .pExistingCollection = collectionTable.next,
