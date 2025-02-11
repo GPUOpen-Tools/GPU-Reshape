@@ -90,9 +90,12 @@ public:
 public:
     /// Ensure this program supports UAV operations
     void EnsureUAVCapability();
+    
+    /// Ensure this program supports UAV operations
+    void EnsureUAV64Capability();
 
     /// Add a new program shader flag
-    void AddProgramFlag(DXILProgramShaderFlagSet flags, DXILProgramShaderFlagSet exlusionSet = {});
+    void AddProgramFlag(DXILProgramShaderFlagSet flags);
 
     /// Create all resource handles
     /// \param job job to be compiled against

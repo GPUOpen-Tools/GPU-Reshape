@@ -1250,11 +1250,17 @@ void DXILPhysicalBlockMetadata::EnsureUAVCapability() {
     programMetadata.internalShaderFlags |= DXILProgramShaderFlag::UseUAVs;
 }
 
-void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags, DXILProgramShaderFlagSet exclusionSet) {
-    if (programMetadata.internalShaderFlags & exclusionSet) {
+void DXILPhysicalBlockMetadata::EnsureUAV64Capability() {
+    if (programMetadata.shaderFlags & DXILProgramShaderFlag::Use64UAVs) {
         return;
     }
-    
+
+    // The two flags are mutually exclusive, and 64 takes precedent
+    programMetadata.internalShaderFlags &= ~DXILProgramShaderFlagSet(DXILProgramShaderFlag::UseUAVs);
+    programMetadata.internalShaderFlags |= DXILProgramShaderFlag::Use64UAVs;
+}
+
+void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags) {
     programMetadata.internalShaderFlags |= flags;
 }
 
@@ -1902,12 +1908,12 @@ void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXCompileJob &job) {
     if (validationVersion.major > 1 || validationVersion.minor > 5) {
         // Expected behaviour, if exceeded 8 add the flag
         if (count > 8) {
-            AddProgramFlag(DXILProgramShaderFlag::Use64UAVs, DXILProgramShaderFlag::UseUAVs | DXILProgramShaderFlag::Use64UAVs);
+            EnsureUAV64Capability();
         }
     } else {
         // Invalid behaviour, test against actual count
         if (mapped.handles.size() > 8) {
-            AddProgramFlag(DXILProgramShaderFlag::Use64UAVs, DXILProgramShaderFlag::UseUAVs | DXILProgramShaderFlag::Use64UAVs);
+            EnsureUAV64Capability();
         }
     }
 
