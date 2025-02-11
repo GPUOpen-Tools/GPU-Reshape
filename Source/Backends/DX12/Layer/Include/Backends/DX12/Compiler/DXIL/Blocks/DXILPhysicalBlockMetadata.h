@@ -92,7 +92,7 @@ public:
     void EnsureUAVCapability();
 
     /// Add a new program shader flag
-    void AddProgramFlag(DXILProgramShaderFlagSet flags);
+    void AddProgramFlag(DXILProgramShaderFlagSet flags, DXILProgramShaderFlagSet exlusionSet = {});
 
     /// Create all resource handles
     /// \param job job to be compiled against

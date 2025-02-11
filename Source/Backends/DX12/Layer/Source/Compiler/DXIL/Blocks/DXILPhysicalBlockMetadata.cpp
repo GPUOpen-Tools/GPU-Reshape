@@ -1250,7 +1250,11 @@ void DXILPhysicalBlockMetadata::EnsureUAVCapability() {
     programMetadata.internalShaderFlags |= DXILProgramShaderFlag::UseUAVs;
 }
 
-void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags) {
+void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags, DXILProgramShaderFlagSet exclusionSet) {
+    if (programMetadata.internalShaderFlags & exclusionSet) {
+        return;
+    }
+    
     programMetadata.internalShaderFlags |= flags;
 }
 
@@ -1885,12 +1889,12 @@ void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXCompileJob &job) {
     if (validationVersion.major > 1 || validationVersion.minor > 5) {
         // Expected behaviour, if exceeded 8 add the flag
         if (count > 8) {
-            AddProgramFlag(DXILProgramShaderFlag::Use64UAVs);
+            AddProgramFlag(DXILProgramShaderFlag::Use64UAVs, DXILProgramShaderFlag::UseUAVs | DXILProgramShaderFlag::Use64UAVs);
         }
     } else {
         // Invalid behaviour, test against actual count
         if (mapped.handles.size() > 8) {
-            AddProgramFlag(DXILProgramShaderFlag::Use64UAVs);
+            AddProgramFlag(DXILProgramShaderFlag::Use64UAVs, DXILProgramShaderFlag::UseUAVs | DXILProgramShaderFlag::Use64UAVs);
         }
     }
 
