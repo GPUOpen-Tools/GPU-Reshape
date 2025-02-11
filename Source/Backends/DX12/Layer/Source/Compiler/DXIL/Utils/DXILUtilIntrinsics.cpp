@@ -263,7 +263,11 @@ const DXILFunctionDeclaration* DXILUtilIntrinsics::GetLibHandleIntrinsic(const B
         // Annotated by the type
         name = "dx.op.createHandleForLib." + std::string(table.type.typeMap.GetName(type));
     }
-    
+
+    // Existing declaration?
+    if (const DXILFunctionDeclaration* decl = table.function.FindDeclaration(name)) {
+        return decl;
+    }
     
     // Deduplicate it
     const DXILFunctionDeclaration *&handle = libHandleTypeMap[name];
