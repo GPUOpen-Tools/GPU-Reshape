@@ -28,7 +28,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
-#include <Backends/DX12/Compiler/DXIL/Blocks/DXILUnresolvedConstant.h>
+#include <Backends/DX12/Compiler/DXIL/Blocks/DXILConstant.h>
 
 // Common
 #include <Common/Sink.h>
@@ -266,7 +266,9 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
             case LLVMConstantRecord::BinOp:
             case LLVMConstantRecord::InBoundsGEP: {
                 // Emitting as unsorted is safe for DXIL resident types, as the IL has no applicable type anyway
-                constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
+                constant = constantMap.AddUnsortedConstant(id, type, DXILUnexposedConstant {
+                    .record = &record
+                });
                 break;
             }
         }
@@ -290,7 +292,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
 
                 // Replace all unresolved constants
                 for (const IL::Constant*& element: array->elements) {
-                    if (auto unresolved = element->Cast<DXILUnresolvedConstant>()) {
+                    if (auto unresolved = element->Cast<DXILConstant>()) {
                         element = program.GetConstants().GetConstant(table.idMap.GetMapped(unresolved->mappedId));
                         ASSERT(element, "Failed to resolve constant array element");
                     }
@@ -305,7 +307,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
 
                 // Replace all unresolved constants
                 for (const IL::Constant*& element: _struct->members) {
-                    if (auto unresolved = element->Cast<DXILUnresolvedConstant>()) {
+                    if (auto unresolved = element->Cast<DXILConstant>()) {
                         element = program.GetConstants().GetConstant(table.idMap.GetMapped(unresolved->mappedId));
                         ASSERT(element, "Failed to resolve constant array element");
                     }

@@ -29,9 +29,14 @@
 // Backend
 #include <Backend/IL/Constant.h>
 
-struct DXILUnresolvedConstant : IL::Constant {
+struct DXILConstant : IL::Constant {
     static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::None;
 
     /// The previously unmapped absolute LLVM identifier
     uint32_t mappedId{~0u};
+};
+
+struct DXILUnexposedConstant : IL::UnexposedConstant {
+    /// The record producing the unexposed constant
+    LLVMRecord* record{nullptr};
 };

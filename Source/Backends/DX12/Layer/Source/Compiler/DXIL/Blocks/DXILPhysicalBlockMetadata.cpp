@@ -29,6 +29,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
+#include <Backends/DX12/Compiler/DXIL/Blocks/DXILConstant.h>
 
 // Backend
 #include <Backend/IL/TypeSize.h>
@@ -400,7 +401,15 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         // Update bound
         registerSpace.registerBound = std::max<uint32_t>(registerSpace.registerBound, entry.registerBase + entry.registerRange);
 
-        // Associate variable, if any
+        // If pointing to constant, check for 6.6 bitcast handle definitions
+        if (valueMd.idType == DXILIDType::Constant) {
+            auto unexposed = valueMd.value.constant->Cast<DXILUnexposedConstant>();
+            if (unexposed && unexposed->record->id == static_cast<uint32_t>(LLVMCastOp::BitCast)) {
+                entry.libVariable = program.GetVariableList().GetVariable(table.idMap.GetMapped(unexposed->record->Op(2)));
+            }
+        }
+
+        // If pointing to constant, check for <6.6 variable
         if (valueMd.idType == DXILIDType::Variable) {
             entry.libVariable = valueMd.variable;
         }
@@ -667,8 +676,8 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         registerClass.resourceLookup[resourceID] = handleID;
 
         // Associate variable, if any, to the handle
-        if (valueMd.idType == DXILIDType::Variable) {
-            variableHandles[valueMd.variable->id] = handleID;
+        if (entry.libVariable) {
+            variableHandles[entry.libVariable->id] = handleID;
         }
 
         // Add handles
