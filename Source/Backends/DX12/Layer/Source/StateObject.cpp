@@ -498,6 +498,9 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
     switch (subObject->Type) {
         default: {
             state->writer.DeepAdd(subObject->Type, subObject->pDesc);
+
+            // Association lookup
+            cache.subObjects[subObject].index = static_cast<uint32_t>(state->writer.SubObjectCount()) - 1;
             break;
         }
         case D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION: {
