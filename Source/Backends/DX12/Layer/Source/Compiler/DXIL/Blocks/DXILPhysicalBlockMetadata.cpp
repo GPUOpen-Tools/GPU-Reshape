@@ -1664,10 +1664,23 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
 const Backend::IL::Variable * DXILPhysicalBlockMetadata::CreateExternLibResourceVariable(const Backend::IL::Type* type) {
     // If 6.6, just points to the handle type
     if (table.metadata.SatisfiesShadingModel(6, 6)) {
-        type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
-            .pointee = table.intrinsics.handleType,
-            .addressSpace = Backend::IL::AddressSpace::Constant
-        });
+        const Backend::IL::Type *pointee = type->As<Backend::IL::PointerType>()->pointee;
+
+        // If array, preserve the element count
+        if (auto* array = pointee->Cast<Backend::IL::ArrayType>()) {
+            type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+                .pointee = program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType {
+                    .elementType = table.intrinsics.handleType,
+                    .count = array->count
+                }),
+                .addressSpace = Backend::IL::AddressSpace::Constant
+            });
+        } else {
+            type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+                .pointee = table.intrinsics.handleType,
+                .addressSpace = Backend::IL::AddressSpace::Constant
+            });
+        }
     }
 
     // Create variable
