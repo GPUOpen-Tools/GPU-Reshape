@@ -62,7 +62,6 @@ void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.registerClasses = registerClasses;
     out.registerSpaces = registerSpaces;
     out.registerSpaceBound = registerSpaceBound;
-    out.programMetadata = programMetadata;
     out.shadingModel = shadingModel;
     out.validationVersion = validationVersion;
     out.handles = handles;
@@ -229,7 +228,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
                             }
                             case DXILProgramTag::ShaderFlags: {
                                 // Get current flags
-                                programMetadata.shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op32(kv + 1)));
+                                entryPoint.shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op32(kv + 1)));
                                 break;
                             }
                             case DXILProgramTag::NumThreads: {
@@ -1236,32 +1235,38 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandVariable(MetadataBlock &meta
 }
 
 void DXILPhysicalBlockMetadata::EnsureUAVCapability() {
-    // CS, PS is implicit
-    if (shadingModel._class == DXILShadingModelClass::CS || shadingModel._class == DXILShadingModelClass::PS) {
-        return;
+    // The rest are implicit
+    switch (shadingModel._class) {
+        default:
+            return;
+        case DXILShadingModelClass::VS:
+        case DXILShadingModelClass::HS:
+        case DXILShadingModelClass::DS:
+        case DXILShadingModelClass::GS:
+            break;
     }
 
-    // Either or already implies UAV capabilities
-    if (programMetadata.shaderFlags & (DXILProgramShaderFlag::UseRelaxedTypedUAVLoads | DXILProgramShaderFlag::UseUAVs | DXILProgramShaderFlag::Use64UAVs)) {
-        return;
-    }
+    for (EntryPoint& entry : entryPoints.entries) {
+        // Either or already implies UAV capabilities
+        if (entry.shaderFlags & (DXILProgramShaderFlag::UseRelaxedTypedUAVLoads | DXILProgramShaderFlag::UseUAVs)) {
+            continue;
+        }
 
-    // Enable the base UAV mask
-    programMetadata.internalShaderFlags |= DXILProgramShaderFlag::UseUAVs;
+        // Enable the base UAV mask
+        entry.shaderFlags |= DXILProgramShaderFlag::UseUAVs;
+    }
 }
 
 void DXILPhysicalBlockMetadata::EnsureUAV64Capability() {
-    if (programMetadata.shaderFlags & DXILProgramShaderFlag::Use64UAVs) {
-        return;
+    for (EntryPoint& entry : entryPoints.entries) {
+        entry.shaderFlags |= DXILProgramShaderFlag::Use64UAVs;
     }
-
-    // The two flags are mutually exclusive, and 64 takes precedent
-    programMetadata.internalShaderFlags &= ~DXILProgramShaderFlagSet(DXILProgramShaderFlag::UseUAVs);
-    programMetadata.internalShaderFlags |= DXILProgramShaderFlag::Use64UAVs;
 }
 
 void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags) {
-    programMetadata.internalShaderFlags |= flags;
+    for (EntryPoint& entry : entryPoints.entries) {
+        entry.shaderFlags |= flags;
+    }
 }
 
 void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXCompileJob &job) {
@@ -2141,7 +2146,8 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
     MetadataBlock* metadataBlock = GetMetadataBlock(entryPoints.uid);
 
     // Copy info to binding
-    table.bindingInfo.shaderFlags = programMetadata.internalShaderFlags;
+    // TODO[rt]: Or it across all entry points?
+    table.bindingInfo.shaderFlags = entryPoints.entries[0].shaderFlags;
 
     // Update all entry points
     for (const EntryPoint& entryPoint : entryPoints.entries) {
@@ -2173,11 +2179,8 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
                     break;
                 }
                 case DXILProgramTag::ShaderFlags: {
-                    // Get current flags
-                    uint32_t existingFlags = GetOperandU32Constant(*metadataBlock, kvRecord->Op32(kv + 1));
-
                     // Or flags
-                    uint32_t combined = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, existingFlags | static_cast<uint32_t>(programMetadata.internalShaderFlags.value));
+                    uint32_t combined = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint32_t>(entryPoint.shaderFlags.value));
 
                     // Write combined
                     kvRecord->Op(kv + 1) = combined;
@@ -2201,14 +2204,14 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
         }
 
         // Pending flags?
-        if (pendingFlagsKv && programMetadata.internalShaderFlags.value) {
+        if (pendingFlagsKv && entryPoint.shaderFlags.value) {
             // Copy ops
             auto ops = table.recordAllocator.AllocateArray<uint64_t>(kvRecord->opCount + 2);
             std::memcpy(ops, kvRecord->ops, sizeof(uint64_t) * kvRecord->opCount);
 
             // Append flag
             ops[kvRecord->opCount + 0] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint64_t>(DXILProgramTag::ShaderFlags));
-            ops[kvRecord->opCount + 1] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint32_t>(programMetadata.internalShaderFlags.value));
+            ops[kvRecord->opCount + 1] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint32_t>(entryPoint.shaderFlags.value));
 
             // Set new ops
             kvRecord->ops = ops;

@@ -268,6 +268,9 @@ public:
 
         /// The function value id
         uint32_t functionId{~0u};
+        
+        /// User provided flags
+        DXILProgramShaderFlagSet shaderFlags{ 0 };
 
         /// The IL id
         IL::ID id = IL::InvalidID;
@@ -463,14 +466,6 @@ public:
         uint32_t major{1};
         uint32_t minor{0};
     } validationVersion;
-
-    struct ProgramMetadata {
-        /// User provided flags
-        DXILProgramShaderFlagSet shaderFlags{ 0 };
-
-        /// Internal shader flags
-        DXILProgramShaderFlagSet internalShaderFlags{ 0 };
-    } programMetadata;
 
 private:
     /// Declaration blocks
