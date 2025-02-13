@@ -365,6 +365,10 @@ void ShaderExportStreamer::CloseCommandList(ShaderExportStreamState *state) {
     }
 }
 
+static bool IsHeapRootParameter(D3D12_ROOT_PARAMETER_TYPE type) {
+    return type == D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+}
+
 void ShaderExportStreamer::InvalidateHeapMappingsFor(ShaderExportStreamState *state, D3D12_DESCRIPTOR_HEAP_TYPE type) {
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
         ShaderExportStreamBindState &bindState = state->bindStates[i];
@@ -374,8 +378,8 @@ void ShaderExportStreamer::InvalidateHeapMappingsFor(ShaderExportStreamState *st
             // Get the expected heap type
             D3D12_DESCRIPTOR_HEAP_TYPE heapType = bindState.rootSignature->logicalMapping.userRootMappings[rootIndex].heapType;
 
-            // If of same heap type, invalidate the parameter
-            if (heapType == type) {
+            // If of same heap type, invalidate the parameter (unless root parameter, exists outside the heap)
+            if (heapType == type && IsHeapRootParameter(bindState.rootSignature->logicalMapping.userRootMappings[rootIndex].type)) {
                 bindState.persistentRootParameters[rootIndex].type = ShaderExportRootParameterValueType::None;
             }
         }
@@ -386,22 +390,6 @@ void ShaderExportStreamer::InvalidateHeapMappingsFor(ShaderExportStreamState *st
         if (bindState.rootSignature) {
             InvalidateDescriptorSlots(state, bindState, bindState.rootSignature, type, false);
         }
-    }
-}
-
-static bool IsRootDescriptorType(D3D12_ROOT_PARAMETER_TYPE type) {
-    switch (type) {
-        default: {
-            ASSERT(false, "Invalid type");
-            return false;
-        }
-        case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
-        case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
-            return false;
-        case D3D12_ROOT_PARAMETER_TYPE_CBV:
-        case D3D12_ROOT_PARAMETER_TYPE_SRV:
-        case D3D12_ROOT_PARAMETER_TYPE_UAV:
-            return true;
     }
 }
 
@@ -416,7 +404,7 @@ void ShaderExportStreamer::InvalidateDescriptorSlots(ShaderExportStreamState* st
         }
 
         // Root descriptor parameters may not be invalidated depending on what state was reset
-        if (!rootInvalidation && IsRootDescriptorType(rootSignature->logicalMapping.userRootMappings[i].type)) {
+        if (!rootInvalidation && !IsHeapRootParameter(rootSignature->logicalMapping.userRootMappings[i].type)) {
             continue;
         }
 
