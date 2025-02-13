@@ -554,7 +554,22 @@ enum class DXBCRuntimeDataPartType : uint32_t {
     ResourceTable = 3,
     FunctionTable = 4,
     RawBytes = 5,
-    SubObjectTable = 6
+    SubObjectTable = 6,
+    NodeIDTable = 7,
+    NodeShaderIOAttribTable = 8,
+    NodeShaderFuncAttribTable = 9,
+    IONodeTable = 10,
+    NodeShaderInfoTable = 11,
+    MeshNodesPreviewInfoTable = 12,
+    SignatureElementTable = 13,
+    VSInfoTable = 14,
+    PSInfoTable = 15,
+    HSInfoTable = 16,
+    DSInfoTable = 17,
+    GSInfoTable = 18,
+    CSInfoTable = 19,
+    MSInfoTable = 20,
+    ASInfoTable = 21
 };
 
 struct DXBCRuntimeDataPartHeader {
@@ -601,7 +616,8 @@ enum class DXBCRuntimeDataShaderKind : uint32_t {
     Miss = 11,
     Callable = 12,
     Mesh = 13,
-    Amplification = 14
+    Amplification = 14,
+    Node = 15
 };
 
 struct DXBCRuntimeDataFunctionRecord {
@@ -616,6 +632,204 @@ struct DXBCRuntimeDataFunctionRecord {
     uint32_t featureInfo2;
     uint32_t shaderStageFlags;
     uint32_t minShaderTarget;
+};
+
+struct DXBCRuntimeDataNodeShaderInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::NodeShaderInfoTable;
+    
+    uint32_t launchType;
+    uint32_t groupSharedBytesUsed;
+    uint32_t attributesOffset;
+    uint32_t outputsOffset;
+    uint32_t inputsOffset;
+};
+
+struct DXBCRuntimeDataSignatureElement {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::SignatureElementTable;
+    
+    uint32_t semanticNameOffset;
+    uint32_t semanticIndicesOffset;
+    uint8_t semanticKind;
+    uint8_t componentType;
+    uint8_t interpolationMode;
+    uint8_t startRow;
+    uint8_t colsAndStream;
+    uint8_t usageAndDynIndexMasks;
+};
+
+struct DXBCRuntimeDataNodeID {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::NodeIDTable;
+    
+    uint32_t nameOffset;
+    uint32_t index;
+};
+
+enum class DXBCRuntimeDataNodeAttribKind : uint32_t {
+    None = 0,
+    OutputID = 1,
+    MaxRecords = 2,
+    MaxRecordsSharedWith = 3,
+    RecordSizeInBytes = 4,
+    RecordDispatchGrid = 5,
+    OutputArraySize = 6,
+    AllowSparseNodes = 7,
+    RecordAlignmentInBytes = 8
+};
+
+struct DXBCRuntimeDataNodeShaderIOAttrib {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::NodeShaderIOAttribTable;
+    
+    DXBCRuntimeDataNodeAttribKind attributeKind;
+    union {
+        uint32_t outputNodeIdOffset;
+        uint32_t recordDispatchGridOffset;
+        uint32_t rawData;
+    } payload;
+};
+
+enum class DXBCRuntimeDataNodeFuncAttribKind : uint32_t {
+    None = 0,
+    ID = 1,
+    ThreadCount = 2,
+    ShareInputOf = 3,
+    DispatchGrid = 4,
+    MaxRecursionDepth = 5,
+    LocalRootArgumentsTableIndex = 6,
+    MaxDispatchGrid = 7,
+    MeshNodePreview1 = 8,
+    MeshNodePreview2 = 9
+};
+
+struct DXBCRuntimeDataNodeShaderFuncAttrib {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::NodeShaderFuncAttribTable;
+    
+    DXBCRuntimeDataNodeFuncAttribKind attributeKind;
+    union {
+        uint32_t nodeIdOffset;
+        uint32_t threadCountOffset;
+        uint32_t shareInputOfOffset;
+        uint32_t dispatchGridOffset;
+        uint32_t maxRecursionDepth;
+        uint32_t localRootArugmentsTableIndex;
+        uint32_t maxDispatchGridOffset;
+    } payload;
+};
+
+struct DXBCRuntimeDataIONode {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::IONodeTable;
+    
+    uint32_t ioFlagsAndKind;
+    uint32_t attributeArrayOffset;
+};
+
+struct DXBCRuntimeDataVSInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::VSInfoTable;
+    
+    uint32_t signatureInputsOffset;
+    uint32_t signatureOutputsOffset;
+    uint32_t viewIdOutputMaskOffset;
+    uint32_t viewIdOutputMaskSize;
+};
+
+struct DXBCRuntimeDataPSInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::PSInfoTable;
+    
+    uint32_t signatureInputsOffset;
+    uint32_t signatureOutputsOffset;
+};
+
+struct DXBCRuntimeDataHSInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::HSInfoTable;
+    
+    uint32_t signatureInputsOffset;
+    uint32_t signatureOutputsOffset;
+    uint32_t signaturePatchOutputsOffset;
+    uint32_t viewIdOutputMaskOffset;
+    uint32_t viewIdOutputMaskSize;
+    uint32_t viewIdPatchOutputMaskOffset;
+    uint32_t viewIdPatchOutputMaskSize;
+    uint32_t inputToOutputsOffset;
+    uint32_t inputToOutputsSize;
+    uint32_t inputToPatchOutputMaskOffset;
+    uint32_t inputToPatchOutputMaskSize;
+    uint8_t inputControlPointCount;
+    uint8_t outputControlPointCount;
+    uint8_t tessellatorDomain;
+    uint8_t tessellatorOutputPrimitive;
+};
+
+struct DXBCRuntimeDataDSInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::DSInfoTable;
+    
+    uint32_t signatureInputsOffset;
+    uint32_t signatureOutputsOffset;
+    uint32_t signaturePatchInputsOffset;
+    uint32_t viewIdOutputMaskOffset;
+    uint32_t viewIdOutputMaskSize;
+    uint32_t inputToOutputsOffset;
+    uint32_t inputToOutputsSize;
+    uint32_t patchInputToOutputsOffset;
+    uint32_t patchInputToOutputsSize;
+    uint8_t inputControlPointCount;
+    uint8_t tessellatorDomain;
+};
+
+struct DXBCRuntimeDataGSInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::GSInfoTable;
+    
+    uint32_t signatureInputsOffset;
+    uint32_t signatureOutputsOffset;
+    uint32_t viewIdOutputMaskOffset;
+    uint32_t viewIdOutputMaskSize;
+    uint32_t inputToOutputsOffset;
+    uint32_t inputToOutputsSize;
+    uint8_t inputPrimitive;
+    uint8_t outputTopology;
+    uint8_t maxVertexCount;
+    uint8_t outputStreamMask;
+};
+
+struct DXBCRuntimeDataCSInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::CSInfoTable;
+    
+    uint32_t threadCountOffset;
+    uint32_t groupSharedBytesUsed;
+};
+
+struct DXBCRuntimeDataMSInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::MSInfoTable;
+    
+    uint32_t signatureOutputsOffset;
+    uint32_t signaturePrimitiveOutputElementsOffset;
+    uint32_t viewIdOutputMaskOffset;
+    uint32_t viewIdOutputMaskSize;
+    uint32_t viewIdPrimitiveOutputMaskOffset;
+    uint32_t viewIdPrimitiveOutputMaskSize;
+    uint32_t numThreadsOffset;
+    uint32_t groupSharedBytesUsed;
+    uint32_t groupSharedBytesDependentOnViewID;
+    uint32_t payloadSizeInBytes;
+    uint16_t maxOutputVertices;
+    uint16_t maxOutputPrimitives;
+    uint8_t meshOutputTopology;
+};
+
+struct DXBCRuntimeDataASInfo {
+    static constexpr DXBCRuntimeDataPartType kPartType = DXBCRuntimeDataPartType::ASInfoTable;
+    
+    uint32_t threadCountOffset;
+    uint32_t groupSharedBytesUsed;
+    uint32_t payloadSizeInBytes;
+};
+
+struct DXBCRuntimeDataFunctionRecord2 : DXBCRuntimeDataFunctionRecord {
+    uint8_t minExpectedWaveLaneCount;
+    uint8_t maxExpectedWaveLaneCount;
+    uint16_t shaderFlags;
+    union {
+        uint32_t rawShaderRef;
+        uint32_t nodeOffset;
+    } payload;
 };
 
 enum class DXBCRuntimeDataSubObjectKind : uint32_t {

@@ -91,7 +91,7 @@ private:
 
     struct FunctionEntry {
         /// Serialized record
-        DXBCRuntimeDataFunctionRecord record;
+        DXBCRuntimeDataFunctionRecord2 record;
 
         /// Has a local root signature?
         bool hasLocalRootSignature = false;
@@ -115,6 +115,12 @@ private:
 
         /// Extracted name
         std::string name;
+    };
+
+    template<typename T>
+    struct RecordEntry {
+        /// Serialized record
+        T record;
     };
 
 private:
@@ -183,6 +189,13 @@ private:
     /// \return offset
     uint32_t InsertRaw(const void* start, uint32_t length, std::vector<uint8_t>& out);
 
+    /// Insert a set of signature elements
+    /// @param signaturesOffset index offset
+    /// @param patchedStrings destination strings
+    /// @param patchedIndices destination indices
+    /// @return 
+    uint32_t InsertSignatureElements(uint32_t signaturesOffset, StringSet& patchedStrings, IndexSet &patchedIndices);
+
 private:
     /// Insert a table part
     /// \param block block to append to
@@ -191,15 +204,33 @@ private:
     template<typename T>
     void InsertTablePart(DXBCPhysicalBlock* block, const TablePart<T>& table, DXBCRuntimeDataPartType partType);
 
+    /// Insert a record table part
+    /// \param block block to append to
+    /// \param table table to insert
+    /// \param partOffset the header part offset
+    /// \param partIndex the current part index, incremented
+    template<typename T>
+    void InsertRecordTablePart(DXBCPhysicalBlock * block, const TablePart<RecordEntry<T>>& table, uint64_t partOffset, uint32_t& partIndex);
+
 private:
-    /// All parsed resources
+    /// All tables
     TablePart<ResourceEntry> resourceRecords;
-
-    /// All parsed functions
     TablePart<FunctionEntry> functionRecords;
-
-    /// All parsed sub-objects
     TablePart<SubObjectEntry> subObjectRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataNodeID>> nodeIDRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataNodeShaderIOAttrib>> nodeShaderIOAttribRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataNodeShaderFuncAttrib>> nodeShaderFuncAttribRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataIONode>> ioNodeRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataNodeShaderInfo>> nodeShaderInfoRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataSignatureElement>> signatureElementRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataVSInfo>> vsInfoRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataPSInfo>> psInfoRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataHSInfo>> hsInfoRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataDSInfo>> dsInfoRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataGSInfo>> gsInfoRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataCSInfo>> csInfoRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataMSInfo>> msInfoRecords;
+    TablePart<RecordEntry<DXBCRuntimeDataASInfo>> asInfoRecords;
 
 private:
     struct ResourceBucket {

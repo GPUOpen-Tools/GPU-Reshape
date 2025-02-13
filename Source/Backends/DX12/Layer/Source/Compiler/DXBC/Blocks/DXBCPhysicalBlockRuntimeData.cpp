@@ -89,6 +89,7 @@ void DXBCPhysicalBlockRuntimeData::Parse() {
         DXBCParseContext partCtx(ctx.ptr, partHeader.size);
         switch (partHeader.type) {
             default: {
+                ASSERT(false, "Unsupported RDAT part");
                 break;
             }
             case DXBCRuntimeDataPartType::String:
@@ -108,6 +109,51 @@ void DXBCPhysicalBlockRuntimeData::Parse() {
                 break;
             case DXBCRuntimeDataPartType::SubObjectTable:
                 ParseTablePart(partCtx, subObjectRecords);
+                break;
+            case DXBCRuntimeDataPartType::NodeIDTable:
+                ParseTablePart(partCtx, nodeIDRecords);
+                break;
+            case DXBCRuntimeDataPartType::NodeShaderIOAttribTable:
+                ParseTablePart(partCtx, nodeShaderIOAttribRecords);
+                break;
+            case DXBCRuntimeDataPartType::NodeShaderFuncAttribTable:
+                ParseTablePart(partCtx, nodeShaderFuncAttribRecords);
+                break;
+            case DXBCRuntimeDataPartType::IONodeTable:
+                ParseTablePart(partCtx, ioNodeRecords);
+                break;
+            case DXBCRuntimeDataPartType::NodeShaderInfoTable:
+                ParseTablePart(partCtx, nodeShaderInfoRecords);
+                break;
+            case DXBCRuntimeDataPartType::MeshNodesPreviewInfoTable:
+                ASSERT(false, "Experimental RDAT part not supported");
+                break;
+            case DXBCRuntimeDataPartType::SignatureElementTable:
+                ParseTablePart(partCtx, signatureElementRecords);
+                break;
+            case DXBCRuntimeDataPartType::VSInfoTable:
+                ParseTablePart(partCtx, vsInfoRecords);
+                break;
+            case DXBCRuntimeDataPartType::PSInfoTable:
+                ParseTablePart(partCtx, psInfoRecords);
+                break;
+            case DXBCRuntimeDataPartType::HSInfoTable:
+                ParseTablePart(partCtx, hsInfoRecords);
+                break;
+            case DXBCRuntimeDataPartType::DSInfoTable:
+                ParseTablePart(partCtx, dsInfoRecords);
+                break;
+            case DXBCRuntimeDataPartType::GSInfoTable:
+                ParseTablePart(partCtx, gsInfoRecords);
+                break;
+            case DXBCRuntimeDataPartType::CSInfoTable:
+                ParseTablePart(partCtx, csInfoRecords);
+                break;
+            case DXBCRuntimeDataPartType::MSInfoTable:
+                ParseTablePart(partCtx, msInfoRecords);
+                break;
+            case DXBCRuntimeDataPartType::ASInfoTable:
+                ParseTablePart(partCtx, asInfoRecords);
                 break;
         }
     }
@@ -216,6 +262,34 @@ uint32_t DXBCPhysicalBlockRuntimeData::InsertRaw(const void *start, uint32_t len
     return offset;
 }
 
+uint32_t DXBCPhysicalBlockRuntimeData::InsertSignatureElements(uint32_t signaturesOffset, StringSet& patchedStrings, IndexSet &patchedIndices) {
+    uint32_t elementCount = indexBuffer[signaturesOffset];
+
+    // Patch all elements
+    for (uint32_t i = 0; i < elementCount; i++) {
+        uint32_t elementIndex = indexBuffer[signaturesOffset + i + 1];
+
+        // Patch common
+        RecordEntry<DXBCRuntimeDataSignatureElement> &element = signatureElementRecords.records[elementIndex];
+        element.record.semanticNameOffset = InsertString(GetString(element.record.semanticNameOffset), patchedStrings);
+
+        // Patch indices
+        uint32_t semanticIndicesCount = indexBuffer[element.record.semanticIndicesOffset];
+        element.record.semanticIndicesOffset = InsertIndices(
+            indexBuffer.data() + element.record.semanticIndicesOffset + 1,
+            indexBuffer.data() + element.record.semanticIndicesOffset + 1 + semanticIndicesCount,
+            patchedIndices
+        );
+    }
+
+    // Insert back into indices
+    return InsertIndices(
+        indexBuffer.data() + signaturesOffset + 1,
+        indexBuffer.data() + signaturesOffset + 1 + elementCount,
+        patchedIndices
+    );
+}
+
 void DXBCPhysicalBlockRuntimeData::ParseStringPart(DXBCParseContext &partCtx) {
     stringBuffer.resize(partCtx.PendingBytes() / sizeof(char));
     std::memcpy(stringBuffer.data(), partCtx.ptr, partCtx.PendingBytes());
@@ -224,12 +298,13 @@ void DXBCPhysicalBlockRuntimeData::ParseStringPart(DXBCParseContext &partCtx) {
 template<typename T>
 void DXBCPhysicalBlockRuntimeData::ParseTablePart(DXBCParseContext &partCtx, TablePart<T>& out) {
     out.header = partCtx.Consume<DXBCRuntimeDataTableHeader>();
-    ASSERT(out.header.recordStride == sizeof(T::record), "Unexpected stride");
-
     out.records.resize(partCtx.PendingBytes() / out.header.recordStride);
     
     for (uint64_t i = 0; i < out.records.size(); i++) {
-        out.records[i].record = partCtx.Consume<decltype(T::record)>();
+        auto* dest = reinterpret_cast<uint8_t*>(&out.records[i].record);
+        std::memcpy(dest, partCtx.ptr, out.header.recordStride);
+        std::memset(dest + out.header.recordStride, 0, sizeof(T::record) - out.header.recordStride);
+        partCtx.Skip(out.header.recordStride);
     }
 }
 
@@ -244,12 +319,12 @@ void DXBCPhysicalBlockRuntimeData::InsertTablePart(DXBCPhysicalBlock *block, con
     // Emit header
     block->stream.Append(DXBCRuntimeDataTableHeader {
         .recordCount = static_cast<uint32_t>(table.records.size()),
-        .recordStride = sizeof(T::record)
+        .recordStride = table.header.recordStride
     });
 
     // Emit all records
     for (const T& entry : table.records) {
-        block->stream.Append(entry.record);
+        block->stream.AppendData(&entry.record, table.header.recordStride);
     }
 
     // Fixup
@@ -296,7 +371,14 @@ void DXBCPhysicalBlockRuntimeData::Compile(const DXCompileJob &job) {
     IndexSet patchedIndices;
 
     // The reordered resource records
-    TablePart<ResourceEntry> patchedResourceRecords;
+    TablePart<ResourceEntry> patchedResourceRecords {
+        .header = resourceRecords.header
+    };
+
+    // May not have had previous records
+    if (!patchedResourceRecords.header.recordStride) {
+        patchedResourceRecords.header.recordStride = sizeof(DXBCRuntimeDataResourceRecord);
+    }
     
     // Emit resources and their data according to the emit order
     for (DXILShaderResourceClass _class : resourceEmitOrder) {
@@ -344,6 +426,188 @@ void DXBCPhysicalBlockRuntimeData::Compile(const DXCompileJob &job) {
                 function.dependencies.data() + function.dependencies.size(),
                 patchedIndices
             );
+        }
+
+        // Has revision2?
+        if (functionRecords.header.recordStride >= sizeof(DXBCRuntimeDataFunctionRecord2)) {
+            // May not be bound
+            if (function.record.payload.rawShaderRef != UINT32_MAX) {
+                // TODO[rt]: Validate this is right for Invalid kinds
+                if (function.record.shaderKind == DXBCRuntimeDataShaderKind::Node) {
+                    RecordEntry<DXBCRuntimeDataNodeShaderInfo> &node = nodeShaderInfoRecords.records[function.record.payload.nodeOffset];
+
+                    // All index counts
+                    uint32_t attributeCount = indexBuffer[node.record.attributesOffset];
+                    uint32_t inputsCount    = indexBuffer[node.record.inputsOffset];
+                    uint32_t outputsCount   = indexBuffer[node.record.outputsOffset];
+
+                    // Patch all attributes
+                    for (uint32_t i = 0; i < attributeCount; i++) {
+                        uint32_t attributeIndex = indexBuffer[node.record.attributesOffset + i + 1];
+
+                        // Patch payload data
+                        RecordEntry<DXBCRuntimeDataNodeShaderFuncAttrib> &attribute = nodeShaderFuncAttribRecords.records[attributeIndex];
+                        switch (attribute.record.attributeKind) {
+                            default: {
+                                break;
+                            }
+                            case DXBCRuntimeDataNodeFuncAttribKind::ID: {
+                                auto& id = nodeIDRecords.records[attribute.record.payload.nodeIdOffset];
+                                id.record.nameOffset = InsertString(GetString(id.record.nameOffset), patchedStrings);
+                                break;
+                            }
+                            case DXBCRuntimeDataNodeFuncAttribKind::ThreadCount: {
+                                uint32_t count = indexBuffer[attribute.record.payload.threadCountOffset];
+                                attribute.record.payload.threadCountOffset = InsertIndices(
+                                    indexBuffer.data() + attribute.record.payload.threadCountOffset + 1,
+                                    indexBuffer.data() + attribute.record.payload.threadCountOffset + 1 + count,
+                                    patchedIndices
+                                );
+                                break;
+                            }
+                            case DXBCRuntimeDataNodeFuncAttribKind::ShareInputOf: {
+                                auto& id = nodeIDRecords.records[attribute.record.payload.shareInputOfOffset];
+                                id.record.nameOffset = InsertString(GetString(id.record.nameOffset), patchedStrings);
+                                break;
+                            }
+                            case DXBCRuntimeDataNodeFuncAttribKind::DispatchGrid: {
+                                uint32_t count = indexBuffer[attribute.record.payload.dispatchGridOffset];
+                                attribute.record.payload.dispatchGridOffset = InsertIndices(
+                                    indexBuffer.data() + attribute.record.payload.dispatchGridOffset + 1,
+                                    indexBuffer.data() + attribute.record.payload.dispatchGridOffset + 1 + count,
+                                    patchedIndices
+                                );
+                                break;
+                            }
+                            case DXBCRuntimeDataNodeFuncAttribKind::MaxDispatchGrid: {
+                                uint32_t count = indexBuffer[attribute.record.payload.dispatchGridOffset];
+                                attribute.record.payload.dispatchGridOffset = InsertIndices(
+                                    indexBuffer.data() + attribute.record.payload.dispatchGridOffset + 1,
+                                    indexBuffer.data() + attribute.record.payload.dispatchGridOffset + 1 + count,
+                                    patchedIndices
+                                );
+                                break;
+                            }
+                        }
+                    }
+
+                    // Patch all inputs
+                    for (uint32_t i = 0; i < inputsCount; i++) {
+                        uint32_t inputIndex = indexBuffer[node.record.inputsOffset + i + 1];
+
+                        // Patch attribute data
+                        RecordEntry<DXBCRuntimeDataNodeShaderIOAttrib> &attribute = nodeShaderIOAttribRecords.records[inputIndex];
+                        switch (attribute.record.attributeKind) {
+                            default: {
+                                break;
+                            }
+                            case DXBCRuntimeDataNodeAttribKind::OutputID: {
+                                auto& id = nodeIDRecords.records[attribute.record.payload.outputNodeIdOffset];
+                                id.record.nameOffset = InsertString(GetString(id.record.nameOffset), patchedStrings);
+                                break;
+                            }
+                        }
+                    }
+
+                    // Patch all outputs
+                    for (uint32_t i = 0; i < outputsCount; i++) {
+                        uint32_t outputIndex = indexBuffer[node.record.outputsOffset + i + 1];
+
+                        // Patch attribute data
+                        RecordEntry<DXBCRuntimeDataNodeShaderIOAttrib> &attribute = nodeShaderIOAttribRecords.records[outputIndex];
+                        switch (attribute.record.attributeKind) {
+                            default: {
+                                break;
+                            }
+                            case DXBCRuntimeDataNodeAttribKind::OutputID: {
+                                auto& id = nodeIDRecords.records[attribute.record.payload.outputNodeIdOffset];
+                                id.record.nameOffset = InsertString(GetString(id.record.nameOffset), patchedStrings);
+                                break;
+                            }
+                        }
+                    }
+
+                    // Rewrite attributes
+                    node.record.attributesOffset = InsertIndices(
+                        indexBuffer.data() + node.record.attributesOffset + 1,
+                        indexBuffer.data() + node.record.attributesOffset + 1 + attributeCount,
+                        patchedIndices
+                    );
+
+                    // Rewrite inputs
+                    node.record.inputsOffset = InsertIndices(
+                        indexBuffer.data() + node.record.inputsOffset + 1,
+                        indexBuffer.data() + node.record.inputsOffset + 1 + inputsCount,
+                        patchedIndices
+                    );
+
+                    // Rewrite outputs
+                    node.record.outputsOffset = InsertIndices(
+                        indexBuffer.data() + node.record.outputsOffset + 1,
+                        indexBuffer.data() + node.record.outputsOffset + 1 + outputsCount,
+                        patchedIndices
+                    );
+                } else {
+                    // Otherwise a shader info, handle per case
+                    switch (function.record.shaderKind) {
+                        default: {
+                            break;
+                        }
+                        case DXBCRuntimeDataShaderKind::Pixel: {
+                            auto& psInfo = psInfoRecords.records[function.record.payload.rawShaderRef];
+                            psInfo.record.signatureInputsOffset = InsertSignatureElements(psInfo.record.signatureInputsOffset, patchedStrings, patchedIndices);
+                            psInfo.record.signatureOutputsOffset = InsertSignatureElements(psInfo.record.signatureOutputsOffset, patchedStrings, patchedIndices);
+                            break;
+                        }
+                        case DXBCRuntimeDataShaderKind::Vertex: {
+                            auto& vsInfo = vsInfoRecords.records[function.record.payload.rawShaderRef];
+                            vsInfo.record.signatureInputsOffset = InsertSignatureElements(vsInfo.record.signatureInputsOffset, patchedStrings, patchedIndices);
+                            vsInfo.record.signatureOutputsOffset = InsertSignatureElements(vsInfo.record.signatureOutputsOffset, patchedStrings, patchedIndices);
+                            break;
+                        }
+                        case DXBCRuntimeDataShaderKind::Geometry: {
+                            auto& gsInfo = gsInfoRecords.records[function.record.payload.rawShaderRef];
+                            gsInfo.record.signatureInputsOffset = InsertSignatureElements(gsInfo.record.signatureInputsOffset, patchedStrings, patchedIndices);
+                            gsInfo.record.signatureOutputsOffset = InsertSignatureElements(gsInfo.record.signatureOutputsOffset, patchedStrings, patchedIndices);
+                            break;
+                        }
+                        case DXBCRuntimeDataShaderKind::Hull: {
+                            auto& hsInfo = hsInfoRecords.records[function.record.payload.rawShaderRef];
+                            hsInfo.record.signatureInputsOffset = InsertSignatureElements(hsInfo.record.signatureInputsOffset, patchedStrings, patchedIndices);
+                            hsInfo.record.signatureOutputsOffset = InsertSignatureElements(hsInfo.record.signatureOutputsOffset, patchedStrings, patchedIndices);
+                            hsInfo.record.signaturePatchOutputsOffset = InsertSignatureElements(hsInfo.record.signaturePatchOutputsOffset, patchedStrings, patchedIndices);
+                            break;
+                        }
+                        case DXBCRuntimeDataShaderKind::Domain: {
+                            auto& dsInfo = dsInfoRecords.records[function.record.payload.rawShaderRef];
+                            dsInfo.record.signatureInputsOffset = InsertSignatureElements(dsInfo.record.signatureInputsOffset, patchedStrings, patchedIndices);
+                            dsInfo.record.signatureOutputsOffset = InsertSignatureElements(dsInfo.record.signatureOutputsOffset, patchedStrings, patchedIndices);
+                            dsInfo.record.signaturePatchInputsOffset = InsertSignatureElements(dsInfo.record.signaturePatchInputsOffset, patchedStrings, patchedIndices);
+                            break;
+                        }
+                        case DXBCRuntimeDataShaderKind::Compute: {
+                            auto& csInfo = csInfoRecords.records[function.record.payload.rawShaderRef];
+                            uint32_t count = indexBuffer[csInfo.record.threadCountOffset];
+                            csInfo.record.threadCountOffset = InsertIndices(
+                                indexBuffer.data() + csInfo.record.threadCountOffset + 1,
+                                indexBuffer.data() + csInfo.record.threadCountOffset + 1 + count,
+                                patchedIndices
+                            );
+                            break;
+                        }
+                        case DXBCRuntimeDataShaderKind::Amplification: {
+                            auto& asInfo = asInfoRecords.records[function.record.payload.rawShaderRef];
+                            uint32_t count = indexBuffer[asInfo.record.threadCountOffset];
+                            asInfo.record.threadCountOffset = InsertIndices(
+                                indexBuffer.data() + asInfo.record.threadCountOffset + 1,
+                                indexBuffer.data() + asInfo.record.threadCountOffset + 1 + count,
+                                patchedIndices
+                            );
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -406,6 +670,20 @@ void DXBCPhysicalBlockRuntimeData::Compile(const DXCompileJob &job) {
     header.partCount += !patchedIndices.buffer.empty();
     header.partCount += !patchedRawBuffer.empty();
     header.partCount += !subObjectRecords.records.empty();
+    header.partCount += !nodeIDRecords.records.empty();
+    header.partCount += !nodeShaderIOAttribRecords.records.empty();
+    header.partCount += !nodeShaderFuncAttribRecords.records.empty();
+    header.partCount += !ioNodeRecords.records.empty();
+    header.partCount += !nodeShaderInfoRecords.records.empty();
+    header.partCount += !signatureElementRecords.records.empty();
+    header.partCount += !vsInfoRecords.records.empty();
+    header.partCount += !psInfoRecords.records.empty();
+    header.partCount += !hsInfoRecords.records.empty();
+    header.partCount += !dsInfoRecords.records.empty();
+    header.partCount += !gsInfoRecords.records.empty();
+    header.partCount += !csInfoRecords.records.empty();
+    header.partCount += !msInfoRecords.records.empty();
+    header.partCount += !asInfoRecords.records.empty();
 
     // Emit header, will be fixed up later
     block->stream.Append(header);
@@ -477,6 +755,33 @@ void DXBCPhysicalBlockRuntimeData::Compile(const DXCompileJob &job) {
         block->stream.GetMutableDataAt<uint32_t>(partOffsets)[partIndex++] = block->stream.GetOffset();
         InsertTablePart(block, subObjectRecords, DXBCRuntimeDataPartType::SubObjectTable);
     }
+
+    // Insert table records
+    InsertRecordTablePart(block, nodeIDRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, nodeShaderIOAttribRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, nodeShaderFuncAttribRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, ioNodeRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, nodeShaderInfoRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, signatureElementRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, vsInfoRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, psInfoRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, hsInfoRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, dsInfoRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, gsInfoRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, csInfoRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, msInfoRecords, partOffsets, partIndex);
+    InsertRecordTablePart(block, asInfoRecords, partOffsets, partIndex);
+}
+
+template<typename T>
+void DXBCPhysicalBlockRuntimeData::InsertRecordTablePart(DXBCPhysicalBlock *block, const TablePart<RecordEntry<T>> &table, uint64_t partOffsets, uint32_t &partIndex) {
+    // Parts never written if empty
+    if (nodeIDRecords.records.empty()) {
+        return;
+    }
+    
+    block->stream.GetMutableDataAt<uint32_t>(partOffsets)[partIndex++] = block->stream.GetOffset();
+    InsertTablePart(block, nodeIDRecords, T::kPartType);
 }
 
 void DXBCPhysicalBlockRuntimeData::AddResourceVisibility(const DXCompileJob& job, uint32_t index) {
@@ -653,6 +958,20 @@ void DXBCPhysicalBlockRuntimeData::CopyTo(DXBCPhysicalBlockRuntimeData &out) {
     out.resourceRecords = resourceRecords;
     out.functionRecords = functionRecords;
     out.subObjectRecords = subObjectRecords;
+    out.nodeIDRecords = nodeIDRecords;
+    out.nodeShaderIOAttribRecords = nodeShaderIOAttribRecords;
+    out.nodeShaderFuncAttribRecords = nodeShaderFuncAttribRecords;
+    out.ioNodeRecords = ioNodeRecords;
+    out.nodeShaderInfoRecords = nodeShaderInfoRecords;
+    out.signatureElementRecords = signatureElementRecords;
+    out.vsInfoRecords = vsInfoRecords;
+    out.psInfoRecords = psInfoRecords;
+    out.hsInfoRecords = hsInfoRecords;
+    out.dsInfoRecords = dsInfoRecords;
+    out.gsInfoRecords = gsInfoRecords;
+    out.csInfoRecords = csInfoRecords;
+    out.msInfoRecords = msInfoRecords;
+    out.asInfoRecords = asInfoRecords;
     out.indexBuffer = indexBuffer;
     out.rawBuffer = rawBuffer;
     out.stringBuffer = stringBuffer;
