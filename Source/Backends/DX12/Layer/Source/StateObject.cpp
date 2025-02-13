@@ -595,37 +595,87 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             // Get the collection
             auto collectionTable = GetTable(object.pExistingCollection);
 
-            // Blindly inherit all exports, we never remove any
-            state->identifierExports.insert(state->identifierExports.end(), collectionTable.state->identifierExports.begin(), collectionTable.state->identifierExports.end());
-
-            // Preallocate subobject data
-            state->shaderSubObjects.reserve(state->shaderSubObjects.size() + collectionTable.state->shaderSubObjects.size());
+            // Setup export map
+            std::map<std::wstring, LPCWSTR> exports;
+            if (object.NumExports) {
+                for (uint32_t exportIndex = 0; exportIndex < object.NumExports; exportIndex++) {
+                    const D3D12_EXPORT_DESC& desc = object.pExports[exportIndex];
+                    exports[desc.ExportToRename] = desc.Name;
+                }
+            }
 
             // Inherit from existing collection
             for (StateShaderSubObject& collectionSubObject: collectionTable.state->shaderSubObjects) {
-                state->shaderSubObjects.push_back(collectionSubObject);
+                StateShaderSubObject filteredSubObject {
+                    .shader = collectionSubObject.shader
+                };
 
                 // Populate lookups
                 for (const StateShaderSubObjectExport& _export : collectionSubObject.functionExports) {
-                    state->subObjectMap[_export.name] = StateSubObjectIndex {
+                    auto it = exports.find(_export.name);
+                    if (!exports.empty() && it == exports.end()) {
+                        continue;
+                    }
+
+                    // Copy function export
+                    auto& filteredExport = filteredSubObject.functionExports.emplace_back(_export);
+                    if (it != exports.end()) {
+                        filteredExport.name = it->second;
+                    }
+
+                    // Add sub-object lookup (next written object)
+                    state->subObjectMap[filteredExport.name] = StateSubObjectIndex {
                         .type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
-                        .index = static_cast<uint32_t>(state->shaderSubObjects.size()) - 1
+                        .index = static_cast<uint32_t>(state->shaderSubObjects.size())
                     };
+
+                    // Identifiable?
+                    if (filteredExport.dxbc.type == DXBCType::Function) {
+                        switch (filteredExport.dxbc.function.kind) {
+                            default:
+                                break;
+                            case DXBCRuntimeDataShaderKind::RayGeneration:
+                            case DXBCRuntimeDataShaderKind::Miss:
+                            case DXBCRuntimeDataShaderKind::Callable:
+                                state->identifierExports.push_back(filteredExport.name);
+                                break;
+                        }
+                    }
                 }
 
-                // Keep linear set for instrumentation purposes
-                state->shaders.push_back(collectionSubObject.shader);
+                // Any exported functions at all?
+                if (!filteredSubObject.functionExports.empty()) {
+                    state->shaderSubObjects.push_back(collectionSubObject);
+
+                    // Keep linear set for instrumentation purposes
+                    state->shaders.push_back(collectionSubObject.shader);
                 
-                // Keep shaders alive
-                collectionSubObject.shader->AddUser();
+                    // Keep shaders alive
+                    collectionSubObject.shader->AddUser();
+                }
             }
 
             // Inherit hit groups from existing collection
             for (D3D12_HIT_GROUP_DESC hitGroup : collectionTable.state->hitGroupSubobjects) {
-                state->hitGroupSubobjects.push_back(hitGroup);
+                auto it = exports.find(hitGroup.HitGroupExport);
+                if (!exports.empty() && it == exports.end()) {
+                    continue;
+                }
+
+                // Copy hit group
+                D3D12_HIT_GROUP_DESC filteredHitGroup = hitGroup;
+                if (it != exports.end()) {
+                    filteredHitGroup.HitGroupExport = it->second;
+                }
+
+                // Always identifiable
+                state->identifierExports.push_back(filteredHitGroup.HitGroupExport);
+
+                // Add local hit group
+                state->hitGroupSubobjects.push_back(filteredHitGroup);
 
                 // Add hit group lookup
-                state->subObjectMap[hitGroup.HitGroupExport] = StateSubObjectIndex {
+                state->subObjectMap[filteredHitGroup.HitGroupExport] = StateSubObjectIndex {
                     .type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
                     .index = static_cast<uint32_t>(state->hitGroupSubobjects.size()) - 1
                 };
