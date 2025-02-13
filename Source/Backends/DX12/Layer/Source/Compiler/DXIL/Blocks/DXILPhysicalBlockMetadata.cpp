@@ -1235,15 +1235,22 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandVariable(MetadataBlock &meta
 }
 
 void DXILPhysicalBlockMetadata::EnsureUAVCapability() {
-    // The rest are implicit
-    switch (shadingModel._class) {
-        default:
+    if (validationVersion.major > 1 || validationVersion.minor > 7) {
+        // For 1.8 and above, only relevant for VS, HS, DS and GS
+        switch (shadingModel._class) {
+            default:
+                return;
+            case DXILShadingModelClass::VS:
+            case DXILShadingModelClass::HS:
+            case DXILShadingModelClass::DS:
+            case DXILShadingModelClass::GS:
+                break;
+        }
+    } else {
+        // For 1.7 and below, mark it in every stage except CS and PS
+        if (shadingModel._class == DXILShadingModelClass::CS || shadingModel._class == DXILShadingModelClass::PS) {
             return;
-        case DXILShadingModelClass::VS:
-        case DXILShadingModelClass::HS:
-        case DXILShadingModelClass::DS:
-        case DXILShadingModelClass::GS:
-            break;
+        }
     }
 
     for (EntryPoint& entry : entryPoints.entries) {
