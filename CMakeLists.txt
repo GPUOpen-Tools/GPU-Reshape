@@ -50,6 +50,9 @@ option(ENABLE_DXIL_DUMP      "Enables DXIL dumping on shader builds" ON)
 option(ENABLE_ASAN           "Enables ASAN" OFF)
 option(ENABLE_RELEASE_DEBUG  "Enables debug information in release" ON)
 
+# Always compile single tasks with multiple processes
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
+
 # Primary build tree?
 if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
     # CMake binary / cache folder
