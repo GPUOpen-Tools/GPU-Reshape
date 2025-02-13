@@ -644,6 +644,12 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
             });
         }
 
+        // Always re-emit hit groups
+        // We can't inherit it from the existing collection, as those exports are technically re-exported
+        for (const D3D12_HIT_GROUP_DESC& hitGroup : stateObjectState->hitGroupSubobjects) {
+            writer.Add(D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, hitGroup);
+        } 
+
         // Append configurations
         for (uint32_t subObjectIndex = 0; subObjectIndex < originalDesc.NumSubobjects; subObjectIndex++) {
             const D3D12_STATE_SUBOBJECT& subObject = originalDesc.pSubobjects[subObjectIndex];
@@ -652,6 +658,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
             if (subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION ||
                 subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION ||
                 subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_EXISTING_COLLECTION ||
+                subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP ||
                 subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY ||
                 subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE) {
                 continue;
