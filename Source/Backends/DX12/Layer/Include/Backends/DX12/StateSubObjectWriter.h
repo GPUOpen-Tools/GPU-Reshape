@@ -222,7 +222,9 @@ struct StateSubObjectWriter {
     /// Get the description
     /// \param type state object type
     /// \return final description
-    D3D12_STATE_OBJECT_DESC GetDesc(D3D12_STATE_OBJECT_TYPE type) {
+    D3D12_STATE_OBJECT_DESC GetDesc(D3D12_STATE_OBJECT_TYPE type, uint32_t offset = 0) {
+        ASSERT(offset < subObjects.size(), "Invalid offset");
+        
         // Resolve all pending associations
         for (const PendingAssociation& association : pendingAssociations) {
             auto* object = static_cast<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION *>(subObjects[association.subObject].desc);
@@ -231,8 +233,8 @@ struct StateSubObjectWriter {
 
         D3D12_STATE_OBJECT_DESC desc;
         desc.Type = type;
-        desc.NumSubobjects = static_cast<uint32_t>(subObjects.size());
-        desc.pSubobjects = reinterpret_cast<const D3D12_STATE_SUBOBJECT *>(subObjects.data());
+        desc.NumSubobjects = static_cast<uint32_t>(subObjects.size()) - offset;
+        desc.pSubobjects = reinterpret_cast<const D3D12_STATE_SUBOBJECT *>(subObjects.data()) + offset;
         return desc;
     }
 

@@ -921,6 +921,33 @@ void CreateStateSubObjects(const DeviceTable& table, StateObjectState* state, co
     }
 }
 
+static void InheritStateObject(StateObjectState* stateObject, StateObjectState* source) {
+    // We don't want to keep a reference to the source state object,
+    // since it may keep growing throughout the application.
+
+    // Inherit pipeline state
+    stateObject->shaders = source->shaders;
+    stateObject->signature = source->signature;
+
+    // Inherit state-object state, keeping the index map as-is is fine
+    stateObject->shaderSubObjects   = source->shaderSubObjects;
+    stateObject->hitGroupSubobjects = source->hitGroupSubobjects;
+    stateObject->identifierExports  = source->identifierExports;
+    stateObject->subObjectMap       = source->subObjectMap;
+
+    // Add shader reference counts
+    for (ShaderState* shader : stateObject->shaders) {
+        shader->AddUser();
+    }
+
+    // Deep copy all sub-object writes
+    D3D12_STATE_OBJECT_DESC desc = source->writer.GetUnresolvedDesc();
+    for (uint32_t i = 0; i < desc.NumSubobjects; i++) {
+        D3D12_STATE_SUBOBJECT subObject = desc.pSubobjects[i];
+        stateObject->writer.DeepAdd(subObject.Type, subObject.pDesc);
+    }
+}
+
 static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, ID3D12StateObject* existingStateObject, const IID& riid, void** ppStateObject) {
     auto table = GetTable(device);
 
@@ -936,11 +963,21 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
     // Reserve on the actual sub-object count
     state->writer.Reserve(pDesc->NumSubobjects);
 
+    // If existing, inherit
+    if (existingStateObject) {
+        auto existingTable = GetTable(existingStateObject);
+        InheritStateObject(state, existingTable.state);
+    }
+
+    // If inherited, we don't create the description from the first sub-object
+    // Instrumentation will re-create everything, but we keep the performance as is here
+    uint32_t inheritedSubobjects = static_cast<uint32_t>(state->writer.SubObjectCount());
+
     // Create the sub-objects, handles inline as well
     CreateStateSubObjects(table, state, pDesc);
 
     // Create description
-    D3D12_STATE_OBJECT_DESC desc = state->writer.GetDesc(pDesc->Type);
+    D3D12_STATE_OBJECT_DESC desc = state->writer.GetDesc(pDesc->Type, inheritedSubobjects);
 
     // Object
     ID3D12StateObject* stateObject{nullptr};
