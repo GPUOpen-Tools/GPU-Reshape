@@ -88,11 +88,19 @@ static bool CreateSBTPatchProgram(const Allocators& allocators, ID3D12Device* de
             },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
         },
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
+            .Descriptor = {
+                .ShaderRegister = 7,
+                .RegisterSpace = 0
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
+        }
     };
 
     // Single parameter
     D3D12_ROOT_SIGNATURE_DESC desc{};
-    desc.NumParameters = 5u;
+    desc.NumParameters = 6u;
     desc.pParameters = parameters;
 
     // Serialize signature

@@ -33,6 +33,7 @@
 /// Token constants
 HLSL_CONSTEXPR uint BackendMessageTokenNone            = 0;
 HLSL_CONSTEXPR uint BackendMessageTokenScratchOverflow = 1;
+HLSL_CONSTEXPR uint BackendMessageAssertion            = 2;
 
 /// Buffer constants
 HLSL_CONSTEXPR uint BackendMessageBufferSize       = 1024;
@@ -46,6 +47,10 @@ struct BackendMessage {
 
 struct BackendScratchOverflowMessage : public BackendMessage {
     uint RequestedBytes;
+};
+
+struct BackendAssertionMessage : public BackendMessage {
+    uint DebugData;
 };
 
 static_assert(sizeof(BackendMessage) == sizeof(uint), "Unexpected size");
@@ -64,5 +69,14 @@ void SendScratchOverflowMessage(in RWStructuredBuffer<uint> Out, uint RequestedB
     // Note: Pre-increment to skip dword count
     Out[++Head] = PackMessageHeader(BackendMessageTokenScratchOverflow, 2u);
     Out[++Head] = RequestedBytes;
+}
+
+void SendAssertionMessage(in RWStructuredBuffer<uint> Out, uint DebugData) {
+    uint Head;
+    InterlockedAdd(Out[0], 2u, Head);
+
+    // Note: Pre-increment to skip dword count
+    Out[++Head] = PackMessageHeader(BackendMessageAssertion, 2u);
+    Out[++Head] = DebugData;
 }
 #endif // __cplusplus

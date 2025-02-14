@@ -77,7 +77,10 @@ static void PatchShaderRecordsRegionDWords(
     data->DescriptorConstantStride = static_cast<uint>(descriptorStride / sizeof(uint32_t));
     data->SBTIdentifierTableSize = static_cast<uint>(pipeline->identifierTable->tableCount);
     data->SBTRecordCount = static_cast<uint>(recordCount);
-
+    
+    // Get backend messages
+    ID3D12Resource* backendMessages = GetStreamingStateBackendMessages(state);
+    
     // Set immutable
     state->object->SetComputeRootDescriptorTable(0u, descriptorTable);
 
@@ -86,7 +89,8 @@ static void PatchShaderRecordsRegionDWords(
     state->object->SetComputeRootShaderResourceView(2u, source.StartAddress);
     state->object->SetComputeRootUnorderedAccessView(3u, patched.StartAddress);
     state->object->SetComputeRootUnorderedAccessView(4u, sharedAllocation->GetGPUVirtualAddress() + descriptorOffset);
-    
+    state->object->SetComputeRootUnorderedAccessView(5u, backendMessages->GetGPUVirtualAddress());
+
     // Dispatch the patcher
     state->object->Dispatch(static_cast<UINT>((recordCount + 31) / 32), 1, 1);
 }

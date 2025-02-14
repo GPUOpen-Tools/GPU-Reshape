@@ -916,6 +916,17 @@ void ShaderExportStreamer::ProcessBackendMessages(ShaderExportStreamState *state
                 );
                 break;
             }
+#ifndef NDEBUG
+            case BackendMessageAssertion: {
+                auto* message = static_cast<BackendAssertionMessage*>(header);
+                Backend::DiagnosticFatal(
+                    "Internal GPU Assertion",
+                    "[Debug Build] GPU Assertion failed with DebugData:{}, good luck?",
+                    message->DebugData
+                );
+                break;
+            }
+#endif // NDEBUG
         }
 
         offset += header->DWords;

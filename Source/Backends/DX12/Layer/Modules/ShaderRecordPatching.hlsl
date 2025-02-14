@@ -25,6 +25,7 @@
 // 
 
 #include "Shared/ShaderRecordPatching.h"
+#include "Shared/ShaderBackendMessage.h"
 
 ///
 /// SBT's are just an array of shader identifiers followed by the local root signature specific user data.
@@ -82,6 +83,9 @@ RWStructuredBuffer<uint> RWSBTPatchedDWords : register(u5);
 /// The PRM descriptor data buffer
 RWStructuredBuffer<uint> RWDescriptorData : register(u6);
 
+/// Backend messages for diagnostics
+RWStructuredBuffer<uint> RWBackendMessageBuffer : register(u7);
+
 /// Check if a dword is set in the addressing masks
 bool IsSet(in uint Masks[2], uint dword) {
     return (Masks[dword / 32] & (1u << (dword % 32))) != 0x0;
@@ -121,6 +125,7 @@ SBTIdentifierTableEntry GetShaderIdentifierIndex(in SBTIdentifier Identifier) {
     }
     
     // Unreachable,... theoretically!
+    SendAssertionMessage(RWBackendMessageBuffer, 0);
     return (SBTIdentifierTableEntry)0;
 }
 
