@@ -123,9 +123,19 @@ SBTIdentifierTableEntry GetShaderIdentifierIndex(in SBTIdentifier Identifier) {
             return SBTIdentifierList[i];
         }
     }
+
+    // If we couldn't match the index, it may be that the application is not using this entry
+#if 0
+    DWordArray<11> Data = {
+        Hash, StartAndEnd.x, StartAndEnd.y,
+        Identifier.DWords[0], Identifier.DWords[1], Identifier.DWords[2], Identifier.DWords[3],
+        Identifier.DWords[4], Identifier.DWords[5], Identifier.DWords[6], Identifier.DWords[7]
+    };
     
-    // Unreachable,... theoretically!
-    SendAssertionMessage(RWBackendMessageBuffer, 0);
+    SendAssertionMessage(RWBackendMessageBuffer, Data);
+#endif // 0
+    
+    // Just point it to the first one
     return (SBTIdentifierTableEntry)0;
 }
 

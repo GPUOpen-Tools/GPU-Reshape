@@ -50,11 +50,16 @@ struct BackendScratchOverflowMessage : public BackendMessage {
 };
 
 struct BackendAssertionMessage : public BackendMessage {
-    uint DebugData;
+    uint DebugDWords[1];
 };
 
 static_assert(sizeof(BackendMessage) == sizeof(uint), "Unexpected size");
 #else // __cplusplus
+template<uint N>
+struct DWordArray {
+    uint DWords[N];
+};
+
 uint PackMessageHeader(uint Token, uint DWords) {
     uint Packed = 0;
     Packed |= Token;
@@ -71,12 +76,17 @@ void SendScratchOverflowMessage(in RWStructuredBuffer<uint> Out, uint RequestedB
     Out[++Head] = RequestedBytes;
 }
 
-void SendAssertionMessage(in RWStructuredBuffer<uint> Out, uint DebugData) {
+template<uint N>
+void SendAssertionMessage(in RWStructuredBuffer<uint> Out, in DWordArray<N> Args) {
     uint Head;
-    InterlockedAdd(Out[0], 2u, Head);
+    InterlockedAdd(Out[0], 1u + N, Head);
 
     // Note: Pre-increment to skip dword count
-    Out[++Head] = PackMessageHeader(BackendMessageAssertion, 2u);
-    Out[++Head] = DebugData;
+    Out[++Head] = PackMessageHeader(BackendMessageAssertion, 1u + N);
+
+    // Write dwords
+    for (uint i = 0; i < N; i++) {
+        Out[++Head] = Args.DWords[i];
+    }
 }
 #endif // __cplusplus
