@@ -921,16 +921,12 @@ void ShaderExportStreamer::ProcessBackendMessages(ShaderExportStreamState *state
                 auto* message = static_cast<BackendAssertionMessage*>(header);
 
                 std::stringstream ss;
+                ss << "[GRS] GPU assertion failed with debug data:\n";
                 for (uint32_t i = 0; i < message->DWords - 1; i++) {
                     ss << "\t" << message->DebugDWords[i] << "\n";
                 }
-                
-                Backend::DiagnosticFatal(
-                    "Internal GPU Assertion",
-                    "[Debug Build] GPU Assertion failed with DebugData:\n{}\n\n"
-                    "Good luck?",
-                    ss.str()
-                );
+
+                OutputDebugString(ss.str().c_str());
                 break;
             }
 #endif // NDEBUG
