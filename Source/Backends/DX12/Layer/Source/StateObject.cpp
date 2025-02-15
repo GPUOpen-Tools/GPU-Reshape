@@ -869,6 +869,16 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
     }
 }
 
+static bool SubObjectExportHasAssociation(const StateShaderSubObjectExport& _export, D3D12_STATE_SUBOBJECT_TYPE type) {
+    for (const StateSubObjectAssociation& association : _export.associations) {
+        if (association.type == type) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void CreateDefaultAssociation(StateObjectState* state, const D3D12_STATE_SUBOBJECT* subObject, StateObjectCache& cache) {
     // Find entry, may not exist
     auto&& entryIt = cache.subObjects.find(subObject);
@@ -885,6 +895,24 @@ void CreateDefaultAssociation(StateObjectState* state, const D3D12_STATE_SUBOBJE
     // This sub-object hasn't been associated, check if it's a candidate for default association
     switch (subObject->Type) {
         default: {
+            break;
+        }
+        case D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG: {            
+            // Associate all shaders with the shader config, unless already specified
+            for (StateShaderSubObject& shader : state->shaderSubObjects) {
+                for (StateShaderSubObjectExport& _export : shader.functionExports) {
+                    if (SubObjectExportHasAssociation(_export, subObject->Type)) {
+                        continue;
+                    }
+
+                    // Not part of the export, add association
+                    StateSubObjectAssociation &association = _export.associations.emplace_back();
+                    association.type = subObject->Type;
+                    association.data.Resize(StateSubObjectWriter::GetSize(association.type));
+                    std::memcpy(association.data.Data(), subObject->pDesc, sizeof(association.data.Size()));
+                } 
+            }
+            
             break;
         }
         case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE: {
