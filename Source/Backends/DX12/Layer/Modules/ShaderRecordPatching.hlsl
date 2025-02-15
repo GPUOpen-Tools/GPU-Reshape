@@ -129,6 +129,11 @@ SBTIdentifierTableEntry GetShaderIdentifierIndex(in SBTIdentifier Identifier) {
     return (SBTIdentifierTableEntry)0;
 }
 
+uint GetAlignedVAddrDWord(uint DWord) {
+    // VAddr's need to be aligned to 64 bits, which is two dwords
+    return (DWord + 1) & ~1;
+}
+
 [numthreads(32, 1, 1)]
 void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
     if (ShaderRecordIndex >= Constants.SBTRecordCount) {
@@ -188,8 +193,11 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
         RWDescriptorData[DescriptorWriteStart + DescriptorDWordOffset] = PRMOffset;
     }
 
+    // Get the aligned start address, must be aligned to two dwords
+    uint AlignedDescriptorSBTStart = GetAlignedVAddrDWord(IdentifierEntry.SBTDWords);
+
     // Write the descriptor address to the patched SBT
     UInt64 DescriptorVAddr = AddUInt64_64(Constants.DescriptorConstantStart, UInt64(DescriptorWriteStart * 4, 0));
-    RWSBTPatchedDWords[PatchedDWordOffset + IdentifierEntry.SBTDWords + 0] = Low(DescriptorVAddr);
-    RWSBTPatchedDWords[PatchedDWordOffset + IdentifierEntry.SBTDWords + 1] = High(DescriptorVAddr);
+    RWSBTPatchedDWords[PatchedDWordOffset + AlignedDescriptorSBTStart + 0] = Low(DescriptorVAddr);
+    RWSBTPatchedDWords[PatchedDWordOffset + AlignedDescriptorSBTStart + 1] = High(DescriptorVAddr);
 }
