@@ -174,33 +174,62 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
     // Local address indexing
     uint VAddrIndex = 0;
 
-    // Iterate over dwords
-    // We don't actually modify the source dwords (and their vaddr's), but we do write the PRM's
-    for (uint DWordIndex = 0; DWordIndex < IdentifierEntry.SBTDWords; DWordIndex++) {
-        // Copy dword to patched
-        uint DWordLow = SBTSourceDWords[SourceDWordOffset + DWordIndex];
-        RWSBTPatchedDWords[PatchedDWordOffset + DWordIndex] = DWordLow;
+    // Current iteration offsets
+    uint SourceParameterDWordOffset  = SourceDWordOffset;
+    uint PatchedParameterDWordOffset = PatchedDWordOffset;
 
-        // Not a VAddr? Skip it, including the low parts.
-        // TODO[rt]: I don't think this makes sense with root typed srvs...
-        if (!IsSet(IdentifierEntry.SBTSourceDWordVAddrBitmasks, DWordIndex)) {
-            continue;
+    // Patch all dwords, SBT's within a wave will likely share the same root signature, so it should
+    // be somewhat coherent, hopefully.
+    for (uint RootParameterIndex = 0; RootParameterIndex < IdentifierEntry.ParameterCount; RootParameterIndex++) {
+        SBTRootParameterTypeInfo Parameter = IdentifierEntry.SBTSourceParameters[RootParameterIndex];
+
+        // Handle type
+        switch (Parameter.GetType()) {
+            default: {
+                DWordArray<1> Data = { __LINE__ };
+                SendAssertionMessage(RWBackendMessageBuffer, Data);
+                break;
+            }
+            case SBTRootParameterType::VAddr64:
+            case SBTRootParameterType::InlinePRM: {
+                UInt64 VAddr;
+                VAddr.x = SBTSourceDWords[SourceParameterDWordOffset++];
+                VAddr.y = SBTSourceDWords[SourceParameterDWordOffset++];
+
+                // Determine physical resource mapping offset, (VAddr - Base) / Stride
+                // With the current descriptor limits, we can just assume the low part after subtracting base
+                uint PRMOffset;
+                if (Parameter.GetVAddr64HeapIndex() == SamplerHeapIndex) {
+                    PRMOffset = Low(SubUInt64_64(VAddr, Constants.SamplerHeapOffset)) / Constants.SamplerHeapStride;
+                } else {
+                    PRMOffset = Low(SubUInt64_64(VAddr, Constants.ResourceHeapOffset)) / Constants.ResourceHeapStride;
+                }
+
+                // Inline handling is different
+                if (Parameter.GetType() == SBTRootParameterType::VAddr64) {
+                    // Write the offset linearly
+                    RWDescriptorData[Parameter.GetPRMTOffset()] = PRMOffset;
+                } else {
+                    // TODO[rt]: Actually fetch the PRMT and write it inline based on the PRMOffset
+                    [unroll]
+                    for (uint i = 0; i < SBTInlineTokenMetadatDWordCount; i++) {
+                        RWDescriptorData[Parameter.GetPRMTOffset() + i] = 0;
+                    }
+                }
+                
+                RWSBTPatchedDWords[PatchedParameterDWordOffset++] = Low(VAddr);
+                RWSBTPatchedDWords[PatchedParameterDWordOffset++] = High(VAddr);
+                break;
+            }
+            case SBTRootParameterType::Constant: {
+                // Just copy over the dwords
+                for (uint DWordIndex = 0; DWordIndex < Parameter.GetConstantDWordCount(); DWordIndex++) {
+                    uint DWord = SBTSourceDWords[SourceParameterDWordOffset++];
+                    RWSBTPatchedDWords[PatchedParameterDWordOffset++] = DWord;
+                }
+                break;
+            }
         }
-
-        UInt64 VAddr = UInt64(DWordLow, SBTSourceDWords[SourceDWordOffset + DWordIndex + 1]);
-
-        // Determine physical resource mapping offset, (VAddr - Base) / Stride
-        // With the current descriptor limits, we can just assume the low part after subtracting base
-        uint PRMOffset;
-        if (IsSet(IdentifierEntry.SBTSourceDWordSamplerBitmasks, DWordIndex)) {
-            PRMOffset = Low(SubUInt64_64(VAddr, Constants.SamplerHeapOffset)) / Constants.SamplerHeapStride;
-        } else {
-            PRMOffset = Low(SubUInt64_64(VAddr, Constants.ResourceHeapOffset)) / Constants.ResourceHeapStride;
-        }
-
-        // Write the offset linearly
-        uint DescriptorDWordOffset = IdentifierEntry.SBTSourceDWordOffsets[VAddrIndex++];
-        RWDescriptorData[DescriptorWriteStart + DescriptorDWordOffset] = PRMOffset;
     }
 
     // Get the aligned start address, must be aligned to two dwords

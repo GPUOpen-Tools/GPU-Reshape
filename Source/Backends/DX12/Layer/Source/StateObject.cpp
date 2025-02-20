@@ -207,8 +207,7 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
         SBTIdentifierTableEntry& entry = identifiers.emplace_back();
         entry.Index = static_cast<uint>(i);
         entry.SBTDWords = 0;
-        std::memset(entry.SBTSourceDWordVAddrBitmasks, 0u, sizeof(entry.SBTSourceDWordVAddrBitmasks));
-        std::memset(entry.SBTSourceDWordSamplerBitmasks, 0u, sizeof(entry.SBTSourceDWordSamplerBitmasks));
+        std::memset(entry.SBTSourceParameters, 0u, sizeof(entry.SBTSourceParameters));
 
         // Copy identifier dwords
         static_assert(sizeof(entry.Identifier.DWords) == D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, "Unexpected identifier size");
@@ -224,38 +223,41 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
         if (localRootSignature) {
             // Number of dwords, mostly used for appending things
             entry.SBTDWords = localRootSignature->physicalMapping->rootDescriptorDWordCount;
-
-            // Current dword offset
-            uint32_t localDwordOffset = 0;
-
-            // Current address offset
-            uint32_t vaddrOffset = 0;
+            entry.ParameterCount = localRootSignature->logicalMapping.userRootCount;
 
             // Create vaddr masks for resource and sampler spaces
             for (uint32_t i = 0; i < localRootSignature->logicalMapping.userRootCount; i++) {
                 const RootSignatureRootMapping &mapping = localRootSignature->logicalMapping.userRootMappings[i];
 
-                uint32_t element = localDwordOffset / 32;
-                uint32_t bit     = 1u << (localDwordOffset % 32);
-
                 switch (mapping.type) {
-                    case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+                    case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
+                        entry.SBTSourceParameters[i] = SBTRootParameterTypeInfo {
+                            .type = static_cast<uint32_t>(SBTRootParameterType::VAddr64),
+                            .prmtOffset = localRootSignature->physicalMapping->rootDWordOffsets[i],
+                            .payload = 0
+                        };
+                        break;
+                    }
                     case D3D12_ROOT_PARAMETER_TYPE_CBV:
                     case D3D12_ROOT_PARAMETER_TYPE_UAV:
                     case D3D12_ROOT_PARAMETER_TYPE_SRV: {
-                        entry.SBTSourceDWordVAddrBitmasks[element] |= bit;
-                        entry.SBTSourceDWordOffsets[vaddrOffset++] = localRootSignature->physicalMapping->rootDWordOffsets[i];
-                        localDwordOffset += 2;
+                        entry.SBTSourceParameters[i] = SBTRootParameterTypeInfo {
+                            .type = static_cast<uint32_t>(SBTRootParameterType::InlinePRM),
+                            .prmtOffset = localRootSignature->physicalMapping->rootDWordOffsets[i],
+                            .payload = 0
+                        };
                         break;
                     }
                     case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
-                        localDwordOffset += mapping.inlineDwordCount;
+                        entry.SBTSourceParameters[i] = SBTRootParameterTypeInfo {
+                            .type = static_cast<uint32_t>(SBTRootParameterType::Constant),
+                            .prmtOffset = localRootSignature->physicalMapping->rootDWordOffsets[i],
+                            .payload = mapping.inlineDwordCount
+                        };
                         break;
                     }
                 }
             }
-
-            ASSERT(localDwordOffset <= MaxRootSignatureDWord, "Local root signature overflow");
         }
 
         // Increment table entry count

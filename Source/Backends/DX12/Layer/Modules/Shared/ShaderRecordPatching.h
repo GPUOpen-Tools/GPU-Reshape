@@ -28,6 +28,7 @@
 
 // Shared
 #include "Int.h"
+#include "Cxx.h"
 
 struct SBTPatchConstantData {
     uint ResourceHeapStride;
@@ -82,6 +83,49 @@ uint ShaderIdentifierHash(in SBTIdentifier ID) {
     return Hash;
 }
 
+enum class SBTRootParameterType {
+    VAddr64   = 0,
+    InlinePRM = 1,
+    Constant  = 2
+};
+
+HLSL_CONSTEXPR uint ResourceHeapIndex = 0;
+HLSL_CONSTEXPR uint SamplerHeapIndex  = 1;
+HLSL_CONSTEXPR uint SBTInlineTokenMetadatDWordCount = 13;
+
+struct SBTRootParameterTypeInfo {
+    // 0:2   Type
+    // 2:17  PRMT-Offset
+    // 17:32 Payload
+    //   VAddr
+    //   17:17  Heap Index
+    //   Constant
+    //   17:32 DWord Count
+#if __cplusplus
+    uint type : 2;
+    uint prmtOffset : 15;
+    uint payload : 15;
+#else // __cplusplus
+    uint Packed;
+
+    SBTRootParameterType GetType() {
+        return (SBTRootParameterType)(Packed & 0b11);
+    }
+
+    uint GetPRMTOffset() {
+        return (Packed >> 2) & 0x7FFF;
+    }
+
+    uint GetConstantDWordCount() {
+        return Packed >> 17;
+    }
+
+    uint GetVAddr64HeapIndex() {
+        return (Packed >> 17) & 0b1;
+    }
+#endif // __cplusplus
+};
+
 struct SBTIdentifierTableEntry {
 #ifndef __cplusplus
     /// Check if a given entry matches an identifier
@@ -103,19 +147,16 @@ struct SBTIdentifierTableEntry {
 #endif // __cplusplus
 
     /// Header
-    uint Metadata;
     uint Key;
     uint Index;
     uint SBTDWords;
+    uint ParameterCount;
 
     /// Identifier data
     SBTIdentifier Identifier;
 
     /// Local root signature addressing data
-    /// TODO[rt]: While global's are limited to 64 dwords, I don't think locals are...
-    uint SBTSourceDWordVAddrBitmasks[2];
-    uint SBTSourceDWordSamplerBitmasks[2];
-    uint SBTSourceDWordOffsets[64];
+    SBTRootParameterTypeInfo SBTSourceParameters[64];
 };
 
 struct SBTIdentifierPatch {
