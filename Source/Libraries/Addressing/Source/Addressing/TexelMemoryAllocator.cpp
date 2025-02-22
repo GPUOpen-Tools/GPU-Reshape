@@ -100,7 +100,7 @@ bool TexelMemoryAllocator::Install(size_t requestedTexels) {
         .elementCount = 512'000'000,
         .format = Backend::IL::Format::R32UInt
 #endif // USE_TILED_RESOURCES
-    });
+    }, "TexelMemory.BlocksBuffer");
 
     // OK
     return true;

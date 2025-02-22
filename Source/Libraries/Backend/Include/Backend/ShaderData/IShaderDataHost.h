@@ -43,8 +43,9 @@ public:
 
     /// Create a new buffer
     /// \param info buffer information
+    /// \param name name of this buffer
     /// \return invalid if failed
-    virtual ShaderDataID CreateBuffer(const ShaderDataBufferInfo& info) = 0;
+    virtual ShaderDataID CreateBuffer(const ShaderDataBufferInfo& info, const char* name) = 0;
 
     /// Create a new event data
     /// \param info buffer information

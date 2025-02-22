@@ -72,7 +72,7 @@ bool ShaderDataHost::Install() {
     return true;
 }
 
-ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
+ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info, const char* name) {
     std::lock_guard guard(mutex);
     
     // Determine index
@@ -124,7 +124,10 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     }
 
 #ifndef NDEBUG
-    entry.allocation.resource->SetName(L"ShaderDataHostBuffer");
+    wchar_t nameWide[256];
+    if (size_t length = std::strlen(name); !mbstowcs_s(&length, nameWide, name, length)) {
+        entry.allocation.resource->SetName(nameWide);
+    }
 #endif // NDEBUG
 
     // OK

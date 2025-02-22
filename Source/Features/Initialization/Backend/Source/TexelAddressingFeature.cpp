@@ -98,7 +98,7 @@ bool TexelAddressingInitializationFeature::Install() {
     puidMemoryBaseBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
         .format = Backend::IL::Format::R32UInt
-    });
+    }, "InitializationTexelAddressing.PUIDMemoryBase");
 
     // Try to install texel allocator
     texelAllocator = registry->New<TexelMemoryAllocator>();

@@ -107,7 +107,7 @@ void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffs
     table->next_vkUpdateDescriptorSets(table->object, static_cast<uint32_t>(descriptorWrites.Size()), descriptorWrites.Data(), 0, nullptr);
 }
 
-ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
+ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info, const char* name) {
     std::lock_guard guard(mutex);
     
     // Determine index

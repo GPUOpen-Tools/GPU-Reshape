@@ -77,7 +77,7 @@ public:
     D3D12MA::Allocation* GetMappingAllocation(ShaderDataMappingID rid);
 
     /// Overrides
-    ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info) override;
+    ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info, const char* name) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;
     ShaderDataID CreateDescriptorData(const ShaderDataDescriptorInfo &info) override;
     void *Map(ShaderDataID rid) override;

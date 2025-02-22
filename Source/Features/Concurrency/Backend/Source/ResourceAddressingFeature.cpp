@@ -68,7 +68,7 @@ bool ResourceAddressingConcurrencyFeature::Install() {
     lockBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
         .format = Backend::IL::Format::R32UInt
-    });
+    }, "ResourceAddressing.LockBuffer");
 
     // Allocate event data
     //   ? Lightweight event data

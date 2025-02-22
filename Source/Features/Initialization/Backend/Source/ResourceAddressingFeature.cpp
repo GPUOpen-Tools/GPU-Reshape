@@ -80,7 +80,7 @@ bool ResourceAddressingInitializationFeature::Install() {
     initializationMaskBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
         .format = Backend::IL::Format::R32UInt
-    });
+    }, "InitializationAddressing.MaskBuffer");
 
     // Must have program host
     auto programHost = registry->Get<IShaderProgramHost>();

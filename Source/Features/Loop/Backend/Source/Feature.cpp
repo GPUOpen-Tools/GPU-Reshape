@@ -92,7 +92,7 @@ bool LoopFeature::Install() {
     terminationBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo{
         .elementCount = kMaxTrackedSubmissions,
         .format = Backend::IL::Format::R32UInt
-    });
+    }, "Loop.TerminationBuffer");
 
     // Allocate allocation data
     terminationAllocationID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo{
