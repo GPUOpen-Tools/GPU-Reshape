@@ -97,22 +97,6 @@ static void PatchShaderRecordsRegionDWords(
     state->object->Dispatch(static_cast<UINT>((recordCount + 31) / 32), 1, 1);
 }
 
-static void PatchShaderRecordsSourceImplicits(D3D12_DISPATCH_RAYS_DESC& desc) {
-    // TODO[rt]: We're patching the strides... But this is actually valid if we dont want to advance the record, fix it!
-    
-    if (!desc.HitGroupTable.StrideInBytes) {
-        desc.HitGroupTable.StrideInBytes = desc.HitGroupTable.SizeInBytes;
-    }
-
-    if (!desc.MissShaderTable.StrideInBytes) {
-        desc.MissShaderTable.StrideInBytes = desc.MissShaderTable.SizeInBytes;
-    }
-
-    if (!desc.CallableShaderTable.StrideInBytes) {
-        desc.CallableShaderTable.StrideInBytes = desc.CallableShaderTable.SizeInBytes;
-    }
-}
-
 static void CreateImmutablePatchDescriptors(DeviceTable& device, const StateObjectState* pipeline, StateObjectShaderIdentifierPatch* patchTable, const ShaderExportOwnedHeapAllocation& heapAllocation) {
     /** For offsets see RaytracingBindingTablePatching.hlsl */
     
@@ -154,9 +138,6 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     if (!patchTable) {
         return desc;
     }
-
-    // Patch the implicits
-    PatchShaderRecordsSourceImplicits(desc);
 
     // Create context
     SBTSharedAllocationContext ctx = SBTContextCreate();
