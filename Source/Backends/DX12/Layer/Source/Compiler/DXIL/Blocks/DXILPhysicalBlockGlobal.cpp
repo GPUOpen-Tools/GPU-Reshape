@@ -339,6 +339,21 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
                 constantMap.ResolveConstant(array);
                 break;
             }
+            case Backend::IL::ConstantKind::Vector: {
+                auto* vector = constant->As<IL::VectorConstant>();
+
+                // Replace all unresolved constants
+                for (const IL::Constant*& element: vector->elements) {
+                    if (auto unresolved = element->Cast<DXILConstant>()) {
+                        element = program.GetConstants().GetConstant(table.idMap.GetMapped(unresolved->mappedId));
+                        ASSERT(element, "Failed to resolve constant vector element");
+                    }
+                }
+
+                // Remap sorting key
+                constantMap.ResolveConstant(vector);
+                break;
+            }
             case Backend::IL::ConstantKind::Struct: {
                 auto* _struct = constant->As<IL::StructConstant>();
 
