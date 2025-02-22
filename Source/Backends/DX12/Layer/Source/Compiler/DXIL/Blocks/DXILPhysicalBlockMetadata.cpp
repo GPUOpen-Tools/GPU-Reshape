@@ -1138,7 +1138,6 @@ IL::ID DXILPhysicalBlockMetadata::GetEntryPointId(uint32_t globalId) {
         }
     }
 
-    ASSERT(false, "Failed to associate entry point");
     return IL::InvalidID;
 }
 
