@@ -53,7 +53,8 @@ UInt64 WriteSBTConstants(
     UInt64 DescriptorLength,
     UInt64 DescriptorVAddr) {
     // Total number of records
-    uint RecordCount = Low(DivUInt64_64_Low(Source.SizeInBytes, Source.StrideInBytes));
+    UInt64 StrideOrSize = all(Source.StrideInBytes == 0) ? Source.SizeInBytes : Source.StrideInBytes;
+    uint   RecordCount  = Low(DivUInt64_64_Low(Source.SizeInBytes, StrideOrSize));
 
     // Expected descriptor stride
     uint DescriptorStride = Low(DescriptorLength) / RecordCount;
@@ -86,8 +87,9 @@ void WriteSBTRange(
     uint CommandOffset = RaytracingIndirectSetupCommandDWordStride * RangeIndex;
 
     // Determine the number of thread groups for SBT patching
-    uint RecordCount  = Low(DivUInt64_64_Low(Source.SizeInBytes, Source.StrideInBytes));
-    uint ThreadGroups = (RecordCount + 31) / 32;
+    UInt64 StrideOrSize = all(Source.StrideInBytes == 0) ? Source.SizeInBytes : Source.StrideInBytes;
+    uint   RecordCount  = Low(DivUInt64_64_Low(Source.SizeInBytes, StrideOrSize));
+    uint   ThreadGroups = (RecordCount + 31) / 32;
 
     // Start of the descriptor data
     UInt64 DescriptorVAddr = AddUInt64_64(Constants.ScratchBaseAddress, DescriptorOffset);

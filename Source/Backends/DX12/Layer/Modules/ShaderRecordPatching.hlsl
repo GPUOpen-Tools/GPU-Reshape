@@ -171,9 +171,6 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
     PatchedDWordOffset += 8;
     SourceDWordOffset  += 8;
 
-    // Local address indexing
-    uint VAddrIndex = 0;
-
     // Current iteration offsets
     uint SourceParameterDWordOffset  = SourceDWordOffset;
     uint PatchedParameterDWordOffset = PatchedDWordOffset;

@@ -55,7 +55,9 @@ static void PatchShaderRecordsRegionDWords(
     }
 
     // Total number of records
-    uint64_t recordCount = source.SizeInBytes / source.StrideInBytes;
+    uint64_t sourceStrideOrSize = source.StrideInBytes ? source.StrideInBytes : source.SizeInBytes;
+    uint64_t patchedStrideOrSize = patched.StrideInBytes ? patched.StrideInBytes : patched.SizeInBytes;
+    uint64_t recordCount = source.SizeInBytes / sourceStrideOrSize;
     uint64_t descriptorStride = descriptorLength / recordCount;
 
     // Patch constants size

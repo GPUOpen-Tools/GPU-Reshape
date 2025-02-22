@@ -93,6 +93,44 @@ HLSL_INLINE UInt64 GetSafeStride(UInt64 Stride) {
     return Stride;
 }
 
+HLSL_INLINE UInt64 GetRecordInstrumentedStride(UInt64 StrideInBytes, UInt64 RecordUdStride) {
+    // If there's no stride, we're still post-fixing it, but keep the no-indexing behaviour as is
+    if (HLSL_MAX(Low(StrideInBytes), High(StrideInBytes)) == 0) {
+        return 0;
+    }
+
+    return AddUInt64_64(StrideInBytes, RecordUdStride);
+}
+
+HLSL_INLINE UInt64 GetRecordInstrumentedSize(UInt64 SourceSizeInBytes, UInt64 SourceStrideInBytes, UInt64 PatchedStrideInBytes, UInt64 RecordUdStride)  {
+    // If there's no data at all, skip this entirely
+    if (HLSL_MAX(Low(SourceSizeInBytes), High(SourceSizeInBytes)) == 0) {
+        return 0;
+    }
+    
+    // If there's no stride, just postfix it
+    if (HLSL_MAX(Low(SourceStrideInBytes), High(SourceStrideInBytes)) == 0) {
+        return AddUInt64_64(SourceSizeInBytes, RecordUdStride);
+    }
+
+    // Retarget the stride to the patched width
+    return MulUInt64_64_Low(DivUInt64_64_Low(SourceSizeInBytes, SourceStrideInBytes), PatchedStrideInBytes);
+}
+
+HLSL_INLINE UInt64 GetRecordDescriptorLength(UInt64 SizeInBytes, UInt64 StrideInBytes) {
+    // If there's no data at all, skip this entirely
+    if (HLSL_MAX(Low(SizeInBytes), High(SizeInBytes)) == 0) {
+        return 0;
+    }
+    
+    // If there's no stride, we only need descriptor data for the first record
+    if (HLSL_MAX(Low(StrideInBytes), High(StrideInBytes)) == 0) {
+        return SubUInt64_64(SizeInBytes, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    }
+    
+    return MulUInt64_64_Low(SubUInt64_64(StrideInBytes, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES), DivUInt64_64_Low(SizeInBytes, StrideInBytes));
+}
+
 HLSL_INLINE UInt64 SBTContextSetup(HLSL_REF(SBTSharedAllocationContext) Context, D3D12_DISPATCH_RAYS_DESC Desc) {
     // We really just need two dwords, but alignment requirements mean that we have to increment by the full alignment
     uint RecordUdStride = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
@@ -106,22 +144,22 @@ HLSL_INLINE UInt64 SBTContextSetup(HLSL_REF(SBTSharedAllocationContext) Context,
     Context.Dispatch.RayGenerationShaderRecord.SizeInBytes = AddUInt64_64(Desc.RayGenerationShaderRecord.SizeInBytes, RecordUdStride);
 
     // Set callable indexing
-    Context.Dispatch.CallableShaderTable.StrideInBytes = AddUInt64_64(Desc.CallableShaderTable.StrideInBytes, RecordUdStride);
-    Context.Dispatch.CallableShaderTable.SizeInBytes = MulUInt64_64_Low(DivUInt64_64_Low(Desc.CallableShaderTable.SizeInBytes, GetSafeStride(Desc.CallableShaderTable.StrideInBytes)), Context.Dispatch.CallableShaderTable.StrideInBytes);
+    Context.Dispatch.CallableShaderTable.StrideInBytes = GetRecordInstrumentedStride(Desc.CallableShaderTable.StrideInBytes, RecordUdStride);
+    Context.Dispatch.CallableShaderTable.SizeInBytes = GetRecordInstrumentedSize(Desc.CallableShaderTable.SizeInBytes, Desc.CallableShaderTable.StrideInBytes, Context.Dispatch.CallableShaderTable.StrideInBytes, RecordUdStride);
 
     // Set hit indexing
-    Context.Dispatch.HitGroupTable.StrideInBytes = AddUInt64_64(Desc.HitGroupTable.StrideInBytes, RecordUdStride);
-    Context.Dispatch.HitGroupTable.SizeInBytes = MulUInt64_64_Low(DivUInt64_64_Low(Desc.HitGroupTable.SizeInBytes, GetSafeStride(Desc.HitGroupTable.StrideInBytes)), Context.Dispatch.HitGroupTable.StrideInBytes);
+    Context.Dispatch.HitGroupTable.StrideInBytes = GetRecordInstrumentedStride(Desc.HitGroupTable.StrideInBytes, RecordUdStride);
+    Context.Dispatch.HitGroupTable.SizeInBytes = GetRecordInstrumentedSize(Desc.HitGroupTable.SizeInBytes, Desc.HitGroupTable.StrideInBytes, Context.Dispatch.HitGroupTable.StrideInBytes, RecordUdStride);
 
     // Set miss properties
-    Context.Dispatch.MissShaderTable.StrideInBytes = AddUInt64_64(Desc.MissShaderTable.StrideInBytes, RecordUdStride);
-    Context.Dispatch.MissShaderTable.SizeInBytes = MulUInt64_64_Low(DivUInt64_64_Low(Desc.MissShaderTable.SizeInBytes, GetSafeStride(Desc.MissShaderTable.StrideInBytes)), Context.Dispatch.MissShaderTable.StrideInBytes);
+    Context.Dispatch.MissShaderTable.StrideInBytes = GetRecordInstrumentedStride(Desc.MissShaderTable.StrideInBytes, RecordUdStride);
+    Context.Dispatch.MissShaderTable.SizeInBytes = GetRecordInstrumentedSize(Desc.MissShaderTable.SizeInBytes, Desc.MissShaderTable.StrideInBytes, Context.Dispatch.MissShaderTable.StrideInBytes, RecordUdStride);
 
     // Descriptor lengths
-    Context.RayGenDescriptorLength   = SubUInt64_64(Desc.RayGenerationShaderRecord.SizeInBytes, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    Context.CallableDescriptorLength = MulUInt64_64_Low(SubUInt64_64(Desc.CallableShaderTable.StrideInBytes,     D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES), DivUInt64_64_Low(Desc.CallableShaderTable.SizeInBytes, GetSafeStride(Desc.CallableShaderTable.StrideInBytes)));
-    Context.HitDescriptorLength      = MulUInt64_64_Low(SubUInt64_64(Desc.HitGroupTable.StrideInBytes,           D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES), DivUInt64_64_Low(Desc.HitGroupTable.SizeInBytes, GetSafeStride(Desc.HitGroupTable.StrideInBytes)));
-    Context.MissDescriptorLength     = MulUInt64_64_Low(SubUInt64_64(Desc.MissShaderTable.StrideInBytes,         D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES), DivUInt64_64_Low(Desc.MissShaderTable.SizeInBytes, GetSafeStride(Desc.MissShaderTable.StrideInBytes)));
+    Context.RayGenDescriptorLength   = GetRecordDescriptorLength(Desc.RayGenerationShaderRecord.SizeInBytes, 0);
+    Context.CallableDescriptorLength = GetRecordDescriptorLength(Desc.CallableShaderTable.SizeInBytes, Desc.CallableShaderTable.StrideInBytes);
+    Context.HitDescriptorLength      = GetRecordDescriptorLength(Desc.HitGroupTable.SizeInBytes, Desc.HitGroupTable.StrideInBytes);
+    Context.MissDescriptorLength     = GetRecordDescriptorLength(Desc.MissShaderTable.SizeInBytes, Desc.MissShaderTable.StrideInBytes);
 
     // Total allocation size for patched records
     Context.AllocationSize = 0;
