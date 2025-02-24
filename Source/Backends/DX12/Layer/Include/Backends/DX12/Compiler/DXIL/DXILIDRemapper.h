@@ -116,7 +116,7 @@ struct DXILIDRemapper {
     /// \param id the IL id
     uint32_t AllocUserMapping(IL::ID id) {
         if (compileSegment.userMappings.size() <= id) {
-            compileSegment.userMappings.resize(id + 1);
+            compileSegment.userMappings.resize(id + 1, UserMapping {.index = ~0u, .type = DXILIDUserType::Singular});
         }
 
         uint32_t valueId = stitchSegment.allocationIndex++;
@@ -130,7 +130,7 @@ struct DXILIDRemapper {
     /// \param index index mapping
     void AllocSourceUserMapping(IL::ID id, DXILIDUserType type, uint32_t index) {
         if (compileSegment.userMappings.size() <= id) {
-            compileSegment.userMappings.resize(id + 1);
+            compileSegment.userMappings.resize(id + 1, UserMapping {.index = ~0u, .type = DXILIDUserType::Singular});
         }
 
         UserMapping& mapping = compileSegment.userMappings.at(id);
@@ -143,7 +143,7 @@ struct DXILIDRemapper {
     /// \param source destination LLVM value index
     void SetUserMapping(IL::ID user, uint32_t source) {
         if (compileSegment.userMappings.size() <= user) {
-            compileSegment.userMappings.resize(user + 1);
+            compileSegment.userMappings.resize(user + 1, UserMapping {.index = ~0u, .type = DXILIDUserType::Singular});
         }
 
         compileSegment.userMappings.at(user).index = source;
@@ -471,7 +471,7 @@ struct DXILIDRemapper {
         // Preserve user mappings
         if (redirect < compileSegment.userMappings.size()) {
             if (compileSegment.userMappings.size() <= user) {
-                compileSegment.userMappings.resize(user + 1);
+                compileSegment.userMappings.resize(user + 1, UserMapping {.index = ~0u, .type = DXILIDUserType::Singular});
             }
 
             compileSegment.userMappings.at(user) = compileSegment.userMappings.at(redirect);
