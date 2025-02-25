@@ -40,13 +40,18 @@ struct LLVMRecordStringView {
     LLVMRecordStringView() = default;
 
     /// Construct from record at offset
-    LLVMRecordStringView(const LLVMRecord &record, uint32_t offset) :
+    LLVMRecordStringView(const LLVMRecord &record, uint32_t offset, uint32_t count) :
         operands(record.ops + offset),
-        operandCount(record.opCount - offset) {
-        ASSERT(offset <= record.opCount, "Out of bounds record string view");
+        operandCount(count) {
+        ASSERT(offset + count <= record.opCount, "Out of bounds record string view");
 
         // Hash contents
         ComputeHash();
+    }
+
+    /// Construct from record at offset
+    LLVMRecordStringView(const LLVMRecord &record, uint32_t offset) : LLVMRecordStringView(record, offset, record.opCount - offset) {
+        
     }
 
     /// Length of this string

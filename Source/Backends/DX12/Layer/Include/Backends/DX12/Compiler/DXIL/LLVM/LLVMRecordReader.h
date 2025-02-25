@@ -75,6 +75,11 @@ struct LLVMRecordReader {
         return offset;
     }
 
+    /// Skip a number of operands
+    void Skip(uint32_t count = 1) {
+        offset += count;
+    }
+
     /// Get the record offset
     LLVMRecordOffset GetRecordOffset() const {
         return LLVMRecordOffset {

@@ -99,20 +99,48 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterAttributeGroup(struct LLV
                             uint64_t key = reader.ConsumeOp();
                             attribute.value = reader.ConsumeOpAs<LLVMParameterGroupValue>();
 
-                            // Unused
-                            GRS_SINK(key);
-                            break;
-                        }
-                        case LLVMParameterGroupKind::String: {
-                            attribute.view = LLVMRecordStringView(record, reader.Offset());
-                            break;
-                        }
-                        case LLVMParameterGroupKind::StringValue: {
-                            uint64_t key = reader.ConsumeOp();
-                            attribute.view = LLVMRecordStringView(record, reader.Offset());
+                            // Consume payload
+                            switch (attribute.value) {
+                                case LLVMParameterGroupValue::Align:
+                                case LLVMParameterGroupValue::AlignStack:
+                                case LLVMParameterGroupValue::Dereferenceable:
+                                case LLVMParameterGroupValue::DereferenceableOrNull:
+                                    reader.ConsumeOp();
+                                    break;
+                            }
 
                             // Unused
                             GRS_SINK(key);
+                            break;
+                        }
+                        case LLVMParameterGroupKind::String:
+                        case LLVMParameterGroupKind::StringValue: {
+                            // Length of the string payload
+                            uint32_t count = 0;
+                            for (; count < record.opCount - reader.Offset(); count++) {
+                                if (!record.Op(reader.Offset() + count)) {
+                                    break;
+                                }
+                            }
+                            
+                            attribute.view = LLVMRecordStringView(record, reader.Offset(), count);
+                            reader.Skip(count);
+
+                            if (kind == LLVMParameterGroupKind::StringValue) {
+                                // Skip inline null terminator
+                                reader.Skip();
+
+                                // Length of the string-value payload
+                                count = 0;
+                                for (; count < record.opCount - reader.Offset(); count++) {
+                                    if (!record.Op(reader.Offset() + count)) {
+                                        break;
+                                    }
+                                }
+
+                                // For now, just skip the string-view contents
+                                reader.Skip();
+                            }
                             break;
                         }
                     };
