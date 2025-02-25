@@ -124,12 +124,9 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterAttributeGroup(struct LLV
                             }
                             
                             attribute.view = LLVMRecordStringView(record, reader.Offset(), count);
-                            reader.Skip(count);
+                            reader.Skip(count + 1);
 
                             if (kind == LLVMParameterGroupKind::StringValue) {
-                                // Skip inline null terminator
-                                reader.Skip();
-
                                 // Length of the string-value payload
                                 count = 0;
                                 for (; count < record.opCount - reader.Offset(); count++) {
@@ -139,7 +136,7 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterAttributeGroup(struct LLV
                                 }
 
                                 // For now, just skip the string-view contents
-                                reader.Skip();
+                                reader.Skip(count + 1);
                             }
                             break;
                         }
