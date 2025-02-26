@@ -552,7 +552,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
         std::vector<LPCWSTR>           localNames;
 
         // All associations that have yet to be pushed
-        std::vector<const StateShaderSubObject*> pendingAssociations;
+        std::vector<const StateObjectShaderSubObject*> pendingAssociations;
 
         // Source, unwrapped, writer for inheriting configurations
         auto originalDesc = stateObjectState->writer.GetDesc(stateObjectState->stateObjectType);
@@ -568,7 +568,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
             // TODO[rt]: Lookup time might not be ok, consider having a one-to-many lookup
             for (uint32_t subObjectIndex = 0; subObjectIndex < stateObjectState->shaderSubObjects.size(); subObjectIndex++) {
-                const StateShaderSubObject& subObject = stateObjectState->shaderSubObjects[subObjectIndex];
+                const StateObjectShaderSubObject& subObject = stateObjectState->shaderSubObjects[subObjectIndex];
 
                 // Not the replaced shader? Skip
                 if (subObject.shader != key.shader) {
@@ -624,7 +624,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
         inheritedExports.reserve(stateObjectState->shaderSubObjects.size());
 
         // Filter out the instrumented export names
-        for (StateShaderSubObject& subObject : stateObjectState->shaderSubObjects) {
+        for (StateObjectShaderSubObject& subObject : stateObjectState->shaderSubObjects) {
             for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
                 if (!replacedExports.contains(_export.name)) {
                     inheritedExports.push_back(D3D12_EXPORT_DESC {
@@ -646,8 +646,8 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
         // Always re-emit hit groups
         // We can't inherit it from the existing collection, as those exports are technically re-exported
-        for (const D3D12_HIT_GROUP_DESC& hitGroup : stateObjectState->hitGroupSubobjects) {
-            writer.Add(D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, hitGroup);
+        for (const StateObjectHitGroupSubObject& hitGroup : stateObjectState->hitGroupSubobjects) {
+            writer.Add(D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, hitGroup.desc);
         } 
 
         // Append configurations
@@ -669,7 +669,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
         }
 
         // Write associations
-        for (const StateShaderSubObject *subObject: pendingAssociations) {
+        for (const StateObjectShaderSubObject *subObject: pendingAssociations) {
             // Associate all export specific states
             for (const StateShaderSubObjectExport& _export : subObject->functionExports) {
                 // Rewrite local root signature, if any

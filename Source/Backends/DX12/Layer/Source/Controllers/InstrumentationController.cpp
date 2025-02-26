@@ -884,7 +884,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
                 auto stateObjectState = static_cast<StateObjectState*>(dependentObject);
 
                 // TODO[rt]: Let's not do a linear search...
-                for (const StateShaderSubObject& subObject : stateObjectState->shaderSubObjects) {
+                for (const StateObjectShaderSubObject& subObject : stateObjectState->shaderSubObjects) {
                     if (subObject.shader != state) {
                         continue;
                     }
