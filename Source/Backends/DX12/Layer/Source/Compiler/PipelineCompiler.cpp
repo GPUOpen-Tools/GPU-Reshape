@@ -556,22 +556,16 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
         // Source, unwrapped, writer for inheriting configurations
         auto originalDesc = stateObjectState->writer.GetDesc(stateObjectState->stateObjectType);
-        
-        // Handle all keys
-        for (uint32_t keyIndex = 0; keyIndex < job.keyCount; keyIndex++) {
-            const PipelineJobKey& key = job.shaderInstrumentationKeys[keyIndex];
 
-            // May not be instrumented, just keep the sub-object as is
-            if (!key.shaderKey.featureBitSet) {
-                continue;
-            }
-
-            // TODO[rt]: Lookup time might not be ok, consider having a one-to-many lookup
-            for (uint32_t subObjectIndex = 0; subObjectIndex < stateObjectState->shaderSubObjects.size(); subObjectIndex++) {
-                const StateShaderSubObject& subObject = stateObjectState->shaderSubObjects[subObjectIndex];
+        // TODO[rt]: Lookup time might not be ok, consider having a one-to-many lookup
+        for (const StateShaderSubObject &subObject: stateObjectState->shaderSubObjects) {
+            // Handle all keys
+            for (uint32_t keyIndex = 0; keyIndex < job.keyCount; keyIndex++) {
+                const PipelineJobKey &key = job.shaderInstrumentationKeys[keyIndex];
 
                 // Not the replaced shader? Skip
-                if (subObject.shader != key.shader) {
+                // May not be instrumented, just keep the sub-object as is
+                if (subObject.shader != key.shader || !key.shaderKey.featureBitSet) {
                     continue;
                 }
 
@@ -579,12 +573,12 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
                 ShaderInstrumentationKey localKey = key.shaderKey;
 
                 // Combine hashes
-                for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
+                for (const StateShaderSubObjectExport &_export: subObject.functionExports) {
                     if (_export.localSignature) {
                         CombineHash(localKey.combinedHash, _export.localSignature->physicalMapping->signatureHash);
                     }
                 }
-                
+
                 // Get the instrumented blob
                 D3D12_SHADER_BYTECODE byteCode = subObject.shader->GetInstrument(localKey);
                 if (!byteCode.pShaderBytecode) {
@@ -594,7 +588,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
                 }
 
                 // We implicitly instrument all exports, so pull them all in
-                for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
+                for (const StateShaderSubObjectExport &_export: subObject.functionExports) {
                     localExports.push_back(D3D12_EXPORT_DESC{
                         .Name = _export.name.c_str(),
                         .ExportToRename = writer.EmbedAnsi(_export.dxbc.unmangledName)
@@ -602,10 +596,10 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
                     // Do not inherit this export
                     replacedExports.insert(_export.name);
-                } 
+                }
 
                 // Add instrumented library
-                writer.Add(D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, D3D12_DXIL_LIBRARY_DESC {
+                writer.Add(D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, D3D12_DXIL_LIBRARY_DESC{
                     .DXILLibrary = byteCode,
                     .NumExports = static_cast<UINT>(localExports.size()),
                     .pExports = static_cast<const D3D12_EXPORT_DESC *>(writer.Embed(localExports.data(), static_cast<uint32_t>(localExports.size() * sizeof(D3D12_EXPORT_DESC))))
@@ -616,6 +610,9 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
                 // Cleanup
                 localExports.clear();
+
+                // We found the right key, stop
+                break;
             }
         }
 

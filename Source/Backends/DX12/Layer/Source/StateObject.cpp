@@ -189,10 +189,11 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
     // All identifiers
     std::vector<SBTIdentifierTableEntry> identifiers;
 
-    // Process all exported identifiers
-    for (uint64_t i = 0; i < state->identifierExports.size(); i++) {
-        const std::wstring& name = state->identifierExports[i];
+    // Current allocation index
+    uint32_t indexAllocation = 0;
 
+    // Process all exported identifiers
+    for (const std::wstring& name : state->identifierExports) {
         // Get data
         const void* identifierData = properties->GetShaderIdentifier(name.c_str());
         ASSERT(identifierData, "Failed to retrieve data");
@@ -205,7 +206,7 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
         
         // The index assigned to this export, must be 1:1 to identifierExports
         SBTIdentifierTableEntry& entry = identifiers.emplace_back();
-        entry.Index = static_cast<uint>(i);
+        entry.Index = indexAllocation++;
         entry.SBTDWords = 0;
         std::memset(entry.SBTSourceParameters, 0u, sizeof(entry.SBTSourceParameters));
 
@@ -341,12 +342,15 @@ StateObjectShaderIdentifierPatch* CreateStateObjectShaderIdentifierPatch(StateOb
     ID3D12StateObjectProperties* properties{nullptr};
     stateObject->QueryInterface(__uuidof(ID3D12StateObjectProperties), reinterpret_cast<void**>(&properties));
 
-    // Just write the patched identifiers linearly
-    for (uint64_t i = 0; i < state->identifierExports.size(); i++) {
-        SBTIdentifierPatch &entry = patch->list[i];
+    // Current allocation index
+    uint32_t indexAllocation = 0;
+
+    // Process all exported identifiers
+    for (const std::wstring& name : state->identifierExports) {
+        SBTIdentifierPatch &entry = patch->list[indexAllocation++];
 
         // Get identifier data
-        const void* identifierData = properties->GetShaderIdentifier(state->identifierExports[i].c_str());
+        const void* identifierData = properties->GetShaderIdentifier(name.c_str());
         ASSERT(identifierData, "Failed to retrieve data");
 
         // Just in case
@@ -496,6 +500,90 @@ static void CreateStateObjectInlineSubStream(const DeviceTable& table, StateObje
     CreateStateSubObjects(table, state, &desc);
 }
 
+static void SafeAddStateObjectIdentifier(StateObjectState* state, const std::wstring& name) {
+    ASSERT(!state->identifierExports.contains(name), "Identifier name double registration");
+    state->identifierExports.insert(name);
+}
+
+static void AddUniqueStateObjectShader(StateObjectState* state, ShaderState* shader) {
+    // TODO[rt]: Consider a secondary slot lookup
+    if (std::ranges::find(state->shaders, shader) == state->shaders.end()) {
+        state->shaders.push_back(shader);
+    }
+}
+
+static void RemoveStateObjectExport(StateObjectState* state, LPCWSTR name) {
+    // If not mapped, just ignore
+    auto it = state->subObjectMap.find(name);
+    if (it == state->subObjectMap.end()) {
+        return;
+    }
+
+    // Handle type
+    switch (it->second.type) {
+        default: {
+            ASSERT(false, "Unknown type");
+            break;
+        }
+        case D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP: {
+            // Not end of container?
+            if (it->second.index != state->hitGroupSubobjects.size() - 1) {
+                // Swap with back
+                D3D12_HIT_GROUP_DESC back = state->hitGroupSubobjects.back();
+                state->hitGroupSubobjects[it->second.index] = back;
+
+                // Update swapped lookup
+                state->subObjectMap[back.HitGroupExport] = {
+                    .type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
+                    .index = it->second.index
+                };
+            }
+
+            state->hitGroupSubobjects.pop_back();
+            break;
+        }
+        case D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY: {
+            StateShaderSubObject& shader = state->shaderSubObjects[it->second.index];
+
+            // Remove the referenced export
+            for (size_t i = 0; i < shader.functionExports.size(); i++) {
+                StateShaderSubObjectExport &_export = shader.functionExports[i];
+                if (_export.name == name) {
+                    shader.functionExports.erase(shader.functionExports.begin() + i);
+                    break;
+                }
+            }
+
+            // All exports removed?
+            if (shader.functionExports.empty()) {
+                // TODO[rt]: Consider a secondary slot lookup
+                state->shaders.erase(std::remove(state->shaders.begin(), state->shaders.end(), shader.shader), state->shaders.end());
+
+                // Not end of container?
+                if (it->second.index != state->shaderSubObjects.size() - 1) {
+                    StateShaderSubObject back = std::move(state->shaderSubObjects.back());
+
+                    // Update swapped lookups
+                    for (const StateShaderSubObjectExport& _export : back.functionExports) {
+                        state->subObjectMap[_export.name] = {
+                            .type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
+                            .index = it->second.index
+                        };
+                    }
+
+                    // Swap with back
+                    state->shaderSubObjects[it->second.index] = std::move(back);
+                }
+
+                state->shaderSubObjects.pop_back();
+            }
+            break;
+        }
+    }
+
+    state->subObjectMap.erase(name);
+}
+
 void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, const D3D12_STATE_SUBOBJECT* subObject, StateObjectCache& cache) {
     switch (subObject->Type) {
         default: {
@@ -639,7 +727,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                             case DXBCRuntimeDataShaderKind::RayGeneration:
                             case DXBCRuntimeDataShaderKind::Miss:
                             case DXBCRuntimeDataShaderKind::Callable:
-                                state->identifierExports.push_back(filteredExport.name);
+                                SafeAddStateObjectIdentifier(state, filteredExport.name);
                                 break;
                         }
                     }
@@ -650,7 +738,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                     state->shaderSubObjects.push_back(collectionSubObject);
 
                     // Keep linear set for instrumentation purposes
-                    state->shaders.push_back(collectionSubObject.shader);
+                    AddUniqueStateObjectShader(state, collectionSubObject.shader);
                 
                     // Keep shaders alive
                     collectionSubObject.shader->AddUser();
@@ -671,7 +759,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                 }
 
                 // Always identifiable
-                state->identifierExports.push_back(filteredHitGroup.HitGroupExport);
+                SafeAddStateObjectIdentifier(state, filteredHitGroup.HitGroupExport);
 
                 // Add local hit group
                 state->hitGroupSubobjects.push_back(filteredHitGroup);
@@ -697,11 +785,6 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
         case D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY: {
             auto object = StateSubObjectWriter::Read<D3D12_DXIL_LIBRARY_DESC>(*subObject);
 
-            // Create new subobject
-            StateShaderSubObject& stateSubObject = state->shaderSubObjects.emplace_back();
-            stateSubObject.shader = GetOrCreateShaderState(table.state, object.DXILLibrary);
-            stateSubObject.functionExports.reserve(object.NumExports);
-
             // We need to know the export names and shader kinds, so scan the DXBC for it
             TrivialStackVector<DXBCExport, 4u> dxbcExports;
             ScanDXBCShaderExports(object.DXILLibrary.pShaderBytecode, object.DXILLibrary.BytecodeLength, dxbcExports);
@@ -724,8 +807,18 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                         .exportName = unmangledWide,
                         .name = unmangledWide
                     });
-                } 
+                }
             }
+
+            // First, remove all replaced exports
+            for (uint64_t exportIndex = 0; exportIndex < exports.size(); exportIndex++) {
+                RemoveStateObjectExport(state, exports[exportIndex].name.c_str());
+            }
+
+            // Create new subobject
+            StateShaderSubObject& stateSubObject = state->shaderSubObjects.emplace_back();
+            stateSubObject.shader = GetOrCreateShaderState(table.state, object.DXILLibrary);
+            stateSubObject.functionExports.reserve(object.NumExports);
 
             // All exports that will be passed down the writer
             TrivialStackVector<D3D12_EXPORT_DESC, 4u> writeExports;
@@ -757,7 +850,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                         case DXBCRuntimeDataShaderKind::RayGeneration:
                         case DXBCRuntimeDataShaderKind::Miss:
                         case DXBCRuntimeDataShaderKind::Callable:
-                            state->identifierExports.push_back(nameWide);
+                            SafeAddStateObjectIdentifier(state, nameWide);
                             break;
                     }
 
@@ -793,13 +886,13 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
 
             // Keep linear set for instrumentation purposes
             // Note: This holds the reference, not the sub-object
-            state->shaders.push_back(stateSubObject.shader);
+            AddUniqueStateObjectShader(state, stateSubObject.shader);
 
             // Embed all the exports
             auto *embeddedExports = state->writer.Alloc<D3D12_EXPORT_DESC>(static_cast<uint32_t>(sizeof(D3D12_EXPORT_DESC) * writeExports.Size()));
             for (uint64_t exportIndex = 0; exportIndex < writeExports.Size(); exportIndex++) {
                 embeddedExports[exportIndex] = writeExports[exportIndex];
-            } 
+            }
 
             // Write object
             state->writer.Add(subObject->Type, D3D12_DXIL_LIBRARY_DESC {
@@ -823,8 +916,11 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             // Copy all contents
             auto deepCopy = state->writer.DeepAdd(subObject->Type, object);
 
+            // If already exists, remove the old reference
+            RemoveStateObjectExport(state, object.HitGroupExport);
+            
             // Keep deep copy around
-            state->identifierExports.push_back(deepCopy->HitGroupExport);
+            SafeAddStateObjectIdentifier(state, deepCopy->HitGroupExport);
             state->hitGroupSubobjects.push_back(*deepCopy);
 
             // Add hit group lookup
@@ -974,6 +1070,17 @@ static void InheritStateObject(StateObjectState* stateObject, StateObjectState* 
     D3D12_STATE_OBJECT_DESC desc = source->writer.GetUnresolvedDesc();
     for (uint32_t i = 0; i < desc.NumSubobjects; i++) {
         D3D12_STATE_SUBOBJECT subObject = desc.pSubobjects[i];
+        
+        // Either directly handled or inherited
+        if (subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION ||
+            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION ||
+            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_EXISTING_COLLECTION ||
+            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP ||
+            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY ||
+            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE) {
+            continue;
+        }
+        
         stateObject->writer.DeepAdd(subObject.Type, subObject.pDesc);
     }
 }

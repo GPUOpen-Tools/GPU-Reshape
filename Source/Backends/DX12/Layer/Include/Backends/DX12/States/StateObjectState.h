@@ -40,6 +40,7 @@
 // Std
 #include <string>
 #include <unordered_map>
+#include <set>
 
 /// Forward declarations
 struct SBTIdentifierTableEntry;
@@ -123,7 +124,6 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
         PipelineState(allocators),
         shaderSubObjects(allocators),
         hitGroupSubobjects(allocators),
-        identifierExports(allocators),
         writer(allocators) {
         
     }
@@ -172,7 +172,7 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
     // TODO[rt]: This is too micro-allocation heavy
 
     /// All identifier exports, all callable
-    Vector<std::wstring> identifierExports;
+    std::set<std::wstring> identifierExports;
 
     /// Export name to sub object lookup
     std::unordered_map<std::wstring, StateSubObjectIndex> subObjectMap;
