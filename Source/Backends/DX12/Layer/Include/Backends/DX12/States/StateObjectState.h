@@ -40,7 +40,6 @@
 // Std
 #include <string>
 #include <unordered_map>
-#include <optional>
 
 /// Forward declarations
 struct SBTIdentifierTableEntry;
@@ -99,27 +98,16 @@ struct StateShaderSubObjectExport {
     /// Signatures are associated with the exports themselves
     RootSignatureState* localSignature{nullptr};
 
-    /// All flags associated with the exports themselves
-    std::optional<D3D12_STATE_OBJECT_FLAGS> flags{};
-
     /// All inlined associations
     std::vector<StateSubObjectAssociation> associations;
 };
 
-struct StateObjectShaderSubObject {
+struct StateShaderSubObject {
     /// Shader of this sub-object
     ShaderState* shader{nullptr};
 
     /// All exports of this sub-object
     std::vector<StateShaderSubObjectExport> functionExports;
-};
-
-struct StateObjectHitGroupSubObject {
-    /// Underlying description
-    D3D12_HIT_GROUP_DESC desc;
-
-    /// All flags associated with the hit group
-    std::optional<D3D12_STATE_OBJECT_FLAGS> flags{};
 };
 
 struct StateSubObjectIndex {
@@ -169,10 +157,10 @@ struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState
     StateObjectShaderIdentifierTable* identifierTable{nullptr};
 
     /// All shader subobjects
-    Vector<StateObjectShaderSubObject> shaderSubObjects;
+    Vector<StateShaderSubObject> shaderSubObjects;
 
     /// All hit groups
-    Vector<StateObjectHitGroupSubObject> hitGroupSubobjects;
+    Vector<D3D12_HIT_GROUP_DESC> hitGroupSubobjects;
 
     /// Current hot patch table
     std::atomic<StateObjectShaderIdentifierPatch*> hotSwapPatchTable{nullptr};

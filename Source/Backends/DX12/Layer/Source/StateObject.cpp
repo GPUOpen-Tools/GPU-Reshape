@@ -99,23 +99,23 @@ static RootSignatureState* GetLocalRootSignatureForIdentifier(StateObjectState* 
             break;
         }
         case D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP: {
-            const StateObjectHitGroupSubObject &hitGroup = state->hitGroupSubobjects[index.index];
+            const D3D12_HIT_GROUP_DESC &hitGroup = state->hitGroupSubobjects[index.index];
 
-            if (hitGroup.desc.IntersectionShaderImport) {
-                return GetLocalRootSignatureForIdentifier(state, hitGroup.desc.IntersectionShaderImport);
+            if (hitGroup.IntersectionShaderImport) {
+                return GetLocalRootSignatureForIdentifier(state, hitGroup.IntersectionShaderImport);
             }
                             
-            if (hitGroup.desc.ClosestHitShaderImport) {
-                return GetLocalRootSignatureForIdentifier(state, hitGroup.desc.ClosestHitShaderImport);
+            if (hitGroup.ClosestHitShaderImport) {
+                return GetLocalRootSignatureForIdentifier(state, hitGroup.ClosestHitShaderImport);
             }
                             
-            if (hitGroup.desc.AnyHitShaderImport) {
-                return GetLocalRootSignatureForIdentifier(state, hitGroup.desc.AnyHitShaderImport);
+            if (hitGroup.AnyHitShaderImport) {
+                return GetLocalRootSignatureForIdentifier(state, hitGroup.AnyHitShaderImport);
             }
             break;
         }
         case D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY: {
-            StateObjectShaderSubObject& stateSubObject = state->shaderSubObjects[index.index];
+            StateShaderSubObject& stateSubObject = state->shaderSubObjects[index.index];
 
             // Find the specific export in this library
             for (StateShaderSubObjectExport& subObjectExport : stateSubObject.functionExports) {
@@ -370,7 +370,7 @@ StateObjectShaderIdentifierPatch* CreateStateObjectShaderIdentifierPatch(StateOb
     return patch;
 }
 
-static StateShaderSubObjectExport* FindStateObjectExport(StateObjectShaderSubObject& shader, LPCWSTR name) {
+static StateShaderSubObjectExport* FindStateObjectExport(StateShaderSubObject& shader, LPCWSTR name) {
     for (StateShaderSubObjectExport& _export : shader.functionExports) {
         if (_export.name == name) {
             return &_export;
@@ -525,27 +525,18 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                         break;
                     }
                     case D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP: {
-                        StateObjectHitGroupSubObject &hitGroup = state->hitGroupSubobjects[index.index];
+                        const D3D12_HIT_GROUP_DESC &hitGroup = state->hitGroupSubobjects[index.index];
 
-                        if (hitGroup.desc.IntersectionShaderImport) {
-                            associatedFunctions.Add(hitGroup.desc.IntersectionShaderImport);
+                        if (hitGroup.IntersectionShaderImport) {
+                            associatedFunctions.Add(hitGroup.IntersectionShaderImport);
                         }
                         
-                        if (hitGroup.desc.ClosestHitShaderImport) {
-                            associatedFunctions.Add(hitGroup.desc.ClosestHitShaderImport);
+                        if (hitGroup.ClosestHitShaderImport) {
+                            associatedFunctions.Add(hitGroup.ClosestHitShaderImport);
                         }
                         
-                        if (hitGroup.desc.AnyHitShaderImport) {
-                            associatedFunctions.Add(hitGroup.desc.AnyHitShaderImport);
-                        }
-
-                        // Associate hit group data
-                        switch (contained.pSubobjectToAssociate->Type) {
-                            default:
-                                break;
-                            case D3D12_STATE_SUBOBJECT_TYPE_FLAGS:
-                                hitGroup.flags = StateSubObjectWriter::Read<D3D12_STATE_OBJECT_FLAGS>(*contained.pSubobjectToAssociate);
-                                break;
+                        if (hitGroup.AnyHitShaderImport) {
+                            associatedFunctions.Add(hitGroup.AnyHitShaderImport);
                         }
                         break;
                     }
@@ -562,7 +553,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
                 ASSERT(subObjectIndex.type == D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, "Unexpected index");
                 
                 // Find the object
-                StateObjectShaderSubObject& referencedSubObject = state->shaderSubObjects[subObjectIndex.index];
+                StateShaderSubObject& referencedSubObject = state->shaderSubObjects[subObjectIndex.index];
 
                 // Find export
                 StateShaderSubObjectExport* _export = FindStateObjectExport(referencedSubObject, function);
@@ -587,10 +578,6 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
 
                         ASSERT(!_export->localSignature || _export->localSignature == signatureState, "Unexpected signature assignment");
                         _export->localSignature = signatureState;
-                        break;
-                    }
-                    case D3D12_STATE_SUBOBJECT_TYPE_FLAGS: {
-                        _export->flags = StateSubObjectWriter::Read<D3D12_STATE_OBJECT_FLAGS>(*contained.pSubobjectToAssociate);
                         break;
                     }
                 }
@@ -620,8 +607,8 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             }
 
             // Inherit from existing collection
-            for (StateObjectShaderSubObject& collectionSubObject: collectionTable.state->shaderSubObjects) {
-                StateObjectShaderSubObject filteredSubObject {
+            for (StateShaderSubObject& collectionSubObject: collectionTable.state->shaderSubObjects) {
+                StateShaderSubObject filteredSubObject {
                     .shader = collectionSubObject.shader
                 };
 
@@ -671,26 +658,26 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             }
 
             // Inherit hit groups from existing collection
-            for (const StateObjectHitGroupSubObject& hitGroup : collectionTable.state->hitGroupSubobjects) {
-                auto it = exports.find(hitGroup.desc.HitGroupExport);
+            for (D3D12_HIT_GROUP_DESC hitGroup : collectionTable.state->hitGroupSubobjects) {
+                auto it = exports.find(hitGroup.HitGroupExport);
                 if (!exports.empty() && it == exports.end()) {
                     continue;
                 }
 
                 // Copy hit group
-                StateObjectHitGroupSubObject filteredHitGroup = hitGroup;
+                D3D12_HIT_GROUP_DESC filteredHitGroup = hitGroup;
                 if (it != exports.end()) {
-                    filteredHitGroup.desc.HitGroupExport = it->second;
+                    filteredHitGroup.HitGroupExport = it->second;
                 }
 
                 // Always identifiable
-                state->identifierExports.push_back(filteredHitGroup.desc.HitGroupExport);
+                state->identifierExports.push_back(filteredHitGroup.HitGroupExport);
 
                 // Add local hit group
                 state->hitGroupSubobjects.push_back(filteredHitGroup);
 
                 // Add hit group lookup
-                state->subObjectMap[filteredHitGroup.desc.HitGroupExport] = StateSubObjectIndex {
+                state->subObjectMap[filteredHitGroup.HitGroupExport] = StateSubObjectIndex {
                     .type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
                     .index = static_cast<uint32_t>(state->hitGroupSubobjects.size()) - 1
                 };
@@ -711,7 +698,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
             auto object = StateSubObjectWriter::Read<D3D12_DXIL_LIBRARY_DESC>(*subObject);
 
             // Create new subobject
-            StateObjectShaderSubObject& stateSubObject = state->shaderSubObjects.emplace_back();
+            StateShaderSubObject& stateSubObject = state->shaderSubObjects.emplace_back();
             stateSubObject.shader = GetOrCreateShaderState(table.state, object.DXILLibrary);
             stateSubObject.functionExports.reserve(object.NumExports);
 
@@ -838,9 +825,7 @@ void CreateStateSubObject(const DeviceTable& table, StateObjectState* state, con
 
             // Keep deep copy around
             state->identifierExports.push_back(deepCopy->HitGroupExport);
-            state->hitGroupSubobjects.push_back(StateObjectHitGroupSubObject{
-                .desc = *deepCopy
-            });
+            state->hitGroupSubobjects.push_back(*deepCopy);
 
             // Add hit group lookup
             state->subObjectMap[object.HitGroupExport] = StateSubObjectIndex {
@@ -916,7 +901,7 @@ void CreateDefaultAssociation(StateObjectState* state, const D3D12_STATE_SUBOBJE
         }
         case D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG: {            
             // Associate all shaders with the shader config, unless already specified
-            for (StateObjectShaderSubObject& shader : state->shaderSubObjects) {
+            for (StateShaderSubObject& shader : state->shaderSubObjects) {
                 for (StateShaderSubObjectExport& _export : shader.functionExports) {
                     if (SubObjectExportHasAssociation(_export, subObject->Type)) {
                         continue;
@@ -940,33 +925,13 @@ void CreateDefaultAssociation(StateObjectState* state, const D3D12_STATE_SUBOBJE
             auto signatureState = GetState(referencedContained.pLocalRootSignature);
 
             // Associate all shaders with the local signature, unless already specified
-            for (StateObjectShaderSubObject& shader : state->shaderSubObjects) {
+            for (StateShaderSubObject& shader : state->shaderSubObjects) {
                 for (StateShaderSubObjectExport& _export : shader.functionExports) {
                     if (!_export.localSignature) {
                         _export.localSignature = signatureState;
                     }
                 } 
             } 
-        }
-        case D3D12_STATE_SUBOBJECT_TYPE_FLAGS: {
-            auto flags = StateSubObjectWriter::Read<D3D12_STATE_OBJECT_FLAGS>(*subObject);
-            
-            // Associate all shaders with the flags, unless already specified
-            for (StateObjectShaderSubObject& shader : state->shaderSubObjects) {
-                for (StateShaderSubObjectExport& _export : shader.functionExports) {
-                    if (!_export.flags) {
-                        _export.flags = flags;
-                    }
-                } 
-            }
-            
-            // Associate all hit groups with the flags, unless already specified
-            for (StateObjectHitGroupSubObject &hitGroup: state->hitGroupSubobjects) {
-                if (!hitGroup.flags) {
-                    hitGroup.flags = flags;
-                }
-            }
-            break;
         }
     }
 }
@@ -986,78 +951,19 @@ void CreateStateSubObjects(const DeviceTable& table, StateObjectState* state, co
     }
 }
 
-static bool ShouldInherit(const std::optional<D3D12_STATE_OBJECT_FLAGS>& flags) {
-    return flags.has_value() && (flags.value() & D3D12_STATE_OBJECT_FLAG_ALLOW_STATE_OBJECT_ADDITIONS);
-}
-
 static void InheritStateObject(StateObjectState* stateObject, StateObjectState* source) {
     // We don't want to keep a reference to the source state object,
     // since it may keep growing throughout the application.
 
     // Inherit pipeline state
+    stateObject->shaders = source->shaders;
     stateObject->signature = source->signature;
 
-    // Conditionally add shaders
-    for (const StateObjectShaderSubObject& subObject : source->shaderSubObjects) {
-        StateObjectShaderSubObject copy;
-        copy.shader = subObject.shader;
-
-        // Filter all exports
-        for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
-            if (!ShouldInherit(_export.flags)) {
-                continue;
-            }
-
-            // Add sub-object lookup (next written object)
-            stateObject->subObjectMap[_export.name] = StateSubObjectIndex {
-                .type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
-                .index = static_cast<uint32_t>(stateObject->shaderSubObjects.size())
-            };
-
-            // Identifiable?
-            if (_export.dxbc.type == DXBCType::Function) {
-                switch (_export.dxbc.function.kind) {
-                    default:
-                        break;
-                    case DXBCRuntimeDataShaderKind::RayGeneration:
-                    case DXBCRuntimeDataShaderKind::Miss:
-                    case DXBCRuntimeDataShaderKind::Callable:
-                        stateObject->identifierExports.push_back(_export.name);
-                        break;
-                }
-            }
-
-            // OK
-            copy.functionExports.push_back(_export);
-        }
-
-        // May be filtered out entirely
-        if (!copy.functionExports.empty()) {
-            stateObject->shaderSubObjects.push_back(copy);
-
-            // Keep linear set for instrumentation purposes
-            stateObject->shaders.push_back(copy.shader);
-        }
-    }
-
-    // Conditionally add hit groups
-    for (const StateObjectHitGroupSubObject& hitGroup : source->hitGroupSubobjects) {
-        if (!ShouldInherit(hitGroup.flags)) {
-            continue;
-        }
-        
-        // Add sub-object lookup (next written object)
-        stateObject->subObjectMap[hitGroup.desc.HitGroupExport] = StateSubObjectIndex {
-            .type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
-            .index = static_cast<uint32_t>(stateObject->hitGroupSubobjects.size())
-        };
-
-        // Always identifiable
-        stateObject->identifierExports.push_back(hitGroup.desc.HitGroupExport);
-
-        // OK
-        stateObject->hitGroupSubobjects.push_back(hitGroup);
-    }
+    // Inherit state-object state, keeping the index map as-is is fine
+    stateObject->shaderSubObjects   = source->shaderSubObjects;
+    stateObject->hitGroupSubobjects = source->hitGroupSubobjects;
+    stateObject->identifierExports  = source->identifierExports;
+    stateObject->subObjectMap       = source->subObjectMap;
 
     // Add shader reference counts
     for (ShaderState* shader : stateObject->shaders) {
@@ -1068,17 +974,6 @@ static void InheritStateObject(StateObjectState* stateObject, StateObjectState* 
     D3D12_STATE_OBJECT_DESC desc = source->writer.GetUnresolvedDesc();
     for (uint32_t i = 0; i < desc.NumSubobjects; i++) {
         D3D12_STATE_SUBOBJECT subObject = desc.pSubobjects[i];
-        
-        // Either directly handled or inherited
-        if (subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION ||
-            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION ||
-            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_EXISTING_COLLECTION ||
-            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP ||
-            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY ||
-            subObject.Type == D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE) {
-            continue;
-        }
-        
         stateObject->writer.DeepAdd(subObject.Type, subObject.pDesc);
     }
 }
