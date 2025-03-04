@@ -559,10 +559,13 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
 
         // TODO[rt]: Lookup time might not be ok, consider having a one-to-many lookup
         for (const StateShaderSubObject &subObject: stateObjectState->shaderSubObjects) {
-            // Handle all keys
+            // Designated key, if a key isn't found, append the state object anyway which fetches the default sub-object
+            ShaderInstrumentationKey localKey{};
+            
+            // Find the matching key
             for (uint32_t keyIndex = 0; keyIndex < job.keyCount; keyIndex++) {
-                const PipelineJobKey &key = job.shaderInstrumentationKeys[keyIndex];
-
+                const PipelineJobKey& key = job.shaderInstrumentationKeys[keyIndex];
+                
                 // Not the replaced shader? Skip
                 // May not be instrumented, just keep the sub-object as is
                 if (subObject.shader != key.shader || !key.shaderKey.featureBitSet) {
@@ -570,7 +573,7 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
                 }
 
                 // Append the local mappings
-                ShaderInstrumentationKey localKey = key.shaderKey;
+                localKey = key.shaderKey;
 
                 // Combine hashes
                 for (const StateShaderSubObjectExport &_export: subObject.functionExports) {
@@ -579,66 +582,41 @@ void PipelineCompiler::CompileStateObject(const PipelineJobBatch &batch) {
                     }
                 }
 
-                // Get the instrumented blob
-                D3D12_SHADER_BYTECODE byteCode = subObject.shader->GetInstrument(localKey);
-                if (!byteCode.pShaderBytecode) {
-                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
-                    ++batch.diagnostic->failedJobs;
-                    continue;
-                }
-
-                // We implicitly instrument all exports, so pull them all in
-                for (const StateShaderSubObjectExport &_export: subObject.functionExports) {
-                    localExports.push_back(D3D12_EXPORT_DESC{
-                        .Name = _export.name.c_str(),
-                        .ExportToRename = writer.EmbedAnsi(_export.dxbc.unmangledName)
-                    });
-
-                    // Do not inherit this export
-                    replacedExports.insert(_export.name);
-                }
-
-                // Add instrumented library
-                writer.Add(D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, D3D12_DXIL_LIBRARY_DESC{
-                    .DXILLibrary = byteCode,
-                    .NumExports = static_cast<UINT>(localExports.size()),
-                    .pExports = static_cast<const D3D12_EXPORT_DESC *>(writer.Embed(localExports.data(), static_cast<uint32_t>(localExports.size() * sizeof(D3D12_EXPORT_DESC))))
-                });
-
-                // Associate later
-                pendingAssociations.push_back(&subObject);
-
-                // Cleanup
-                localExports.clear();
-
-                // We found the right key, stop
+                // Found the key, stop
                 break;
             }
-        }
-
-        // All exports to inherit
-        std::vector<D3D12_EXPORT_DESC> inheritedExports;
-        inheritedExports.reserve(stateObjectState->shaderSubObjects.size());
-
-        // Filter out the instrumented export names
-        for (StateShaderSubObject& subObject : stateObjectState->shaderSubObjects) {
-            for (const StateShaderSubObjectExport& _export : subObject.functionExports) {
-                if (!replacedExports.contains(_export.name)) {
-                    inheritedExports.push_back(D3D12_EXPORT_DESC {
-                        .Name = _export.name.c_str(),
-                        .ExportToRename = writer.EmbedAnsi(_export.dxbc.unmangledName)
-                    });
-                }
+            
+            // Get the instrumented blob
+            D3D12_SHADER_BYTECODE byteCode = subObject.shader->GetInstrument(localKey);
+            if (!byteCode.pShaderBytecode) {
+                scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                ++batch.diagnostic->failedJobs;
+                continue;
             }
-        }
 
-        // Plainly inherit everything that hasn't been instrumented
-        if (!inheritedExports.empty()) {
-            writer.Add(D3D12_STATE_SUBOBJECT_TYPE_EXISTING_COLLECTION, D3D12_EXISTING_COLLECTION_DESC {
-                .pExistingCollection = static_cast<ID3D12StateObject*>(stateObjectState->object),
-                .NumExports = static_cast<UINT>(inheritedExports.size()),
-                .pExports = inheritedExports.data()
+            // We implicitly instrument all exports, so pull them all in
+            for (const StateShaderSubObjectExport &_export: subObject.functionExports) {
+                localExports.push_back(D3D12_EXPORT_DESC{
+                    .Name = _export.name.c_str(),
+                    .ExportToRename = writer.EmbedAnsi(_export.dxbc.unmangledName)
+                });
+
+                // Do not inherit this export
+                replacedExports.insert(_export.name);
+            }
+
+            // Add instrumented library
+            writer.Add(D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, D3D12_DXIL_LIBRARY_DESC{
+                .DXILLibrary = byteCode,
+                .NumExports = static_cast<UINT>(localExports.size()),
+                .pExports = static_cast<const D3D12_EXPORT_DESC *>(writer.Embed(localExports.data(), static_cast<uint32_t>(localExports.size() * sizeof(D3D12_EXPORT_DESC))))
             });
+
+            // Associate later
+            pendingAssociations.push_back(&subObject);
+
+            // Cleanup
+            localExports.clear();
         }
 
         // Always re-emit hit groups
