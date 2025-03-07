@@ -27,22 +27,23 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reactive.Linq;
 using System.Windows.Input;
-using Avalonia;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Bridge.CLR;
-using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
-using DynamicData.Binding;
 using Message.CLR;
 using ReactiveUI;
-using Runtime.Models.Objects;
+using Runtime.Models.Query;
 using Runtime.ViewModels.Objects;
 using Runtime.ViewModels.Tools;
-using Studio.Models.Logging;
+using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
+using Studio.Services.Suspension;
+using Studio.ViewModels.Query;
 using Studio.ViewModels.Workspace;
 
 namespace Studio.ViewModels.Tools
@@ -63,13 +64,18 @@ namespace Studio.ViewModels.Tools
         /// All identifiers
         /// </summary>
         public ObservableCollection<PipelineIdentifierViewModel> PipelineIdentifiers { get; } = new();
+        
+        /// <summary>
+        /// All identifiers
+        /// </summary>
+        public ObservableCollection<PipelineIdentifierViewModel> FilteredIdentifiers { get; } = new();
 
         /// <summary>
         /// Is the help message visible?
         /// </summary>
         public bool IsHelpVisible
         {
-            get => PipelineIdentifiers.Count == 0;
+            get => FilteredIdentifiers.Count == 0;
         }
 
         /// <summary>
@@ -89,6 +95,43 @@ namespace Studio.ViewModels.Tools
         }
 
         /// <summary>
+        /// Current filter string
+        /// </summary>
+        [DataMember]
+        public string FilterString
+        {
+            get => _filterString;
+            set => this.RaiseAndSetIfChanged(ref _filterString, value);
+        }
+
+        /// <summary>
+        /// Parsed filter query
+        /// </summary>
+        public PipelineQueryViewModel? FilterQuery
+        {
+            get => _filterQuery;
+            set => this.RaiseAndSetIfChanged(ref _filterQuery, value);
+        }
+
+        /// <summary>
+        /// Current filter status
+        /// </summary>
+        public QueryResult FilterStatus
+        {
+            get => _filterStatus;
+            set => this.RaiseAndSetIfChanged(ref _filterStatus, value);
+        }
+
+        /// <summary>
+        /// All string decorators
+        /// </summary>
+        public SourceList<QueryAttributeDecorator> QueryDecorators
+        {
+            get => _queryDecorators;
+            set => this.RaiseAndSetIfChanged(ref _queryDecorators, value);
+        }
+
+        /// <summary>
         /// Refresh all items
         /// </summary>
         public ICommand Refresh { get; }
@@ -103,15 +146,167 @@ namespace Studio.ViewModels.Tools
             Refresh = ReactiveCommand.Create(OnRefresh);
             OpenPipelineDocument = ReactiveCommand.Create<PipelineIdentifierViewModel>(OnOpenPipelineDocument);
             
-            // Bind visibility
-            PipelineIdentifiers.ToObservableChangeSet(x => x)
-                .OnItemAdded(_ => this.RaisePropertyChanged(nameof(IsHelpVisible)))
-                .Subscribe();
+            // Initialize filter status
+            FilterStatus = QueryResult.OK;
             
             // Bind selected workspace
             ServiceRegistry.Get<IWorkspaceService>()?
                 .WhenAnyValue(x => x.SelectedWorkspace)
                 .Subscribe(x => WorkspaceViewModel = x);
+
+            // Notify on query string change
+            this.WhenAnyValue(x => x.FilterString)
+                .Throttle(TimeSpan.FromMilliseconds(250))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(CreateFilterQuery);
+            
+            // Suspension
+            this.BindTypedSuspension();
+        }
+
+        /// <summary>
+        /// Update help visibility
+        /// </summary>
+        private void UpdateHelp()
+        {
+            this.RaisePropertyChanged(nameof(IsHelpVisible));
+        }
+
+        /// <summary>
+        /// Disable all filtering
+        /// </summary>
+        private void DisableFilter()
+        {
+            FilterQuery = null;
+            
+            // Stop auto-population
+            _alwaysPopulate = false;
+            
+            // Recreate identifiers
+            RefilterPipelines();
+        }
+
+        /// <summary>
+        /// Create a new filter query
+        /// </summary>
+        /// <param name="query">given query</param>
+        private void CreateFilterQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                DisableFilter();
+                return;
+            }
+            
+            // Try to parse collection
+            QueryAttribute[]? attributes = QueryParser.GetAttributes(query, true);
+            if (attributes == null)
+            {
+                FilterStatus = QueryResult.Invalid;
+                
+                // Something went wrong, disable
+                DisableFilter();
+                return;
+            }
+
+            // We've started a query, request complete population of the entire missing range
+            // If sparse, this will request redundant identifiers
+            PopulatePendingRange();
+
+            // Create new segment list
+            QueryDecorators.Clear();
+
+            // Visualize segments
+            foreach (QueryAttribute attribute in attributes)
+            {
+                QueryDecorators.Add(new QueryAttributeDecorator()
+                {
+                    Attribute = attribute,
+                    Color = attribute.Key switch
+                    {
+                        "type" => ResourceLocator.GetResource<Color>("PipelineFilterKeyType"),
+                        _ => ResourceLocator.GetResource<Color>("PipelineFilterKeyName")
+                    }
+                });
+            }
+
+            // Attempt to parse
+            FilterStatus = PipelineQueryViewModel.FromAttributes(attributes, out var queryObject);
+
+            // Set decorator
+            if (queryObject != null)
+            {
+                queryObject.Decorator = query;
+            }
+
+            // Set query
+            FilterQuery = queryObject;
+
+            // Auto-populate any future identifier
+            _alwaysPopulate = true;
+            
+            // Refilter if needed
+            RefilterPipelines();
+        }
+
+        /// <summary>
+        /// Refilter all pipelines
+        /// </summary>
+        private void RefilterPipelines()
+        {
+            // Clear previous range
+            FilteredIdentifiers.Clear();
+            _filterSet.Clear();
+
+            // If no query, just add them all
+            if (FilterQuery == null)
+            {
+                FilteredIdentifiers.AddRange(PipelineIdentifiers);
+            }
+            else
+            {
+                PipelineIdentifiers.ForEach(x => FilterPipeline(x));
+            }
+
+            UpdateHelp();
+        }
+
+        /// <summary>
+        /// Filter a specific pipeline
+        /// Adds it if passed
+        /// </summary>
+        private bool FilterPipeline(PipelineIdentifierViewModel identifierViewModel)
+        {
+            // If already handled, ignore
+            if (_filterSet.Contains(identifierViewModel))
+            {
+                return true;
+            }
+            
+            // If there's no query, just mark it as visible
+            if (FilterQuery == null)
+            {
+                // No need to add it to the set, cleared on query construction
+                FilteredIdentifiers.Add(identifierViewModel);
+                return true;
+            }
+
+            // Matching name?
+            if (!string.IsNullOrEmpty(FilterQuery.Name) && !identifierViewModel.Descriptor.Contains(FilterQuery.Name, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return false;
+            }
+
+            // Type?
+            if (FilterQuery.Type.HasValue && identifierViewModel.Stage != FilterQuery.Type)
+            {
+                return false;
+            }
+            
+            // Passed, mark as filtered
+            FilteredIdentifiers.Add(identifierViewModel);
+            _filterSet.Add(identifierViewModel);
+            return true;
         }
 
         /// <summary>
@@ -160,8 +355,10 @@ namespace Studio.ViewModels.Tools
         private void OnConnectionChanged()
         {
             // Clear states
+            FilteredIdentifiers.Clear();
             PipelineIdentifiers.Clear();
             _lookup.Clear();
+            UpdateHelp();
             
             if (_workspaceViewModel is not { Connection: { } })
                 return;
@@ -195,6 +392,31 @@ namespace Studio.ViewModels.Tools
         {
             // Submit request for all objects
             _workspaceViewModel?.Connection?.GetSharedBus().Add<GetObjectStatesMessage>();
+        }
+
+        /// <summary>
+        /// Populate a missing range
+        /// </summary>
+        private void PopulatePendingRange()
+        {
+            int start = int.MaxValue;
+            int end = 0;
+            
+            // Find the range bounds
+            for (int i = 0; i < PipelineIdentifiers.Count; i++)
+            {
+                if (PipelineIdentifiers[i].GUID == ulong.MaxValue)
+                {
+                    start = int.Min(start, i);
+                    end = int.Max(end, i);
+                }
+            }
+
+            // Invalid if no missing entries
+            if (start != int.MaxValue)
+            {
+                PopulateRange(start, end);
+            }
         }
 
         /// <summary>
@@ -271,19 +493,53 @@ namespace Studio.ViewModels.Tools
                     }
                     
                     PipelineIdentifiers.RemoveAt((int)i);
+
+                    // TODO: Expensive
+                    FilteredIdentifiers.Remove(pipelineIdentifierViewModel);
+                }
+
+                // Immediately populate if needed
+                if (_alwaysPopulate)
+                {
+                    PopulateRange(PipelineIdentifiers.Count, (int)flat.pipelineCount);
                 }
 
                 // Add new models
                 for (int i = PipelineIdentifiers.Count; i < flat.pipelineCount; i++)
                 {
-                    PipelineIdentifiers.Add(new()
+                    PipelineIdentifierViewModel viewModel = new()
                     {
                         Workspace = WorkspaceViewModel,
-                        GUID = 0,
+                        GUID = ulong.MaxValue,
                         Descriptor = "Loading..."
-                    });
+                    };
+
+                    // Bind filtering events
+                    BindFiltering(viewModel);
+                    
+                    PipelineIdentifiers.Add(viewModel);
                 }
+            
+                // Update label
+                UpdateHelp();
             });
+        }
+
+        /// <summary>
+        /// Bind all filtering events
+        /// </summary>
+        private void BindFiltering(PipelineIdentifierViewModel viewModel)
+        {
+            // Try to filter immediately
+            if (FilterPipeline(viewModel))
+            {
+                return;
+            }
+
+            // Otherwise, bind for future changes
+            viewModel
+                .WhenAnyValue(x => x.Descriptor)
+                .Subscribe(x => FilterPipeline(viewModel));
         }
 
         /// <summary>
@@ -331,6 +587,8 @@ namespace Studio.ViewModels.Tools
                         _lookup.Add(guids[i], pipelineIdentifierViewModel);
                     }
                 }
+            
+                UpdateHelp();
             });
         }
 
@@ -341,8 +599,10 @@ namespace Studio.ViewModels.Tools
         private void OnRefresh()
         {
             // Clear states
+            FilteredIdentifiers.Clear();
             PipelineIdentifiers.Clear();
             _lookup.Clear();
+            UpdateHelp();
             
             // Immediate repool
             _workspaceViewModel?.Connection?.GetSharedBus().Add<GetObjectStatesMessage>();
@@ -359,8 +619,38 @@ namespace Studio.ViewModels.Tools
         private Dictionary<UInt64, PipelineIdentifierViewModel> _lookup = new();
 
         /// <summary>
+        /// Set of filtered pipelines
+        /// </summary>
+        private HashSet<PipelineIdentifierViewModel> _filterSet = new();
+
+        /// <summary>
         /// Internal pooling timer
         /// </summary>
         private DispatcherTimer? _poolTimer;
+
+        /// <summary>
+        /// Internal, default, connection string
+        /// </summary>
+        private string _filterString = "";
+
+        /// <summary>
+        /// Internal filter query
+        /// </summary>
+        private PipelineQueryViewModel? _filterQuery;
+
+        /// <summary>
+        /// Internal decorators
+        /// </summary>
+        private SourceList<QueryAttributeDecorator> _queryDecorators = new();
+
+        /// <summary>
+        /// Internal status
+        /// </summary>
+        private QueryResult _filterStatus;
+
+        /// <summary>
+        /// Always populate identifiers on discovery?
+        /// </summary>
+        private bool _alwaysPopulate = true;
     }
 }

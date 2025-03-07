@@ -33,12 +33,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="using:Studio.ViewModels.Tools"
-             xmlns:cvm="using:Studio.ViewModels.Controls"
              xmlns:controls="using:Studio.Views.Controls"
-             xmlns:tools="using:Studio.Views.Tools"
-             xmlns:views="using:Studio.Views"
              xmlns:r="using:Studio.Resources"
-             xmlns:reactui="http://reactiveui.net"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              xmlns:objects="clr-namespace:Runtime.ViewModels.Objects;assembly=UIX.Studio.Runtime"
              mc:Ignorable="d"
@@ -51,28 +47,63 @@
     </UserControl.Resources>
     
     <Grid Focusable="True" RowDefinitions="Auto,*">
-        <StackPanel Orientation="Vertical">
-            <Grid Margin="5,0,5,0">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.PipelineTree_Refresh_Tooltip}" Command="{Binding Refresh}">
-                        <PathIcon Data="{StaticResource Refresh}" Width="13" />
-                    </Button>
-                </StackPanel>
-                
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock VerticalAlignment="Center" x:Name="CountBlock" Text="{Binding PipelineIdentifiers.Count, FallbackValue=0}"/>
-                    <TextBlock VerticalAlignment="Center" Text="pipelines" Margin="5 0 0 0"/>
-                </StackPanel>
+        <Grid>
+            <Grid Margin="5,0,5,2">
+                <Button 
+                HorizontalAlignment="Left"
+                Classes="Icon" 
+                ToolTip.Tip="{x:Static r:Resources.PipelineTree_Refresh_Tooltip}" 
+                Command="{Binding Refresh}">
+                <PathIcon Data="{StaticResource Refresh}" Width="13" />
+            </Button>
+            
+            <AutoCompleteBox 
+                x:Name="QueryBox"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Height="25"
+                Watermark="{Binding PipelineIdentifiers.Count, FallbackValue=0, StringFormat='Search {0} pipelines'}"
+                Margin="25,0 25,0"
+                BorderThickness="0 0 0 1"
+                Text="{Binding FilterString}" />
+                <Button 
+                    Classes="Icon"
+                    HorizontalAlignment="Right"
+                    Width="25"
+                    Height="25"
+                    Margin="0 0 1 0">
+                    <PathIcon ToolTip.Tip="{x:Static r:Resources.Help_Tooltip}" Data="{StaticResource Question}" Width="13" />
+                    
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <StackPanel Orientation="Vertical" Width="350">
+                                <TextBlock TextWrapping="Wrap">
+Search string, case insensitive. Additional attributes:
+                                </TextBlock>
+                                <Grid Margin="25 0 0 0" ColumnDefinitions="35,*">
+                                    <TextBlock TextWrapping="Wrap" Grid.Column="0">
+type <LineBreak />
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Grid.Column="1">
+- Pipeline type (graphics, compute, stateobject) <LineBreak />
+                                    </TextBlock>
+                                </Grid>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <controls:QueryAttributeSegments x:Name="AttributeSegments" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0 26 0 0"/>
             </Grid>
-        </StackPanel>
+        </Grid>
 
         <ListBox 
-            Grid.Row="1" 
+            Grid.Row="1"
             x:Name="PipelineList" 
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             BorderThickness="0"
             Tag="{Binding}"
-            ItemsSource="{Binding PipelineIdentifiers}"
+            ItemsSource="{Binding FilteredIdentifiers}"
             SelectionMode="Multiple">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="objects:PipelineIdentifierViewModel">
@@ -90,7 +121,9 @@
             </ListBox.ItemTemplate>
         </ListBox>
         
-        <Grid Grid.Row="1" IsVisible="{Binding IsHelpVisible}">
+        <Grid 
+            Grid.Row="1" 
+            IsVisible="{Binding IsHelpVisible}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <PathIcon 
                     Data="{StaticResource InfoHollow}"
