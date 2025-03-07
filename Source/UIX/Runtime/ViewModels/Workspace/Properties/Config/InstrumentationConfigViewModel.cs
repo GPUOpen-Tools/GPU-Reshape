@@ -77,7 +77,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// </summary>
         [PropertyField]
         [Category("Instrumentation")]
-        [Description("Enables coverage reporting, catch far more issues by limiting the amount of streaming per shader location")]
+        [Description("Enables coverage reporting, affects performance, catches more issues but limits streaming per shader location")]
         public bool Coverage
         {
             get => _coverage;

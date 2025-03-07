@@ -188,7 +188,7 @@ namespace Studio.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Enables coverage reporting, catches more issues but limits streaming per shader location.
+        ///   Looks up a localized string similar to Enables coverage reporting, affects performance, catches more issues but limits streaming per shader location.
         /// </summary>
         public static string Launch_Coverage {
             get {
