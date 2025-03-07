@@ -63,6 +63,7 @@ class MaskBlitShaderProgram;
 class MaskCopyRangeShaderProgram;
 class TexelMemoryAllocator;
 class IShaderProgramHost;
+class ShaderDataValidationCoverage;
 struct CommandBuffer;
 
 class TexelAddressingInitializationFeature final : public IFeature, public IShaderFeature {
@@ -304,6 +305,9 @@ private:
 private:
     /// Shared lock
     std::mutex mutex;
+
+    /// Optional, validation coverage
+    ComRef<ShaderDataValidationCoverage> dataValidationCoverage{nullptr};
 
     /// Current initialization mask
     std::unordered_set<uint64_t> puidSRBInitializationSet;

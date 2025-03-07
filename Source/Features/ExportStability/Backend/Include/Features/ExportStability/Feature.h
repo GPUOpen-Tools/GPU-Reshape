@@ -41,6 +41,7 @@
 
 // Forward declarations
 class IShaderSGUIDHost;
+class ShaderDataValidationCoverage;
 
 class ExportStabilityFeature final : public IFeature, public IShaderFeature {
 public:
@@ -73,6 +74,9 @@ public:
 private:
     /// Shader SGUID
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
+
+    /// Optional, validation coverage
+    ComRef<ShaderDataValidationCoverage> dataValidationCoverage{nullptr};
 
     /// Export id for this feature
     ShaderExportID exportID{};

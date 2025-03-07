@@ -35,6 +35,8 @@
 #include <Backend/IL/Analysis/SimulationAnalysis.h>
 #include <Backend/IL/Analysis/DivergencePropagator.h>
 #include <Backend/IL/Analysis/InterproceduralSimulationAnalysis.h>
+#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
 #include <Schemas/Features/Waterfall.h>
@@ -61,6 +63,9 @@ bool WaterfallFeature::Install() {
 
     // Optional sguid host
     sguidHost = registry->Get<IShaderSGUIDHost>();
+
+    // Coverage host buffers
+    dataValidationCoverage = registry->Get<ShaderDataValidationCoverage>();
 
     // OK
     return true;
@@ -267,11 +272,17 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         // Get new chain instruction (moved after split)
         auto splitInstr = splitIt->As<IL::AddressChainInstruction>();
 
+        // Get the coverage id, if enabled
+        IL::ID coverageBufferID = IL::GetValidationCoverageBufferID(program, config, dataValidationCoverage);
+
         // Perform instrumentation check
         IL::Emitter<> pre(program, context.basicBlock);
         {
             // Validate each chain index
             IL::ID anyRuntimeDivergent = InjectRuntimeDivergenceVisitor(program, pre, splitInstr);
+
+            // If coverage, limit it
+            anyRuntimeDivergent = IL::ApplyValidationCoverage(pre, coverageBufferID, sguid, anyRuntimeDivergent);
         
             // If so, branch to failure, otherwise resume
             pre.BranchConditional(anyRuntimeDivergent, divergentBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
@@ -281,6 +292,9 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         IL::Emitter<> emitter(program, *divergentBlock);
         {
             emitter.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
+
+            // If coverage, store it
+            IL::StoreValidationCoverage(emitter, coverageBufferID, sguid);
 
             // Setup message
             DivergentResourceIndexingMessage::ShaderExport msg;

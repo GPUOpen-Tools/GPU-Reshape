@@ -184,6 +184,20 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
+        /// Should the configuration use coverage reporting?
+        /// </summary>
+        [DataMember]
+        public bool Coverage
+        {
+            get => _coverage;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _coverage, value);
+                OnCoverageChanged();
+            }
+        }
+
+        /// <summary>
         /// Should the configuration synchronously record?
         /// </summary>
         [DataMember]
@@ -428,6 +442,7 @@ namespace Studio.ViewModels
             // Re-apply properties
             OnDetailChanged();
             OnSafeGuardChanged();
+            OnCoverageChanged();
             OnSynchronousRecordingChanged();
 
             // Get new description
@@ -445,6 +460,17 @@ namespace Studio.ViewModels
             if ((WorkspaceViewModel.PropertyCollection as IInstrumentableObject)?.GetOrCreateInstrumentationProperty()?.GetProperty<InstrumentationConfigViewModel>() is {} config)
             {
                 config.SafeGuard = SafeGuard;
+            }
+        }
+
+        /// <summary>
+        /// Invoked on coverage changes
+        /// </summary>
+        private void OnCoverageChanged()
+        {
+            if ((WorkspaceViewModel.PropertyCollection as IInstrumentableObject)?.GetOrCreateInstrumentationProperty()?.GetProperty<InstrumentationConfigViewModel>() is {} config)
+            {
+                config.Coverage = Coverage;
             }
         }
 
@@ -886,6 +912,11 @@ namespace Studio.ViewModels
         /// Internal safe guard state
         /// </summary>
         private bool _safeGuard;
+
+        /// <summary>
+        /// Internal coverage state
+        /// </summary>
+        private bool _coverage;
 
         /// <summary>
         /// Internal detail state

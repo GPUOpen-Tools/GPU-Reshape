@@ -71,6 +71,22 @@ namespace Studio.ViewModels.Workspace.Properties.Config
                 this.EnqueueFirstParentBus();
             }
         }
+        
+        /// <summary>
+        /// Enables detailed instrumentation
+        /// </summary>
+        [PropertyField]
+        [Category("Instrumentation")]
+        [Description("Enables coverage reporting, catch far more issues by limiting the amount of streaming per shader location")]
+        public bool Coverage
+        {
+            get => _coverage;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _coverage, value);
+                this.EnqueueFirstParentBus();
+            }
+        }
 
         /// <summary>
         /// Constructor
@@ -87,7 +103,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         public void Commit(InstrumentationState state)
         {
             // Reduce stream size if not needed
-            if (!_safeGuard && !_detail)
+            if (!_safeGuard && !_detail && !_coverage)
             {
                 return;
             }
@@ -96,6 +112,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
             var request = state.GetOrDefault<SetInstrumentationConfigMessage>();
             request.safeGuard |= _safeGuard ? 1 : 0;
             request.detail |= _detail ? 1 : 0;
+            request.validationCoverage |= _coverage ? 1 : 0;
         }
 
         /// <summary>
@@ -107,5 +124,10 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// Internal detail state
         /// </summary>
         private bool _detail = false;
+
+        /// <summary>
+        /// Internal coverage state
+        /// </summary>
+        private bool _coverage = false;
     }
 }

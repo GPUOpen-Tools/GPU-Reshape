@@ -45,6 +45,7 @@
 
 // Forward declarations
 class IShaderSGUIDHost;
+class ShaderDataValidationCoverage;
 
 class ResourceAddressingConcurrencyFeature final : public IFeature, public IShaderFeature {
 public:
@@ -85,6 +86,9 @@ private:
     /// Hosts
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
+
+    /// Optional, validation coverage
+    ComRef<ShaderDataValidationCoverage> dataValidationCoverage{nullptr};
 
     /// Export id for this feature
     ShaderExportID exportID{};

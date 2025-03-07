@@ -49,6 +49,7 @@ namespace IL {
 // Forward declarations
 class IShaderSGUIDHost;
 struct SetInstrumentationConfigMessage;
+class ShaderDataValidationCoverage;
 
 class WaterfallFeature final : public IFeature, public IShaderFeature {
 public:
@@ -99,6 +100,9 @@ private:
 private:
     /// Shader SGUID
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
+
+    /// Optional, validation coverage
+    ComRef<ShaderDataValidationCoverage> dataValidationCoverage{nullptr};
 
     /// Export id for this feature
     ShaderExportID divergentResourceExportID{};

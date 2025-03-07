@@ -172,6 +172,13 @@
                             </CheckBox>
                         
                             <CheckBox
+                                IsChecked="{Binding Coverage}"
+                                Margin="0 10 0 0"
+                                ToolTip.Tip="{x:Static r:Resources.Launch_Coverage}"
+                                Content="Coverage reporting">
+                            </CheckBox>
+                        
+                            <CheckBox
                                 IsChecked="{Binding TexelAddressing}"
                                 IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanUseTexelAddressing}}"
                                 Margin="0 10 0 0"

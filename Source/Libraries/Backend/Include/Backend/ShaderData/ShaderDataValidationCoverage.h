@@ -27,12 +27,18 @@
 #pragma once
 
 // Backend
-#include <Schemas/Instrumentation.h>
+#include "ShaderData.h"
 
-/// Collapse operator
-inline SetInstrumentationConfigMessage& operator|=(SetInstrumentationConfigMessage& lhs, const SetInstrumentationConfigMessage& rhs) {
-    lhs.safeGuard |= rhs.safeGuard;
-    lhs.detail |= rhs.detail;
-    lhs.validationCoverage |= rhs.validationCoverage;
-    return lhs;
-}
+// Common
+#include <Common/IComponent.h>
+
+class ShaderDataValidationCoverage : public TComponent<ShaderDataValidationCoverage> {
+public:
+    COMPONENT(ShaderDataValidationCoverage);
+
+    /// Install coverage
+    void Install();
+
+    /// Underlying coverage buffer
+    ShaderDataID validationCoverage;
+};

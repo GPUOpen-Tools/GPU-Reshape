@@ -24,13 +24,20 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#include "Backend/ShaderData/ShaderDataType.h"
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Translation.h>
-#include <algorithm>
+
+// Backend
+#include <Backend/ShaderData/ShaderDataType.h>
+#include <Backend/ShaderData/ShaderDataValidationCoverage.h>
+
+// Vulkan
 #include <vulkan/vulkan_core.h>
+
+// Std
+#include <algorithm>
 
 ShaderDataHost::ShaderDataHost(DeviceDispatchTable *table) : table(table) {
 
@@ -61,6 +68,10 @@ bool ShaderDataHost::Install() {
     // Fill capability table
     capabilityTable.supportsTiledResources = table->physicalDeviceFeatures.features.sparseResidencyBuffer;
     capabilityTable.bufferMaxElementCount = table->physicalDeviceProperties.limits.maxTexelBufferElements;
+
+    // Install coverage support
+    ComRef coverage = registry->AddNew<ShaderDataValidationCoverage>();
+    coverage->Install();
 
     // OK
     return true;

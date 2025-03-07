@@ -24,15 +24,22 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+#include <Backend/ShaderData/ShaderDataValidationCoverage.h>
+#include <Backend/ShaderData/IShaderDataHost.h>
+#include <Backend/ShaderExport.h>
 
-// Backend
-#include <Schemas/Instrumentation.h>
+// Common
+#include <Common/ComRef.h>
+#include <Common/Registry.h>
 
-/// Collapse operator
-inline SetInstrumentationConfigMessage& operator|=(SetInstrumentationConfigMessage& lhs, const SetInstrumentationConfigMessage& rhs) {
-    lhs.safeGuard |= rhs.safeGuard;
-    lhs.detail |= rhs.detail;
-    lhs.validationCoverage |= rhs.validationCoverage;
-    return lhs;
+void ShaderDataValidationCoverage::Install() {
+    ComRef dataHost = registry->Get<IShaderDataHost>();
+    ASSERT(dataHost, "Expected host");
+
+    // Create element per sguid
+    // We only really use one bit, but we dont want to rely on atomics for atomicity
+    validationCoverage = dataHost->CreateBuffer(ShaderDataBufferInfo {
+        .elementCount = 1u << kShaderSGUIDBitCount,
+        .format = Backend::IL::Format::R32UInt
+    }, "ValidationCoverage");
 }

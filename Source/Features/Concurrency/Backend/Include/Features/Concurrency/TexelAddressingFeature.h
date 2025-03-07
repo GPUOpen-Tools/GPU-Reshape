@@ -49,6 +49,7 @@ class IShaderSGUIDHost;
 class TexelMemoryAllocator;
 class ConcurrencyValidationListener;
 class IScheduler;
+class ShaderDataValidationCoverage;
 
 class TexelAddressingConcurrencyFeature final : public IFeature, public IShaderFeature {
 public:
@@ -133,6 +134,9 @@ private:
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
     ComRef<IScheduler> scheduler{nullptr};
+
+    /// Optional, validation coverage
+    ComRef<ShaderDataValidationCoverage> dataValidationCoverage{nullptr};
 
     /// Shader data
     ShaderDataID puidMemoryBaseBufferID{InvalidShaderDataID};

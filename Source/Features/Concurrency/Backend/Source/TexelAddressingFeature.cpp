@@ -39,6 +39,8 @@
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/Scheduler/SchedulerPrimitiveEvent.h>
 #include <Backend/IL/Analysis/StructuralUserAnalysis.h>
+#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Addressing
 #include <Addressing/TexelMemoryAllocator.h>
@@ -95,6 +97,9 @@ bool TexelAddressingConcurrencyFeature::Install() {
     if (!texelAllocator->Install()) {
         return false;
     }
+
+    // Coverage host buffers
+    dataValidationCoverage = registry->Get<ShaderDataValidationCoverage>();
 
 #if CONCURRENCY_ENABLE_VALIDATION
     // Create listener
@@ -164,6 +169,9 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
     // Options
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
     
+    // Get the coverage id, if enabled
+    IL::ID coverageBufferID = IL::GetValidationCoverageBufferID(program, config, dataValidationCoverage);
+
     // Get the data ids
     IL::ID puidMemoryBaseBufferDataID = program.GetShaderDataMap().Get(puidMemoryBaseBufferID)->id;
     IL::ID texelMaskBufferDataID      = program.GetShaderDataMap().Get(texelAllocator->GetTexelBlocksBufferID())->id;
@@ -320,6 +328,9 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
 
         // If untracked, this can never fail
         unsafeCond = pre.And(unsafeCond, pre.Not(isUntracked));
+
+        // If coverage, limit it
+        unsafeCond = IL::ApplyValidationCoverage(pre, coverageBufferID, sguid, unsafeCond);
         
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(unsafeCond, oobBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
@@ -328,6 +339,9 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
         IL::Emitter<> unsafe(program, *oobBlock);
         {
             unsafe.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
+
+            // If coverage, store it
+            IL::StoreValidationCoverage(unsafe, coverageBufferID, sguid);
 
             // Export the message
             ResourceRaceConditionMessage::ShaderExport msg;

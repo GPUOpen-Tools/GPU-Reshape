@@ -29,6 +29,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Translation.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
+#include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 ShaderDataHost::ShaderDataHost(DeviceState *device) :
     device(device),
@@ -67,6 +68,10 @@ bool ShaderDataHost::Install() {
     // Fill capability table
     capabilityTable.supportsTiledResources = (options.TiledResourcesTier != D3D12_TILED_RESOURCES_TIER_NOT_SUPPORTED);
     capabilityTable.bufferMaxElementCount = UINT64_MAX;
+
+    // Install coverage support
+    ComRef coverage = registry->AddNew<ShaderDataValidationCoverage>();
+    coverage->Install();
 
     // OK
     return true;

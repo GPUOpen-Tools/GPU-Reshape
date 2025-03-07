@@ -55,6 +55,8 @@
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/SubmissionContext.h>
 #include <Backend/Scheduler/SchedulerTileMapping.h>
+#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
 #include <Schemas/Features/Initialization.h>
@@ -116,6 +118,9 @@ bool TexelAddressingInitializationFeature::Install() {
     if (!CreateBlitPrograms(programHost) || !CreateCopyPrograms(programHost)) {
         return false;
     }
+
+    // Coverage host buffers
+    dataValidationCoverage = registry->Get<ShaderDataValidationCoverage>();
 
     // OK
     return true;
@@ -208,6 +213,9 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
     // Options
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
     
+    // Get the coverage id, if enabled
+    IL::ID coverageBufferID = IL::GetValidationCoverageBufferID(program, config, dataValidationCoverage);
+
     // Get the data ids
     IL::ID puidMemoryBaseBufferDataID = program.GetShaderDataMap().Get(puidMemoryBaseBufferID)->id;
     IL::ID texelMaskBufferDataID      = program.GetShaderDataMap().Get(texelAllocator->GetTexelBlocksBufferID())->id;
@@ -376,6 +384,9 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
         // If unsafe, this can never fail
         cond = pre.And(cond, pre.Not(unsafeTexelRange));
 
+        // If coverage, limit it
+        cond = IL::ApplyValidationCoverage(pre, coverageBufferID, sguid, cond);
+        
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(cond, mismatchBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
@@ -384,6 +395,9 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
             IL::Emitter<> mismatch(program, *mismatchBlock);
             mismatch.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
             
+            // If coverage, store it
+            IL::StoreValidationCoverage(mismatch, coverageBufferID, sguid);
+
             // Setup message
             UninitializedResourceMessage::ShaderExport msg;
             msg.sguid = mismatch.UInt32(sguid);

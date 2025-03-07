@@ -49,6 +49,7 @@
 // Forward declarations
 class IShaderSGUIDHost;
 class SRBMaskingShaderProgram;
+class ShaderDataValidationCoverage;
 
 class ResourceAddressingInitializationFeature final : public IFeature, public IShaderFeature {
 public:
@@ -101,6 +102,9 @@ private:
     /// Hosts
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
+
+    /// Optional, validation coverage
+    ComRef<ShaderDataValidationCoverage> dataValidationCoverage{nullptr};
 
     /// Shader data
     ShaderDataID initializationMaskBufferID{InvalidShaderDataID};

@@ -33,6 +33,8 @@
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
+#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
 #include <Schemas/Features/ExportStability.h>
@@ -59,6 +61,9 @@ bool ExportStabilityFeature::Install() {
     // Optional sguid host
     sguidHost = registry->Get<IShaderSGUIDHost>();
 
+    // Coverage host buffers
+    dataValidationCoverage = registry->Get<ShaderDataValidationCoverage>();
+
     // OK
     return true;
 }
@@ -78,6 +83,9 @@ void ExportStabilityFeature::CollectMessages(IMessageStorage *storage) {
 void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
+
+    // Get the coverage id, if enabled
+    IL::ID coverageBufferID = IL::GetValidationCoverageBufferID(program, config, dataValidationCoverage);
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
@@ -159,6 +167,9 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
         IL::Emitter<> oob(program, *context.function.GetBasicBlocks().AllocBlock());
         oob.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
 
+        // If coverage, store it
+        IL::StoreValidationCoverage(oob, coverageBufferID, sguid);
+
         // Setup message
         UnstableExportMessage::ShaderExport msg;
         msg.sguid = oob.UInt32(sguid);
@@ -176,8 +187,14 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
         // Branch back
         oob.Branch(resumeBlock);
 
+        // Check if Inf or NaN
+        IL::ID cond = pre.BitOr(isInf, isNaN);
+
+        // If coverage, limit it
+        cond = IL::ApplyValidationCoverage(pre, coverageBufferID, sguid, cond);
+
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(pre.BitOr(isInf, isNaN), oob.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        pre.BranchConditional(cond, oob.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
         return instr;
     });
 }
