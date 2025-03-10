@@ -51,6 +51,7 @@ add_library(
     Source/IL/Function.cpp
     Source/IL/BasicBlock.cpp
     Source/Diagnostic/DiagnosticFatal.cpp
+    Source/ShaderData/ShaderDataValidationCoverage.cpp
 
     # Generated schemas
     ${GeneratedLibSchemaCPP}
