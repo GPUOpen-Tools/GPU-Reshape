@@ -157,6 +157,7 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlo
 
         // Out of indices
         else {
+            device->logBuffer.Add("DX12", LogSeverity::Error, "Exhausted shader SGUID allocation indices, source association may fail");
             return InvalidShaderSGUID;
         }
 

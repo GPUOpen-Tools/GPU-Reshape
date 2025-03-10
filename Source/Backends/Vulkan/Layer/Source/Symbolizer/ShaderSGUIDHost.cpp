@@ -30,6 +30,7 @@
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Compiler/SpvSourceMap.h>
 #include <Backends/Vulkan/Compiler/SpvCodeOffsetTraceback.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 
 // Backend
 #include <Backend/IL/Program.h>
@@ -149,6 +150,7 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlo
 
         // Out of indices
         else {
+            table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, "Exhausted shader SGUID allocation indices, source association may fail");
             return InvalidShaderSGUID;
         }
 
