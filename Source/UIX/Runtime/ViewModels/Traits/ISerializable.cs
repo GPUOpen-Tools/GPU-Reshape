@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,25 +24,47 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using Studio.App;
+using System.Collections.Generic;
 
-namespace Studio
+namespace Runtime.ViewModels.Traits;
+
+public interface ISerializable
 {
-    class Program
-    {
-        [STAThread]
-        private static void Main(string[] args)
-        {
-            // Any arguments?
-            if (args.Length > 0)
-            {
-                CliApp.Build(args);
-                return;
-            }
-            
-            // Otherwise assume desktop
-            DesktopApp.Build();
-        }
-    }
+     /// <summary>
+     /// Serialize this object
+     /// Must return either of SerializationList, SerializationMap
+     /// </summary>
+     object Serialize();
+}
+
+/// <summary>
+/// Standard serialization list
+/// </summary>
+public class SerializationList : List<object?>
+{
+     public SerializationList()
+     {
+          
+     }
+     
+     public SerializationList(IEnumerable<object?> enumerable) : base(enumerable)
+     {
+          
+     }
+}
+
+/// <summary>
+/// Standard serialization map
+/// </summary>
+public class SerializationMap : Dictionary<string, object?>
+{
+     public SerializationMap()
+     {
+          
+     }
+
+     public SerializationMap(IEnumerable<KeyValuePair<string, object?>> enumerable) : base(enumerable)
+     {
+          
+     }
 }

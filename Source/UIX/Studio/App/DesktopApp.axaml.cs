@@ -31,18 +31,21 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.ReactiveUI;
 using Avalonia.Styling;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.Themes;
+using Projektanker.Icons.Avalonia;
+using Projektanker.Icons.Avalonia.FontAwesome;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels;
 using Studio.Views;
 
-namespace Studio
+namespace Studio.App
 {
-    public class App : Application
+    public class DesktopApp : Application
     {
         /// <summary>
         /// Default dark style
@@ -55,6 +58,21 @@ namespace Studio
             }
         };
 
+        public static void Build()
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(Array.Empty<string>());
+        }
+        
+        private static AppBuilder BuildAvaloniaApp()
+        {
+            IconProvider.Current.Register<FontAwesomeIconProvider>();
+            
+            return AppBuilder.Configure<DesktopApp>()
+                .UseReactiveUI()
+                .UsePlatformDetect()
+                .LogToTrace();
+        }
+
         public override void Initialize()
         {
             Styles.Insert(0, DefaultStyle);
@@ -63,8 +81,8 @@ namespace Studio
             Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en");
 
             // Install global services
-            InstallServicesAndLoadPlugins();
-
+            _serviceProvider.Install();
+            
             // Load app
             AvaloniaXamlLoader.Load(this);
 
@@ -84,60 +102,6 @@ namespace Studio
                                 .HasRuleForLineSeries(lineSeries => { lineSeries.LineSmoothness = 0.65; })
                                 .HasRuleForBarSeries(barSeries => { })
                     ));
-        }
-
-        private void InstallServicesAndLoadPlugins()
-        {
-            // Create shared registry
-            ServiceRegistry.Install<DefaultServiceRegistry>();
-            
-            // Attempt to find all plugins of relevance
-            _pluginList = _pluginResolver.FindPlugins("uix", PluginResolveFlag.ContinueOnFailure);
-            
-            // Cold suspension service
-            ServiceRegistry.Add<ISuspensionService>(new SuspensionService(System.IO.Path.Combine("Intermediate", "Settings", "Suspension.json")));
-            
-            // Locator
-            ServiceRegistry.Add<ILocatorService>(new LocatorService());
-            
-            // Logging host
-            ServiceRegistry.Add<ILoggingService>(new LoggingService());
-
-            // Hosts all menu objects
-            ServiceRegistry.Add<IWindowService>(new WindowService());
-
-            // Hosts all live workspaces
-            ServiceRegistry.Add<IWorkspaceService>(new WorkspaceService());
-            
-            // Provides general network diagnostics
-            ServiceRegistry.Add(new NetworkDiagnosticService());
-
-            // Initiates the host resolver if not already up and running
-            ServiceRegistry.Add<IHostResolverService>(new HostResolverService());
-            
-            // Local discoverability
-            ServiceRegistry.Add<IBackendDiscoveryService>(new BackendDiscoveryService());
-
-            // Hosts all status objects
-            ServiceRegistry.Add<IStatusService>(new StatusService());
-
-            // Hosts all context objects
-            ServiceRegistry.Add<IContextMenuService>(new ContextMenuService());
-
-            // Hosts all menu objects
-            ServiceRegistry.Add<IMenuService>(new MenuService());
-
-            // Hosts all settings objects
-            ServiceRegistry.Add<ISettingsService>(new SettingsService());
-        }
-
-        private void InstallPlugins()
-        {
-            // Install all plugins
-            if (_pluginList != null)
-            {
-                _pluginResolver.InstallPlugins(_pluginList, PluginResolveFlag.ContinueOnFailure);
-            }
         }
         
         public override void OnFrameworkInitializationCompleted()
@@ -185,19 +149,14 @@ namespace Studio
             }
             
             // Install all user plugins
-            InstallPlugins();
+            _serviceProvider.InstallPlugins();
 
             base.OnFrameworkInitializationCompleted();
         }
 
         /// <summary>
-        /// Shared plugin resolver
+        /// Internal service provider
         /// </summary>
-        private PluginResolver _pluginResolver = new();
-
-        /// <summary>
-        /// Resolved plugin list
-        /// </summary>
-        private PluginList? _pluginList;
+        private ServiceProvider _serviceProvider = new();
     }
 }

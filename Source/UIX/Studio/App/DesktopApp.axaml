@@ -33,7 +33,7 @@
              xmlns:idc="using:Dock.Avalonia.Controls"
              xmlns:controls="using:Studio.Views.Controls"
              xmlns:core="using:Dock.Model.Core"
-             x:Class="Studio.App"
+             x:Class="Studio.App.DesktopApp"
              RequestedThemeVariant="Dark">
     <Application.Styles>
         <SimpleTheme />

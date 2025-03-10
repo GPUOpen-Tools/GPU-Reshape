@@ -503,6 +503,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Start sync thread
     table->syncPointActionThread.Start(std::bind(DeviceSyncPoint, table));
 
+    // Inform the environment of post installs, handles headless modes
+    table->parent->environment.PostInstall(table->uid);
+
     // OK
     return VK_SUCCESS;
 }

@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,25 +24,54 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using Studio.App;
+#pragma once
 
-namespace Studio
-{
-    class Program
-    {
-        [STAThread]
-        private static void Main(string[] args)
-        {
-            // Any arguments?
-            if (args.Length > 0)
-            {
-                CliApp.Build(args);
-                return;
+// Bridge
+#include <Bridge/IBridgeListener.h>
+
+// Message
+#include <Message/MessageStream.h>
+
+// Schemas
+#include <Schemas/Config.h>
+
+// Common
+#include <Common/IComponent.h>
+
+// Std
+#include <mutex>
+#include <set>
+
+class EnvironmentHeadlessListener : public TComponent<EnvironmentHeadlessListener>, public IBridgeListener {
+public:
+    COMPONENT(EnvironmentHeadlessListener);
+
+    /// Handle all streams
+    void Handle(const MessageStream *streams, uint32_t count) override {
+        std::lock_guard guard(lock);
+        
+        for (uint32_t i = 0; i < count; i++) {
+            ConstMessageStreamView<> view(streams[i]);
+
+            // Mark all specified as signalled
+            for (auto it = view.GetIterator(); it; ++it) {
+                if (auto* readyMessage = it.Cast<HeadlessWorkspaceReadyMessage>()) {
+                    signalledDevices.insert(readyMessage->acquiredDeviceUid);
+                }
             }
-            
-            // Otherwise assume desktop
-            DesktopApp.Build();
         }
     }
-}
+
+    /// Check if a device has been signalled
+    bool IsSignalled(uint32_t deviceUid) {
+        std::lock_guard guard(lock);
+        return signalledDevices.contains(deviceUid);
+    }
+
+private:
+    /// Shared lock
+    std::mutex lock;
+
+    /// All signalled devices
+    std::set<uint32_t> signalledDevices;
+};

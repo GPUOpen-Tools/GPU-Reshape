@@ -27,14 +27,17 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using DynamicData.Binding;
 using ReactiveUI;
+using Runtime.ViewModels.IL;
 using Runtime.ViewModels.Shader;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class ShaderViewModel : ReactiveObject
+    public class ShaderViewModel : ReactiveObject, ISerializable
     {
         /// <summary>
         /// Shader GUID
@@ -115,6 +118,27 @@ namespace Studio.ViewModels.Workspace.Objects
         {
             _reducedValidationObjects.TryGetValue(key, out ValidationObject? validationObject);
             return validationObject;
+        }
+
+        /// <summary>
+        /// Serialize this object
+        /// </summary>
+        public object Serialize()
+        {
+            SerializationMap map = new()
+            {
+                { "GUID", GUID },
+                { "Filename", Filename },
+                { "AsyncStatus", Enum.GetName(AsyncStatus) },
+                { "Files", FileViewModels.Select(x => x.Serialize()).ToArray() }
+            };
+
+            if (Program != null)
+            {
+                map.Add("Program", new Assembler(Program).Assemble());
+            }
+
+            return map;
         }
 
         /// <summary>

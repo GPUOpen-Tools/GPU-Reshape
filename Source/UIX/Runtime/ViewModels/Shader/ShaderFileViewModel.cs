@@ -25,10 +25,11 @@
 // 
 
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 
 namespace Runtime.ViewModels.Shader
 {
-    public class ShaderFileViewModel : ReactiveObject
+    public class ShaderFileViewModel : ReactiveObject, ISerializable
     {
         /// <summary>
         /// Contents of this shader
@@ -52,6 +53,19 @@ namespace Runtime.ViewModels.Shader
         /// Contents of this shader
         /// </summary>
         public uint UID { get; set; }
+
+        /// <summary>
+        /// Serialize this object
+        /// </summary>
+        public object Serialize()
+        {
+            return new SerializationMap()
+            {
+                { "Filename", Filename },
+                { "Contents", Contents },
+                { "UID", UID }
+            };
+        }
         
         /// <summary>
         /// Internal contents

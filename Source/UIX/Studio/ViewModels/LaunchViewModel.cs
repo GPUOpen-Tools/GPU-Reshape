@@ -66,6 +66,11 @@ namespace Studio.ViewModels
         public ICommand Settings { get; }
 
         /// <summary>
+        /// The launched process information
+        /// </summary>
+        public DiscoveryProcessInfo DiscoveryProcessInfo => _discoveryProcessInfo;
+
+        /// <summary>
         /// Current connection string
         /// </summary>
         [DataMember]
@@ -566,7 +571,11 @@ namespace Studio.ViewModels
             AppendGlobalConfig(view);
             
             // Start process
-            service.StartBootstrappedProcess(processInfo, view.Storage, ref _discoveryProcessInfo);
+            if (!service.StartBootstrappedProcess(processInfo, view.Storage, ref _discoveryProcessInfo))
+            {
+                ConnectionStatus = ConnectionStatus.FailedLaunch;
+                return;
+            }
             
             // Start connection
             _connectionViewModel.Connect("127.0.0.1", null);
