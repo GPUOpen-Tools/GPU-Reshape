@@ -29,6 +29,6 @@
 
 <schema>
     <shader-export name="LoopTermination">
-        <field name="padding" type="uint32" bits="16"/>
+        <field name="padding" type="uint32" bits="1"/>
     </shader-export>
 </schema>

@@ -38,9 +38,9 @@ using ShaderSGUID = uint32_t;
 /// Shader export counter type
 using ShaderExportCounter = uint32_t;
 
+/// Total amount of bits for the source guid
+static constexpr uint32_t kShaderSGUIDBitCount = 20u;
+
 /// Invalid values
 static constexpr ShaderExportID InvalidShaderExportID = ~0u;
-static constexpr ShaderSGUID InvalidShaderSGUID = 0xFFFF;
-
-/// Total amount of bits for the source guid
-static constexpr uint32_t kShaderSGUIDBitCount = 16u;
+static constexpr ShaderSGUID InvalidShaderSGUID = (1ull << kShaderSGUIDBitCount) - 1;
