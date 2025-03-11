@@ -29,7 +29,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Xml;
 
 namespace Studio.Plugin
@@ -46,7 +45,7 @@ namespace Studio.Plugin
         {
             List<PluginEntry> entries = new();
 
-            foreach (string file in Directory.GetFiles("Plugins", "*.xml"))
+            foreach (string file in Directory.GetFiles(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "Plugins"), "*.xml"))
             {
                 // Load xml from path
                 XmlDocument doc = new();
@@ -139,16 +138,17 @@ namespace Studio.Plugin
                 Mode = PluginMode.Loaded
             };
 
-            string path = name + ".dll";
+            string path         = name + ".dll";
+            string assemblyPath = Path.Join(AppDomain.CurrentDomain.BaseDirectory, path);
 
             // Must exist
-            if (!System.IO.File.Exists(path))
+            if (!File.Exists(assemblyPath))
                 return null;
 
             // Attempt to load
             try
             {
-                state.Assembly = Assembly.LoadFrom(path);
+                state.Assembly = Assembly.LoadFrom(assemblyPath);
             }
             catch
             {
