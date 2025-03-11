@@ -40,6 +40,7 @@ namespace Studio.Models.IL
         Vector,
         Struct,
         Null,
-        Unexposed
+        Unexposed,
+        Unresolved
     }
 }

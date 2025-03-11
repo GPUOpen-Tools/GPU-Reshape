@@ -123,6 +123,12 @@ namespace Studio.Models.IL
                     program.SymbolicLookup.Add((uint)-program.Constants[i].ID, program.Constants[i]);
                 }
             }
+            
+            // Resolve all pending constants
+            foreach (Constant constant in program.Constants)
+            {
+                ResolveConstant(constant, program);
+            }
 
             // Parse all variables
             for (int i = 0; i < program.Variables.Length; i++)
@@ -136,6 +142,52 @@ namespace Studio.Models.IL
             {
                 program.Functions[i] = ParseFunction(node.Functions[i], program);
                 program.Lookup.Add(program.Functions[i].ID, program.Functions[i]);
+            }
+        }
+
+        /// <summary>
+        /// Resolve a pending constant
+        /// </summary>
+        private void ResolveConstant(Constant constant, Program program)
+        {
+            switch (constant.Kind)
+            {
+                case ConstantKind.Array:
+                {
+                    var typed = (ArrayConstant)constant;
+                    for (int i = 0; i < typed.Elements.Length; i++)
+                    {
+                        if (typed.Elements[i].Kind == ConstantKind.Unresolved)
+                        {
+                            typed.Elements[i] = (Constant)program.Lookup[(uint)typed.Elements[i].ID];
+                        }
+                    }
+                    break;
+                }
+                case ConstantKind.Vector:
+                {
+                    var typed = (VectorConstant)constant;
+                    for (int i = 0; i < typed.Elements.Length; i++)
+                    {
+                        if (typed.Elements[i].Kind == ConstantKind.Unresolved)
+                        {
+                            typed.Elements[i] = (Constant)program.Lookup[(uint)typed.Elements[i].ID];
+                        }
+                    }
+                    break;
+                }
+                case ConstantKind.Struct:
+                {
+                    var typed = (StructConstant)constant;
+                    for (int i = 0; i < typed.Members.Length; i++)
+                    {
+                        if (typed.Members[i].Kind == ConstantKind.Unresolved)
+                        {
+                            typed.Members[i] = (Constant)program.Lookup[(uint)typed.Members[i].ID];
+                        }
+                    }
+                    break;
+                }
             }
         }
 
@@ -388,7 +440,16 @@ namespace Studio.Models.IL
         {
             if (signed >= 0)
             {
-                return (Constant)program.Lookup[(uint)signed];
+                if (program.Lookup.TryGetValue((uint)signed, out object? constant))
+                {
+                    return (Constant)constant;
+                }
+
+                return new Constant
+                {
+                    ID = signed,
+                    Kind = ConstantKind.Unresolved
+                };
             }
             else
             {
