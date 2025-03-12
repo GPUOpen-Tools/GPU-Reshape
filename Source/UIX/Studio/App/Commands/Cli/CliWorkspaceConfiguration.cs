@@ -1,4 +1,30 @@
-﻿using System;
+﻿// 
+// The MIT License (MIT)
+// 
+// Copyright (c) 2024 Advanced Micro Devices, Inc.,
+// Fatalist Development AB (Avalanche Studio Group),
+// and Miguel Petersen.
+// 
+// All Rights Reserved.
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy 
+// of this software and associated documentation files (the "Software"), to deal 
+// in the Software without restriction, including without limitation the rights 
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+// of the Software, and to permit persons to whom the Software is furnished to do so, 
+// subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all 
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+// PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+// FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+// ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// 
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using DynamicData;
@@ -39,7 +65,7 @@ public class CliWorkspaceConfiguration : IWorkspaceConfigurationViewModel
         // Match all enabled features
         IEnumerable<string>? features = workspaceViewModel.PropertyCollection
             .GetProperty<IFeatureCollectionViewModel>()?.Features
-            .Select(x => GetCliName(x.Name))
+            .Select(x => x.Name)
             .Where(x => FeatureNames.Any(y => x.Equals(y, StringComparison.InvariantCultureIgnoreCase)));
 
         return features?.NaturalJoin() ?? "None";
@@ -63,9 +89,9 @@ public class CliWorkspaceConfiguration : IWorkspaceConfigurationViewModel
         foreach (string featureName in FeatureNames)
         {
             // Find matching service
-            if (services?.FirstOrDefault(x => GetCliName(x.Name).Equals(featureName, StringComparison.InvariantCultureIgnoreCase)) is not { } service)
+            if (services?.FirstOrDefault(x => x.Name.Equals(featureName, StringComparison.InvariantCultureIgnoreCase)) is not { } service)
             {
-                Logging.Error($"Failed to find instrumentation service {featureName}, available feature set: {services?.Select(x => GetCliName(x.Name)).NaturalJoin() ?? "None"}");
+                Logging.Error($"Failed to find instrumentation service {featureName}, available feature set: {services?.Select(x => x.Name).NaturalJoin() ?? "None"}");
                 continue;
             }
 
@@ -75,13 +101,5 @@ public class CliWorkspaceConfiguration : IWorkspaceConfigurationViewModel
                 propertyViewModel.Properties.Add(instrumentationObjectProperty);
             }
         }
-    }
-
-    /// <summary>
-    /// Get the CLI-friendly name of a feature
-    /// </summary>
-    private string GetCliName(string name)
-    {
-        return new string(name.Where(x => !char.IsWhiteSpace(x)).ToArray());
     }
 }

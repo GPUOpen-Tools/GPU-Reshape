@@ -24,48 +24,70 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.CommandLine;
-using System.CommandLine.Invocation;
-using System.Threading.Tasks;
+using System;
+using System.IO;
+using Newtonsoft.Json;
 
-namespace Studio.App.Commands;
+namespace Studio.App.Commands.Cli;
 
-public interface IBaseCommand : ICommandHandler
+public class CliUserWorkspaceConfig
 {
     /// <summary>
-    /// Stub handler
+    /// Enables detailed reporting
     /// </summary>
-    int ICommandHandler.Invoke(InvocationContext context)
-    {
-        throw new System.NotSupportedException();
-    }
-    
+    public bool Detail { get; set; } = false;
+
     /// <summary>
-    /// Stub async handler
+    /// Enabled coverage reporting, limits streaming per message
     /// </summary>
-    Task<int> ICommandHandler.InvokeAsync(InvocationContext context)
-    {
-        throw new System.NotSupportedException();
-    }
+    public bool Coverage { get; set; } = false;
 }
 
-public static class CommandExtensions
+public class CliUserWorkspace
 {
     /// <summary>
-    /// Create a new command
+    /// Workspace configuration
     /// </summary>
-    /// <param name="handler">default handler</param>
-    /// <param name="options">all given options</param>
-    /// <returns></returns>
-    public static Command Make(this Command self, ICommandHandler handler, Option[] options)
+    public CliUserWorkspaceConfig Config { get; set; } = new();
+
+    /// <summary>
+    /// All enabled features
+    /// </summary>
+    public string[] Features = Array.Empty<string>();
+    
+    /// <summary>
+    /// Deserialize from string
+    /// </summary>
+    public static CliUserWorkspace? Deserialize(string contents)
     {
-        self.Handler = handler;
-        
-        foreach (Option option in options)
+        // Just try to load it, assume invalid if failed
+        try
         {
-            self.AddOption(option);
+            CliUserWorkspace workspace = new();
+            JsonConvert.PopulateObject(contents, workspace);
+            return workspace;
         }
-        
-        return self;
+        catch
+        {
+            Logging.Error("Failed to deserialize user workspace data");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Deserialize from file
+    /// </summary>
+    public static CliUserWorkspace? DeserializeFile(string path)
+    {
+        // Just try to load it, assume invalid if failed
+        try
+        {
+            return Deserialize(File.ReadAllText(path));
+        }
+        catch
+        {
+            Logging.Error("Failed to read user workspace file");
+            return null;
+        }
     }
 }

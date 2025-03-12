@@ -53,6 +53,10 @@ namespace Studio.Extensions
 
             // Flatten the array
             T[] array = source.ToArray();
+            if (array.Length == 0)
+            {
+                return string.Empty;
+            }
 
             // Endpoints
             T first = array.First();

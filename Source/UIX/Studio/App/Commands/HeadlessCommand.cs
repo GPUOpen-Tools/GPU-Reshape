@@ -1,4 +1,30 @@
-﻿using System;
+﻿// 
+// The MIT License (MIT)
+// 
+// Copyright (c) 2024 Advanced Micro Devices, Inc.,
+// Fatalist Development AB (Avalanche Studio Group),
+// and Miguel Petersen.
+// 
+// All Rights Reserved.
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy 
+// of this software and associated documentation files (the "Software"), to deal 
+// in the Software without restriction, including without limitation the rights 
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+// of the Software, and to permit persons to whom the Software is furnished to do so, 
+// subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all 
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+// PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+// FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+// ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// 
+
+using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -35,9 +61,7 @@ public class HeadlessCommand : IBaseCommand
             App,
             WorkingDirectory,
             OutReport,
-            Features,
-            Detail,
-            Coverage,
+            Workspace,
             Timeout
         });
     }
@@ -268,12 +292,18 @@ public class HeadlessCommand : IBaseCommand
         // Get arguments
         string[] appAndArguments = context.ParseResult.GetValueForOption(App)!;
 
+        // Try to load workspace
+        if (CliUserWorkspace.DeserializeFile(context.ParseResult.GetValueForOption(Workspace)!) is not {} userWorkspace)
+        {
+            return null;
+        }
+
         // Select configuration
         _workspaceConfiguration = new CliWorkspaceConfiguration()
         {
-            FeatureNames = context.ParseResult.GetValueForOption(Features) ?? Array.Empty<string>()
+            FeatureNames = userWorkspace.Features
         };
-        
+
         // Setup launch
         _launchViewModel = new()
         {
@@ -283,8 +313,8 @@ public class HeadlessCommand : IBaseCommand
             SelectedConfiguration = _workspaceConfiguration,
             AttachAllDevices = true,
             CaptureChildProcesses = true,
-            Coverage = context.ParseResult.GetValueForOption(Coverage),
-            Detail = context.ParseResult.GetValueForOption(Detail)
+            Coverage = userWorkspace.Config.Coverage,
+            Detail = userWorkspace.Config.Detail
             // TODO: Wait for connection tag
         };
 
@@ -367,28 +397,17 @@ public class HeadlessCommand : IBaseCommand
     };
     
     /// <summary>
-    /// Enabled features option
+    /// Workspace file option
     /// </summary>
-    private static readonly Option<string[]> Features = new("-features", "The feature set to be enabled")
+    private static readonly Option<string> Workspace = new("-workspace", "The workspace path (json)")
     {
-        IsRequired = true,
-        AllowMultipleArgumentsPerToken = true
+        IsRequired = true
     };
-
+    
     /// <summary>
     /// Working directory option
     /// </summary>
     private static readonly Option<string> WorkingDirectory = new("-wd", "The app working directory");
-    
-    /// <summary>
-    /// Detail option
-    /// </summary>
-    private static readonly Option<bool> Detail = new("-detail", "Enables detailed reporting");
-    
-    /// <summary>
-    /// Coverage option
-    /// </summary>
-    private static readonly Option<bool> Coverage = new("-coverage", "Enables coverage reporting");
     
     /// <summary>
     /// Timeout option
