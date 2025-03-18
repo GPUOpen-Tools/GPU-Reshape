@@ -51,6 +51,11 @@ namespace Studio.ViewModels.Shader
         /// The owning navigation context
         /// </summary>
         public INavigationContext? NavigationContext { get; set; }
+
+        /// <summary>
+        /// The target shader
+        /// </summary>
+        public Workspace.Objects.ShaderViewModel? ShaderViewModel { get; set; }
         
         /// <summary>
         /// Given descriptor
@@ -172,11 +177,19 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
-        /// Transform a shader location line
+        /// Transform a shader location
         /// </summary>
         public int TransformLine(ShaderLocation shaderLocation)
         {
             return shaderLocation.Line;
+        }
+
+        /// <summary>
+        /// Transform a shader location line
+        /// </summary>
+        public AssembledInstructionMapping TransformInstruction(int line)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>

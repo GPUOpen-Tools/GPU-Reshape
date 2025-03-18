@@ -31,8 +31,11 @@ enum class AllocationResidency {
     /// Resident on GPU memory
     Device,
 
-    /// Resident on host (CPU) memory
-    Host,
+    /// Resident on host, used for CPU -> GPU
+    HostUpload,
+
+    /// Resident on host, used for GPU -> CPU
+    HostReadback,
 
     /// Visible to the host and device
     HostVisible

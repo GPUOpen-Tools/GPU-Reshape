@@ -124,6 +124,14 @@ struct ClearBufferCommand : public TCommand<ClearBufferCommand, CommandType::Cle
     uint32_t value;
 };
 
+struct CopyBufferCommand : public TCommand<CopyBufferCommand, CommandType::CopyBuffer> {
+    ShaderDataID source;
+    size_t sourceOffset;
+    ShaderDataID dest;
+    size_t destOffset;
+    uint64_t byteCount;
+};
+
 struct DiscardCommand : public TCommand<DiscardCommand, CommandType::Discard> {
     uint32_t puid;
 };

@@ -136,11 +136,11 @@ static void CreateEventRemappingTable(DeviceState* state) {
 
     // Pool feature count
     uint32_t dataCount;
-    state->shaderDataHost->Enumerate(&dataCount, nullptr, ShaderDataType::Event);
+    state->shaderDataHost->EnumerateShader(&dataCount, nullptr, ShaderDataType::Event);
 
     // Pool features
     data.resize(dataCount);
-    state->shaderDataHost->Enumerate(&dataCount, data.data(), ShaderDataType::Event);
+    state->shaderDataHost->EnumerateShader(&dataCount, data.data(), ShaderDataType::Event);
 
     // Current offset
     uint32_t offset = 0;
@@ -875,6 +875,11 @@ void GlobalDeviceDetour::Uninstall() {
 }
 
 void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
+    // Invoke feature tables
+    for (const FeatureHookTable& table : device->featureHookTables) {
+        table.syncPoint.TryInvoke();
+    }
+    
     // Commit all logging to bridge
     device->logBuffer.Commit(device->bridge.GetUnsafe());
     

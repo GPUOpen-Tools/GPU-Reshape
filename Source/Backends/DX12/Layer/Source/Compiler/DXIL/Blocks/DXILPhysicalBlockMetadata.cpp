@@ -216,6 +216,43 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
                 entryPoint.id = program.GetIdentifierMap().AllocID();
                 program.SetEntryPoint(entryPoint.id);
 
+                // Translate kernel type
+                IL::KernelType kernelType = IL::KernelType::None;
+                switch (shadingModel._class) {
+                    case DXILShadingModelClass::CS:
+                        kernelType = IL::KernelType::Compute;
+                        break;
+                    case DXILShadingModelClass::VS:
+                        kernelType = IL::KernelType::Vertex;
+                        break;
+                    case DXILShadingModelClass::PS:
+                        kernelType = IL::KernelType::Pixel;
+                        break;
+                    case DXILShadingModelClass::GS:
+                        kernelType = IL::KernelType::Geometry;
+                        break;
+                    case DXILShadingModelClass::HS:
+                        kernelType = IL::KernelType::Hull;
+                        break;
+                    case DXILShadingModelClass::DS:
+                        kernelType = IL::KernelType::Domain;
+                        break;
+                    case DXILShadingModelClass::AS:
+                        kernelType = IL::KernelType::Amplification;
+                        break;
+                    case DXILShadingModelClass::MS:
+                        kernelType = IL::KernelType::Mesh;
+                        break;
+                    case DXILShadingModelClass::Lib:
+                        kernelType = IL::KernelType::Lib;
+                        break;
+                }
+
+                // Add kernel type md
+                program.GetMetadataMap().AddMetadata(entryPoint.id, IL::KernelTypeMetadata {
+                    .type = kernelType
+                });
+
                 // Extended metadata kv pairs?
                 if (list.Op(4)) {
                     const LLVMRecord &kvRecord = block->records[list.ops[4] - 1];

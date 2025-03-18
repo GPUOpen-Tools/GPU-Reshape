@@ -279,7 +279,7 @@ private:
 
         // Allocate buffer data on host, let the drivers handle page swapping
         DescriptorDataSegmentEntry segmentEntry;
-        segmentEntry.allocation = allocator->Allocate(desc, AllocationResidency::Host);
+        segmentEntry.allocation = allocator->Allocate(desc, AllocationResidency::HostUpload);
         SetChunk(segmentEntry);
 
 #ifndef NDEBUG

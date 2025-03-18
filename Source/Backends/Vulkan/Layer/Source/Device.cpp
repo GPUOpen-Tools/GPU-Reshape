@@ -155,11 +155,11 @@ static void CreateEventRemappingTable(DeviceDispatchTable* table) {
 
     // Pool feature count
     uint32_t dataCount;
-    table->dataHost->Enumerate(&dataCount, nullptr, ShaderDataType::Event);
+    table->dataHost->EnumerateShader(&dataCount, nullptr, ShaderDataType::Event);
 
     // Pool features
     data.resize(dataCount);
-    table->dataHost->Enumerate(&dataCount, data.data(), ShaderDataType::Event);
+    table->dataHost->EnumerateShader(&dataCount, data.data(), ShaderDataType::Event);
 
     // Current offset
     uint32_t offset = 0;
@@ -552,6 +552,11 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 }
 
 void BridgeDeviceSyncPoint(DeviceDispatchTable *table, ShaderExportQueueState* queueState) {
+    // Invoke feature tables
+    for (const FeatureHookTable& featureTable : table->featureHookTables) {
+        featureTable.syncPoint.TryInvoke();
+    }
+
     // Commit all logging to bridge
     table->parent->logBuffer.Commit(table->bridge.GetUnsafe());
     

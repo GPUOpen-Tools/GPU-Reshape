@@ -2429,6 +2429,7 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
     }
     
     out.Line() << "\"OpCode\": " << static_cast<uint32_t>(instr->opCode) << ",";
+    out.Line() << "\"CodeOffset\": " << static_cast<uint32_t>(instr->source.codeOffset) << ",";
     
     if (const Backend::IL::Type* type = program.GetTypeMap().GetType(instr->result)) {
         out.Line() << "\"Type\": " << type->id << ",";

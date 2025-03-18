@@ -129,6 +129,9 @@ namespace Studio
 
             // Hosts all settings objects
             ServiceRegistry.Add<ISettingsService>(new SettingsService());
+
+            // Hosts all settings objects
+            ServiceRegistry.Add<IEditorService>(new EditorService());
         }
 
         private void InstallPlugins()

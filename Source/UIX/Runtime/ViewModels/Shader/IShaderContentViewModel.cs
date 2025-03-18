@@ -24,31 +24,65 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.Models.Workspace.Objects;
+using System.Windows.Input;
+using Avalonia.Media;
+using Runtime.ViewModels.Traits;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader
 {
-    public interface ITextualShaderContentViewModel : IShaderContentViewModel
+    public interface IShaderContentViewModel
     {
         /// <summary>
-        /// The current selected object
+        /// The owning navigation context
         /// </summary>
-        public ValidationObject? SelectedValidationObject { get; set; }
+        public INavigationContext? NavigationContext { get; set; }
         
         /// <summary>
-        /// Is the overlay visible?
+        /// Given creation descriptor
         /// </summary>
-        public bool IsOverlayVisible();
+        public ShaderDescriptor? Descriptor { set; }
         
         /// <summary>
-        /// Is a validation object visible?
+        /// Content icon
         /// </summary>
-        public bool IsObjectVisible(ValidationObject validationObject);
+        public StreamGeometry? Icon { get; set; }
+        
+        /// <summary>
+        /// Workspace within this overview
+        /// </summary>
+        public IPropertyViewModel? PropertyCollection { get; set; }
 
         /// <summary>
-        /// Transform a shader location line
+        /// Shader view model of the content
         /// </summary>
-        public int TransformLine(ShaderLocation shaderLocation);
+        public ShaderViewModel? ShaderViewModel { get; set; }
+
+        /// <summary>
+        /// Selection command
+        /// </summary>
+        public ICommand? OnSelected { get; }
+        
+        /// <summary>
+        /// Is this model active?
+        /// </summary>
+        public bool IsActive { get; set; }
+        
+        /// <summary>
+        /// Tooling tip
+        /// </summary>
+        public string? ToolTip { get; }
+        
+        /// <summary>
+        /// Startup navigation requests
+        /// </summary>
+        public NavigationLocation? NavigationLocation { get; set; }
+
+        /// <summary>
+        /// Underlying object
+        /// </summary>
+        public Workspace.Objects.ShaderViewModel? Object { get; set; }
     }
 }

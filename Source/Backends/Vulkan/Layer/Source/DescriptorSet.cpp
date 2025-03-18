@@ -505,7 +505,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
 
         // Get number of events
         uint32_t eventCount{0};
-        table->dataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
+        table->dataHost->EnumerateShader(&eventCount, nullptr, ShaderDataType::Event);
 
         // To length
         dataPushConstantLength += eventCount * sizeof(uint32_t);

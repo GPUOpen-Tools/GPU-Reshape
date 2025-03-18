@@ -163,7 +163,7 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
 
         // Get number of resources
         uint32_t resourceCount{0};
-        state->shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
+        state->shaderDataHost->EnumerateShader(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
 
         // Set base register for shader exports
         bindingInfo.global.shaderResourceBaseRegister = registerOffset;
@@ -614,7 +614,7 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
 
         // Get number of events
         uint32_t eventCount{0};
-        state->shaderDataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
+        state->shaderDataHost->EnumerateShader(&eventCount, nullptr, ShaderDataType::Event);
 
         // Event constant parameter
         Parameter& eventParameter = parameters[source.NumParameters + 2u] = {};

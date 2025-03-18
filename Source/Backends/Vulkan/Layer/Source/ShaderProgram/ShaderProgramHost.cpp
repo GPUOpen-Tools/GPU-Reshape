@@ -70,15 +70,15 @@ bool ShaderProgramHost::InstallPrograms() {
 
     // Get number of resources
     uint32_t resourceCount;
-    shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::All);
+    shaderDataHost->EnumerateShader(&resourceCount, nullptr, ShaderDataType::All);
 
     // Fill resources
     shaderData.resize(resourceCount);
-    shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::All);
+    shaderDataHost->EnumerateShader(&resourceCount, shaderData.data(), ShaderDataType::All);
 
     // Get number of events
     uint32_t eventCount{0};
-    table->dataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
+    table->dataHost->EnumerateShader(&eventCount, nullptr, ShaderDataType::Event);
 
     // Create all programs
     for (ProgramEntry& entry : programs) {

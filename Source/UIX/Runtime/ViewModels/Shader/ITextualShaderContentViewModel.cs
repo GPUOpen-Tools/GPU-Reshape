@@ -24,10 +24,36 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-namespace Studio.Models.Workspace
+using Studio.Models.Workspace.Objects;
+using Studio.ViewModels.Workspace.Objects;
+
+namespace Studio.ViewModels.Shader
 {
-    public class WorkspacePropertyCollection
+    public interface ITextualShaderContentViewModel : IShaderContentViewModel
     {
+        /// <summary>
+        /// The current selected object
+        /// </summary>
+        public ValidationObject? SelectedValidationObject { get; set; }
         
+        /// <summary>
+        /// Is the overlay visible?
+        /// </summary>
+        public bool IsOverlayVisible();
+        
+        /// <summary>
+        /// Is a validation object visible?
+        /// </summary>
+        public bool IsObjectVisible(ValidationObject validationObject);
+
+        /// <summary>
+        /// Transform a shader location
+        /// </summary>
+        public int TransformLine(ShaderLocation shaderLocation);
+
+        /// <summary>
+        /// Transform a shader line
+        /// </summary>
+        public AssembledInstructionMapping TransformInstruction(int line);
     }
 }

@@ -68,6 +68,12 @@ public:
     /// \return mapped buffer
     virtual void* Map(ShaderDataID rid) = 0;
 
+    /// Unmap a buffer
+    /// \param rid resource id
+    /// \param mapped the mapped address
+    /// \return mapped buffer
+    virtual void Unmap(ShaderDataID rid, void* mapped) = 0;
+
     /// Flush a mapped range
     /// \param rid resource id
     /// \param offset byte offset
@@ -85,7 +91,7 @@ public:
     /// Enumerate all created data
     /// \param count if [out] is null, filled with the number of resources
     /// \param out if not null, filled with all resources up to [count]
-    virtual void Enumerate(uint32_t* count, ShaderDataInfo* out, ShaderDataTypeSet mask) = 0;
+    virtual void EnumerateShader(uint32_t* count, ShaderDataInfo* out, ShaderDataTypeSet mask) = 0;
 
     /// Get the target capabilities
     /// \return capability table

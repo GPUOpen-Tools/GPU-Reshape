@@ -49,7 +49,7 @@ ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const Com
 
         // Allocate buffer data on host, let the drivers handle page swapping
         ShaderExportConstantSegment& segment = staging.emplace_back();
-        segment.allocation = deviceAllocator->Allocate(desc, AllocationResidency::Host);
+        segment.allocation = deviceAllocator->Allocate(desc, AllocationResidency::HostUpload);
         segment.size = desc.Width;
 
 #ifndef NDEBUG

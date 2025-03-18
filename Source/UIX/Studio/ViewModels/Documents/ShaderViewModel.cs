@@ -252,6 +252,9 @@ namespace Studio.ViewModels.Documents
                     SelectedShaderContentViewModel = ShaderContentViewModels.First(scvm => scvm is ILShaderContentViewModel);
                 }
             });
+                
+            // Update content objects
+            ShaderContentViewModels.ForEach(x => x.ShaderViewModel = _object);
         }
 
         /// <summary>

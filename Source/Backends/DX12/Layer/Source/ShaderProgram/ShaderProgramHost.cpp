@@ -110,11 +110,11 @@ bool ShaderProgramHost::InstallPrograms() {
 
     // Get number of resources
     uint32_t resourceCount;
-    shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::All);
+    shaderDataHost->EnumerateShader(&resourceCount, nullptr, ShaderDataType::All);
 
     // Fill resources
     shaderData.resize(resourceCount);
-    shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::All);
+    shaderDataHost->EnumerateShader(&resourceCount, shaderData.data(), ShaderDataType::All);
 
     // Get the export host
     auto exportHost = registry->Get<IShaderExportHost>();

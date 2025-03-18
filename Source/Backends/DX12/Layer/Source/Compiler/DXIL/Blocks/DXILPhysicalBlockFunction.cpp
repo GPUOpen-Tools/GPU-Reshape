@@ -2598,7 +2598,14 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
 
                 // Number of dimensions
                 uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension, false);
-                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(textureType->format);
+
+                // Derive storage from sampled type, if possible
+                uint32_t formatDimensionCount = 0;
+                if (auto* vec = textureType->sampledType->Cast<Backend::IL::VectorType>()) {
+                    formatDimensionCount = vec->dimension;
+                } else {
+                    formatDimensionCount = Backend::IL::GetDimensionSize(textureType->format);
+                }
 
                 // Vectorize
                 IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);

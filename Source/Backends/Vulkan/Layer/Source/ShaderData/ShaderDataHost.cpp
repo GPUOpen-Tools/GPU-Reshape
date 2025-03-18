@@ -254,6 +254,15 @@ void *ShaderDataHost::Map(ShaderDataID rid) {
     return deviceAllocator->Map(entry.allocation);
 }
 
+void ShaderDataHost::Unmap(ShaderDataID rid, void *mapped) {
+    std::lock_guard guard(mutex);
+    uint32_t index = indices[rid];
+
+    // Entry to map
+    ResourceEntry &entry = resources[index];
+    deviceAllocator->Unmap(entry.allocation);
+}
+
 ShaderDataMappingID ShaderDataHost::CreateMapping(ShaderDataID data, uint64_t tileCount) {
     std::lock_guard guard(mutex);
     
@@ -354,7 +363,7 @@ void ShaderDataHost::Destroy(ShaderDataID rid) {
     freeIndices.push_back(rid);
 }
 
-void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
+void ShaderDataHost::EnumerateShader(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
     std::lock_guard guard(mutex);
     
     if (out) {

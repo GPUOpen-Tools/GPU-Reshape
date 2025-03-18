@@ -26,7 +26,7 @@
 
 namespace Runtime.ViewModels.IL
 {
-    public struct AssembledMapping
+    public struct AssembledLineMapping
     {
         /// <summary>
         /// Assembled line of this mapping

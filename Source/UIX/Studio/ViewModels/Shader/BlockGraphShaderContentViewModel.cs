@@ -24,13 +24,11 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
 using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
-using Studio.Models.Workspace.Objects;
 using Studio.Services;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
@@ -45,6 +43,11 @@ namespace Studio.ViewModels.Shader
         /// The owning navigation context
         /// </summary>
         public INavigationContext? NavigationContext { get; set; }
+
+        /// <summary>
+        /// The target shader
+        /// </summary>
+        public Workspace.Objects.ShaderViewModel? ShaderViewModel { get; set; }
         
         /// <summary>
         /// Given descriptor

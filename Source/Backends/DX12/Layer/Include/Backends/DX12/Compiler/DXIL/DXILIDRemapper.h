@@ -451,6 +451,11 @@ struct DXILIDRemapper {
     /// \param user given user, must exist
     /// \return type
     DXILIDUserType GetUserMappingType(uint32_t user) {
+        // User mappings are allowed to not be mapped for SVOX
+        if (user >= compileSegment.userMappings.size()) {
+            return DXILIDUserType::Singular;
+        }
+        
         return compileSegment.userMappings.at(user).type;
     }
 

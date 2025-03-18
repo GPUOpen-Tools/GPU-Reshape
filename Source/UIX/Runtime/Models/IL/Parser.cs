@@ -1167,6 +1167,7 @@ namespace Studio.Models.IL
 
             // Set commons
             instruction.OpCode = opCode;
+            instruction.CodeOffset = node.CodeOffset;
             
             // Assign type if present
             if (node.Type != null)
