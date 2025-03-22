@@ -488,7 +488,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     pAllocator = nullptr;
 
     // If we have exhausted all the sets, we can't add further records
-    bool exhausted = pCreateInfo->setLayoutCount >= table->physicalDeviceProperties.limits.maxBoundDescriptorSets;
+    bool exhausted = pCreateInfo->setLayoutCount >= table->physicalDeviceProperties.properties.limits.maxBoundDescriptorSets;
     if (exhausted) {
         // Pass down callchain
         VkResult result = table->next_vkCreatePipelineLayout(device, pCreateInfo, pAllocator, pPipelineLayout);

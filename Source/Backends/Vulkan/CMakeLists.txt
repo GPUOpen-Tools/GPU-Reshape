@@ -134,6 +134,7 @@ set(
     vkCmdDrawMeshTasksEXT
     vkCmdDrawMeshTasksIndirectEXT
     vkCmdDrawMeshTasksIndirectCountEXT
+    vkCmdTraceRaysKHR
 )
 
 # Join lists
@@ -141,7 +142,7 @@ list(JOIN VkHooks "," VkHooksJoin)
 list(JOIN VkWhitelist "," VkWhitelistJoin)
 
 # Object list
-set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkInstanceCreateInfo,VkDeviceCreateInfo,VkPipelineShaderStageCreateInfo,VkRenderPassCreateInfo2,VkRenderPassBeginInfo,VkDescriptorUpdateTemplateCreateInfo,VkDescriptorSetLayoutCreateInfo)
+set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkInstanceCreateInfo,VkDeviceCreateInfo,VkPipelineShaderStageCreateInfo,VkRenderPassCreateInfo2,VkRenderPassBeginInfo,VkDescriptorUpdateTemplateCreateInfo,VkDescriptorSetLayoutCreateInfo,VkRayTracingShaderGroupCreateInfoKHR,VkRayTracingPipelineCreateInfoKHR)
 
 # Generate the deep copy objects
 add_custom_command(
@@ -217,6 +218,7 @@ add_custom_command(
 
 # Inbuilt modules
 Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModule.hlsl Layer/Include/Backends/Vulkan/Modules/InbuiltTemplateModule kSPIRVInbuiltTemplateModule)
+Project_AddHLSL(GeneratedInbuilt cs_6_0 "-O3" Layer/Modules/ShaderRecordPatching.hlsl Layer/Include/Backends/DX12/Modules/ShaderRecordPatching kShaderRecordPatching)
 
 # Create layer
 add_library(
@@ -227,6 +229,7 @@ add_library(
     Layer/Source/Device.cpp
     Layer/Source/Instance.cpp
     Layer/Source/CommandBuffer.cpp
+    Layer/Source/Raytracing.cpp
     Layer/Source/DescriptorSet.cpp
     Layer/Source/ShaderModule.cpp
     Layer/Source/QueueSegment.cpp
@@ -310,6 +313,12 @@ target_link_libraries(
 target_include_directories(
     GRS.Backends.Vulkan.Layer PUBLIC
     Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include
+)
+
+# Private include directories
+target_include_directories(
+    GRS.Backends.Vulkan.Layer PRIVATE
+    Layer/Modules
 )
 
 # Setup dependencies

@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,21 +26,11 @@
 
 #pragma once
 
-#include <Backends/Vulkan/Vulkan.h>
+// Vulkan
+#include "Vulkan.h"
 
 // Forward declarations
-struct DeviceDispatchTable;
-struct ShaderExportQueueState;
-
-/// Invoke a bridge sync point
-/// \param table instance table
-/// \param queueState optional, streaming queue to check
-void BridgeDeviceSyncPoint(DeviceDispatchTable* table, ShaderExportQueueState* queueState);
+struct CommandBufferObject;
 
 /// Hooks
-VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount, VkLayerProperties *pProperties);
-VkResult VKAPI_PTR Hook_vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice, const char* pLayerName, uint32_t *pPropertyCount, VkExtensionProperties *pProperties);
-void     VKAPI_PTR Hook_vkGetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties* pProperties);
-void     VKAPI_PTR Hook_vkGetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties2* pProperties);
-VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice);
-void     VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks* pAllocator);
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdTraceRaysKHR(CommandBufferObject* commandBuffer, const VkStridedDeviceAddressRegionKHR* pRaygenShaderBindingTable, const VkStridedDeviceAddressRegionKHR* pMissShaderBindingTable, const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable, const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable, uint32_t width, uint32_t height, uint32_t depth);

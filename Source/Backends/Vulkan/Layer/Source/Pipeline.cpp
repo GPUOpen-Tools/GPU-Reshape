@@ -30,6 +30,11 @@
 #include <Backends/Vulkan/States/RenderPassState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
+#include <Backends/Vulkan/States/RaytracingPipelineState.h>
+#include <Backends/Vulkan/Allocation/DeviceAllocator.h>
+
+// Shared
+#include <Shared/ShaderRecordPatching.h>
 
 static ShaderModuleState* GetPipelineStageShaderModule(DeviceDispatchTable* table, const VkPipelineShaderStageCreateInfo& createInfo) {
     // If there's a stage, just return it
@@ -204,6 +209,48 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
     return VK_SUCCESS;
 }
 
+static void GetRayTracingShaderIdentifiers(DeviceDispatchTable* table, RaytracingPipelineState* state) {
+    state->identifierSet.count += state->createInfoDeepCopy->groupCount;
+
+    // Total byte count
+    uint64_t byteCount = table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize * state->identifierSet.count;
+    
+    // Reserve space
+    const uint64_t offset = state->identifierSet.handleData.size();
+    state->identifierSet.handleData.resize(offset + byteCount);
+
+    // Get handles for all groups
+    table->next_vkGetRayTracingShaderGroupHandlesKHR(
+        table->object,
+        state->object,
+        0, state->createInfoDeepCopy->stageCount,
+        byteCount,
+        state->identifierSet.handleData.data() + offset
+    );
+
+    // Get handles for all nested libraries
+    for (PipelineState* library : state->pipelineLibraries) {
+        ASSERT(library->type == PipelineType::Raytracing, "Unexpected library type");
+        GetRayTracingShaderIdentifiers(table, static_cast<RaytracingPipelineState*>(library));
+    }
+}
+
+static void CreateRayTracingIdentifierSet(DeviceDispatchTable* table, RaytracingPipelineState* state) {
+    // Get all handle data
+    GetRayTracingShaderIdentifiers(table, state);
+
+    // Create patch lookups for all handles
+    for (uint32_t i = 0; i < state->identifierSet.count; i++) {
+        const uint8_t* data = state->identifierSet.handleData.data() + i * table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize;
+
+        // Insert key for range
+        RaytracingShaderGroupIdentifierKey key;
+        key.data = std::span(data, table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize);
+        key.hash = BufferCRC32Short(key.data.data(), key.data.size());
+        state->identifierSet.patchIndices[key] = i;
+    }
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice device, VkDeferredOperationKHR deferredOperation, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkRayTracingPipelineCreateInfoKHR* pCreateInfos, const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
@@ -218,10 +265,14 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice devi
 
     // Allocate states
     for (uint32_t i = 0; i < createInfoCount; i++) {
+        const VkRayTracingPipelineCreateInfoKHR &createInfo = pCreateInfos[i];
+
+        // Create state
         auto state = new (table->allocators) RaytracingPipelineState;
-        state->type = PipelineType::Compute;
+        state->type = PipelineType::Raytracing;
         state->table = table;
         state->object = pipelines[i];
+        state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
 
         // External user
         state->AddUser();
@@ -230,12 +281,90 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice devi
         state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
         state->layout->AddUser();
 
+        // Collect all shader modules
+        for (uint32_t stageIndex = 0; stageIndex < createInfo.stageCount; stageIndex++) {
+            const VkPipelineShaderStageCreateInfo& stageInfo = createInfo.pStages[stageIndex];
+
+            // Get the proxied state
+            ShaderModuleState* shaderModuleState = GetPipelineStageShaderModule(table, stageInfo);
+
+            // Add reference
+            shaderModuleState->AddUser();
+            state->ownedShaderModules.push_back(shaderModuleState);
+            state->referencedShaderModules.push_back(shaderModuleState);
+        }
+
+        // Collect libraries
+        if (createInfo.pLibraryInfo) {
+            for (uint32_t libraryIndex = 0; libraryIndex < createInfo.pLibraryInfo->libraryCount; libraryIndex++) {
+                PipelineState* libraryState = table->states_pipeline.Get(createInfo.pLibraryInfo->pLibraries[i]);
+
+                // Add all the shader modules of this library as referenced
+                for (ShaderModuleState* shaderModuleState : libraryState->ownedShaderModules) {
+                    state->referencedShaderModules.push_back(shaderModuleState);
+                }
+
+                // Add reference
+                libraryState->AddUser();
+                state->pipelineLibraries.push_back(libraryState);
+            }
+        }
+
+        // Create the identifier set, hash map of identifier to linear indices
+        CreateRayTracingIdentifierSet(table, state);
+
         // Inform the controller
         table->instrumentationController->CreatePipelineAndAdd(state);
     }
 
     // Writeout
     std::memcpy(pPipelines, pipelines, sizeof(VkPipeline) * createInfoCount);
+
+    // OK
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkGetRayTracingShaderGroupHandlesKHR(VkDevice device, VkPipeline pipeline, uint32_t firstGroup, uint32_t groupCount, size_t dataSize, void* pData) {
+    DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Get pipeline
+    auto* pipelineState = static_cast<RaytracingPipelineState*>(table->states_pipeline.Get(pipeline));
+    ASSERT(pipelineState->type == PipelineType::Raytracing, "Unexpected pipeline type");
+
+    // Native handles
+    std::vector<uint8_t> data;
+    data.resize(groupCount * table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize);
+
+    // Get all native handles
+    VkResult result = table->next_vkGetRayTracingShaderGroupHandlesKHR(
+        device, pipeline, firstGroup, groupCount,
+        data.size(), data.data()
+    );
+
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Expected strides
+    uint32_t srcHandleStride = table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize;
+    uint32_t dstHandleStride = table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize + sizeof(SBTShaderGroupIdentifierEmbeddedData);
+
+    // Write embedded handles
+    for (uint32_t groupIndex = 0; groupIndex < groupCount; groupIndex++) {
+        // Copy over the actual handle data
+        uint8_t* dst = static_cast<uint8_t*>(pData) + groupIndex * dstHandleStride;
+        uint8_t* src = data.data() + groupIndex * srcHandleStride;
+        std::memcpy(dst, src, srcHandleStride);
+
+        // Get the lookup key
+        RaytracingShaderGroupIdentifierKey key;
+        key.data = std::span(src, srcHandleStride);
+        key.hash = BufferCRC32Short(src, srcHandleStride);
+
+        // Embed the internal indices
+        auto* embedded = reinterpret_cast<SBTShaderGroupIdentifierEmbeddedData*>(dst + srcHandleStride);
+        embedded->PatchIndex = pipelineState->identifierSet.patchIndices.at(key);
+    }
 
     // OK
     return VK_SUCCESS;

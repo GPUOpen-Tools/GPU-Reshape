@@ -202,7 +202,7 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
     std::lock_guard guard(mutex);
 
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
-        bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
+        bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.properties.limits.maxBoundDescriptorSets);
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
 
         // Reset state
@@ -219,7 +219,7 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
     state->pending = true;
 
     // Clear push data
-    state->persistentPushConstantData.resize(table->physicalDeviceProperties.limits.maxPushConstantsSize);
+    state->persistentPushConstantData.resize(table->physicalDeviceProperties.properties.limits.maxPushConstantsSize);
     std::fill(state->persistentPushConstantData.begin(), state->persistentPushConstantData.end(), 0u);
 
     // Initialize descriptor binders
@@ -276,7 +276,7 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state) {
         }
 
         // Reset descriptor state
-        bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
+        bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.properties.limits.maxBoundDescriptorSets);
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
         bindState.deviceDescriptorOverwriteMask = 0x0;
     }
@@ -287,7 +287,7 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state) {
     }
     
     // Clear push data
-    state->persistentPushConstantData.resize(table->physicalDeviceProperties.limits.maxPushConstantsSize);
+    state->persistentPushConstantData.resize(table->physicalDeviceProperties.properties.limits.maxPushConstantsSize);
     std::fill(state->persistentPushConstantData.begin(), state->persistentPushConstantData.end(), 0u);
 
     // Cleanup
