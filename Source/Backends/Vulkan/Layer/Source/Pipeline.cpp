@@ -251,6 +251,65 @@ static void CreateRayTracingIdentifierSet(DeviceDispatchTable* table, Raytracing
     }
 }
 
+static uint64_t GetRaytracingShaderIdentifierPatchHandles(DeviceDispatchTable* table, RaytracingPipelineState* state, VkPipeline instrument, uint8_t* patchHandleData, uint64_t patchHandleOffset) {
+    // Total byte count
+    uint64_t byteCount = table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize * state->identifierSet.count;
+    ASSERT(patchHandleOffset + byteCount <= state->identifierSet.handleData.size(), "Out of bounds handle indexing");
+    
+    // Get handles for all groups
+    table->next_vkGetRayTracingShaderGroupHandlesKHR(
+        table->object,
+        instrument,
+        0, state->createInfoDeepCopy->stageCount,
+        byteCount,
+        patchHandleData + patchHandleOffset
+    );
+
+    // Next!
+    patchHandleOffset += byteCount;
+
+    // Get handles for all nested libraries
+    for (PipelineState* library : state->pipelineLibraries) {
+        ASSERT(library->type == PipelineType::Raytracing, "Unexpected library type");
+        patchHandleOffset += GetRaytracingShaderIdentifierPatchHandles(table, static_cast<RaytracingPipelineState*>(library), instrument, patchHandleData, patchHandleOffset);
+    }
+
+    // Offset
+    return patchHandleOffset;
+}
+
+RaytracingShaderIdentifierPatch* CreateRaytracingShaderIdentifierPatch(DeviceDispatchTable* table, RaytracingPipelineState* state, VkPipeline pipeline) {
+    auto* patch = new RaytracingShaderIdentifierPatch();
+    
+    // Patch buffer info
+    VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    info.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    info.size = state->identifierSet.count * table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize;
+
+    // Attempt to create the host buffer
+    if (table->next_vkCreateBuffer(table->object, &info, nullptr, &patch->buffer) != VK_SUCCESS) {
+        return nullptr;
+    }
+
+    // Get the requirements
+    VkMemoryRequirements requirements;
+    table->next_vkGetBufferMemoryRequirements(table->object, patch->buffer, &requirements);
+
+    // Create and bind the allocation
+    patch->listAllocation = table->deviceAllocator->Allocate(requirements, AllocationResidency::Host);
+    table->deviceAllocator->BindBuffer(patch->listAllocation, patch->buffer);
+
+    // Map allocations
+    patch->patchHandleData = static_cast<uint8_t *>(table->deviceAllocator->Map(patch->listAllocation));
+
+    // Get all the patched identifiers
+    GetRaytracingShaderIdentifierPatchHandles(table, state, pipeline, patch->patchHandleData, 0);
+
+    // OK
+    return patch;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice device, VkDeferredOperationKHR deferredOperation, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkRayTracingPipelineCreateInfoKHR* pCreateInfos, const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 

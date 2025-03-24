@@ -74,17 +74,41 @@ struct RaytracingShaderGroupIdentifierSet {
 };
 
 struct RaytracingShaderIdentifierPatch {
-    /// Linear set of SBTIdentifierTableEntry, indexed by SBTShaderIdentifierTable
-    SBTIdentifierPatch* list{nullptr};
+    /// Linear set of handle data
+    uint8_t* patchHandleData{nullptr};
 
     /// Number of patched entries
     uint64_t count{0};
 
     /// Allocations
     Allocation listAllocation;
+
+    /// Host buffer
+    VkBuffer buffer{VK_NULL_HANDLE};
 };
 
 struct RaytracingPipelineState : public PipelineState {
+    /// Add a new identifier patch
+    /// \param hash lookup hash
+    /// \param patch patch to add
+    void AddPatch(uint64_t hash, RaytracingShaderIdentifierPatch* patch) {
+        std::lock_guard lock(mutex);
+        instrumentPatchTables[hash] = patch;
+    }
+
+    /// Get an existing identifier patch
+    /// \param hash lookup hash
+    /// \return nullptr if not found
+    RaytracingShaderIdentifierPatch* GetPatch(uint64_t hash) {
+        std::lock_guard lock(mutex);
+        auto&& it = instrumentPatchTables.find(hash);
+        if (it == instrumentPatchTables.end()) {
+            return nullptr;
+        }
+
+        return it->second;
+    }
+    
     /// Deep copy
     VkRayTracingPipelineCreateInfoKHRDeepCopy createInfoDeepCopy;
 

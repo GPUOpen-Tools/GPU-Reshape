@@ -26,15 +26,46 @@
 
 #include <Backends/Vulkan/Raytracing.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
+#include <Backends/Vulkan/Export/StreamState.h>
+
+struct RaytracingCacheInfo {
+    VkStridedDeviceAddressRegionKHR raygenShaderBindingTable;
+    VkStridedDeviceAddressRegionKHR missShaderBindingTable;
+    VkStridedDeviceAddressRegionKHR hitShaderBindingTable;
+    VkStridedDeviceAddressRegionKHR callableShaderBindingTable;
+};
+
+RaytracingCacheInfo PatchRaytracingIdentifiersImmediate(
+    CommandBufferObject* commandBuffer,
+    const VkStridedDeviceAddressRegionKHR* pRaygenShaderBindingTable,
+    const VkStridedDeviceAddressRegionKHR* pMissShaderBindingTable,
+    const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable,
+    const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable) {
+    return {};
+}
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdTraceRaysKHR(CommandBufferObject* commandBuffer, const VkStridedDeviceAddressRegionKHR* pRaygenShaderBindingTable, const VkStridedDeviceAddressRegionKHR* pMissShaderBindingTable, const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable, const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable, uint32_t width, uint32_t height, uint32_t depth) {
+    ShaderExportPipelineBindState &bindPoint = commandBuffer->streamState->pipelineBindPoints[static_cast<uint32_t>(PipelineType::Raytracing)];
+
+    // To info
+    RaytracingCacheInfo info;
+    info.raygenShaderBindingTable = *pRaygenShaderBindingTable;
+    info.missShaderBindingTable = *pMissShaderBindingTable;
+    info.hitShaderBindingTable = *pHitShaderBindingTable;
+    info.callableShaderBindingTable = *pCallableShaderBindingTable;
+
+    // If instrumented, get the patched identifiers
+    if (bindPoint.isInstrumented) {
+        info = PatchRaytracingIdentifiersImmediate(commandBuffer, pRaygenShaderBindingTable, pMissShaderBindingTable, pHitShaderBindingTable, pCallableShaderBindingTable);
+    }
+    
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdTraceRaysKHR(
         commandBuffer->object,
-        pRaygenShaderBindingTable,
-        pMissShaderBindingTable,
-        pHitShaderBindingTable,
-        pCallableShaderBindingTable,
+        &info.raygenShaderBindingTable,
+        &info.missShaderBindingTable,
+        &info.hitShaderBindingTable,
+        &info.callableShaderBindingTable,
         width, height, depth
     );
 }

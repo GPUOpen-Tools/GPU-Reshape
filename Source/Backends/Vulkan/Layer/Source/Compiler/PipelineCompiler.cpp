@@ -28,6 +28,8 @@
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticType.h>
+#include <Backends/Vulkan/States/RaytracingPipelineState.h>
+#include <Backends/Vulkan/Pipeline.h>
 
 // Backend
 #include <Backend/Diagnostic/DiagnosticBucketScope.h>
@@ -73,16 +75,21 @@ void PipelineCompiler::AddBatch(DeviceDispatchTable *table, PipelineCompilerDiag
             case PipelineType::Compute:
                 computeJobs.push_back(jobs[i]);
                 break;
+            case PipelineType::Raytracing:
+                raytracingJobs.push_back(jobs[i]);
+                break;
         }
     }
 
     // Submit jobs
     AddBatchOfType(table, diagnostic, graphicsJobs, PipelineType::Graphics, bucket);
     AddBatchOfType(table, diagnostic, computeJobs, PipelineType::Compute, bucket);
+    AddBatchOfType(table, diagnostic, raytracingJobs, PipelineType::Raytracing, bucket);
 
     // Cleanup
     graphicsJobs.clear();
     computeJobs.clear();
+    raytracingJobs.clear();
 }
 
 void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, PipelineCompilerDiagnostic* diagnostic, const std::vector<PipelineJob> &jobs, PipelineType type, DispatcherBucket *bucket) {
@@ -123,6 +130,9 @@ void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, PipelineCompil
             case PipelineType::Compute:
                 dispatcher->Add(BindDelegate(this, PipelineCompiler::WorkerCompute), data, bucket);
                 break;
+            case PipelineType::Raytracing:
+                dispatcher->Add(BindDelegate(this, PipelineCompiler::WorkerRaytracing), data, bucket);
+                break;
         }
 
         // Next!
@@ -139,6 +149,12 @@ void PipelineCompiler::WorkerGraphics(void *data) {
 void PipelineCompiler::WorkerCompute(void *data) {
     auto *job = static_cast<PipelineJobBatch *>(data);
     CompileCompute(*job);
+    destroy(job, allocators);
+}
+
+void PipelineCompiler::WorkerRaytracing(void *data) {
+    auto *job = static_cast<PipelineJobBatch *>(data);
+    CompileRaytracing(*job);
     destroy(job, allocators);
 }
 
@@ -460,6 +476,154 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     for (uint32_t i = 0; i < static_cast<uint32_t>(createInfos.Size()); i++) {
         PipelineJob &job = batch.jobs[jobIndices[i]];
         PipelineState *state = job.state;
+
+        // Set the instrument for the given hash
+        state->AddInstrument(job.combinedHash, pipelines[i]);
+    }
+
+    // Free bit sets
+    for (uint32_t i = 0; i < batch.count; i++) {
+        destroy(batch.jobs[i].shaderModuleInstrumentationKeys, allocators);
+        destroy(batch.jobs[i].pipelineLibraryInstrumentationKeys, allocators);
+    }
+
+    // Free job
+    destroy(batch.jobs, allocators);
+}
+
+void PipelineCompiler::CompileRaytracing(const PipelineJobBatch &batch) {
+    // Allocate creation info
+    TrivialStackVector<VkRayTracingPipelineCreateInfoKHR, kMaxBatchSize> createInfos;
+    TrivialStackVector<uint32_t,                          kMaxBatchSize> jobIndices;
+
+    // Optional, all deep copies
+    VkRayTracingPipelineCreateInfoKHRDeepCopy deepCopies[kMaxBatchSize];
+
+    // Intermediate counts
+    uint32_t stageCount = 0;
+    uint32_t libraryStateCount = 0;
+    
+    // Get the number of stages 
+    for (uint32_t i = 0; i < batch.count; i++) {
+        PipelineJob &job = batch.jobs[i];
+        stageCount += static_cast<uint32_t>(job.state->ownedShaderModules.size());
+        
+        if (job.state->pipelineLibraries.size()) {
+            libraryStateCount += static_cast<uint32_t>(job.state->pipelineLibraries.size());
+        }
+    }
+
+    // Allocate intermediate data
+    auto stageInfos         = ALLOCA_ARRAY(VkPipelineShaderStageCreateInfo, stageCount);
+    auto libraryStates      = ALLOCA_ARRAY(VkPipeline                     , libraryStateCount);
+    
+    // Populate all creation infos
+    for (uint32_t i = 0; i < batch.count; i++) {
+        PipelineJob &job = batch.jobs[i];
+        PipelineState *state = job.state;
+
+        // Creation info
+        VkRayTracingPipelineCreateInfoKHR createInfo;
+        
+        // Diagnostic scope
+        DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
+
+        // Any extension mutation requires a deep copy
+        bool requiresMutableExtensions = false;
+        
+        // Pipeline libraries are fed through extensions
+        if (job.state->pipelineLibraries.size()) {
+            requiresMutableExtensions = true;
+        }
+
+        // Copy the deep creation info
+        //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
+        ASSERT(state->type == PipelineType::Raytracing, "Unexpected pipeline type");
+        if (requiresMutableExtensions) {
+            VkRayTracingPipelineCreateInfoKHRDeepCopy& deepCopy = deepCopies[i];
+            deepCopy.DeepCopy(allocators, static_cast<RaytracingPipelineState *>(state)->createInfoDeepCopy.createInfo);
+            createInfo = deepCopy.createInfo;
+        } else {
+            createInfo = static_cast<RaytracingPipelineState *>(state)->createInfoDeepCopy.createInfo;
+        }
+
+        // Exclude irrelevant flags
+        createInfo.flags &= ~(
+            VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT |
+            VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT
+        );
+
+        // All keys must be present for pipeline compilation
+        bool anyMissingKeys = false;
+
+        // Copy all libraries
+        if (job.state->pipelineLibraries.size()) {
+            auto* libraryCreateInfo = FindStructureTypeMutableUnsafe<VkPipelineLibraryCreateInfoKHR, VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR>(&createInfo);
+            libraryCreateInfo->pLibraries = libraryStates;
+
+            // Fill pipelines
+            for (uint32_t libraryIndex = 0; libraryIndex < libraryCreateInfo->libraryCount; libraryIndex++) {
+                PipelineState *libraryState = state->pipelineLibraries[libraryIndex];
+                libraryStates[libraryIndex] = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+                
+                // Validate
+                if (!libraryStates[libraryIndex]) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                    anyMissingKeys = true;
+                }
+            }
+
+            // Next!
+            libraryStates += job.state->pipelineLibraries.size();
+        }
+
+        // Set new instrumented stages
+        for (uint32_t shaderIndex = 0; shaderIndex < state->ownedShaderModules.size(); shaderIndex++) {
+            ShaderModuleState *shaderState = state->ownedShaderModules[shaderIndex];
+            std::memcpy(&stageInfos[shaderIndex], &createInfo.pStages[shaderIndex], sizeof(VkPipelineShaderStageCreateInfo));
+
+            // Try to set shader object
+            if (!SetShaderModuleObject(stageInfos[shaderIndex], shaderState, job.shaderModuleInstrumentationKeys[shaderIndex])) {
+                scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                anyMissingKeys = true;
+            }
+        }
+
+        // If any keys were missing, the entire pipeline has failed
+        if (anyMissingKeys) {
+            continue;
+        }
+
+        // OK
+        createInfos.Add(createInfo);
+        jobIndices.Add(i);
+    }
+
+    // Created pipelines
+    auto pipelines = ALLOCA_ARRAY(VkPipeline, batch.count);
+
+    // TODO: Pipeline cache?
+    VkResult result = batch.table->next_vkCreateRayTracingPipelinesKHR(batch.table->object, nullptr, nullptr, static_cast<uint32_t>(createInfos.Size()), createInfos.Data(), nullptr, pipelines);
+    if (result != VK_SUCCESS) {
+        // Add diagnostics for all failed pipelines
+        for (uint32_t i = 0; i < batch.count; i++) {
+            batch.diagnostic->messages->Add(DiagnosticType::PipelineCreationFailed, batch.jobs[i].state->uid);
+        }
+        
+        batch.diagnostic->failedJobs += batch.count;
+        return;
+    }
+
+    // Mark as passed
+    batch.diagnostic->passedJobs += batch.count;
+
+    // Set final objects
+    for (uint32_t i = 0; i < static_cast<uint32_t>(createInfos.Size()); i++) {
+        PipelineJob &job = batch.jobs[jobIndices[i]];
+        auto *state = static_cast<RaytracingPipelineState*>(job.state);
+
+        // Compile and add new patch
+        state->AddPatch(job.combinedHash, CreateRaytracingShaderIdentifierPatch(table, state, pipelines[i]));
 
         // Set the instrument for the given hash
         state->AddInstrument(job.combinedHash, pipelines[i]);
