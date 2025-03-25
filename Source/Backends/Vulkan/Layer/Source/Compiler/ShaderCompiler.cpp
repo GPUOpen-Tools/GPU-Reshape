@@ -116,6 +116,7 @@ bool ShaderCompiler::InitializeModule(ShaderModuleState *state) {
 
         // Failed?
         if (!result) {
+            state->spirvModule = nullptr;
             return false;
         }
     }
