@@ -35,4 +35,7 @@ struct ShaderDataCapabilityTable {
     
     /// The max number of elements in a buffer
     uint64_t bufferMaxElementCount{0ull};
+    
+    /// The max byte size of a buffer
+    uint64_t bufferMaxSize{0ull};
 };

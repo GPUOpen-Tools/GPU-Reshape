@@ -303,6 +303,7 @@ struct DeviceDispatchTable {
     /// Properties
     VkPhysicalDeviceProperties2                     physicalDeviceProperties{};
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR physicalDeviceRayTracingPipelineProperties{};
+    VkPhysicalDeviceMaintenance4Properties          physicalDeviceMaintenance4Properties{};
 
     /// Features
     VkPhysicalDeviceFeatures2                       physicalDeviceFeatures{};

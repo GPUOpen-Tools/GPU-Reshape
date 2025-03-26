@@ -302,6 +302,8 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->physicalDeviceProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
     table->physicalDeviceProperties.pNext = &table->physicalDeviceRayTracingPipelineProperties;
     table->physicalDeviceRayTracingPipelineProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
+    table->physicalDeviceRayTracingPipelineProperties.pNext = &table->physicalDeviceMaintenance4Properties;
+    table->physicalDeviceMaintenance4Properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES};
     
     // Get the device properties
     table->parent->next_vkGetPhysicalDeviceProperties2(physicalDevice, &table->physicalDeviceProperties);
