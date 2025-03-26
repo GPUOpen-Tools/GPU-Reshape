@@ -152,6 +152,9 @@ void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
         case PipelineType::Compute:
             file->type = 2;
             break;
+        case PipelineType::Raytracing:
+            file->type = 3;
+            break;
     }
 }
 
