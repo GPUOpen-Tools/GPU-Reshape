@@ -260,7 +260,7 @@ static uint64_t GetRaytracingShaderIdentifierPatchHandles(DeviceDispatchTable* t
     table->next_vkGetRayTracingShaderGroupHandlesKHR(
         table->object,
         instrument,
-        0, state->createInfoDeepCopy->stageCount,
+        0, state->createInfoDeepCopy->groupCount,
         byteCount,
         patchHandleData + patchHandleOffset
     );

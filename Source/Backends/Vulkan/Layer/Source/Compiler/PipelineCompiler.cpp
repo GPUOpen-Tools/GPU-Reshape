@@ -594,6 +594,10 @@ void PipelineCompiler::CompileRaytracing(const PipelineJobBatch &batch) {
             continue;
         }
 
+        // Set new stage info
+        createInfo.pStages = stageInfos;
+        stageInfos += state->ownedShaderModules.size();
+
         // OK
         createInfos.Add(createInfo);
         jobIndices.Add(i);
