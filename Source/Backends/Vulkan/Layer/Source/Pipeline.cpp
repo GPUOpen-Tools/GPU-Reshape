@@ -223,7 +223,7 @@ static void GetRayTracingShaderIdentifiers(DeviceDispatchTable* table, Raytracin
     table->next_vkGetRayTracingShaderGroupHandlesKHR(
         table->object,
         state->object,
-        0, state->createInfoDeepCopy->stageCount,
+        0, state->createInfoDeepCopy->groupCount,
         byteCount,
         state->identifierSet.handleData.data() + offset
     );
