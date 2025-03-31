@@ -83,6 +83,10 @@
 ///    When such a fault occurs, it is very useful to simply be able to iterate on a binary file.
 #define SHADER_COMPILER_DEBUG_FILE (DX12_DIAGNOSTIC && 0)
 
+/// Track all segment owners of descriptor heap allocations
+/// Useful for debugging exhausted heaps
+#define HEAP_ALLOCATOR_TRACK_OWNER (DX12_DIAGNOSTIC && 1)
+
 /** Options **/
 
 /// Prefix all injected descriptors

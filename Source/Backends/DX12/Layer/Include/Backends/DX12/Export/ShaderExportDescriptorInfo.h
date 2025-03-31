@@ -39,6 +39,10 @@ struct ShaderExportSegmentDescriptorInfo {
     ID3D12DescriptorHeap* heap{};
 #endif // NDEBUG
 
+#if HEAP_ALLOCATOR_TRACK_OWNER
+    struct ShaderExportStreamState* debugOwner = nullptr;
+#endif // HEAP_ALLOCATOR_TRACK_OWNER
+
     /// Base CPU handle
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
 

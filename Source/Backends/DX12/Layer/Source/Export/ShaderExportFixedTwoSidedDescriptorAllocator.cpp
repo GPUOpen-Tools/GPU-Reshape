@@ -80,7 +80,7 @@ ShaderExportFixedTwoSidedDescriptorAllocator::AllocationBucket & ShaderExportFix
     return width == lhsBucket.width ? rhsBucket : lhsBucket;
 }
 
-ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::Allocate(uint32_t width) {
+ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::Allocate(uint32_t width, ShaderExportStreamState* debugOwner) {
     AllocationBucket& bucket = GetForwardBucket(width);
     
     // Any free'd?
@@ -97,12 +97,17 @@ ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::
         info.offset = id;
         info.cpuHandle.ptr = bucket.cpuHandle.ptr + info.offset * bucket.descriptorAdvance;
         info.gpuHandle.ptr = bucket.gpuHandle.ptr + info.offset * bucket.descriptorAdvance;
+        info.debugOwner = debugOwner;
         
         // Rhs space is shifted by the width
         if (bucket.descriptorAdvance < 0) {
             info.cpuHandle.ptr += width * bucket.descriptorAdvance;
             info.gpuHandle.ptr += width * bucket.descriptorAdvance;
         }
+
+#if HEAP_ALLOCATOR_TRACK_OWNER
+        segments.push_back(info);
+#endif // HEAP_ALLOCATOR_TRACK_OWNER
 
         // OK
         return info;
@@ -129,12 +134,17 @@ ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::
     info.offset = bucket.slotAllocationCounter;
     info.cpuHandle.ptr = bucket.cpuHandle.ptr + info.offset * bucket.descriptorAdvance;
     info.gpuHandle.ptr = bucket.gpuHandle.ptr + info.offset * bucket.descriptorAdvance;
+    info.debugOwner = debugOwner;
 
     // Rhs space is shifted by the width
     if (bucket.descriptorAdvance < 0) {
         info.cpuHandle.ptr += width * bucket.descriptorAdvance;
         info.gpuHandle.ptr += width * bucket.descriptorAdvance;
     }
+
+#if HEAP_ALLOCATOR_TRACK_OWNER
+    segments.push_back(info);
+#endif // HEAP_ALLOCATOR_TRACK_OWNER
 
     // Advance
     bucket.slotAllocationCounter += width;
@@ -165,6 +175,13 @@ void ShaderExportFixedTwoSidedDescriptorAllocator::Free(const ShaderExportSegmen
 #ifndef NDEBUG
     ASSERT(id.heap == heap, "Mismatched heap in shader export descriptor free");
 #endif // NDEBUG
+
+#if HEAP_ALLOCATOR_TRACK_OWNER
+    // Remove from tracked, debugging only
+    segments.erase(std::ranges::remove_if(segments, [&](const ShaderExportSegmentDescriptorInfo& entry) {
+        return entry.offset == id.offset;
+    }).begin(), segments.end());
+#endif // HEAP_ALLOCATOR_TRACK_OWNER
 
     // Append as free, insert sorted
     bucket.freeDescriptors.insert(std::upper_bound(bucket.freeDescriptors.begin(), bucket.freeDescriptors.end(), id.offset), id.offset);
