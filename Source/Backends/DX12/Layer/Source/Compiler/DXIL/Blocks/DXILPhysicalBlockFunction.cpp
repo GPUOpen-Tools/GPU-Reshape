@@ -3889,6 +3889,34 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         dxilOpCode = DXILOpcodes::IsInf_;
                     }
 
+                    // Strange code-gen, inf/nan works on f-ext 32 values
+                    const auto *componentType = GetComponentType(program.GetTypeMap().GetType(value))->As<Backend::IL::FPType>();
+                    if (componentType->bitWidth == 16) {
+                        IL::ID extResult = program.GetIdentifierMap().AllocID();
+
+                        // Target 32 width
+                        const Backend::IL::FPType *fp32Type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+                            .bitWidth = 32
+                        });
+
+                        // Set type for later svox
+                        program.GetTypeMap().SetType(extResult, SplatToValue(program, fp32Type, value));
+
+                        // Prepare records
+                        UnaryOpSVOX(block, extResult, value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
+                            record.SetUser(true, ~0u, result);
+                            record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCast);
+                            record.opCount = 3;
+                            record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(fp32Type));
+                            record.ops[2] = static_cast<uint64_t>(LLVMCastOp::FPExt);
+                            block->AddRecord(record);
+                        });
+
+                        value = extResult;
+                    } 
+
                     // Handle as unary
                     UnaryOpSVOX(block, instr->result, value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
                         uint64_t ops[2];
@@ -3900,8 +3928,6 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 ASSERT(false, "Invalid bit width");
                                 return;
                             case 16:
-                                intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpIsSpecialFloatF16);
-                                break;
                             case 32:
                                 intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpIsSpecialFloatF32);
                                 break;
