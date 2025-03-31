@@ -97,7 +97,9 @@ ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::
         info.offset = id;
         info.cpuHandle.ptr = bucket.cpuHandle.ptr + info.offset * bucket.descriptorAdvance;
         info.gpuHandle.ptr = bucket.gpuHandle.ptr + info.offset * bucket.descriptorAdvance;
+#if HEAP_ALLOCATOR_TRACK_OWNER
         info.debugOwner = debugOwner;
+#endif // HEAP_ALLOCATOR_TRACK_OWNER
         
         // Rhs space is shifted by the width
         if (bucket.descriptorAdvance < 0) {
@@ -134,7 +136,9 @@ ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::
     info.offset = bucket.slotAllocationCounter;
     info.cpuHandle.ptr = bucket.cpuHandle.ptr + info.offset * bucket.descriptorAdvance;
     info.gpuHandle.ptr = bucket.gpuHandle.ptr + info.offset * bucket.descriptorAdvance;
+#if HEAP_ALLOCATOR_TRACK_OWNER
     info.debugOwner = debugOwner;
+#endif // HEAP_ALLOCATOR_TRACK_OWNER
 
     // Rhs space is shifted by the width
     if (bucket.descriptorAdvance < 0) {
