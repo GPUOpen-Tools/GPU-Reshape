@@ -1,5 +1,6 @@
 ﻿using Studio.Plugin;
 using Studio.Services;
+using Studio.Utils;
 
 namespace Studio;
 
@@ -17,7 +18,7 @@ public class ServiceProvider
         _pluginList = _pluginResolver.FindPlugins("uix", PluginResolveFlag.ContinueOnFailure);
             
         // Cold suspension service
-        ServiceRegistry.Add<ISuspensionService>(new SuspensionService(System.IO.Path.Combine("Intermediate", "Settings", "Suspension.json")));
+        ServiceRegistry.Add<ISuspensionService>(new SuspensionService(System.IO.Path.Combine(PathUtils.BaseDirectory, "Intermediate", "Settings", "Suspension.json")));
             
         // Locator
         ServiceRegistry.Add<ILocatorService>(new LocatorService());

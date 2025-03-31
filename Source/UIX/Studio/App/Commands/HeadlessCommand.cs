@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,6 +42,7 @@ using Studio.App.Commands.Cli;
 using Studio.Models.Workspace;
 using Studio.Services;
 using Studio.ViewModels;
+using Studio.ViewModels.Setting;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
@@ -62,6 +64,7 @@ public class HeadlessCommand : IBaseCommand
             WorkingDirectory,
             OutReport,
             Workspace,
+            SymbolPath,
             Timeout
         });
     }
@@ -285,6 +288,29 @@ public class HeadlessCommand : IBaseCommand
     }
 
     /// <summary>
+    /// Create the workspace settings and general environment
+    /// </summary>
+    private void CreateWorkspaceSettings(InvocationContext context, string process)
+    {
+        if (ServiceRegistry.Get<ISettingsService>() is not { ViewModel: { } settingViewModel })
+        {
+            Logging.Error("Failed to get settings service");
+            return;
+        }
+        
+        // Get application settings
+        ApplicationSettingViewModel appSettings = settingViewModel
+            .GetItemOrAdd<ApplicationListSettingViewModel>()
+            .GetProcessOrAdd(process);
+
+        // Configure symbol search path
+        var pdbSettings = appSettings.GetItemOrAdd<PDBSettingViewModel>();
+        pdbSettings.SearchDirectories.Clear();
+        pdbSettings.SearchDirectories.Add(context.ParseResult.GetValueForOption(SymbolPath)!);
+        pdbSettings.SearchInSubFolders = true;
+    }
+
+    /// <summary>
     /// Launch an application
     /// </summary>
     private DiscoveryProcessInfo? LaunchApplication(InvocationContext context)
@@ -296,6 +322,19 @@ public class HeadlessCommand : IBaseCommand
         if (CliUserWorkspace.DeserializeFile(context.ParseResult.GetValueForOption(Workspace)!) is not {} userWorkspace)
         {
             return null;
+        }
+
+        // Create settings
+        CreateWorkspaceSettings(context, Path.GetFileName(appAndArguments[0]));
+        
+        // Serialize all settings before launching
+        if (ServiceRegistry.Get<ISuspensionService>() is { } suspensionService)
+        {
+            suspensionService.Suspend();
+        }
+        else
+        {
+            Logging.Error("Failed to suspend settings");
         }
 
         // Select configuration
@@ -408,6 +447,11 @@ public class HeadlessCommand : IBaseCommand
     /// Working directory option
     /// </summary>
     private static readonly Option<string> WorkingDirectory = new("-wd", "The app working directory");
+    
+    /// <summary>
+    /// Symbol directory
+    /// </summary>
+    private static readonly Option<string> SymbolPath = new("-symbol", "The symbol directory");
     
     /// <summary>
     /// Timeout option

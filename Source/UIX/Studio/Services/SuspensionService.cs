@@ -72,6 +72,14 @@ namespace Studio.Services
         }
 
         /// <summary>
+        /// Manual suspension
+        /// </summary>
+        public void Suspend()
+        {
+            WriteTo(_path);
+        }
+
+        /// <summary>
         /// Bind an object for type based suspension, members are bound to the cold storage for the underlying type
         /// </summary>
         /// <param name="obj"></param>

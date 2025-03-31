@@ -69,6 +69,24 @@ namespace Studio.ViewModels.Setting
 
             return default;
         }
+        
+        /// <summary>
+        /// Get an item from this context settings item, or create it
+        /// </summary>
+        public static T GetItemOrAdd<T>(this ISettingViewModel self) where T : ISettingViewModel, new()
+        {
+            foreach (ISettingViewModel settingItemViewModel in self.Items)
+            {
+                if (settingItemViewModel is T typed)
+                {
+                    return typed;
+                }
+            }
+
+            var item = new T();
+            self.Items.Add(item);
+            return item;
+        }
 
         /// <summary>
         /// Get an item from this context settings item which matches a predicate
