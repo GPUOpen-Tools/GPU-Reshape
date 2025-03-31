@@ -2275,6 +2275,18 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
     }
 }
 
+static uint8_t GetValueFormatDimensionCount(const Backend::IL::Type* type, Backend::IL::Format format) {
+    // Derive storage from contained type, if possible
+    if (type) {
+        if (auto* vec = type->Cast<Backend::IL::VectorType>()) {
+            return vec->dimension;
+        }
+    }
+
+    // Assume from format
+    return Backend::IL::GetDimensionSize(format);
+}
+
 void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
     for (const UnresolvedSemanticInstruction &unresolved: unresolvedSemanticInstructions) {
         auto instr = unresolved.instruction.GetMutable();
@@ -2326,7 +2338,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 const auto *bufferType = program.GetTypeMap().GetType(resource)->As<Backend::IL::BufferType>();
 
                 // Number of dimensions
-                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
+                uint32_t formatDimensionCount = GetValueFormatDimensionCount(bufferType->elementType, bufferType->texelType);
 
                 // Vectorize
                 IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
@@ -2376,7 +2388,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 const auto* bufferType = program.GetTypeMap().GetType(resource)->As<Backend::IL::BufferType>();
 
                 // Number of dimensions
-                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
+                uint32_t formatDimensionCount = GetValueFormatDimensionCount(bufferType->elementType, bufferType->texelType);
 
                 // Vectorize
                 IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
@@ -2598,7 +2610,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
 
                 // Number of dimensions
                 uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension, false);
-                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(textureType->format);
+                uint32_t formatDimensionCount = GetValueFormatDimensionCount(textureType->sampledType, textureType->format);
 
                 // Vectorize
                 IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
