@@ -30,6 +30,7 @@
 #include <Backends/Vulkan/States/RenderPassState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
+#include <Backends/Vulkan/Controllers/MetadataController.h>
 
 static ShaderModuleState* GetPipelineStageShaderModule(DeviceDispatchTable* table, const VkPipelineShaderStageCreateInfo& createInfo) {
     // If there's a stage, just return it
@@ -45,6 +46,9 @@ static ShaderModuleState* GetPipelineStageShaderModule(DeviceDispatchTable* tabl
         state->table = table;
         state->object = nullptr;
         state->createInfoDeepCopy.DeepCopy(table->allocators, *moduleCreateInfo);
+        
+        // Inform the controller
+        table->metadataController->CreateShader(state);
 
         // Keep track of it
         table->states_shaderModule.Add(nullptr, state);

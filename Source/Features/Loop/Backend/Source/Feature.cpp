@@ -148,7 +148,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
     // Options
     const SetLoopInstrumentationConfigMessage config = FindOrDefault(specialization, SetLoopInstrumentationConfigMessage {
         .useIterationLimits = true,
-        .iterationLimit = 32'000,
+        .iterationLimit = 64'000,
         .atomicIterationInterval = 256
     });
 

@@ -32,6 +32,7 @@
 #include <Backends/Vulkan/Compiler/SpvSourceMap.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Symbolizer/ShaderSGUIDHost.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -100,6 +101,14 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                 }
                 case GetShaderILMessage::kID: {
                     OnMessage(*it.Get<GetShaderILMessage>());
+                    break;
+                }
+                case SetUseShaderExternalReferenceMessage::kID: {
+                    OnMessage(*it.Get<SetUseShaderExternalReferenceMessage>());
+                    break;
+                }
+                case ReleaseShaderMessage::kID: {
+                    OnMessage(*it.Get<ReleaseShaderMessage>());
                     break;
                 }
                 case GetShaderBlockGraphMessage::kID: {
@@ -190,6 +199,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     if (!shader || !shader->spirvModule) {
         auto&& response = view.Add<ShaderCodeMessage>();
         response->shaderUID = message.shaderUID;
+        response->poolCode = message.poolCode;
         response->found = false;
         return;
     }
@@ -273,6 +283,22 @@ void MetadataController::OnMessage(const GetShaderILMessage& message) {
     file->shaderUID = message.shaderUID;
     file->found = true;
     file->program.Set(ilStream.str());
+}
+
+void MetadataController::OnMessage(const struct ReleaseShaderMessage &message) {
+    // Release if found
+    if (ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderUID)) {
+        if (shader->hasExternalReference) {
+            destroyRef(shader, allocators);
+            shader->hasExternalReference = false;
+        } else {
+            table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, "Releasing shader without external reference");
+        }
+    }
+}
+
+void MetadataController::OnMessage(const struct SetUseShaderExternalReferenceMessage &message) {
+    useShaderExternalReference = message.enabled;
 }
 
 void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
@@ -417,4 +443,11 @@ void MetadataController::Commit() {
     // Export general to bridge
     bridge->GetOutput()->AddStreamAndSwap(stream);
     bridge->GetOutput()->AddStreamAndSwap(segmentMappingStream);
+}
+
+void MetadataController::CreateShader(ShaderModuleState *state) {
+    if (useShaderExternalReference) {
+        state->hasExternalReference = true;
+        state->AddUser();
+    }
 }

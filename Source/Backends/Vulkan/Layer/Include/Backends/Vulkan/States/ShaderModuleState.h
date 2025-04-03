@@ -149,6 +149,9 @@ struct ShaderModuleState : public ReferenceObject {
     /// Optional debug name
     char* debugName{nullptr};
 
+    /// If true, this object has an external owner
+    bool hasExternalReference = false;
+
     /// Module specific lock
     std::mutex mutex;
 

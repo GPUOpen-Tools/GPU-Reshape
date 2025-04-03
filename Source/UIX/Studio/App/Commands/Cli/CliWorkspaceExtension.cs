@@ -64,14 +64,19 @@ public class CliWorkspaceExtension : IWorkspaceExtension
     {
         obj.WhenAnyValue(x => x.Segment).WhereNotNull().Subscribe(segment =>
         {
-            Logging.Info($"Enqueueing shader contents for SGUID {segment.Location.SGUID}");
-            
             // Whenever a validation object is enqueued, immediately start pooling its shader contents
             // for later reporting purposes.
             if (_shaderCollection?.GetOrAddShader(segment.Location.SGUID) is { } shader)
             {
                 _shaderCodeService?.EnqueueShaderContents(shader);
                 _shaderCodeService?.EnqueueShaderIL(shader);
+                
+                // Release the shader once the contents have been enqueued
+                _shaderCodeService?.EnqueueReleaseShader(shader);
+            }
+            else
+            {
+                Logging.Error($"Failed to enqueue shader contents for SGUID {segment.Location.SGUID}");
             }
         });
     }

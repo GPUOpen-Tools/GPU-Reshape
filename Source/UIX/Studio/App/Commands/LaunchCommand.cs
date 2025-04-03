@@ -50,7 +50,7 @@ using Formatting = Newtonsoft.Json.Formatting;
 
 namespace Studio.App.Commands;
 
-public class HeadlessCommand : IBaseCommand
+public class LaunchCommand : IBaseCommand
 {
     /// <summary>
     /// Create the headless command
@@ -58,7 +58,7 @@ public class HeadlessCommand : IBaseCommand
     public static Command Create()
     {
         // Setup command
-        return new Command("headless").Make(new HeadlessCommand(), new Option[]
+        return new Command("launch").Make(new LaunchCommand(), new Option[]
         {
             App,
             WorkingDirectory,
@@ -69,7 +69,7 @@ public class HeadlessCommand : IBaseCommand
         });
     }
 
-    static HeadlessCommand()
+    static LaunchCommand()
     {
         // Let the launcher set up the wd
         WorkingDirectory.SetDefaultValue("");
@@ -356,6 +356,10 @@ public class HeadlessCommand : IBaseCommand
             Detail = userWorkspace.Config.Detail
             // TODO: Wait for connection tag
         };
+
+        // Always use external references on shaders to make sure we can query after app-side releases
+        var useExternalRef = _launchViewModel.MessageEnvironmentView.Add<SetUseShaderExternalReferenceMessage>();
+        useExternalRef.enabled = 1;
 
         // Always accept
         _launchViewModel.AcceptLaunch.RegisterHandler(ctx => ctx.SetOutput(true));

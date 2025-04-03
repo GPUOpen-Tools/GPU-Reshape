@@ -69,6 +69,11 @@ namespace Studio.ViewModels
         /// The launched process information
         /// </summary>
         public DiscoveryProcessInfo DiscoveryProcessInfo => _discoveryProcessInfo;
+        
+        /// <summary>
+        /// The process startup environment message container
+        /// </summary>
+        public OrderedMessageView<ReadWriteMessageStream> MessageEnvironmentView { get; } = new(new ReadWriteMessageStream());
 
         /// <summary>
         /// Current connection string
@@ -544,14 +549,11 @@ namespace Studio.ViewModels
             {
                 processInfo.workingDirectoryPath = Path.GetDirectoryName(processInfo.applicationPath);
             }
-
-            // Create environment view
-            var view = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
             
             // Construct virtual redirects
             foreach ((string? key, int value) in _virtualFeatureMappings)
             {
-                SetVirtualFeatureRedirectMessage message = view.Add<SetVirtualFeatureRedirectMessage>(new SetVirtualFeatureRedirectMessage.AllocationInfo
+                SetVirtualFeatureRedirectMessage message = MessageEnvironmentView.Add<SetVirtualFeatureRedirectMessage>(new SetVirtualFeatureRedirectMessage.AllocationInfo
                 {
                     nameLength = (ulong)key.Length
                 });
@@ -564,14 +566,14 @@ namespace Studio.ViewModels
             // Commit all pending objects
             if (WorkspaceViewModel.PropertyCollection.GetService<IBusPropertyService>() is { } busPropertyService)
             {
-                busPropertyService.CommitRedirect(view, false);
+                busPropertyService.CommitRedirect(MessageEnvironmentView, false);
             }
 
             // Add all global options
-            AppendGlobalConfig(view);
+            AppendGlobalConfig(MessageEnvironmentView);
             
             // Start process
-            if (!service.StartBootstrappedProcess(processInfo, view.Storage, ref _discoveryProcessInfo))
+            if (!service.StartBootstrappedProcess(processInfo, MessageEnvironmentView.Storage, ref _discoveryProcessInfo))
             {
                 ConnectionStatus = ConnectionStatus.FailedLaunch;
                 return;

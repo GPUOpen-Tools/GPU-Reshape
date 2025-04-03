@@ -59,7 +59,8 @@ public class CliApp : Application
         // Setup command signatures
         var command = new RootCommand("GPU Reshape")
         {
-            HeadlessCommand.Create()
+            LaunchCommand.Create(),
+            RenderCommand.Create()
         };
         
         // Invoke sync

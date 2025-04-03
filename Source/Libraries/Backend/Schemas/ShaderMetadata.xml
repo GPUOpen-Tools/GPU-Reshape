@@ -51,6 +51,14 @@
         <field name="shaderUID" type="uint64"/>
     </message>
 
+    <message name="SetUseShaderExternalReference">
+        <field name="enabled" type="bool"/>
+    </message>
+
+    <message name="ReleaseShader">
+        <field name="shaderUID" type="uint64"/>
+    </message>
+
     <message name="ShaderName">
         <field name="shaderUID" type="uint64"/>
         <field name="language"  type="string"/>

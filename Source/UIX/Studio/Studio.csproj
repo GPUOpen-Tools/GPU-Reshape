@@ -75,6 +75,7 @@
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Projektanker.Icons.Avalonia" Version="9.4.0" />
         <PackageReference Include="Projektanker.Icons.Avalonia.FontAwesome" Version="9.4.0" />
+        <PackageReference Include="Scriban" Version="6.1.0" />
         <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
         <PackageReference Include="TextMateSharp" Version="1.0.56" />
         <PackageReference Include="TextMateSharp.Grammars" Version="1.0.56" />
@@ -275,6 +276,8 @@
         <DependentUpon>App.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <None Remove="Resources\Render\StaticTemplate.scriban.html" />
+      <AvaloniaResource Include="Resources\Render\StaticTemplate.scriban.html" />
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
