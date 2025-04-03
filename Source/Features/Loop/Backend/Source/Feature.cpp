@@ -538,7 +538,8 @@ void LoopFeature::HeartBeatThreadWorker() {
     static constexpr uint32_t PulseIntervalMS = 25;
 
     // TODO: Exactly what is the right magical figure here?
-    static constexpr uint32_t DistanceTerminationMS = 750;
+    // The default TDR is 2s, 750 is just about enough to hit the limit long scheduling chains
+    static constexpr uint32_t DistanceTerminationMS = 1500;
 
     // Worker loop
     while (!heartBeatExitFlag.load()) {
