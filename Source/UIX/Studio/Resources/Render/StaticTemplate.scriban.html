@@ -255,14 +255,15 @@
                                         </ul>
                                     </div>
                                     
-                                    <div class="overflow-y-scroll h-[calc(100%-25px)]">
+                                    <div class="overflow-y-scroll h-[calc(100%-28px)]">
                                         <pre id="pre-code-el" class="lang-markup line-numbers"><code id="code-el" class="language-hlsl">[[shaderContents]]</code></pre>
                                     </div>
                                 </div>
         
                                 <!-- Validation Details -->
-                                <div id="container-detail-el" class="invisible container-detail h-1/4">
-                                    <div class="flex h-full w-full" style="flex-direction: column">
+                                <div id="container-detail-el" class="container-detail h-0">
+                                    <!-- Resource wise collection -->
+                                    <div v-if="hasDetail && selectedMessage.Detail.Type === 'ResourceList'" class="flex h-full w-full" style="flex-direction: column">
                                         <div class="h-full w-full">
                                             <div class="h-full flex flex-col lg:flex-row gap-0">
                                                 <!-- Resource Table -->
@@ -274,7 +275,7 @@
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <tr v-for="instance in resourceInstances"
+                                                            <tr v-for="instance in messageDetailInstances"
                                                                 @click="onSelectResourceInstance(instance)"
                                                                 class="cursor-pointer hover:bg-base-300">
                                                                 <th>[[instance.Resource.Name]]</th>
@@ -302,6 +303,36 @@
                                             </div>
                                         </div>
         
+                                        <!-- Selected resource info-->
+                                        <div class="w-full bg-base-100 text-sm">
+                                            [[resourceInfo]]
+                                        </div>
+                                    </div>
+
+                                    <!-- Generic collection -->
+                                    <div v-if="hasDetail && selectedMessage.Detail.Type === 'GenericList'" class="flex h-full w-full" style="flex-direction: column">
+                                        <div class="h-full w-full">
+                                            <div class="h-full flex flex-col lg:flex-row gap-0">
+                                                <!-- Instance Table -->
+                                                <div class="w-full h-full">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Details</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="instance in messageDetailInstances"
+                                                                @click="onSelectResourceInstance(instance)"
+                                                                class="cursor-pointer hover:bg-base-300">
+                                                                <th>[[instance]]</th>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <!-- Selected resource info-->
                                         <div class="w-full bg-base-100 text-sm">
                                             [[resourceInfo]]
@@ -416,8 +447,9 @@
                         selectedShaderFile: Vue.ref(null),
                         selectedMessage: Vue.ref(null),
 
-                        // Resource detail sets
-                        resourceInstances: Vue.ref(null),
+                        // Detail sets
+                        hasDetail: Vue.ref(null),
+                        messageDetailInstances: Vue.ref(null),
                         resourceDetailInstances: Vue.ref(null),
                         resourceInfo: Vue.ref(null),
                         
@@ -449,7 +481,11 @@
                         ],
         
                         // To be populated lookup
-                        shaderLookup: {}
+                        shaderLookup: {},
+
+                        // Line lookups
+                        highlightToLineLookup: {},
+                        lineToHighlightLookup: {}
                     }
                 },
                 mounted() {
@@ -498,9 +534,13 @@
                     Prism.hooks.add('complete', (env) => {
                         const lines = env.element.parentNode.querySelectorAll('.line-highlight');
                         
-                        // Apply for each highlight, elements are appended in-order with the messages, so just look it up as such
+                        // Apply for each highlight
                         lines.forEach((lineEl, i) => {
-                            switch (this.selectedShader.messages[i].Severity) {
+                            const messageIndex = this.highlightToLineLookup[i]
+                            const message      = this.selectedShader.messages[messageIndex]
+                            
+                            // Shade by severity
+                            switch (message.Severity) {
                                 case "Info":
                                     lineEl.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
                                     break;
@@ -541,10 +581,7 @@
                             }
         
                             // Get all message lines
-                            lines = []
-                            for (const message of shader.messages) {
-                                lines.push(message.Segment.Line + 1)
-                            }
+                            let lines = this.getHighlightLines(shader);
         
                             // Mark for highlighting
                             const pre =  document.getElementById('pre-code-el')
@@ -552,19 +589,23 @@
                         }
                         
                         // Do we have any extra detail on this validation message?
-                        const hasDetail = message.Detail != null && message.Detail.Instances.length > 0
-                        this.setDetailPanelVisibility(hasDetail)
+                        this.hasDetail = message.Detail != null && message.Detail.Instances.length > 0
+                        this.setDetailPanelVisibility(this.hasDetail)
                         
-                        // If so, setup the resources list and select the first
-                        if (hasDetail) {
-                            this.resourceInstances = message.Detail.Instances
-                            this.onSelectResourceInstance(message.Detail.Instances[0]);
+                        // If so, setup the collection
+                        if (this.hasDetail) {
+                            this.messageDetailInstances = message.Detail.Instances
+                            
+                            // Always select the first resource
+                            if (message.Detail.Type === 'ResourceList') {
+                                this.onSelectResourceInstance(message.Detail.Instances[0]);
+                            }
                         }
                         
                         // Highlight the new code after population
                         Vue.nextTick(() => {
                             if (changedFile) {
-                                Prism.highlightElement(document.getElementById('code-el'));
+                                this.highlightSources();
                             }
         
                             // Scroll to the line after the layout's been computed
@@ -582,8 +623,43 @@
                         if (resource.Format === "UNKNOWN") {
                             this.resourceInfo = `Resource byte-width:${resource.Width} format:${resource.Format}`
                         } else {
-                            this.resourceInfo = `Resource width:${resource.Width} height:${resource.Height} depth:${resource.Depth} format:${resource.Format}`
+                            this.resourceInfo = `Resource width:${resource.Width} height:${resource.Height} depth:${resource.Depth} format:${resource.Format} (base mip)`
                         }
+                    },
+                    
+                    // Highlight the source code
+                    highlightSources() {
+                        console.time('PrismJS.Highlighting')
+                        Prism.highlightElement(document.getElementById('code-el'));
+                        console.timeEnd('PrismJS.Highlighting')
+                    },
+                    
+                    // Get all the lines to highlight
+                    getHighlightLines(shader) {
+                        let lines = []
+
+                        // Cleanup
+                        this.highlightToLineLookup = {}
+                        this.lineToHighlightLookup = {}
+                        
+                        // Append all messages
+                        for (let messageIndex = 0; messageIndex < shader.messages.length; messageIndex++) {
+                            const message = shader.messages[messageIndex]
+
+                            // Do not append if already covered
+                            const lineElementIndex = lines.indexOf(message.Segment.Line + 1)
+                            if (lineElementIndex !== -1) {
+                                this.lineToHighlightLookup[messageIndex] = lineElementIndex
+                                continue;
+                            }
+
+                            this.highlightToLineLookup[lines.length] = messageIndex
+                            this.lineToHighlightLookup[messageIndex] = lines.length
+                            lines.push(message.Segment.Line + 1)
+                        }
+                        
+                        // OK
+                        return lines;
                     },
                     
                     // Set the detail visibility
@@ -595,20 +671,23 @@
                         if (visible) {
                             codeEl.classList.remove('h-full')
                             codeEl.classList.add('h-3/4')
-                            detailEl.classList.remove('invisible')
+                            detailEl.classList.remove('h-0')
+                            detailEl.classList.add('h-1/4')
                         } else {
                             codeEl.classList.remove('h-3/4')
                             codeEl.classList.add('h-full')
-                            detailEl.classList.add('invisible')
+                            detailEl.classList.remove('h-1/4')
+                            detailEl.classList.add('h-0')
                         }
                     },
                     
                     // Scroll to a particular message
                     scrollToMessage(behaviour, index) {
-                        let lines = document.getElementById("pre-code-el").querySelectorAll('.line-highlight');
+                        const highlights     = document.getElementById("pre-code-el").querySelectorAll('.line-highlight');
+                        const highlightIndex = this.lineToHighlightLookup[index]
 
-                        // Index the message spans by the highlighting
-                        lines[index].scrollIntoView({
+                        // Scroll to the highlight element
+                        highlights[highlightIndex].scrollIntoView({
                             behavior: behaviour, block: 'center', inline: 'start'
                         });
                     }
