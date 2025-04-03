@@ -86,6 +86,7 @@ public class RenderCommand : IBaseCommand
         try
         {
             File.WriteAllText(outPath, contents);
+            Logging.Info($"Render serialized to '{outPath}'");
         }
         catch
         {

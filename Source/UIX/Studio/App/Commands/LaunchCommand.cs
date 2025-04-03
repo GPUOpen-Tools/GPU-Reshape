@@ -103,12 +103,17 @@ public class LaunchCommand : IBaseCommand
             try
             {
                 await process.WaitForExitAsync(token);
+                Logging.Info($"Process exited with {process.ExitCode}");
             }
             catch (OperationCanceledException)
             {
                 Logging.Error("Wait for process termination timed out");
                 process.Kill();
             }
+        }
+        else
+        {
+            Logging.Info("Process exited");
         }
 
         // Finally, write the report
@@ -154,11 +159,14 @@ public class LaunchCommand : IBaseCommand
         try
         {
             // Try to serialize the report
+            string reportPath = context.ParseResult.GetValueForOption(OutReport)!;
             System.IO.File.WriteAllText(
-                context.ParseResult.GetValueForOption(OutReport)!,
+                reportPath,
                 JsonConvert.SerializeObject(map, Formatting.Indented)
             );
-            
+        
+            // Diagnostic
+            Logging.Info($"Report serialized to '{reportPath}'");
             return true;
         }
         catch (Exception ex)
@@ -292,6 +300,12 @@ public class LaunchCommand : IBaseCommand
     /// </summary>
     private void CreateWorkspaceSettings(InvocationContext context, string process)
     {
+        // Symbol path is optional
+        if (context.ParseResult.GetValueForOption(SymbolPath) is not { } path)
+        {
+            return;
+        }
+        
         if (ServiceRegistry.Get<ISettingsService>() is not { ViewModel: { } settingViewModel })
         {
             Logging.Error("Failed to get settings service");
@@ -306,8 +320,11 @@ public class LaunchCommand : IBaseCommand
         // Configure symbol search path
         var pdbSettings = appSettings.GetItemOrAdd<PDBSettingViewModel>();
         pdbSettings.SearchDirectories.Clear();
-        pdbSettings.SearchDirectories.Add(context.ParseResult.GetValueForOption(SymbolPath)!);
+        pdbSettings.SearchDirectories.Add(path);
         pdbSettings.SearchInSubFolders = true;
+        
+        // Diagnostic
+        Logging.Info($"Mounting symbol path for {path}");
     }
 
     /// <summary>
@@ -337,6 +354,10 @@ public class LaunchCommand : IBaseCommand
             Logging.Error("Failed to suspend settings");
         }
 
+        // Join arguments
+        string argumentString = string.Join(" ", new ArraySegment<string?>(appAndArguments, 1, appAndArguments.Length - 1));
+        Logging.Info($"Launching '{appAndArguments[0]} {argumentString}'");
+
         // Select configuration
         _workspaceConfiguration = new CliWorkspaceConfiguration()
         {
@@ -348,7 +369,7 @@ public class LaunchCommand : IBaseCommand
         {
             ApplicationPath = appAndArguments[0],
             WorkingDirectoryPath = context.ParseResult.GetValueForOption(WorkingDirectory)!,
-            Arguments = string.Join(" ", new ArraySegment<string?>(appAndArguments, 1, appAndArguments.Length - 1)),
+            Arguments = argumentString,
             SelectedConfiguration = _workspaceConfiguration,
             AttachAllDevices = true,
             CaptureChildProcesses = true,

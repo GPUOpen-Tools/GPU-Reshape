@@ -24,6 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
@@ -178,9 +179,9 @@ namespace Studio.ViewModels.Setting
                 // Serialize config
                 File.WriteAllText(Path, JsonConvert.SerializeObject(config, Formatting.Indented));
             }
-            catch
+            catch (Exception e)
             {
-                Studio.Logging.Error("Failed to serialize application startup environment");
+                Studio.Logging.Error($"Failed to serialize application startup environment: {e}");
             }
         }
 
