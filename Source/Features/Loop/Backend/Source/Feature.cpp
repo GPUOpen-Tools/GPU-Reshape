@@ -259,12 +259,15 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
             // Split from the beginning, handles phi splitting
             entryBlock->Split(postEntry, entryBlock->begin());
 
+            // Local counter value
+            IL::ID counter;
+
             // Emit into pre-guard
             {
                 IL::Emitter<> pre(program, *entryBlock);
 
                 // Increment local counter
-                IL::ID counter = GetAndIncrementCounter(pre, &context.function, functionCounters);
+                counter = GetAndIncrementCounter(pre, &context.function, functionCounters);
 
                 // Periodic check, I % Interval == 0
                 pre.BranchConditional(
@@ -315,6 +318,13 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 LoopTerminationMessage::ShaderExport msg;
                 msg.sguid = term.UInt32(sguid);
                 msg.padding = term.UInt32(0);
+                    
+                // Detailed instrumentation?
+                if (config.detail) {
+                    msg.chunks |= LoopTerminationMessage::Chunk::Detail;
+                    msg.detail.functionIterationCount = counter;
+                }
+            
                 term.Export(exportID, msg);
 
                 // Expected function type
