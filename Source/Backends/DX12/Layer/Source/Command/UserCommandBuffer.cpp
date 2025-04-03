@@ -156,17 +156,15 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 // Update data
                 std::memcpy(stagingAllocation.staging, reinterpret_cast<const uint8_t*>(cmd) + sizeof(StageBufferCommand), length);
 
-                // Expected state
-                // TODO: This has to be configured somewhere depending on the data id
-                D3D12_RESOURCE_STATES readState = isCopyCommandList ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-
                 // Shader Write -> Copy Dest
-                D3D12_RESOURCE_BARRIER barrier{};
-                barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                barrier.Transition.pResource = allocation.resource;
-                barrier.Transition.StateBefore = readState;
-                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-                commandList->ResourceBarrier(1u, &barrier);
+                if (!isCopyCommandList) {
+                    D3D12_RESOURCE_BARRIER barrier{};
+                    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    barrier.Transition.pResource = allocation.resource;
+                    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+                    commandList->ResourceBarrier(1u, &barrier);
+                }
 
                 // Using atomic copies?
                 if (cmd->flags & StageBufferFlag::Atomic32) {
@@ -208,9 +206,14 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 }
 
                 // Copy Dest -> Shader Write
-                barrier.Transition.StateAfter = readState;
-                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                commandList->ResourceBarrier(1u, &barrier);
+                if (!isCopyCommandList) {
+                    D3D12_RESOURCE_BARRIER barrier{};
+                    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    barrier.Transition.pResource = allocation.resource;
+                    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+                    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                    commandList->ResourceBarrier(1u, &barrier);
+                }
                 break;
             }
             case CommandType::ClearBuffer: {
