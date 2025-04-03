@@ -278,6 +278,10 @@
       </Compile>
       <None Remove="Resources\Render\StaticTemplate.scriban.html" />
       <AvaloniaResource Include="Resources\Render\StaticTemplate.scriban.html" />
+      <Compile Update="Views\Workspace\Objects\GenericValidationDetailView.axaml.cs">
+        <DependentUpon>GenericValidationDetailView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
