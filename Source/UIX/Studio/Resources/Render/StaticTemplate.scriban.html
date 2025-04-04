@@ -11,6 +11,7 @@
         <link href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/plugins/line-highlight/prism-line-highlight.min.css" rel="stylesheet" />
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5/theme/business.css" rel="stylesheet" type="text/css" />
+        <link href="https://cdn.jsdelivr.net/npm/vue-virtual-scroller@2.0.0-beta.8/dist/vue-virtual-scroller.min.css" rel="stylesheet">
     
         <!-- Vue, remove .prod for development -->
         <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
@@ -22,8 +23,9 @@
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/prism.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-c.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-hlsl.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/plugins/line-highlight/prism-line-highlight.min.js"></script>
+
+        <!-- Virtual Scroller -->
+        <script src="https://cdn.jsdelivr.net/npm/vue-virtual-scroller@2.0.0-beta.8/dist/vue-virtual-scroller.min.js"></script>
         
         <!-- ChartJS -->
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
@@ -96,8 +98,60 @@
             
             /** Code */
     
-            pre[class*="language-"] {
-                margin: 0;
+            .container-source {
+                color: #ccc;
+                background: none;
+                font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+                font-size: 1em;
+                text-align: left;
+                white-space: pre;
+                word-spacing: normal;
+                word-break: normal;
+                word-wrap: normal;
+                line-height: 1.5;
+                -moz-tab-size: 4;
+                -o-tab-size: 4;
+                tab-size: 4;
+                -webkit-hyphens: none;
+                -moz-hyphens: none;
+                -ms-hyphens: none;
+                hyphens: none;
+            }
+            
+            .line-number {
+                width: var(--line-number-width);
+                letter-spacing: -1px;
+                border-right: 1px solid #999;
+                margin-right: 1em;
+                text-align: right;
+                padding-right: .5em;
+                height: 25px;
+                color: #999;
+            }
+
+            .line {
+                background-color: var(--line-severity-color);
+                min-width: 100%;
+                display: flex;
+            }
+
+            .line-none { }
+
+            .line-info {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .line-warning {
+                background-color: rgba(255, 255, 0, 0.2);
+            }
+
+            .line-error {
+                background-color: rgba(255, 0, 0, 0.2);
+            }
+
+            .vue-recycle-scroller.ready.direction-vertical .vue-recycle-scroller__item-view {
+                min-width: 100%;
+                width: auto;
             }
         </style>
     </head>
@@ -255,8 +309,21 @@
                                         </ul>
                                     </div>
                                     
-                                    <div class="overflow-y-scroll h-[calc(100%-28px)]">
-                                        <pre id="pre-code-el" class="lang-markup line-numbers"><code id="code-el" class="language-hlsl">[[shaderContents]]</code></pre>
+                                    <div class="h-[calc(100%-28px)]">
+                                        <recycle-scroller
+                                            ref="codeScroller"
+                                            class="scroller container-source h-full"
+                                            :items="shaderContentLines"
+                                            :item-size="25"
+                                            key-field="id"
+                                            v-slot="{ item }">
+                                            <div class="line" :class="'line-' + item.severity">
+                                                <span class="line-number">
+                                                    [[item.id + 1]]
+                                                </span>
+                                                <span v-html="item.html"/>
+                                            </div>
+                                        </recycle-scroller>
                                     </div>
                                 </div>
         
@@ -441,6 +508,7 @@
                     return {
                         // Currently displayed shader contents
                         shaderContents: Vue.ref(null),
+                        shaderContentLines: Vue.ref([]),
                         
                         // All selection
                         selectedShader: Vue.ref(null),
@@ -481,11 +549,7 @@
                         ],
         
                         // To be populated lookup
-                        shaderLookup: {},
-
-                        // Line lookups
-                        highlightToLineLookup: {},
-                        lineToHighlightLookup: {}
+                        shaderLookup: {}
                     }
                 },
                 mounted() {
@@ -529,30 +593,6 @@
                             }
                         }
                     });
-        
-                    // Hook prism, change the color highlighting on validation messages
-                    Prism.hooks.add('complete', (env) => {
-                        const lines = env.element.parentNode.querySelectorAll('.line-highlight');
-                        
-                        // Apply for each highlight
-                        lines.forEach((lineEl, i) => {
-                            const messageIndex = this.highlightToLineLookup[i]
-                            const message      = this.selectedShader.messages[messageIndex]
-                            
-                            // Shade by severity
-                            switch (message.Severity) {
-                                case "Info":
-                                    lineEl.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-                                    break;
-                                case "Warning":
-                                    lineEl.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
-                                    break;
-                                case "Error":
-                                    lineEl.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
-                                    break;
-                            }
-                        });
-                    });
                 },
                 methods: {
                     // Invoked on general selection
@@ -579,13 +619,9 @@
                             } else {
                                 this.shaderContents = shader.program;
                             }
-        
-                            // Get all message lines
-                            let lines = this.getHighlightLines(shader);
-        
-                            // Mark for highlighting
-                            const pre =  document.getElementById('pre-code-el')
-                            pre.setAttribute('data-line', lines.join(','));
+    
+                            // Highlight all lines
+                            this.highlightSources();
                         }
                         
                         // Do we have any extra detail on this validation message?
@@ -602,16 +638,9 @@
                             }
                         }
                         
-                        // Highlight the new code after population
-                        Vue.nextTick(() => {
-                            if (changedFile) {
-                                this.highlightSources();
-                            }
-        
-                            // Scroll to the line after the layout's been computed
-                            // If the source has changed, do not scroll
-                            Vue.nextTick(() => this.scrollToMessage(changedFile ? "instant" : "smooth", index));
-                        });
+                        // Scroll to the message
+                        // Hack: DOM update seem to take two trips before it can scroll, for some reason...
+                        Vue.nextTick(() => Vue.nextTick(() => this.scrollToLine(changedFile ? "instant" : "smooth", message.Segment.Line)));
                     },
                     
                     // Invoked on resource selection
@@ -629,37 +658,28 @@
                     
                     // Highlight the source code
                     highlightSources() {
-                        console.time('PrismJS.Highlighting')
-                        Prism.highlightElement(document.getElementById('code-el'));
-                        console.timeEnd('PrismJS.Highlighting')
-                    },
-                    
-                    // Get all the lines to highlight
-                    getHighlightLines(shader) {
-                        let lines = []
-
-                        // Cleanup
-                        this.highlightToLineLookup = {}
-                        this.lineToHighlightLookup = {}
+                        console.time('GRS.Container.Source.Highlighting')
                         
-                        // Append all messages
-                        for (let messageIndex = 0; messageIndex < shader.messages.length; messageIndex++) {
-                            const message = shader.messages[messageIndex]
+                        // Split into lines
+                        const lines = this.shaderContents.split('\n')
+                        
+                        // Set line column width
+                        document.documentElement.style.setProperty('--line-number-width', `${String(lines.length).length}em`);
 
-                            // Do not append if already covered
-                            const lineElementIndex = lines.indexOf(message.Segment.Line + 1)
-                            if (lineElementIndex !== -1) {
-                                this.lineToHighlightLookup[messageIndex] = lineElementIndex
-                                continue;
-                            }
-
-                            this.highlightToLineLookup[lines.length] = messageIndex
-                            this.lineToHighlightLookup[messageIndex] = lines.length
-                            lines.push(message.Segment.Line + 1)
+                        // Message map
+                        messageLookup = new Map()
+                        for (const message of this.selectedShader.messages) {
+                            messageLookup.set(message.Segment.Line, message);
                         }
                         
-                        // OK
-                        return lines;
+                        // Render highlighting per line
+                        this.shaderContentLines = lines.map((line, index) => ({
+                            id: index,
+                            severity: messageLookup.has(index) ? messageLookup.get(index).Severity.toLowerCase() : "none",
+                            html: Prism.highlight(line, Prism.languages.hlsl, 'hlsl')
+                        }));
+
+                        console.timeEnd('GRS.Container.Source.Highlighting')
                     },
                     
                     // Set the detail visibility
@@ -681,18 +701,21 @@
                         }
                     },
                     
-                    // Scroll to a particular message
-                    scrollToMessage(behaviour, index) {
-                        const highlights     = document.getElementById("pre-code-el").querySelectorAll('.line-highlight');
-                        const highlightIndex = this.lineToHighlightLookup[index]
-
-                        // Scroll to the highlight element
-                        highlights[highlightIndex].scrollIntoView({
-                            behavior: behaviour, block: 'center', inline: 'start'
-                        });
+                    // Scroll to a particular line
+                    scrollToLine(behaviour, line) {
+                        const itemHeight = this.$refs.codeScroller.itemSize;
+                        const clientRect = this.$refs.codeScroller.$el.getBoundingClientRect()
+                        
+                        // Offset the line so that it appears in the middle
+                        const lineOffset = clientRect.height / itemHeight / 2
+                        const lineStart = Math.max(0, line - lineOffset)
+                        this.$refs.codeScroller.scrollToItem(lineStart);
                     }
                 }
             });
+
+            // Declare components
+            app.component('recycle-scroller', VueVirtualScroller.RecycleScroller)
         
             // Finally, hook the app
             // We change the templating to avoid collisions with Scriban
