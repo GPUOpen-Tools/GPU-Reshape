@@ -57,7 +57,6 @@
 /// TODO[dbg]: Temporary work
 static constexpr uint32_t kWidth = 1920;
 static constexpr uint32_t kHeight = 1080;
-static constexpr uint32_t kStaticDebugStreamDwordCount = kWidth*kHeight;
 
 /// Maximum streaming size
 static constexpr uint64_t kDebugStreamBufferSize = UINT32_MAX; // ~4gb
@@ -86,17 +85,10 @@ bool DebugFeature::Install() {
 
     // Create tiled streaming buffer
     streamBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = kStaticDebugStreamDwordCount,
+        .elementCount = kDebugStreamBufferSize / sizeof(uint32_t),
         .format = Backend::IL::Format::R32UInt,
         .flagSet = ShaderDataBufferFlag::Tiled
     }, "DebugStreamBuffer");
-
-    // Create host streaming buffer
-    streamBufferHostID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = kStaticDebugStreamDwordCount,
-        .format = Backend::IL::Format::R32UInt,
-        .flagSet = ShaderDataBufferFlag::Host
-    }, "DebugStreamHost");
 
     // Create allocator for the streaming buffer
     buddyAllocator.Install(kDebugStreamBufferSize + 1);
@@ -188,6 +180,14 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                         breakpoint.allocation.offset,
                         breakpoint.allocation.length
                     );
+
+                    // Create streaming counter-part
+                    breakpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
+                        .elementCount = breakpoint.streamSize,
+                        .format = Backend::IL::Format::R8UInt,
+                        .flagSet = ShaderDataBufferFlag::Host
+                    }, "DebugStreamHost");
+                    
                     break;
                 }
                 case DeregisterDebugBreakpointMessage::kID: {
@@ -250,15 +250,15 @@ void DebugFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const Co
         .value = exclusiveTransferPrimitiveMonotonicCounter
     });
 
-    // TODO[dbg]: This is incorrect, of course
-    {
-        CommandBuilder builder(submitContext.postContext->buffer);
-
-        // Copy the debug streaming buffer to host
+    CommandBuilder builder(submitContext.postContext->buffer);
+    
+    // Copy the debug streaming buffer to host
+    for (const Breakpoint& breakpoint : breakpoints) {
+        // TODO[dbg]: This is incorrect, of course
         builder.CopyBuffer(
-            streamBufferID, 0,
-            streamBufferHostID, 0,
-            kStaticDebugStreamDwordCount * sizeof(uint32_t)
+            streamBufferID, breakpoint.allocation.offset,
+            breakpoint.hostStreamingBuffer, 0,
+            breakpoint.streamSize
         );
     }
 }
@@ -302,31 +302,34 @@ void DebugFeature::OnSyncPoint() {
         return;
     }
 
-    // Map the streaming buffer
-    void* data = shaderDataHost->Map(streamBufferHostID);
+    // Stream out the breakpoints separately
+    for (const Breakpoint& breakpoint : breakpoints) {
+        // Map the streaming buffer
+        void* data = shaderDataHost->Map(breakpoint.hostStreamingBuffer);
 
-    // Empty out last stream
-    MessageStreamView<DebugBreakpointStreamMessage> view(stream);
-    stream.Clear();
+        // Empty out last stream
+        MessageStreamView<DebugBreakpointStreamMessage> view(stream);
+        stream.Clear();
 
-    // Allocate breakpoint data
-    auto message = view.Add(DebugBreakpointStreamMessage::AllocationInfo {
-        .dataCount = kWidth * kHeight * sizeof(uint32_t)
-    });
+        // Allocate breakpoint data
+        auto message = view.Add(DebugBreakpointStreamMessage::AllocationInfo {
+            .dataCount = breakpoint.streamSize
+        });
 
-    // TODO[dbg]: Can we somehow map this in-place? There's a lot of copies going on
-    std::memcpy(message->data.Get(), data, kWidth * kHeight * sizeof(uint32_t));
+        // TODO[dbg]: Can we somehow map this in-place? There's a lot of copies going on
+        std::memcpy(message->data.Get(), data, breakpoint.streamSize);
 
-    // Write out request data
-    message->request = ++defaultController.requestIndex;
-    message->type = 0;
-    message->dataType = 0;
-    message->uid = breakpoints[0].uid;
-    message->width = kWidth;
-    message->height = kHeight;
+        // Write out request data
+        message->request = ++defaultController.requestIndex;
+        message->type = 0;
+        message->dataType = 0;
+        message->uid = breakpoint.uid;
+        message->width = breakpoint.payload.image.width;
+        message->height = breakpoint.payload.image.height;
 
-    // Done!
-    shaderDataHost->Unmap(streamBufferHostID, data);
+        // Done!
+        shaderDataHost->Unmap(breakpoint.hostStreamingBuffer, data);
+    }
 }
 
 IL::ID DebugFeature::GetStaticOrderingFor(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction* it) {

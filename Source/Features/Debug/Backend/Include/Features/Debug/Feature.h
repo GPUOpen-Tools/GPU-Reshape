@@ -121,6 +121,9 @@ private:
         /// Underlying allocation
         BuddyAllocation allocation;
 
+        /// Streaming buffer
+        ShaderDataID hostStreamingBuffer = InvalidShaderDataID;
+
         /// Type payload
         union {
             struct {
@@ -188,7 +191,6 @@ private:
 
     /// Shader data
     ShaderDataID streamBufferID{InvalidShaderDataID};
-    ShaderDataID streamBufferHostID{InvalidShaderDataID};
 
     /// Export id for this feature
     ShaderExportID exportID{};
