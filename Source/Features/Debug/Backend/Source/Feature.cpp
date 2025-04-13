@@ -128,6 +128,12 @@ void DebugFeature::Inject(IL::Program &program, const MessageStreamView<> &speci
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
+        // No reason to instrument terminators
+        // Also conveniently hide issue with pointing past terminators
+        if (it == context.basicBlock.GetTerminator()) {
+            return it;
+        }
+        
         if (auto breakpointIt = breakpointStreams.find(it->source.codeOffset); breakpointIt != breakpointStreams.end()) {
             return InjectBreakpoint(context, it, breakpointIt->second);
         }
@@ -359,6 +365,20 @@ IL::ID DebugFeature::GetStaticOrderingFor(const IL::VisitContext &context, IL::E
     );
 }
 
+IL::BasicBlock::Iterator DebugFeature::SplitInterruptBlock(const IL::VisitContext& context, IL::BasicBlock::Iterator it, IL::BasicBlock *interruptBlock) {
+    // Split the iterator to resume
+    // Excluding the iterator itself, since we may want to reference the instruction results
+    IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
+    it.block->Split(resumeBlock, std::next(it));
+
+    // Branch the split-end to interrupt
+    IL::Emitter(context.program, *it.block).Branch(interruptBlock);
+    
+    // Branch the resume to interrupt
+    IL::Emitter(context.program, *interruptBlock).Branch(resumeBlock);
+    return resumeBlock->begin();
+}
+
 static bool IsTypeSupported(const Backend::IL::Type* type) {
     switch (type->kind) {
         default: {
@@ -460,8 +480,6 @@ static IL::ID GetInstructionDebugValue(const IL::Instruction* instr) {
 }
 
 IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, DebugBreakpointMessage breakpoint) {
-    IL::InstructionRef ref = it.Ref();
-
     // 
     // ACQUIRE FIRST INVOCATION
     // bIs = false
@@ -475,13 +493,14 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     //
     // WRITE DATA
     // debugMd[order] = X
-    // 
+    //
 
-    // Emit after the IOI
-    IL::Emitter<> emitter(context.program, context.basicBlock, std::next(it));
+    // Emit in the interrupt block
+    IL::BasicBlock* interruptBlock = context.function.GetBasicBlocks().AllocBlock();
+    IL::Emitter<> emitter(context.program, *interruptBlock);
 
     // Get the value to be emitted
-    IL::ID value = GetInstructionDebugValue(ref.Get());
+    IL::ID value = GetInstructionDebugValue(it);
 
     // Check if the type is supported
     const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
@@ -534,8 +553,8 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
         pixel
     );
 
-    // Iterate after the last one
-    return emitter.GetIterator();
+    // Interrupt the block
+    return SplitInterruptBlock(context, it, interruptBlock);
 }
 
 FeatureInfo DebugFeature::GetInfo() {

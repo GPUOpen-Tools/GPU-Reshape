@@ -120,8 +120,13 @@ namespace IL {
             /// Comparison
             bool operator!=(const Iterator &other) const {
                 Validate();
-
                 return ptr != other.ptr;
+            }
+
+            /// Comparison
+            bool operator==(const Iterator &other) const {
+                Validate();
+                return ptr == other.ptr;
             }
 
             /// Get the instruction
@@ -322,8 +327,13 @@ namespace IL {
             /// Comparison
             bool operator!=(const ConstIterator &other) const {
                 Validate();
-
                 return ptr != other.ptr;
+            }
+
+            /// Comparison
+            bool operator==(const ConstIterator &other) const {
+                Validate();
+                return ptr == other.ptr;
             }
 
             /// Get the instruction

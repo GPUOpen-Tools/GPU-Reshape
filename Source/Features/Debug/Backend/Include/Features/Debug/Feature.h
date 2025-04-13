@@ -101,6 +101,12 @@ private:
     /// @return ordering
     IL::ID GetStaticOrderingFor(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction *it);
 
+    /// Interrupt a visitation context
+    /// @param it instruction to interrupt
+    /// @param interruptBlock the finalized interrupt block
+    /// @return the new iteration point
+    IL::BasicBlock::Iterator SplitInterruptBlock(const IL::VisitContext& context, IL::BasicBlock::Iterator it, IL::BasicBlock* interruptBlock);
+
     /// Inject a breakpoint
     /// @param it instruction to debug
     /// @param breakpoint breakpoint to be added
