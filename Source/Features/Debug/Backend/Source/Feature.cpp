@@ -530,7 +530,7 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
 
         // Shouldn't happen
         if (!candidate) {
-            return emitter.GetIterator();
+            return it;
         }
 
         // Set the dword offset
