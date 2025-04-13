@@ -530,6 +530,7 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
 
         // Shouldn't happen
         if (!candidate) {
+            ASSERT(false, "Invalid candidate");
             return it;
         }
 

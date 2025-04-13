@@ -92,6 +92,7 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
         {
             var breakpoint = view.Add();
             breakpoint.codeOffset = breakpointViewModel.SourceBinding!.InstructionCodeOffset;
+            breakpoint.uid = breakpointViewModel.UID;
         }
 
         // Create config
