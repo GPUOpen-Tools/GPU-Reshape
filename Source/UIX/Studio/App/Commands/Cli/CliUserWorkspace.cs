@@ -41,6 +41,11 @@ public class CliUserWorkspaceConfig
     /// Enabled coverage reporting, limits streaming per message
     /// </summary>
     public bool Coverage { get; set; } = false;
+
+    /// <summary>
+    /// Redirect application outputs to this process
+    /// </summary>
+    public bool RedirectOutput { get; set; } = false;
 }
 
 public class CliUserWorkspace

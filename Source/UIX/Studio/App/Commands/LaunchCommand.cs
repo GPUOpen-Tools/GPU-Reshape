@@ -31,6 +31,7 @@ using System.CommandLine.Invocation;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Discovery.CLR;
@@ -40,6 +41,7 @@ using Newtonsoft.Json;
 using Runtime.ViewModels.Traits;
 using Studio.App.Commands.Cli;
 using Studio.Models.Workspace;
+using Studio.Platform;
 using Studio.Services;
 using Studio.ViewModels;
 using Studio.ViewModels.Setting;
@@ -92,23 +94,14 @@ public class LaunchCommand : IBaseCommand
         // Wait for the process to finish
         if (Process.GetProcessById((int)processInfo.processId) is {} process)
         {
-            CancellationToken token = CancellationToken.None;
-
-            // Assign timeout token if needed
-            if (context.ParseResult.GetValueForOption(Timeout) is { } timeout)
+            // If there's a pipe, handle that
+            if (processInfo.writePipe != 0)
             {
-                token = new CancellationTokenSource(TimeSpan.FromSeconds(timeout)).Token;
+                WaitAndRedirectProcessPipe(context, process, processInfo);
             }
-            
-            try
+            else
             {
-                await process.WaitForExitAsync(token);
-                Logging.Info($"Process exited with {process.ExitCode}");
-            }
-            catch (OperationCanceledException)
-            {
-                Logging.Error("Wait for process termination timed out");
-                process.Kill();
+                WaitForProcess(context, process);
             }
         }
         else
@@ -124,6 +117,101 @@ public class LaunchCommand : IBaseCommand
         
         // OK
         return 0;
+    }
+
+    /// <summary>
+    /// Wait for a process to complete, with timeout
+    /// </summary>
+    private async void WaitForProcess(InvocationContext context, Process process)
+    {
+        CancellationToken token = CancellationToken.None;
+
+        // Assign timeout token if needed
+        if (context.ParseResult.GetValueForOption(Timeout) is { } timeout)
+        {
+            token = new CancellationTokenSource(TimeSpan.FromSeconds(timeout)).Token;
+        }
+
+        try
+        {
+            await process.WaitForExitAsync(token);
+            Logging.Info($"Process exited with {process.ExitCode}");
+        }
+        catch (OperationCanceledException)
+        {
+            Logging.Error("Wait for process termination timed out");
+            process.Kill();
+        }
+    }
+
+    /// <summary>
+    /// Wait for a process to complete and redirect its contents, with timeout
+    /// </summary>
+    private unsafe void WaitAndRedirectProcessPipe(InvocationContext context, Process process, DiscoveryProcessInfo processInfo)
+    {
+        // All timeouts are optional
+        int? timeout = context.ParseResult.GetValueForOption(Timeout);
+
+        // Get the handle
+        // Do this before waiting on the process
+        IntPtr processHandle;
+        try
+        {
+            processHandle = process.Handle;
+        }
+        catch (Exception)
+        {
+            Logging.Error("Failed to get process handle");
+            return;
+        }
+        
+        // Watch for timeouts
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        
+        // Local buffer for write pipe
+        byte[] buffer = new byte[4096];
+
+        // While alive
+        IntPtr readPipeHandle = new((void*)processInfo.readPipe);
+        while (!process.HasExited)
+        {
+            // Check timeout
+            if (timeout != null && stopwatch.Elapsed.Seconds >= timeout.Value)
+            {
+                Logging.Error("Wait for process termination timed out");
+                process.Kill();
+                return;
+            }
+            
+            // Any data in the pipe?
+            uint bytesAvailable;
+            if (!Win32.PeekNamedPipe(readPipeHandle, buffer, 0, IntPtr.Zero, (IntPtr)(&bytesAvailable), IntPtr.Zero) || bytesAvailable == 0)
+            {
+                Thread.Sleep(TimeSpan.FromSeconds(0.1));
+                continue;
+            }
+            
+            // Otherwise, read output pipe
+            uint bytesRead;
+            if (!Win32.ReadFile(readPipeHandle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero) || bytesRead == 0)
+            {
+                Thread.Sleep(TimeSpan.FromSeconds(0.1));
+                continue;
+            }
+            
+            // Redirect to this process
+            Console.Write(Encoding.Default.GetString(buffer, 0, (int)bytesRead));
+        }
+
+        // Try to get exit code, use interop due to odd managed behaviour with process ownership
+        if (!Win32.GetExitCodeProcess(processHandle, out uint exitCode))
+        {
+            Logging.Error("Failed to get process exit code");
+            return;
+        }
+        
+        // Done
+        Logging.Info($"Process exited with {exitCode}");
     }
 
     /// <summary>
@@ -373,6 +461,7 @@ public class LaunchCommand : IBaseCommand
             SelectedConfiguration = _workspaceConfiguration,
             AttachAllDevices = true,
             CaptureChildProcesses = true,
+            RedirectPipes = userWorkspace.Config.RedirectOutput,
             Coverage = userWorkspace.Config.Coverage,
             Detail = userWorkspace.Config.Detail
             // TODO: Wait for connection tag

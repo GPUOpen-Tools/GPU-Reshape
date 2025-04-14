@@ -34,5 +34,11 @@ namespace Discovery::CLR {
     public:
         /// Assigned identifier
         uint64_t processId{0};
+
+        /// Platform read pipe
+        UInt64 readPipe{0};
+
+        /// Platform write pipe
+        UInt64 writePipe{0};
     };
 }

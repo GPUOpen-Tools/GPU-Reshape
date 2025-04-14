@@ -142,6 +142,12 @@ namespace Studio.ViewModels
             get => _attachAllDevices;
             set => this.RaiseAndSetIfChanged(ref _attachAllDevices, value);
         }
+        
+        /// <summary>
+        /// Optional, redirect all process pipes
+        /// Requires regular read/flushes
+        /// </summary>
+        public bool RedirectPipes { get; set; } = false;
 
         /// <summary>
         /// The currently selected configuration
@@ -540,6 +546,7 @@ namespace Studio.ViewModels
             processInfo.reservedToken = _pendingReservedToken;
             processInfo.captureChildProcesses = _captureChildProcesses;
             processInfo.attachAllDevices = _attachAllDevices;
+            processInfo.redirectPipes = RedirectPipes;
 
             // Parse environment
             processInfo.environment = new(EnvironmentParser.Parse(_environment).Select(kv => Tuple.Create(kv.Key, kv.Value)));
