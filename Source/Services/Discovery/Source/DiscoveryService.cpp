@@ -229,13 +229,8 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
     
 #ifdef _WIN32
     // Default suspended
-    uint32_t processFlags = CREATE_SUSPENDED;
+    uint32_t processFlags = DETACHED_PROCESS | CREATE_SUSPENDED;
 
-    // Detach if not redirecting
-    if (!createInfo.redirectPipes) {
-        processFlags |= DETACHED_PROCESS;
-    }
-    
     // Startup info
     STARTUPINFO startupInfo;
     ZeroMemory(&startupInfo, sizeof(startupInfo));
@@ -259,9 +254,10 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
         }
 
         // Share output/err
-        startupInfo.hStdOutput = readPipe;
-        startupInfo.hStdError = readPipe;
-        startupInfo.hStdInput = writePipe;
+        startupInfo.dwFlags   |= STARTF_USESTDHANDLES;
+        startupInfo.hStdOutput = writePipe;
+        startupInfo.hStdError  = writePipe;
+        startupInfo.hStdInput  = readPipe;
 
         // Report pipes to caller
         info.readPipe = reinterpret_cast<uint64_t>(readPipe);

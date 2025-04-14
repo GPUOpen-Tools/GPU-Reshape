@@ -38,7 +38,7 @@ namespace Studio.Platform
         public static extern bool ReadFile(IntPtr handle, byte[] buffer, uint numBytesToRead, out uint bytesRead, IntPtr overlapped);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool PeekNamedPipe(IntPtr handle, byte[] buffer, uint bufferSize, IntPtr bytesRead, IntPtr totalBytesAvailable, IntPtr bytesLeftThisMessage);
+        public static extern bool PeekNamedPipe(IntPtr handle, byte[] buffer, uint bufferSize, out uint bytesRead, out uint totalBytesAvailable, out uint bytesLeftThisMessage);
         
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool GetExitCodeProcess(IntPtr handle, out uint exitCode);

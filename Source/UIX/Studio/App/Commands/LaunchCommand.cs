@@ -97,7 +97,7 @@ public class LaunchCommand : IBaseCommand
             // If there's a pipe, handle that
             if (processInfo.writePipe != 0)
             {
-                WaitAndRedirectProcessPipe(context, process, processInfo);
+                await WaitAndRedirectProcessPipe(context, process, processInfo);
             }
             else
             {
@@ -147,7 +147,7 @@ public class LaunchCommand : IBaseCommand
     /// <summary>
     /// Wait for a process to complete and redirect its contents, with timeout
     /// </summary>
-    private unsafe void WaitAndRedirectProcessPipe(InvocationContext context, Process process, DiscoveryProcessInfo processInfo)
+    private async Task WaitAndRedirectProcessPipe(InvocationContext context, Process process, DiscoveryProcessInfo processInfo)
     {
         // All timeouts are optional
         int? timeout = context.ParseResult.GetValueForOption(Timeout);
@@ -172,7 +172,6 @@ public class LaunchCommand : IBaseCommand
         byte[] buffer = new byte[4096];
 
         // While alive
-        IntPtr readPipeHandle = new((void*)processInfo.readPipe);
         while (!process.HasExited)
         {
             // Check timeout
@@ -182,20 +181,31 @@ public class LaunchCommand : IBaseCommand
                 process.Kill();
                 return;
             }
+
+            // Number of bytes read from the pipe
+            uint bytesRead = 0;
             
-            // Any data in the pipe?
-            uint bytesAvailable;
-            if (!Win32.PeekNamedPipe(readPipeHandle, buffer, 0, IntPtr.Zero, (IntPtr)(&bytesAvailable), IntPtr.Zero) || bytesAvailable == 0)
+            // Split out unsafe, can't yield to other tasks in here
+            bool yieldInManaged = false;
+            unsafe
             {
-                Thread.Sleep(TimeSpan.FromSeconds(0.1));
-                continue;
+                IntPtr readPipeHandle = new((void*)processInfo.readPipe);
+            
+                // Any data in the pipe?
+                // If so, try to read it
+                uint bytesAvailable;
+                if (!Win32.PeekNamedPipe(readPipeHandle, buffer, 0, out _, out bytesAvailable, out _) || bytesAvailable == 0 ||
+                    !Win32.ReadFile(readPipeHandle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero) || bytesRead == 0)
+                {
+                    yieldInManaged = true;
+                }
             }
-            
-            // Otherwise, read output pipe
-            uint bytesRead;
-            if (!Win32.ReadFile(readPipeHandle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero) || bytesRead == 0)
+
+            // Yield on a manged context
+            // Let the other workspace tasks take over for a bit
+            if (yieldInManaged)
             {
-                Thread.Sleep(TimeSpan.FromSeconds(0.1));
+                await Task.Delay(TimeSpan.FromMilliseconds(100));
                 continue;
             }
             
