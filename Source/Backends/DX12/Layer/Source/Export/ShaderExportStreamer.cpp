@@ -916,7 +916,6 @@ void ShaderExportStreamer::ProcessBackendMessages(ShaderExportStreamState *state
                 );
                 break;
             }
-#ifndef NDEBUG
             case BackendMessageAssertion: {
                 auto* message = static_cast<BackendAssertionMessage*>(header);
 
@@ -929,7 +928,6 @@ void ShaderExportStreamer::ProcessBackendMessages(ShaderExportStreamState *state
                 OutputDebugString(ss.str().c_str());
                 break;
             }
-#endif // NDEBUG
         }
 
         offset += header->DWords;
