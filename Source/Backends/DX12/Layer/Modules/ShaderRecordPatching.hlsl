@@ -207,6 +207,9 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
                     // Write the offset linearly
                     RWDescriptorData[Parameter.GetPRMTOffset()] = PRMOffset;
                 } else {
+                    DWordArray<1> Data = { __LINE__ };
+                    SendAssertionMessage(RWBackendMessageBuffer, Data);
+                    
                     // TODO[rt]: Actually fetch the PRMT and write it inline based on the PRMOffset
                     [unroll]
                     for (uint i = 0; i < SBTInlineTokenMetadatDWordCount; i++) {
