@@ -77,6 +77,9 @@ static ShaderExportDeviceAllocation CopyRaytracingRange(CommandBufferObject* com
         0, nullptr,
         0, nullptr
     );
+
+    // OK
+    return sourceAllocation;
 }
 
 static VkStridedDeviceAddressRegionKHR PatchRaytracingIdentifiersRangeImmediate(CommandBufferObject* commandBuffer, const RaytracingPipelineState* pipeline, RaytracingShaderIdentifierPatch* patchTable, const VkStridedDeviceAddressRegionKHR& range) {
