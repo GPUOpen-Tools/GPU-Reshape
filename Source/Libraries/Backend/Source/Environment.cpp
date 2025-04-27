@@ -30,6 +30,7 @@
 #include <Backend/EnvironmentKeys.h>
 #include <Backend/StartupContainer.h>
 #include <Backend/StartupEnvironment.h>
+#include <Backend/Environment/EnvironmentHeadlessListener.h>
 
 // Bridge
 #include <Bridge/MemoryBridge.h>
@@ -41,6 +42,7 @@
 
 // Schemas
 #include <Schemas/PingPong.h>
+#include <Schemas/Config.h>
 
 // Common
 #include <Common/Alloca.h>
@@ -93,6 +95,11 @@ static void LoadStartupEnvironment(Registry& registry) {
     startupEnvironment.LoadFromEnvironment(container->stream);
 }
 
+static bool IsHeadless() {
+    uint64_t length{0};
+    return !getenv_s(&length, nullptr, 0u, kWaitForConnectionKey) && length;
+}
+
 bool Environment::Install(const EnvironmentInfo &info) {
     // Install the plugin resolver
     auto resolver = registry.AddNew<PluginResolver>();
@@ -114,6 +121,11 @@ bool Environment::Install(const EnvironmentInfo &info) {
 
         // Networked
         hostServerBridge = registry.AddNew<HostServerBridge>();
+
+        // If headless, register the listener before endpoint connection
+        if (IsHeadless()) {
+            hostServerBridge->Register(HeadlessWorkspaceReadyMessage::kID, registry.AddNew<EnvironmentHeadlessListener>());
+        }
         
         // Endpoint info
         EndpointConfig endpointConfig;
@@ -181,4 +193,17 @@ void Environment::Update(const EnvironmentDeviceInfo &info) {
 
     // Keep hash
     deviceUpdateHash = hash;
+}
+
+void Environment::PostInstall(uint32_t deviceUid) {
+    if (!IsHeadless()) {
+        return;
+    }
+
+    // Rather naive wait for the workspace to be created
+    if (ComRef listener = registry.Get<EnvironmentHeadlessListener>()) {
+        while (!listener->IsSignalled(deviceUid)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        }
+    }
 }

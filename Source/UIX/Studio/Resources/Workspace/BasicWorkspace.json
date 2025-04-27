@@ -1,0 +1,15 @@
+﻿{
+  "Features": [
+    "Resource Bounds",
+    "Export Stability",
+    "Initialization",
+    "Concurrency",
+    "Descriptor",
+    "Waterfall",
+    "Loop"
+  ],
+  "Config": {
+    "Detail": true,
+    "Coverage": true
+  }
+}

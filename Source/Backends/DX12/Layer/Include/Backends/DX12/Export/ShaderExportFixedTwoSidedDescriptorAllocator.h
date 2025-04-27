@@ -38,6 +38,7 @@
 
 // Forward declarations
 class ShaderExportHost;
+struct ShaderExportStreamState;
 
 class ShaderExportFixedTwoSidedDescriptorAllocator {
 public:
@@ -49,8 +50,9 @@ public:
 
     /// Allocate a new descriptor
     /// \param width number of descriptors to allocate
+    /// \param debugOwner debug only, owner for exhaustion debugging
     /// \return descriptor base info
-    ShaderExportSegmentDescriptorInfo Allocate(uint32_t width);
+    ShaderExportSegmentDescriptorInfo Allocate(uint32_t width, ShaderExportStreamState* debugOwner);
 
     /// Free a descriptor
     /// \param id
@@ -119,6 +121,11 @@ private:
 private:
     /// Parent bound
     uint32_t bound;
+
+#if HEAP_ALLOCATOR_TRACK_OWNER
+    /// All live segments
+    std::vector<ShaderExportSegmentDescriptorInfo> segments;
+#endif // HEAP_ALLOCATOR_TRACK_OWNER
 
     /// Parent heap
     ID3D12DescriptorHeap* heap;

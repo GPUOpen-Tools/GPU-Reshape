@@ -88,10 +88,12 @@ protected:
     /// Compile a given job
     void CompileGraphics(const PipelineJobBatch& job);
     void CompileCompute(const PipelineJobBatch& job);
+    void CompileRaytracing(const PipelineJobBatch& job);
 
     /// Worker entry
     void WorkerGraphics(void* userData);
     void WorkerCompute(void* userData);
+    void WorkerRaytracing(void* userData);
 
     /// Set the shader module object
     /// \param createInfo the assigned creation info
@@ -109,6 +111,7 @@ private:
     /// Job buckets
     std::vector<PipelineJob> graphicsJobs;
     std::vector<PipelineJob> computeJobs;
+    std::vector<PipelineJob> raytracingJobs;
 
     /// Async dispatcher
     ComRef<Dispatcher> dispatcher{nullptr};

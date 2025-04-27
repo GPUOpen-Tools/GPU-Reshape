@@ -41,6 +41,7 @@
 #include <Common/CRC.h>
 #include <Common/String.h>
 #include <Common/FileSystem.h>
+#include <Common/Format.h>
 
 // Std
 #include <filesystem>
@@ -182,9 +183,11 @@ void PDBController::OnMessage(const struct IndexPDPathsMessage &message) {
 
     // Visit all paths
     for (const std::string &path: pdbPaths) {
+        std::error_code error;
+        
         // Recursive?
         if (recursive) {
-            for (auto &&entry: std::filesystem::recursive_directory_iterator(path)) {
+            for (auto &&entry: std::filesystem::recursive_directory_iterator(path, error)) {
                 if (entry.is_directory()) {
                     continue;
                 }
@@ -192,13 +195,18 @@ void PDBController::OnMessage(const struct IndexPDPathsMessage &message) {
                 IndexPathCandidates(path, entry.path());
             }
         } else {
-            for (auto &&entry: std::filesystem::directory_iterator(path)) {
+            for (auto &&entry: std::filesystem::directory_iterator(path, error)) {
                 if (entry.is_directory()) {
                     continue;
                 }
 
                 IndexPathCandidates(path, entry.path());
             }
+        }
+
+        // OK?
+        if (!error) {
+            device->logBuffer.Add("DX12", LogSeverity::Error, Format("Failed to iterate path: '{0}'", path));
         }
     }
 }

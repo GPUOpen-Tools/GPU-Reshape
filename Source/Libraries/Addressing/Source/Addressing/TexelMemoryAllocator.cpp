@@ -73,7 +73,7 @@ bool TexelMemoryAllocator::Install(size_t requestedTexels) {
 
     // Just because we want a lot of texels, doesn't mean the hardware supports it
     // Query max, and if exceeding align to a safe (lower) power of two
-    uint64_t hardwareTexelLimit = shaderDataHost->GetCapabilityTable().bufferMaxElementCount;
+    uint64_t hardwareTexelLimit = std::min(shaderDataHost->GetCapabilityTable().bufferMaxElementCount, shaderDataHost->GetCapabilityTable().bufferMaxSize / sizeof(uint32_t));
     if (blockCapacityAlignPow2 > hardwareTexelLimit) {
         blockCapacityAlignPow2 = std::min(blockCapacityAlignPow2, std::bit_floor(hardwareTexelLimit));
     }
@@ -209,6 +209,11 @@ void TexelMemoryAllocator::UpdateResidency(Queue queue) {
     // All mappings
     std::vector<SchedulerTileMapping> tileMappings;
     tileMappings.reserve(tileResidencyAllocator.GetRequestCount());
+
+    // Skip if nothing
+    if (tileMappings.empty()) {
+        return;
+    }
 
     // Map all new requests
     for (uint32_t i = 0; i < tileResidencyAllocator.GetRequestCount(); i++) {

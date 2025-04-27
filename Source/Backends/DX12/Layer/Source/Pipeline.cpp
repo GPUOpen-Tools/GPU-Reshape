@@ -33,6 +33,7 @@
 #include <Backends/DX12/PipelineSubObjectReader.h>
 #include <Backends/DX12/StateSubObjectWriter.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
+#include <Backends/DX12/Controllers/MetadataController.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCUtils.h>
 #include <Backends/DX12/PipelineSubObjectWriter.h>
 
@@ -91,6 +92,9 @@ ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTE
 
     // Add owning user
     shaderState->AddUser();
+
+    // Inform the controller
+    device->metadataController->CreateShader(shaderState);
 
     // Add to state
     device->shaderSet.Add(key, shaderState);

@@ -45,4 +45,8 @@
     <message name="GetState">
         <field name="uuid" type="uint64"/>
     </message>
+
+    <message name="HeadlessWorkspaceReady">
+        <field name="acquiredDeviceUid" type="uint32"/>
+    </message>
 </schema>

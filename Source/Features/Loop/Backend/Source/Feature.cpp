@@ -46,6 +46,7 @@
 #include <Schemas/Features/Loop.h>
 #include <Schemas/Features/LoopConfig.h>
 #include <Schemas/Instrumentation.h>
+#include <Schemas/InstrumentationCommon.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -146,15 +147,18 @@ void LoopFeature::CollectMessages(IMessageStorage *storage) {
 
 void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
-    const SetLoopInstrumentationConfigMessage config = FindOrDefault(specialization, SetLoopInstrumentationConfigMessage {
+    const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
+
+    // Loop options
+    const SetLoopInstrumentationConfigMessage loopConfig = FindOrDefault(specialization, SetLoopInstrumentationConfigMessage {
         .useIterationLimits = true,
-        .iterationLimit = 32'000,
+        .iterationLimit = 64'000,
         .atomicIterationInterval = 256
     });
 
     // Get constant literals
-    IL::ID interval      = program.GetConstants().UInt(config.atomicIterationInterval)->id;
-    IL::ID maxIterations = program.GetConstants().UInt(config.iterationLimit)->id;
+    IL::ID interval      = program.GetConstants().UInt(loopConfig.atomicIterationInterval)->id;
+    IL::ID maxIterations = program.GetConstants().UInt(loopConfig.iterationLimit)->id;
     
     // Get the data ids
     IL::ID terminationBufferDataID     = program.GetShaderDataMap().Get(terminationBufferID)->id;
@@ -255,12 +259,15 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
             // Split from the beginning, handles phi splitting
             entryBlock->Split(postEntry, entryBlock->begin());
 
+            // Local counter value
+            IL::ID counter;
+
             // Emit into pre-guard
             {
                 IL::Emitter<> pre(program, *entryBlock);
 
                 // Increment local counter
-                IL::ID counter = GetAndIncrementCounter(pre, &context.function, functionCounters);
+                counter = GetAndIncrementCounter(pre, &context.function, functionCounters);
 
                 // Periodic check, I % Interval == 0
                 pre.BranchConditional(
@@ -281,7 +288,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                     IL::ID terminated = atomic.Equal(terminationID, atomic.UInt32(1u));
 
                     // Additionally, check for iteration limits
-                    if (config.useIterationLimits) {
+                    if (loopConfig.useIterationLimits) {
                         terminated = atomic.Or(terminated, atomic.GreaterThanEqual(counter, maxIterations));
                     }
                     
@@ -303,7 +310,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 IL::Emitter<> term(program, *terminationBlock);
 
                 // If iteration limits are enabled, broadcast termination to all other instances
-                if (config.useIterationLimits) {
+                if (loopConfig.useIterationLimits) {
                     term.AtomicOr(term.AddressOf(terminationBufferDataID, terminationAllocationDataID), term.UInt32(1u));
                 }
                 
@@ -311,6 +318,13 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 LoopTerminationMessage::ShaderExport msg;
                 msg.sguid = term.UInt32(sguid);
                 msg.padding = term.UInt32(0);
+                    
+                // Detailed instrumentation?
+                if (config.detail) {
+                    msg.chunks |= LoopTerminationMessage::Chunk::Detail;
+                    msg.detail.functionIterationCount = counter;
+                }
+            
                 term.Export(exportID, msg);
 
                 // Expected function type
@@ -353,12 +367,15 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 // Split just prior to loop header
                 loop.header->Split(postGuardBlock, loop.header->GetTerminator());
 
+                // Local counter value
+                IL::ID counter;
+                
                 // Emit into pre-guard
                 {
                     IL::Emitter<> pre(program, *loop.header);
 
                     // Increment local counter
-                    IL::ID counter = GetAndIncrementCounter(pre, fn, functionCounters);
+                    counter = GetAndIncrementCounter(pre, fn, functionCounters);
 
                     // Early exit if termination was requested
                     pre.BranchConditional(
@@ -379,7 +396,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                         IL::ID terminated = atomic.Equal(terminationID, atomic.UInt32(1u));
 
                         // Additionally, check for iteration limits
-                        if (config.useIterationLimits) {
+                        if (loopConfig.useIterationLimits) {
                             terminated = atomic.Or(terminated, atomic.GreaterThanEqual(counter, maxIterations));
                         }
                         
@@ -398,7 +415,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                     IL::Emitter<> term(program, *terminationBlock);
 
                     // If iteration limits are enabled, broadcast termination to all other instances
-                    if (config.useIterationLimits) {
+                    if (loopConfig.useIterationLimits) {
                         term.AtomicOr(term.AddressOf(terminationBufferDataID, terminationAllocationDataID), term.UInt32(1u));
                     }
 
@@ -406,6 +423,13 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                     LoopTerminationMessage::ShaderExport msg;
                     msg.sguid = term.UInt32(sguid);
                     msg.padding = term.UInt32(0);
+                    
+                    // Detailed instrumentation?
+                    if (config.detail) {
+                        msg.chunks |= LoopTerminationMessage::Chunk::Detail;
+                        msg.detail.functionIterationCount = counter;
+                    }
+                    
                     term.Export(exportID, msg);
 
                     // Exit the kernel entirely
@@ -514,7 +538,8 @@ void LoopFeature::HeartBeatThreadWorker() {
     static constexpr uint32_t PulseIntervalMS = 25;
 
     // TODO: Exactly what is the right magical figure here?
-    static constexpr uint32_t DistanceTerminationMS = 750;
+    // The default TDR is 2s, 750 is just about enough to hit the limit long scheduling chains
+    static constexpr uint32_t DistanceTerminationMS = 1500;
 
     // Worker loop
     while (!heartBeatExitFlag.load()) {

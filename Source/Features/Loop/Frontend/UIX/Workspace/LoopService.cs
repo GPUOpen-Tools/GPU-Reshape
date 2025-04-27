@@ -97,10 +97,10 @@ namespace GRS.Features.Loop.UIX.Workspace
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsStatic(LoopTerminationMessage.ID))
+            if (!streams.GetSchema().IsChunked(LoopTerminationMessage.ID))
                 return;
 
-            var view = new StaticMessageView<LoopTerminationMessage>(streams);
+            var view = new ChunkedMessageView<LoopTerminationMessage>(streams);
 
             // Latent update set
             var lookup = new Dictionary<uint, LoopTerminationMessage>();
@@ -137,7 +137,7 @@ namespace GRS.Features.Loop.UIX.Workspace
                     {
                         Traits = ValidationTraits.NoDetail,
                         Severity = ValidationSeverity.Error,
-                        Content = $"Loop timeout",
+                        Content = "Loop timeout",
                         Count = kv.Value
                     };
 
@@ -161,6 +161,31 @@ namespace GRS.Features.Loop.UIX.Workspace
 
                     // Insert lookup
                     _reducedMessages.Add(kv.Key, validationObject);
+                    
+                    // Detailed?
+                    if (message.HasChunk(LoopTerminationMessage.Chunk.Detail))
+                    {
+                        LoopTerminationMessage.DetailChunk detailChunk = message.GetDetailChunk();
+                        
+                        // Get detailed view model
+                        if (!_reducedDetails.TryGetValue(message.sguid, out GenericValidationDetailViewModel? detailViewModel))
+                        {
+                            // Create the missing detail view model
+                            detailViewModel = new GenericValidationDetailViewModel();
+                        
+                            // Assign on UI thread
+                            Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                validationObject.DetailViewModel = detailViewModel;
+                            });
+                        
+                            // Add lookup
+                            _reducedDetails.Add(message.Key, detailViewModel);
+                        }
+                        
+                        // Compose message
+                        detailViewModel.AddUniqueInstance($"Exceeded function-local iteration limit for queue submission, terminated this function at {detailChunk.functionIterationCount} iterations");
+                    }
 
                     // Add to UI visible collection
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
@@ -212,6 +237,11 @@ namespace GRS.Features.Loop.UIX.Workspace
         /// All reduced resource messages
         /// </summary>
         private Dictionary<uint, ValidationObject> _reducedMessages = new();
+
+        /// <summary>
+        /// All reduced detail messages
+        /// </summary>
+        private Dictionary<uint, GenericValidationDetailViewModel> _reducedDetails = new();
 
         /// <summary>
         /// Segment mapping

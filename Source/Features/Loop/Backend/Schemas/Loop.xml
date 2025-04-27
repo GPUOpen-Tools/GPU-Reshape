@@ -29,6 +29,10 @@
 
 <schema>
     <shader-export name="LoopTermination">
+        <chunk name="Detail">
+            <field name="functionIterationCount" type="uint32"/>
+        </chunk>
+
         <field name="padding" type="uint32" bits="1"/>
     </shader-export>
 </schema>

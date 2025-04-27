@@ -91,6 +91,7 @@ namespace Studio.ValueConverters
                 case ConnectionStatus.QueryDuplicateKey:
                 case ConnectionStatus.QueryInvalidPort:
                 case ConnectionStatus.QueryInvalidPID:
+                case ConnectionStatus.FailedLaunch:
                     return ResourceLocator.GetBrush("ErrorDefaultBrush") ?? _default;
                 case ConnectionStatus.DiscoveryNotActive:
                     return ResourceLocator.GetBrush("WarningDefaultBrush") ?? _default;
@@ -151,6 +152,8 @@ namespace Studio.ValueConverters
                     return "Connected to endpoint";
                 case ConnectionStatus.DiscoveryNotActive:
                     return "Discovery is disabled, connection limited to manual registrations";
+                case ConnectionStatus.FailedLaunch:
+                    return "Failed to launch the application";
             }
         }
         

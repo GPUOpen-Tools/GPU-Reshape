@@ -36,7 +36,7 @@ bool ShaderExportGenerator::Generate(Schema &schema, Language language, SchemaSt
         if (!message.attributes.GetBool("no-sguid")) {
             Field& sguid = *message.fields.emplace(message.fields.begin());
             sguid.name = "sguid";
-            sguid.type = "uint16";
+            sguid.type = "uint32";
 
             // Attributes
             sguid.attributes.Add("bits", std::to_string(kShaderSGUIDBitCount));

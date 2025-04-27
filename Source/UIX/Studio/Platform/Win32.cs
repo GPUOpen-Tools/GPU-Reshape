@@ -33,5 +33,17 @@ namespace Studio.Platform
     {
         [DllImport("user32.dll", SetLastError = true)]
         public static extern int SetWindowPos(IntPtr handle, IntPtr insertAfterHandle, int x, int y, int width, int height, uint flags);
+        
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool ReadFile(IntPtr handle, byte[] buffer, uint numBytesToRead, out uint bytesRead, IntPtr overlapped);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool PeekNamedPipe(IntPtr handle, byte[] buffer, uint bufferSize, out uint bytesRead, out uint totalBytesAvailable, out uint bytesLeftThisMessage);
+        
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool GetExitCodeProcess(IntPtr handle, out uint exitCode);
+        
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool CloseHandle(IntPtr handle);
     }
 }

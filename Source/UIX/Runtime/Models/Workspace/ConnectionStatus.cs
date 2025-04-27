@@ -34,6 +34,11 @@ namespace Studio.Models.Workspace
         None,
         
         /// <summary>
+        /// Failed to launch the application
+        /// </summary>
+        FailedLaunch,
+        
+        /// <summary>
         /// Discovery is currently disabled
         /// </summary>
         DiscoveryNotActive,

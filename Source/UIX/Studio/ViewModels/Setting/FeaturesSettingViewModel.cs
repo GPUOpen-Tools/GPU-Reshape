@@ -29,6 +29,7 @@ using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Traits;
 using Studio.Services.Suspension;
+using Studio.Utils;
 
 namespace Studio.ViewModels.Setting
 {
@@ -94,6 +95,6 @@ namespace Studio.ViewModels.Setting
         /// <summary>
         /// Path for startup environment directives
         /// </summary>
-        private static readonly string Path = System.IO.Path.Combine("Intermediate", "Settings", "GlobalEnvironment.env");
+        private static readonly string Path = System.IO.Path.Combine(PathUtils.BaseDirectory, "Intermediate", "Settings", "GlobalEnvironment.env");
     }
 }

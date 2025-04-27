@@ -52,6 +52,7 @@ bool Generators::Spv(const GeneratorInfo &info, TemplateEngine &templateEngine) 
     // Streams
     std::stringstream classStream;
     std::stringstream operandStream;
+    std::stringstream typesStream;
 
     // Add case for all instructions of interest
     for (auto &&instruction: info.spvJson["instructions"]) {
@@ -133,10 +134,19 @@ bool Generators::Spv(const GeneratorInfo &info, TemplateEngine &templateEngine) 
         // Close case
         operandStream << "\t\t\tbreak;\n";
     }
+    
+    // Add case for all types
+    for (auto &&instruction: info.spvJson["instructions"]) {
+        if (instruction["class"] == "Type-Declaration") {
+            typesStream << "\t\tcase Spv" << instruction["opname"].get<std::string>() << ":\n";
+            typesStream << "\t\t\treturn true;\n";
+        }
+    }
 
     // Replace
     templateEngine.Substitute("$CLASSES", classStream.str().c_str());
     templateEngine.Substitute("$OPERANDS", operandStream.str().c_str());
+    templateEngine.Substitute("$TYPES", typesStream.str().c_str());
 
     // OK
     return true;

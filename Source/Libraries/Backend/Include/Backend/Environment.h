@@ -52,6 +52,10 @@ namespace Backend {
         /// \param info update info
         void Update(const EnvironmentDeviceInfo& info);
 
+        /// Post installation callback
+        /// Handles headless modes
+        void PostInstall(uint32_t deviceUid);
+
         /// Get the registry of this environment
         /// \return
         Registry* GetRegistry() {

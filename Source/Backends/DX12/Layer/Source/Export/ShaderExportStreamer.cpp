@@ -292,7 +292,7 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
 
         // Allocate initial segment from shared allocator
         ShaderExportSegmentDescriptorAllocation allocation;
-        allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count());
+        allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count(), state);
         allocation.allocator = sharedGPUHeapAllocator;
 
         // Keep track of it, no actual (user) heap ownership so leave that null
@@ -527,7 +527,7 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     // Try to find existing allocation first
     if (!LinearFindHeapSegment(state, state->resourceHeap, state->samplerHeap, &allocation)) {
         // Not found, allocate initial segment from shared allocator
-        allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
+        allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count(), state);
         allocation.allocator = state->resourceHeap->allocator;
 
         // Keep track of the allocation, used for later searches
@@ -916,7 +916,6 @@ void ShaderExportStreamer::ProcessBackendMessages(ShaderExportStreamState *state
                 );
                 break;
             }
-#ifndef NDEBUG
             case BackendMessageAssertion: {
                 auto* message = static_cast<BackendAssertionMessage*>(header);
 
@@ -929,7 +928,6 @@ void ShaderExportStreamer::ProcessBackendMessages(ShaderExportStreamState *state
                 OutputDebugString(ss.str().c_str());
                 break;
             }
-#endif // NDEBUG
         }
 
         offset += header->DWords;
@@ -1516,8 +1514,8 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQue
     std::lock_guard guard(mutex);
 
     // Create descriptors
-    segment->patchDeviceCPUDescriptor = sharedCPUHeapAllocator->Allocate(1);
-    segment->patchDeviceGPUDescriptor = sharedGPUHeapAllocator->Allocate(1);
+    segment->patchDeviceCPUDescriptor = sharedCPUHeapAllocator->Allocate(1, nullptr);
+    segment->patchDeviceGPUDescriptor = sharedGPUHeapAllocator->Allocate(1, nullptr);
 
     // Counter to be initialized
     const ShaderExportSegmentCounterInfo& counter = segment->allocation->counter;

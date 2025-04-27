@@ -57,6 +57,9 @@ struct BufferState {
     /// Bound memory tag
     DeviceMemoryTag memoryTag;
 
+    /// Optional, address
+    uint64_t virtualAddress = UINT64_MAX;
+
     /// Optional debug name
     char* debugName{nullptr};
 

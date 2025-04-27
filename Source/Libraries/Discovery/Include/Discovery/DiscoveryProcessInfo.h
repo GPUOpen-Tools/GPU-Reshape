@@ -32,4 +32,10 @@
 struct DiscoveryProcessInfo {
     /// Assigned identifier
     uint64_t processId{0};
+
+    /// Platform read pipe
+    uint64_t readPipe{0};
+
+    /// Platform write pipe
+    uint64_t writePipe{0};
 };

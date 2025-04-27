@@ -508,6 +508,16 @@ struct MessageStreamSchema<OrderedMessageSchema, STREAM> {
             return reinterpret_cast<const T*>(ptr + sizeof(OrderedMessageSchema::Header));
         }
 
+        /// Cast the message
+        template<typename T>
+        const T* Cast() const {
+            if (!Is(T::kID)) {
+                return nullptr;
+            }
+            
+            return reinterpret_cast<const T*>(ptr + sizeof(OrderedMessageSchema::Header));
+        }
+
         /// Get the header
         [[nodiscard]]
         const OrderedMessageSchema::Header* GetHeader() const {

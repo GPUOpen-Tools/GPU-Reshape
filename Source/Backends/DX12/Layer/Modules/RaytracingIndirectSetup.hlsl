@@ -170,6 +170,12 @@ void main() {
     // Write patched dispatch, always at the base address
     RWDispatchBuffer[0] = SBTContextPatch(Ctx, Constants.ScratchBaseAddress);
 
+    // Validation
+    if (Low(Ctx.AllocationOffset) != Low(Ctx.AllocationSize) - sizeof(uint)) {
+        DWordArray<1> Data = { __LINE__ };
+        SendAssertionMessage(RWBackendMessageBuffer, Data);
+    }
+    
     // Write ray-gen
     WriteSBTRange(
         0, SingleRecordStride(Desc.RayGenerationShaderRecord), SingleRecordStride(Ctx.Dispatch.RayGenerationShaderRecord),

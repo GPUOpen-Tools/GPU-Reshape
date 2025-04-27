@@ -25,12 +25,7 @@
 // 
 
 using System;
-using Avalonia;
-using Avalonia.ReactiveUI;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Projektanker.Icons.Avalonia;
-using Projektanker.Icons.Avalonia.FontAwesome;
+using Studio.App;
 
 namespace Studio
 {
@@ -39,17 +34,15 @@ namespace Studio
         [STAThread]
         private static void Main(string[] args)
         {
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
-        }
-        
-        public static AppBuilder BuildAvaloniaApp()
-        {
-            IconProvider.Current.Register<FontAwesomeIconProvider>();
+            // Any arguments?
+            if (args.Length > 0)
+            {
+                CliApp.Build(args);
+                return;
+            }
             
-            return AppBuilder.Configure<App>()
-                .UseReactiveUI()
-                .UsePlatformDetect()
-                .LogToTrace();
+            // Otherwise assume desktop
+            DesktopApp.Build();
         }
     }
 }

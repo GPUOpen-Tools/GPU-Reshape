@@ -228,12 +228,41 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
     }
     
 #ifdef _WIN32
+    // Default suspended
+    uint32_t processFlags = DETACHED_PROCESS | CREATE_SUSPENDED;
+
     // Startup info
     STARTUPINFO startupInfo;
     ZeroMemory(&startupInfo, sizeof(startupInfo));
     startupInfo.cb = sizeof(startupInfo);
     startupInfo.dwFlags = STARTF_USESHOWWINDOW;
     startupInfo.wShowWindow = SW_SHOW;
+
+    // Requested redirection?
+    if (createInfo.redirectPipes) {
+        // Pipe attributes
+        SECURITY_ATTRIBUTES pipeSA{};
+        ZeroMemory(&pipeSA, sizeof(pipeSA));
+        pipeSA.nLength = sizeof(SECURITY_ATTRIBUTES);
+        pipeSA.bInheritHandle = true;
+        pipeSA.lpSecurityDescriptor = nullptr;
+
+        // Create pipes
+        HANDLE readPipe = nullptr, writePipe = nullptr;
+        if (!CreatePipe(&readPipe, &writePipe, &pipeSA, 0)) {
+            return false;
+        }
+
+        // Share output/err
+        startupInfo.dwFlags   |= STARTF_USESTDHANDLES;
+        startupInfo.hStdOutput = writePipe;
+        startupInfo.hStdError  = writePipe;
+        startupInfo.hStdInput  = readPipe;
+
+        // Report pipes to caller
+        info.readPipe = reinterpret_cast<uint64_t>(readPipe);
+        info.writePipe = reinterpret_cast<uint64_t>(writePipe);
+    }
     
     // Process info
     PROCESS_INFORMATION processInfo;
@@ -269,8 +298,8 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
         argumentStream.str().data(),
         0x0,
         0x0,
-        false,
-        DETACHED_PROCESS | CREATE_SUSPENDED,
+        createInfo.redirectPipes,
+        processFlags,
         environmentBlock.data(),
         createInfo.workingDirectoryPath,
         &startupInfo, &processInfo,

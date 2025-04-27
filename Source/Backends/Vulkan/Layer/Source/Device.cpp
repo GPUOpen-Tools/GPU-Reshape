@@ -49,6 +49,8 @@
 #include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/Vulkan/Scheduler/Scheduler.h>
 #include <Backends/Vulkan/QueueInfoWriter.h>
+#include <Backends/Vulkan/States/RaytracingPipelineState.h>
+#include <Backends/Vulkan/Programs/Programs.h>
 
 // Common
 #include <Common/Registry.h>
@@ -71,6 +73,9 @@
 
 // Vulkan
 #include <vulkan/vk_layer.h>
+
+// Shared
+#include <Shared/ShaderRecordPatching.h>
 
 // Std
 #include <cstring>
@@ -131,6 +136,30 @@ VkResult VKAPI_PTR Hook_vkEnumerateDeviceExtensionProperties(VkPhysicalDevice ph
     }
 
     return table->next_vkEnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties);
+}
+
+
+void VKAPI_PTR Hook_vkGetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties* pProperties) {
+    auto table = InstanceDispatchTable::Get(GetInternalTable(physicalDevice));
+
+    // Pass down callchain
+    table->next_vkGetPhysicalDeviceProperties(physicalDevice, pProperties);
+}
+
+void VKAPI_PTR Hook_vkGetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties2* pProperties) {
+    auto table = InstanceDispatchTable::Get(GetInternalTable(physicalDevice));
+
+    // Pass down callchain
+    table->next_vkGetPhysicalDeviceProperties2(physicalDevice, pProperties);
+
+    // For raytracing, extend the handle size by the internal embedded metadata
+    if (auto* info = FindStructureTypeMutableUnsafe<VkPhysicalDeviceRayTracingPipelinePropertiesKHR, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR>(pProperties->pNext)) {
+        info->shaderGroupHandleSize = info->shaderGroupHandleSize + sizeof(SBTShaderGroupIdentifierEmbeddedData);
+
+        if (info->shaderGroupHandleSize % info->shaderGroupHandleAlignment != 0) {
+            info->shaderGroupHandleAlignment = std::lcm(info->shaderGroupHandleAlignment, info->shaderGroupHandleSize);
+        }
+    }
 }
 
 static bool PoolAndInstallFeatures(DeviceDispatchTable* table) {
@@ -270,8 +299,15 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Initialize registry
     table->registry.SetParent(&instanceTable->registry);
 
+    // Property chain
+    table->physicalDeviceProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+    table->physicalDeviceProperties.pNext = &table->physicalDeviceRayTracingPipelineProperties;
+    table->physicalDeviceRayTracingPipelineProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
+    table->physicalDeviceRayTracingPipelineProperties.pNext = &table->physicalDeviceMaintenance4Properties;
+    table->physicalDeviceMaintenance4Properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES};
+    
     // Get the device properties
-    table->parent->next_vkGetPhysicalDeviceProperties(physicalDevice, &table->physicalDeviceProperties);
+    table->parent->next_vkGetPhysicalDeviceProperties2(physicalDevice, &table->physicalDeviceProperties);
 
     // Feature chain
     table->physicalDeviceFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
@@ -284,7 +320,7 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->parent->next_vkGetPhysicalDeviceFeatures2(physicalDevice, &table->physicalDeviceFeatures);
 
     // Try to get the vendor
-    table->vendor = GetVendor(table->physicalDeviceProperties.vendorID);
+    table->vendor = GetVendor(table->physicalDeviceProperties.properties.vendorID);
 
     // Create a deep copy
     table->createInfo.DeepCopy(table->allocators, *pCreateInfo);
@@ -400,8 +436,8 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->Populate(getInstanceProcAddr, getDeviceProcAddr);
 
     // Create the shared allocator
-    auto deviceAllocator = table->registry.AddNew<DeviceAllocator>();
-    deviceAllocator->Install(table);
+    table->deviceAllocator = table->registry.AddNew<DeviceAllocator>();
+    table->deviceAllocator->Install(table);
 
     // Install the shader export host
     table->registry.AddNew<ShaderExportHost>();
@@ -491,6 +527,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
         }
     }
 
+    // Create all internal programs
+    table->programs = CreatePrograms(table->allocators, table);
+    
     // Apply environment
     ApplyStartupEnvironment(table);
 
@@ -502,6 +541,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Start sync thread
     table->syncPointActionThread.Start(std::bind(DeviceSyncPoint, table));
+
+    // Inform the environment of post installs, handles headless modes
+    table->parent->environment.PostInstall(table->uid);
 
     // OK
     return VK_SUCCESS;

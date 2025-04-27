@@ -34,6 +34,8 @@
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
+#include <Backends/Vulkan/Command/ReconstructionFlag.h>
+#include <Backends/Vulkan/States/RenderPassState.h>
 
 // Backend
 #include <Backends/Vulkan/Command/UserCommandBuffer.h>
@@ -681,6 +683,128 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPipelineBarrier2(CommandBufferObject* comma
 
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdPipelineBarrier2(commandBuffer->object, &dependencyInfo);
+}
+
+#ifndef NDEBUG
+void AddDebugStream(CommandBufferObject *commandBuffer, VkBuffer buffer, uint64_t offset, uint64_t length, const std::string &name) {
+    // Generic shader barrier
+    VkMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(
+        commandBuffer->object,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        0x0,
+        1, &barrier,
+        0, nullptr,
+        0, nullptr
+    );
+    
+    // Create a host side allocation for reads
+    ShaderExportConstantAllocation hostAllocation = commandBuffer->streamState->constantAllocator.Allocate(commandBuffer->table, length);
+
+    // General region
+    VkBufferCopy copy{};
+    copy.dstOffset = hostAllocation.offset;
+    copy.srcOffset = offset;
+    copy.size = length;
+
+    // Stage the data
+    commandBuffer->dispatchTable.next_vkCmdCopyBuffer(
+        commandBuffer->object,
+        buffer,
+        hostAllocation.buffer,
+        1, &copy
+    );
+    
+    // Add to pending streaming
+    commandBuffer->streamState->debugStreams.push_back(ShaderExportStreamStateDebugStream {
+        .name = name,
+        .mappedData = hostAllocation.staging,
+        .offset = 0,
+        .length = length
+    });
+}
+
+void AddDebugStream(CommandBufferObject* state, const ShaderExportDeviceAllocation& allocation, const std::string& name) {
+    AddDebugStream(state, allocation.buffer, 0, allocation.length, name);
+}
+#endif // NDEBUG
+
+void ReconstructPipelineState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState) {
+    ShaderExportPipelineBindState& bindState = streamState->pipelineBindPoints[static_cast<uint32_t>(PipelineType::Compute)];
+
+    // Bind the expected pipeline
+    if (bindState.pipeline) {
+        device->commandBufferDispatchTable.next_vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bindState.pipelineObject);
+
+        // Rebind the export, invalidated by layout compatibility
+        device->exportStreamer->BindShaderExport(streamState, bindState.pipeline, commandBuffer);
+
+        // Rebind all expected states
+        for (uint32_t i = 0; i < bindState.pipeline->layout->boundUserDescriptorStates; i++) {
+            const ShaderExportDescriptorState &descriptorState = bindState.persistentDescriptorState.at(i);
+
+            // Invalid or mismatched hash?
+            if (!descriptorState.set || bindState.pipeline->layout->compatabilityHashes[i] != descriptorState.compatabilityHash) {
+                continue;
+            }
+
+            // Bind the expected set
+            device->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
+                commandBuffer,
+                VK_PIPELINE_BIND_POINT_COMPUTE, bindState.pipeline->layout->object,
+                i, 1u, &descriptorState.set,
+                descriptorState.dynamicOffsets.count, descriptorState.dynamicOffsets.data);
+        }
+    }
+}
+
+void ReconstructPushConstantState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState) {
+    ShaderExportPipelineBindState& bindState = streamState->pipelineBindPoints[static_cast<uint32_t>(PipelineType::Compute)];
+
+    // Relevant bind state?
+    if (!bindState.pipeline || bindState.pipeline->layout->dataPushConstantLength == 0) {
+        return;
+    }
+
+    // Reconstruct the push constant data
+    device->commandBufferDispatchTable.next_vkCmdPushConstants(
+        commandBuffer,
+        bindState.pipeline->layout->object,
+        bindState.pipeline->layout->pushConstantRangeMask,
+        0u,
+        bindState.pipeline->layout->userPushConstantLength,
+        streamState->persistentPushConstantData.data()
+    );
+}
+
+void ReconstructRenderPassState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState) {
+    // Use the reconstruction object instead of native
+    VkRenderPassBeginInfo beginInfo = streamState->renderPass.deepCopy.createInfo;
+    beginInfo.renderPass = device->states_renderPass.Get(beginInfo.renderPass)->reconstructionObject;
+    
+    // Reconstruct render pass
+    device->commandBufferDispatchTable.next_vkCmdBeginRenderPass(
+        commandBuffer,
+        &beginInfo,
+        streamState->renderPass.subpassContents
+    );
+}
+
+void ReconstructState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState, ReconstructionFlagSet flags) {
+    if (flags & ReconstructionFlag::Pipeline) {
+        ReconstructPipelineState(device, commandBuffer, streamState);
+    }
+
+    if (flags & ReconstructionFlag::PushConstant) {
+        ReconstructPushConstantState(device, commandBuffer, streamState);
+    }
+
+    if (flags & ReconstructionFlag::RenderPass) {
+        ReconstructRenderPassState(device, commandBuffer, streamState);
+    }
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {

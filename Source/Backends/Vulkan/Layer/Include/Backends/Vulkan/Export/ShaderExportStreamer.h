@@ -33,6 +33,7 @@
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/Export/StreamState.h>
+#include <Backends/Vulkan/Export/ShaderExportFreeDescriptorAllocator.h>
 #include <Backends/Vulkan/Resource/DescriptorDataSegment.h>
 
 // Common
@@ -190,6 +191,13 @@ public:
     void Process(ShaderExportQueueState* queueState);
 
 private:
+#ifndef NDEBUG
+    /// Process all streaming debug chunks
+    /// \param state the stream state
+    void ProcessStreamDebug(ShaderExportStreamState* state);
+#endif // NDEBUG
+
+private:
     /// Migrate the descriptor environment to a new pipeline state
     /// \param state the stream state
     /// \param pipeline the new pipeline
@@ -205,6 +213,12 @@ private:
 
     /// Free a segment
     void FreeSegmentNoQueueLock(ShaderExportQueueState* queue, ShaderExportStreamSegment* segment);
+
+    /// Free a constant allocator
+    void FreeConstantAllocator(ShaderExportConstantAllocator& allocator);
+
+    /// Free a device allocator
+    void FreeDeviceAllocator(ShaderExportDeviceAllocator& allocator);
 
     /// Release a descriptor data segment
     void ReleaseDescriptorDataSegment(const DescriptorDataSegment& dataSegment);
@@ -225,6 +239,13 @@ private:
 
     /// All free descriptor segments
     std::vector<DescriptorDataSegmentEntry> freeDescriptorDataSegmentEntries;
+
+    /// All free allocators
+    std::vector<ShaderExportConstantAllocator> freeConstantAllocators;
+    std::vector<ShaderExportDeviceAllocator> freeDeviceAllocators;
+
+    /// Shared allocators
+    ShaderExportFreeDescriptorAllocator freeDescriptorAllocator;
 
     /// All components
     ComRef<DeviceAllocator> deviceAllocator{nullptr};

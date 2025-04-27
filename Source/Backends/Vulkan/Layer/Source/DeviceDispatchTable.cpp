@@ -131,7 +131,9 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkQueueBindSparse = reinterpret_cast<PFN_vkQueueBindSparse>(getDeviceProcAddr(object, "vkQueueBindSparse"));
     next_vkCreateSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(getDeviceProcAddr(object, "vkCreateSemaphore"));
     next_vkDestroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(getDeviceProcAddr(object, "vkDestroySemaphore"));
-
+    next_vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(getDeviceProcAddr(object, "vkGetRayTracingShaderGroupHandlesKHR"));
+    next_vkGetBufferDeviceAddress = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(getDeviceProcAddr(object, "vkGetBufferDeviceAddress"));
+    
     // Populate all generated commands
     commandBufferDispatchTable.Populate(object, getDeviceProcAddr);
 }
@@ -347,6 +349,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(DeviceDispatchTable* tabl
     if (!std::strcmp(name, "vkBindImageMemory2KHR"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindImageMemory2KHR);
 
+    if (!std::strcmp(name, "vkGetRayTracingShaderGroupHandlesKHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetRayTracingShaderGroupHandlesKHR);
+    
     // Check command hooks
     if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(table ? &table->commandBufferDispatchTable : nullptr, name)) {
         return hook;

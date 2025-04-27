@@ -91,7 +91,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// Default values
         /// </summary>
         public static readonly bool DefaultUseIterationLimits = true;
-        public static readonly uint DefaultIterationLimit = 32000;
+        public static readonly uint DefaultIterationLimit = 64000;
         public static readonly uint DefaultAtomicIterationInterval = 256;
 
         /// <summary>

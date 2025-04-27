@@ -34,81 +34,7 @@
 #include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
-
-static void ReconstructPipelineState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState, const UserCommandState& state) {
-    ShaderExportPipelineBindState& bindState = streamState->pipelineBindPoints[static_cast<uint32_t>(PipelineType::Compute)];
-
-    // Bind the expected pipeline
-    if (bindState.pipeline) {
-        device->commandBufferDispatchTable.next_vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bindState.pipelineObject);
-
-        // Rebind the export, invalidated by layout compatibility
-        device->exportStreamer->BindShaderExport(streamState, bindState.pipeline, commandBuffer);
-
-        // Rebind all expected states
-        for (uint32_t i = 0; i < bindState.pipeline->layout->boundUserDescriptorStates; i++) {
-            const ShaderExportDescriptorState &descriptorState = bindState.persistentDescriptorState.at(i);
-
-            // Invalid or mismatched hash?
-            if (!descriptorState.set || bindState.pipeline->layout->compatabilityHashes[i] != descriptorState.compatabilityHash) {
-                continue;
-            }
-
-            // Bind the expected set
-            device->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
-                commandBuffer,
-                VK_PIPELINE_BIND_POINT_COMPUTE, bindState.pipeline->layout->object,
-                i, 1u, &descriptorState.set,
-                descriptorState.dynamicOffsets.count, descriptorState.dynamicOffsets.data);
-        }
-    }
-}
-
-static void ReconstructPushConstantState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState, const UserCommandState& state) {
-    ShaderExportPipelineBindState& bindState = streamState->pipelineBindPoints[static_cast<uint32_t>(PipelineType::Compute)];
-
-    // Relevant bind state?
-    if (!bindState.pipeline || bindState.pipeline->layout->dataPushConstantLength == 0) {
-        return;
-    }
-
-    // Reconstruct the push constant data
-    device->commandBufferDispatchTable.next_vkCmdPushConstants(
-        commandBuffer,
-        bindState.pipeline->layout->object,
-        bindState.pipeline->layout->pushConstantRangeMask,
-        0u,
-        bindState.pipeline->layout->userPushConstantLength,
-        streamState->persistentPushConstantData.data()
-    );
-}
-
-static void ReconstructRenderPassState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState, const UserCommandState& state) {
-    // Use the reconstruction object instead of native
-    VkRenderPassBeginInfo beginInfo = streamState->renderPass.deepCopy.createInfo;
-    beginInfo.renderPass = device->states_renderPass.Get(beginInfo.renderPass)->reconstructionObject;
-    
-    // Reconstruct render pass
-    device->commandBufferDispatchTable.next_vkCmdBeginRenderPass(
-        commandBuffer,
-        &beginInfo,
-        streamState->renderPass.subpassContents
-    );
-}
-
-static void ReconstructState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState, const UserCommandState& state) {
-    if (state.reconstructionFlags & ReconstructionFlag::Pipeline) {
-        ReconstructPipelineState(device, commandBuffer, streamState, state);
-    }
-
-    if (state.reconstructionFlags & ReconstructionFlag::PushConstant) {
-        ReconstructPushConstantState(device, commandBuffer, streamState, state);
-    }
-
-    if (state.reconstructionFlags & ReconstructionFlag::RenderPass) {
-        ReconstructRenderPassState(device, commandBuffer, streamState, state);
-    }
-}
+#include <Backends/Vulkan/CommandBuffer.h>
 
 void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
     UserCommandState state;
@@ -242,10 +168,10 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                 // Actual length of the data
                 size_t length = cmd->commandSize - sizeof(StageBufferCommand);
 
-                // Shader Read -> Transfer Write
+                // Shader Read/Write -> Transfer Write
                 VkBufferMemoryBarrier barrier{};
                 barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-                barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
                 barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                 barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -272,9 +198,9 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                     reinterpret_cast<const uint8_t*>(cmd) + sizeof(StageBufferCommand)
                 );
 
-                // Transfer Write -> Shader Read
+                // Transfer Write -> Shader Read/Write
                 barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 
                 // Stall the pipeline
                 device->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
@@ -334,9 +260,8 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
         }
     }
 
-
     // Reconstruct expected user state
-    ReconstructState(device, commandBuffer, streamState, state);
+    ReconstructState(device, commandBuffer, streamState, state.reconstructionFlags);
 }
 
 void CommitCommands(CommandBufferObject* commandBuffer) {

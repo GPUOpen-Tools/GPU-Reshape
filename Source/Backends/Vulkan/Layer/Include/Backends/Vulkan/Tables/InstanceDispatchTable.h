@@ -90,12 +90,18 @@ struct InstanceDispatchTable {
 
     /// Populate this table
     /// \param getProcAddr the device proc address fn for the next layer
-    void Populate(VkInstance instance, PFN_vkGetInstanceProcAddr getProcAddr);
+    /// \param getPhysicalDeviceProcAddr the physical device proc address fn for the next layer
+    void Populate(VkInstance instance, PFN_vkGetInstanceProcAddr getProcAddr, PFN_vkGetInstanceProcAddr getPhysicalDeviceProcAddr);
 
     /// Get the hook address for a given name
     /// \param name the name to hook
     /// \return the hooked address, may be nullptr
     static PFN_vkVoidFunction GetHookAddress(const char *name);
+
+    /// Get the hook address for a given name
+    /// \param name the name to hook
+    /// \return the hooked address, may be nullptr
+    static PFN_vkVoidFunction GetPhysicalDeviceHookAddress(const char *name);
 
     /// States
     VkInstance object;
@@ -130,10 +136,12 @@ struct InstanceDispatchTable {
 
     /// Callbacks
     PFN_vkGetInstanceProcAddr                    next_vkGetInstanceProcAddr;
+    PFN_vkGetInstanceProcAddr                    next_vkLayerGetPhysicalDeviceProcAddr;
     PFN_vkDestroyInstance                        next_vkDestroyInstance;
     PFN_vkGetPhysicalDeviceMemoryProperties      next_vkGetPhysicalDeviceMemoryProperties;
     PFN_vkGetPhysicalDeviceMemoryProperties2KHR  next_vkGetPhysicalDeviceMemoryProperties2KHR;
     PFN_vkGetPhysicalDeviceProperties            next_vkGetPhysicalDeviceProperties;
+    PFN_vkGetPhysicalDeviceProperties2           next_vkGetPhysicalDeviceProperties2;
     PFN_vkGetPhysicalDeviceFeatures2             next_vkGetPhysicalDeviceFeatures2;
     PFN_vkEnumerateDeviceLayerProperties         next_vkEnumerateDeviceLayerProperties;
     PFN_vkEnumerateDeviceExtensionProperties     next_vkEnumerateDeviceExtensionProperties;

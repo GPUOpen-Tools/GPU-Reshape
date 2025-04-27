@@ -35,15 +35,18 @@
 std::mutex                                InstanceDispatchTable::Mutex;
 std::map<void *, InstanceDispatchTable *> InstanceDispatchTable::Table;
 
-void InstanceDispatchTable::Populate(VkInstance instance, PFN_vkGetInstanceProcAddr getProcAddr) {
-    object                     = instance;
-    next_vkGetInstanceProcAddr = getProcAddr;
+void InstanceDispatchTable::Populate(VkInstance instance, PFN_vkGetInstanceProcAddr getProcAddr, PFN_vkGetInstanceProcAddr getPhysicalDeviceProcAddr) {
+    object                                = instance;
+    next_vkGetInstanceProcAddr            = getProcAddr;
+    next_vkLayerGetPhysicalDeviceProcAddr = getPhysicalDeviceProcAddr;
 
     // Populate instance
+    next_vkLayerGetPhysicalDeviceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(getProcAddr(instance, "vk_layerGetPhysicalDeviceProcAddr"));
     next_vkDestroyInstance = reinterpret_cast<PFN_vkDestroyInstance>(getProcAddr(instance, "vkDestroyInstance"));
     next_vkGetPhysicalDeviceMemoryProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties>(getProcAddr(object, "vkGetPhysicalDeviceMemoryProperties"));
     next_vkGetPhysicalDeviceMemoryProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2KHR>(getProcAddr(object, "vkGetPhysicalDeviceMemoryProperties2KHR"));
     next_vkGetPhysicalDeviceProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties>(getProcAddr(object, "vkGetPhysicalDeviceProperties"));
+    next_vkGetPhysicalDeviceProperties2 = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(getProcAddr(object, "vkGetPhysicalDeviceProperties2"));
     next_vkGetPhysicalDeviceFeatures2 = reinterpret_cast<PFN_vkGetPhysicalDeviceFeatures2>(getProcAddr(object, "vkGetPhysicalDeviceFeatures2"));
     next_vkEnumerateDeviceLayerProperties = reinterpret_cast<PFN_vkEnumerateDeviceLayerProperties>(getProcAddr(object, "vkEnumerateDeviceLayerProperties"));
     next_vkEnumerateDeviceExtensionProperties = reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(getProcAddr(object, "vkEnumerateDeviceExtensionProperties"));
@@ -69,6 +72,25 @@ PFN_vkVoidFunction InstanceDispatchTable::GetHookAddress(const char *name) {
     if (!std::strcmp(name, "vkEnumerateDeviceExtensionProperties"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkEnumerateDeviceExtensionProperties);
 
+    // No hook
+    return nullptr;
+}
+
+PFN_vkVoidFunction InstanceDispatchTable::GetPhysicalDeviceHookAddress(const char *name) {
+    if (!std::strcmp(name, "vkGetPhysicalDeviceProperties"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetPhysicalDeviceProperties);
+    
+    if (!std::strcmp(name, "vkGetPhysicalDeviceProperties2") || !std::strcmp(name, "vkGetPhysicalDeviceProperties2KHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetPhysicalDeviceProperties2);
+
+    if (!std::strcmp(name, "vkEnumerateDeviceLayerProperties"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkEnumerateDeviceLayerProperties);
+
+    if (!std::strcmp(name, "vkEnumerateDeviceExtensionProperties"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkEnumerateDeviceExtensionProperties);
+    
+    // TODO: This part is weird in the loader, finish
+    
     // No hook
     return nullptr;
 }

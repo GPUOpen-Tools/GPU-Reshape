@@ -131,7 +131,8 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     }
 
     // Fetch previous addresses
-    PFN_vkGetInstanceProcAddr getInstanceProcAddr = chainInfo->u.pLayerInfo->pfnNextGetInstanceProcAddr;
+    PFN_vkGetInstanceProcAddr getInstanceProcAddr       = chainInfo->u.pLayerInfo->pfnNextGetInstanceProcAddr;
+    PFN_vkGetInstanceProcAddr getPhysicalDeviceProcAddr = chainInfo->u.pLayerInfo->pfnNextGetPhysicalDeviceProcAddr;
 
     // Advance layer
     chainInfo->u.pLayerInfo = chainInfo->u.pLayerInfo->pNext;
@@ -192,7 +193,7 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     InstanceDispatchTable::Add(GetInternalTable(*pInstance), table);
 
     // Populate the table
-    table->Populate(*pInstance, getInstanceProcAddr);
+    table->Populate(*pInstance, getInstanceProcAddr, getPhysicalDeviceProcAddr);
 
     // Find optional create info
     if (auto createInfo = FindStructureType<VkGPUOpenGPUReshapeCreateInfo>(pCreateInfo, VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO)) {

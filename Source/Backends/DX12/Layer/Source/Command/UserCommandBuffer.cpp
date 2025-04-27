@@ -54,6 +54,9 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
         state.reconstructionFlags |= ReconstructionFlag::RenderPass;
     }
 
+    // Check if copy
+    const bool isCopyCommandList = commandList->GetType() == D3D12_COMMAND_LIST_TYPE_COPY;
+
     // Default clearing chunk size
     static constexpr size_t kClearChunkSize = static_cast<size_t>(8e6);
 
@@ -153,6 +156,16 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 // Update data
                 std::memcpy(stagingAllocation.staging, reinterpret_cast<const uint8_t*>(cmd) + sizeof(StageBufferCommand), length);
 
+                // Shader Write -> Copy Dest
+                if (!isCopyCommandList) {
+                    D3D12_RESOURCE_BARRIER barrier{};
+                    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    barrier.Transition.pResource = allocation.resource;
+                    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+                    commandList->ResourceBarrier(1u, &barrier);
+                }
+
                 // Using atomic copies?
                 if (cmd->flags & StageBufferFlag::Atomic32) {
                     // TODO: Cache these somehow?
@@ -190,6 +203,16 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                         stagingAllocation.offset,
                         length
                     );
+                }
+
+                // Copy Dest -> Shader Write
+                if (!isCopyCommandList) {
+                    D3D12_RESOURCE_BARRIER barrier{};
+                    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    barrier.Transition.pResource = allocation.resource;
+                    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+                    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                    commandList->ResourceBarrier(1u, &barrier);
                 }
                 break;
             }

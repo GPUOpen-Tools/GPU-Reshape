@@ -35,6 +35,7 @@
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticPrettyPrint.h>
+#include <Backends/Vulkan/States/RaytracingPipelineState.h>
 
 // Backend
 #include <Backend/IFeature.h>
@@ -573,6 +574,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 case 2:
                     it->type = PipelineType::Compute;
                     break;
+                case 3:
+                    it->type = PipelineType::Raytracing;
+                    break;
             }
 
             // Copy info
@@ -668,6 +672,9 @@ void InstrumentationController::OnStateRequest(const struct GetStateMessage &mes
                         break;
                     case PipelineType::Compute:
                         response->type = 2;
+                        break;
+                    case PipelineType::Raytracing:
+                        response->type = 3;
                         break;
                 }
             }
@@ -897,11 +904,6 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
                 continue;
             }
 
-            // Raytracing is pass-through for now
-            if (dependentObject->type == PipelineType::Raytracing) {
-                continue;
-            }
-
             // Number of slots used by the pipeline
             uint32_t pipelineLayoutUserSlots = dependentObject->layout->boundUserDescriptorStates;
 
@@ -1039,16 +1041,16 @@ bool InstrumentationController::CommitPipeline(Batch* batch, PipelineState* stat
         }
     }
 
-    // Raytracing is pass-through for now
-    if (state->type == PipelineType::Raytracing) {
-        superFeatureBitSet = 0x0;
-    }
-
     // No features?
     if (!superFeatureBitSet) {
         // Inform the dependent object to fetch the default pipeline
         if (state->isLibrary) {
             dependentObject->libraryInstrumentationKeys[dependentObject->GetDependentIndex(state)] = kDefaultPipelineStateHash;
+        }
+
+        // If raytracing, reset the patch table
+        if (auto* raytracingState = static_cast<RaytracingPipelineState*>(state); state->type == PipelineType::Raytracing) {
+            raytracingState->hotSwapPatchTable.store(nullptr);
         }
         
         // Set the hot swapped object to native
@@ -1182,6 +1184,11 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Commit all pending entries
     for (Batch::CommitEntry entry : batch->commitEntries) {
         if (auto pipeline = entry.state->GetInstrument(entry.combinedHash)) {
+            // If raytracing, set the patch table
+            if (auto* raytracingState = static_cast<RaytracingPipelineState*>(entry.state); entry.state->type == PipelineType::Raytracing) {
+                raytracingState->hotSwapPatchTable.store(raytracingState->GetPatch(entry.combinedHash));
+            }
+            
             entry.state->hotSwapObject.store(pipeline);
         }
     }

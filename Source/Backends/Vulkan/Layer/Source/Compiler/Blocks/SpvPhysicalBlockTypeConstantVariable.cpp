@@ -73,8 +73,15 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
 
         // Handle instruction
         switch (ctx.GetOp()) {
-            default:
+            default: {
+                // If a type, it's unexposed
+                if (IsSpvTypeOp(ctx.GetOp())) {
+                    typeMap.AddType(ctx.GetResult(), anchor, Backend::IL::UnexposedType{});
+                    break;
+                }
+                
                 break;
+            }
 
             case SpvOpTypeInt: {
                 Backend::IL::IntType type;
@@ -279,16 +286,6 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                     .pointee = nullptr,
                     .addressSpace = Translate(static_cast<SpvStorageClass>(ctx++))
                 });
-                break;
-            }
-
-            case SpvOpTypeEvent:
-            case SpvOpTypeDeviceEvent:
-            case SpvOpTypeReserveId:
-            case SpvOpTypeQueue:
-            case SpvOpTypePipe:
-            case SpvOpTypeOpaque: {
-                typeMap.AddType(ctx.GetResult(), anchor, Backend::IL::UnexposedType{});
                 break;
             }
 

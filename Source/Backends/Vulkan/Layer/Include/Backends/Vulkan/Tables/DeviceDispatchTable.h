@@ -34,6 +34,7 @@
 #include <Backends/Vulkan/DeepCopyObjects.Gen.h>
 #include <Backends/Vulkan/ShaderData/ConstantShaderDataBuffer.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceIdentifierMap.h>
+#include <Backends/Vulkan/Resource/ResourceVirtualAddressTable.h>
 #include <Backends/Vulkan/States/ExclusiveQueue.h>
 
 // Common
@@ -77,6 +78,7 @@ struct FrameBufferState;
 struct FenceState;
 struct QueueState;
 struct DeviceMemoryState;
+struct Programs;
 class IFeature;
 class IBridge;
 class InstrumentationController;
@@ -89,6 +91,7 @@ class ShaderSGUIDHost;
 class ShaderDataHost;
 class PhysicalResourceMappingTable;
 class ShaderProgramHost;
+class DeviceAllocator;
 class Scheduler;
 
 struct DeviceDispatchTable {
@@ -216,93 +219,99 @@ struct DeviceDispatchTable {
     ComRef<ShaderExportDescriptorAllocator> exportDescriptorAllocator{nullptr};
 
     /// Callbacks
-    PFN_vkGetInstanceProcAddr             next_vkGetInstanceProcAddr;
-    PFN_vkGetDeviceProcAddr               next_vkGetDeviceProcAddr;
-    PFN_vkDestroyDevice                   next_vkDestroyDevice;
-    PFN_vkCreateCommandPool               next_vkCreateCommandPool;
-    PFN_vkAllocateCommandBuffers          next_vkAllocateCommandBuffers;
-    PFN_vkBeginCommandBuffer              next_vkBeginCommandBuffer;
-    PFN_vkResetCommandBuffer              next_vkResetCommandBuffer;
-    PFN_vkResetCommandPool                next_vkResetCommandPool;
-    PFN_vkEndCommandBuffer                next_vkEndCommandBuffer;
-    PFN_vkFreeCommandBuffers              next_vkFreeCommandBuffers;
-    PFN_vkDestroyCommandPool              next_vkDestroyCommandPool;
-    PFN_vkQueueSubmit                     next_vkQueueSubmit;
-    PFN_vkQueueSubmit2                    next_vkQueueSubmit2;
-    PFN_vkQueueSubmit2KHR                 next_vkQueueSubmit2KHR;
-    PFN_vkQueuePresentKHR                 next_vkQueuePresentKHR;
-    PFN_vkCreateShaderModule              next_vkCreateShaderModule;
-    PFN_vkDestroyShaderModule             next_vkDestroyShaderModule;
-    PFN_vkCreateGraphicsPipelines         next_vkCreateGraphicsPipelines;
-    PFN_vkCreateComputePipelines          next_vkCreateComputePipelines;
-    PFN_vkCreateRayTracingPipelinesKHR    next_vkCreateRayTracingPipelinesKHR;
-    PFN_vkDestroyPipeline                 next_vkDestroyPipeline;
-    PFN_vkGetFenceStatus                  next_vkGetFenceStatus;
-    PFN_vkWaitForFences                   next_vkWaitForFences;
-    PFN_vkCreateBuffer                    next_vkCreateBuffer;
-    PFN_vkDestroyBuffer                   next_vkDestroyBuffer;
-    PFN_vkCreateBufferView                next_vkCreateBufferView;
-    PFN_vkDestroyBufferView               next_vkDestroyBufferView;
-    PFN_vkGetBufferMemoryRequirements     next_vkGetBufferMemoryRequirements;
-    PFN_vkCreateDescriptorPool            next_vkCreateDescriptorPool;
-    PFN_vkDestroyDescriptorPool           next_vkDestroyDescriptorPool;
-    PFN_vkCreateDescriptorSetLayout       next_vkCreateDescriptorSetLayout;
-    PFN_vkDestroyDescriptorSetLayout      next_vkDestroyDescriptorSetLayout;
-    PFN_vkResetDescriptorPool             next_vkResetDescriptorPool;
-    PFN_vkAllocateDescriptorSets          next_vkAllocateDescriptorSets;
-    PFN_vkFreeDescriptorSets              next_vkFreeDescriptorSets;
-    PFN_vkCreatePipelineLayout            next_vkCreatePipelineLayout;
-    PFN_vkDestroyPipelineLayout           next_vkDestroyPipelineLayout;
-    PFN_vkQueueWaitIdle                   next_vkQueueWaitIdle;
-    PFN_vkDeviceWaitIdle                  next_vkDeviceWaitIdle;
-    PFN_vkCreateFence                     next_vkCreateFence;
-    PFN_vkDestroyFence                    next_vkDestroyFence;
-    PFN_vkResetFences                     next_vkResetFences;
-    PFN_vkCreateRenderPass                next_vkCreateRenderPass;
-    PFN_vkCreateRenderPass2               next_vkCreateRenderPass2;
-    PFN_vkCreateRenderPass2KHR            next_vkCreateRenderPass2KHR;
-    PFN_vkDestroyRenderPass               next_vkDestroyRenderPass;
-    PFN_vkCreateFramebuffer               next_vkCreateFrameBuffer;
-    PFN_vkDestroyFramebuffer              next_vkDestroyFrameBuffer;
-    PFN_vkUpdateDescriptorSets            next_vkUpdateDescriptorSets;
-    PFN_vkCreateDescriptorUpdateTemplate  next_vkCreateDescriptorUpdateTemplate;
-    PFN_vkDestroyDescriptorUpdateTemplate next_vkDestroyDescriptorUpdateTemplate;
-    PFN_vkUpdateDescriptorSetWithTemplate next_vkUpdateDescriptorSetWithTemplate;
-    PFN_vkBindBufferMemory                next_vkBindBufferMemory;
-    PFN_vkGetDeviceQueue                  next_vkGetDeviceQueue;
-    PFN_vkGetDeviceQueue2                 next_vkGetDeviceQueue2;
-    PFN_vkCreateImage                     next_vkCreateImage;
-    PFN_vkCreateImageView                 next_vkCreateImageView;
-    PFN_vkDestroyImage                    next_vkDestroyImage;
-    PFN_vkDestroyImageView                next_vkDestroyImageView;
-    PFN_vkCreateSampler                   next_vkCreateSampler;
-    PFN_vkDestroySampler                  next_vkDestroySampler;
-    PFN_vkAllocateMemory                  next_vkAllocateMemory;
-    PFN_vkFreeMemory                      next_vkFreeMemory;
-    PFN_vkBindBufferMemory2KHR            next_vkBindBufferMemory2KHR;
-    PFN_vkBindImageMemory                 next_vkBindImageMemory;
-    PFN_vkBindImageMemory2KHR             next_vkBindImageMemory2KHR;
-    PFN_vkFlushMappedMemoryRanges         next_vkFlushMappedMemoryRanges;
-    PFN_vkGetBufferMemoryRequirements2KHR next_vkGetBufferMemoryRequirements2KHR;
-    PFN_vkGetImageMemoryRequirements      next_vkGetImageMemoryRequirements;
-    PFN_vkGetImageMemoryRequirements2KHR  next_vkGetImageMemoryRequirements2KHR;
-    PFN_vkInvalidateMappedMemoryRanges    next_vkInvalidateMappedMemoryRanges;
-    PFN_vkMapMemory                       next_vkMapMemory;
-    PFN_vkUnmapMemory                     next_vkUnmapMemory;
-    PFN_vkCreateSwapchainKHR              next_vkCreateSwapchainKHR;
-    PFN_vkDestroySwapchainKHR             next_vkDestroySwapchainKHR;
-    PFN_vkGetSwapchainImagesKHR           next_vkGetSwapchainImagesKHR;
-    PFN_vkSetDebugUtilsObjectNameEXT      next_vkSetDebugUtilsObjectNameEXT;
-    PFN_vkDebugMarkerSetObjectNameEXT     next_vkDebugMarkerSetObjectNameEXT;
-    PFN_vkQueueBindSparse                 next_vkQueueBindSparse;
-    PFN_vkCreateSemaphore                 next_vkCreateSemaphore;
-    PFN_vkDestroySemaphore                next_vkDestroySemaphore;
+    PFN_vkGetInstanceProcAddr                next_vkGetInstanceProcAddr;
+    PFN_vkGetDeviceProcAddr                  next_vkGetDeviceProcAddr;
+    PFN_vkDestroyDevice                      next_vkDestroyDevice;
+    PFN_vkCreateCommandPool                  next_vkCreateCommandPool;
+    PFN_vkAllocateCommandBuffers             next_vkAllocateCommandBuffers;
+    PFN_vkBeginCommandBuffer                 next_vkBeginCommandBuffer;
+    PFN_vkResetCommandBuffer                 next_vkResetCommandBuffer;
+    PFN_vkResetCommandPool                   next_vkResetCommandPool;
+    PFN_vkEndCommandBuffer                   next_vkEndCommandBuffer;
+    PFN_vkFreeCommandBuffers                 next_vkFreeCommandBuffers;
+    PFN_vkDestroyCommandPool                 next_vkDestroyCommandPool;
+    PFN_vkQueueSubmit                        next_vkQueueSubmit;
+    PFN_vkQueueSubmit2                       next_vkQueueSubmit2;
+    PFN_vkQueueSubmit2KHR                    next_vkQueueSubmit2KHR;
+    PFN_vkQueuePresentKHR                    next_vkQueuePresentKHR;
+    PFN_vkCreateShaderModule                 next_vkCreateShaderModule;
+    PFN_vkDestroyShaderModule                next_vkDestroyShaderModule;
+    PFN_vkCreateGraphicsPipelines            next_vkCreateGraphicsPipelines;
+    PFN_vkCreateComputePipelines             next_vkCreateComputePipelines;
+    PFN_vkCreateRayTracingPipelinesKHR       next_vkCreateRayTracingPipelinesKHR;
+    PFN_vkDestroyPipeline                    next_vkDestroyPipeline;
+    PFN_vkGetFenceStatus                     next_vkGetFenceStatus;
+    PFN_vkWaitForFences                      next_vkWaitForFences;
+    PFN_vkCreateBuffer                       next_vkCreateBuffer;
+    PFN_vkDestroyBuffer                      next_vkDestroyBuffer;
+    PFN_vkCreateBufferView                   next_vkCreateBufferView;
+    PFN_vkDestroyBufferView                  next_vkDestroyBufferView;
+    PFN_vkGetBufferMemoryRequirements        next_vkGetBufferMemoryRequirements;
+    PFN_vkCreateDescriptorPool               next_vkCreateDescriptorPool;
+    PFN_vkDestroyDescriptorPool              next_vkDestroyDescriptorPool;
+    PFN_vkCreateDescriptorSetLayout          next_vkCreateDescriptorSetLayout;
+    PFN_vkDestroyDescriptorSetLayout         next_vkDestroyDescriptorSetLayout;
+    PFN_vkResetDescriptorPool                next_vkResetDescriptorPool;
+    PFN_vkAllocateDescriptorSets             next_vkAllocateDescriptorSets;
+    PFN_vkFreeDescriptorSets                 next_vkFreeDescriptorSets;
+    PFN_vkCreatePipelineLayout               next_vkCreatePipelineLayout;
+    PFN_vkDestroyPipelineLayout              next_vkDestroyPipelineLayout;
+    PFN_vkQueueWaitIdle                      next_vkQueueWaitIdle;
+    PFN_vkDeviceWaitIdle                     next_vkDeviceWaitIdle;
+    PFN_vkCreateFence                        next_vkCreateFence;
+    PFN_vkDestroyFence                       next_vkDestroyFence;
+    PFN_vkResetFences                        next_vkResetFences;
+    PFN_vkCreateRenderPass                   next_vkCreateRenderPass;
+    PFN_vkCreateRenderPass2                  next_vkCreateRenderPass2;
+    PFN_vkCreateRenderPass2KHR               next_vkCreateRenderPass2KHR;
+    PFN_vkDestroyRenderPass                  next_vkDestroyRenderPass;
+    PFN_vkCreateFramebuffer                  next_vkCreateFrameBuffer;
+    PFN_vkDestroyFramebuffer                 next_vkDestroyFrameBuffer;
+    PFN_vkUpdateDescriptorSets               next_vkUpdateDescriptorSets;
+    PFN_vkCreateDescriptorUpdateTemplate     next_vkCreateDescriptorUpdateTemplate;
+    PFN_vkDestroyDescriptorUpdateTemplate    next_vkDestroyDescriptorUpdateTemplate;
+    PFN_vkUpdateDescriptorSetWithTemplate    next_vkUpdateDescriptorSetWithTemplate;
+    PFN_vkBindBufferMemory                   next_vkBindBufferMemory;
+    PFN_vkGetDeviceQueue                     next_vkGetDeviceQueue;
+    PFN_vkGetDeviceQueue2                    next_vkGetDeviceQueue2;
+    PFN_vkCreateImage                        next_vkCreateImage;
+    PFN_vkCreateImageView                    next_vkCreateImageView;
+    PFN_vkDestroyImage                       next_vkDestroyImage;
+    PFN_vkDestroyImageView                   next_vkDestroyImageView;
+    PFN_vkCreateSampler                      next_vkCreateSampler;
+    PFN_vkDestroySampler                     next_vkDestroySampler;
+    PFN_vkAllocateMemory                     next_vkAllocateMemory;
+    PFN_vkFreeMemory                         next_vkFreeMemory;
+    PFN_vkBindBufferMemory2KHR               next_vkBindBufferMemory2KHR;
+    PFN_vkBindImageMemory                    next_vkBindImageMemory;
+    PFN_vkBindImageMemory2KHR                next_vkBindImageMemory2KHR;
+    PFN_vkFlushMappedMemoryRanges            next_vkFlushMappedMemoryRanges;
+    PFN_vkGetBufferMemoryRequirements2KHR    next_vkGetBufferMemoryRequirements2KHR;
+    PFN_vkGetImageMemoryRequirements         next_vkGetImageMemoryRequirements;
+    PFN_vkGetImageMemoryRequirements2KHR     next_vkGetImageMemoryRequirements2KHR;
+    PFN_vkInvalidateMappedMemoryRanges       next_vkInvalidateMappedMemoryRanges;
+    PFN_vkMapMemory                          next_vkMapMemory;
+    PFN_vkUnmapMemory                        next_vkUnmapMemory;
+    PFN_vkCreateSwapchainKHR                 next_vkCreateSwapchainKHR;
+    PFN_vkDestroySwapchainKHR                next_vkDestroySwapchainKHR;
+    PFN_vkGetSwapchainImagesKHR              next_vkGetSwapchainImagesKHR;
+    PFN_vkSetDebugUtilsObjectNameEXT         next_vkSetDebugUtilsObjectNameEXT;
+    PFN_vkDebugMarkerSetObjectNameEXT        next_vkDebugMarkerSetObjectNameEXT;
+    PFN_vkQueueBindSparse                    next_vkQueueBindSparse;
+    PFN_vkCreateSemaphore                    next_vkCreateSemaphore;
+    PFN_vkDestroySemaphore                   next_vkDestroySemaphore;
+    PFN_vkGetRayTracingShaderGroupHandlesKHR next_vkGetRayTracingShaderGroupHandlesKHR;
+    PFN_vkGetBufferDeviceAddress             next_vkGetBufferDeviceAddress;
 
     /// Properties
-    VkPhysicalDeviceProperties                 physicalDeviceProperties{};
-    VkPhysicalDeviceFeatures2                  physicalDeviceFeatures{};
-    VkPhysicalDeviceDescriptorIndexingFeatures physicalDeviceDescriptorIndexingFeatures{};
-    VkPhysicalDeviceRobustness2FeaturesEXT     physicalDeviceRobustness2Features{};
+    VkPhysicalDeviceProperties2                     physicalDeviceProperties{};
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR physicalDeviceRayTracingPipelineProperties{};
+    VkPhysicalDeviceMaintenance4Properties          physicalDeviceMaintenance4Properties{};
+
+    /// Features
+    VkPhysicalDeviceFeatures2                       physicalDeviceFeatures{};
+    VkPhysicalDeviceDescriptorIndexingFeatures      physicalDeviceDescriptorIndexingFeatures{};
+    VkPhysicalDeviceRobustness2FeaturesEXT          physicalDeviceRobustness2Features{};
 
     /// All queue families
     std::vector<VkQueueFamilyProperties> queueFamilyProperties;
@@ -316,6 +325,12 @@ struct DeviceDispatchTable {
     std::mutex                 commandBufferMutex;
     CommandBufferDispatchTable commandBufferDispatchTable;
 
+    /// Sorted virtual address table
+    ResourceVirtualAddressTable virtualAddressTable;
+
+    /// Internal programs
+    Programs* programs{nullptr};
+
     /// Shared remapping tables
     EventDataStack::RemappingTable eventRemappingTable;
     ShaderConstantsRemappingTable  constantRemappingTable;
@@ -323,6 +338,9 @@ struct DeviceDispatchTable {
     /// All features
     std::vector<ComRef<IFeature>> features;
     std::vector<FeatureHookTable> featureHookTables;
+
+    /// Shared allocator
+    ComRef<DeviceAllocator> deviceAllocator;
 
     /// Creation extensions
     std::vector<const char*> enabledLayers;

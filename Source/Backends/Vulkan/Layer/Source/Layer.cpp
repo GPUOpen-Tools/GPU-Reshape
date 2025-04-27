@@ -79,18 +79,58 @@ extern "C" {
         return nullptr;
     }
 
+    EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_layerGetPhysicalDeviceProcAddr(VkInstance instance, const char* pName);
+    
+    [[maybe_unused]]
+    EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetPhysicalDeviceProcAddr(VkInstance instance, const char *pName) {
+        if (!std::strcmp(pName, "vk_layerGetPhysicalDeviceProcAddr")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&vk_layerGetPhysicalDeviceProcAddr);
+        }
+
+        // Instance table
+        if (PFN_vkVoidFunction hook = InstanceDispatchTable::GetPhysicalDeviceHookAddress(pName)) {
+            return hook;
+        }
+
+        // Nothing found
+        return nullptr;
+    }
+
+    [[maybe_unused]]
+    EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_layerGetPhysicalDeviceProcAddr(VkInstance instance, const char *pName) {
+        // Attempt to get table
+        // Note that certain global commands may pass in undefined instance values
+        auto table = InstanceDispatchTable::GetNullable(GetInternalTable(instance));
+
+        if (PFN_vkVoidFunction hook = Hook_vkGetPhysicalDeviceProcAddr(instance, pName)) {
+            return hook;
+        }
+
+        if (table) {
+            return table->next_vkLayerGetPhysicalDeviceProcAddr(instance, pName);
+        }
+
+        // Nothing found
+        return nullptr;
+    }
+
     [[maybe_unused]]
     EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkInstance instance, const char *pName) {
         if (!std::strcmp(pName, "vkGetInstanceProcAddr")) {
             return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetInstanceProcAddr);
         }
-
+        
         // Attempt to get table
         // Note that certain global commands may pass in undefined instance values
         auto table = InstanceDispatchTable::GetNullable(GetInternalTable(instance));
 
         // Instance table
         if (PFN_vkVoidFunction hook = InstanceDispatchTable::GetHookAddress(pName)) {
+            return hook;
+        }
+
+        // Physical device
+        if (PFN_vkVoidFunction hook = Hook_vkGetPhysicalDeviceProcAddr(instance, pName)) {
             return hook;
         }
 
@@ -113,7 +153,7 @@ extern "C" {
         if (pVersionStruct->loaderLayerInterfaceVersion >= 2) {
             pVersionStruct->pfnGetInstanceProcAddr       = Hook_vkGetInstanceProcAddr;
             pVersionStruct->pfnGetDeviceProcAddr         = Hook_vkGetDeviceProcAddr;
-            pVersionStruct->pfnGetPhysicalDeviceProcAddr = nullptr;
+            pVersionStruct->pfnGetPhysicalDeviceProcAddr = vk_layerGetPhysicalDeviceProcAddr;
         }
 
         if (pVersionStruct->loaderLayerInterfaceVersion > CURRENT_LOADER_LAYER_INTERFACE_VERSION) {

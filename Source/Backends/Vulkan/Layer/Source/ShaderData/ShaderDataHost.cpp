@@ -67,7 +67,8 @@ bool ShaderDataHost::Install() {
 
     // Fill capability table
     capabilityTable.supportsTiledResources = table->physicalDeviceFeatures.features.sparseResidencyBuffer;
-    capabilityTable.bufferMaxElementCount = table->physicalDeviceProperties.limits.maxTexelBufferElements;
+    capabilityTable.bufferMaxElementCount = table->physicalDeviceProperties.properties.limits.maxTexelBufferElements;
+    capabilityTable.bufferMaxSize = table->physicalDeviceMaintenance4Properties.maxBufferSize;
 
     // Install coverage support
     ComRef coverage = registry->AddNew<ShaderDataValidationCoverage>();

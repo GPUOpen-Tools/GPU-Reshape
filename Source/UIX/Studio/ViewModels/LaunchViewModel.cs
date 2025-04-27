@@ -66,6 +66,16 @@ namespace Studio.ViewModels
         public ICommand Settings { get; }
 
         /// <summary>
+        /// The launched process information
+        /// </summary>
+        public DiscoveryProcessInfo DiscoveryProcessInfo => _discoveryProcessInfo;
+        
+        /// <summary>
+        /// The process startup environment message container
+        /// </summary>
+        public OrderedMessageView<ReadWriteMessageStream> MessageEnvironmentView { get; } = new(new ReadWriteMessageStream());
+
+        /// <summary>
         /// Current connection string
         /// </summary>
         [DataMember]
@@ -132,6 +142,12 @@ namespace Studio.ViewModels
             get => _attachAllDevices;
             set => this.RaiseAndSetIfChanged(ref _attachAllDevices, value);
         }
+        
+        /// <summary>
+        /// Optional, redirect all process pipes
+        /// Requires regular read/flushes
+        /// </summary>
+        public bool RedirectPipes { get; set; } = false;
 
         /// <summary>
         /// The currently selected configuration
@@ -530,6 +546,7 @@ namespace Studio.ViewModels
             processInfo.reservedToken = _pendingReservedToken;
             processInfo.captureChildProcesses = _captureChildProcesses;
             processInfo.attachAllDevices = _attachAllDevices;
+            processInfo.redirectPipes = RedirectPipes;
 
             // Parse environment
             processInfo.environment = new(EnvironmentParser.Parse(_environment).Select(kv => Tuple.Create(kv.Key, kv.Value)));
@@ -539,14 +556,11 @@ namespace Studio.ViewModels
             {
                 processInfo.workingDirectoryPath = Path.GetDirectoryName(processInfo.applicationPath);
             }
-
-            // Create environment view
-            var view = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
             
             // Construct virtual redirects
             foreach ((string? key, int value) in _virtualFeatureMappings)
             {
-                SetVirtualFeatureRedirectMessage message = view.Add<SetVirtualFeatureRedirectMessage>(new SetVirtualFeatureRedirectMessage.AllocationInfo
+                SetVirtualFeatureRedirectMessage message = MessageEnvironmentView.Add<SetVirtualFeatureRedirectMessage>(new SetVirtualFeatureRedirectMessage.AllocationInfo
                 {
                     nameLength = (ulong)key.Length
                 });
@@ -559,14 +573,18 @@ namespace Studio.ViewModels
             // Commit all pending objects
             if (WorkspaceViewModel.PropertyCollection.GetService<IBusPropertyService>() is { } busPropertyService)
             {
-                busPropertyService.CommitRedirect(view, false);
+                busPropertyService.CommitRedirect(MessageEnvironmentView, false);
             }
 
             // Add all global options
-            AppendGlobalConfig(view);
+            AppendGlobalConfig(MessageEnvironmentView);
             
             // Start process
-            service.StartBootstrappedProcess(processInfo, view.Storage, ref _discoveryProcessInfo);
+            if (!service.StartBootstrappedProcess(processInfo, MessageEnvironmentView.Storage, ref _discoveryProcessInfo))
+            {
+                ConnectionStatus = ConnectionStatus.FailedLaunch;
+                return;
+            }
             
             // Start connection
             _connectionViewModel.Connect("127.0.0.1", null);

@@ -49,5 +49,10 @@ namespace Studio.ViewModels.Workspace.Services
         /// </summary>
         /// <param name="shaderViewModel"></param>
         public void EnqueueShaderBlockGraph(Objects.ShaderViewModel shaderViewModel);
+
+        /// <summary>
+        /// Enqueue the release of an externally held shader, must be owned
+        /// </summary>
+        public void EnqueueReleaseShader(Objects.ShaderViewModel shaderViewModel);
     }
 }
