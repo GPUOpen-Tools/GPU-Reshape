@@ -24,6 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
@@ -35,6 +36,7 @@ using ReactiveUI;
 using Runtime.Models.Setting;
 using Runtime.ViewModels.Traits;
 using Studio.Services.Suspension;
+using Studio.Utils;
 
 namespace Studio.ViewModels.Setting
 {
@@ -177,9 +179,9 @@ namespace Studio.ViewModels.Setting
                 // Serialize config
                 File.WriteAllText(Path, JsonConvert.SerializeObject(config, Formatting.Indented));
             }
-            catch
+            catch (Exception e)
             {
-                Studio.Logging.Error("Failed to serialize application startup environment");
+                Studio.Logging.Error($"Failed to serialize application startup environment: {e}");
             }
         }
 
@@ -196,11 +198,36 @@ namespace Studio.ViewModels.Setting
         /// <summary>
         /// Path for startup environment directives
         /// </summary>
-        private static readonly string Path = System.IO.Path.Combine("Intermediate", "Settings", "ApplicationStartupEnvironments.json");
+        private static readonly string Path = System.IO.Path.Combine(PathUtils.BaseDirectory, "Intermediate", "Settings", "ApplicationStartupEnvironments.json");
 
         /// <summary>
         /// Path for startup environments
         /// </summary>
-        private static readonly string StartupEnvironmentPath = System.IO.Path.Combine("Intermediate", "StartupEnvironment");
+        private static readonly string StartupEnvironmentPath = System.IO.Path.Combine(PathUtils.BaseDirectory, "Intermediate", "StartupEnvironment");
+    }
+
+    public static class ApplicationListSettingItemExtensions
+    {
+        /// <summary>
+        /// Get a process setting view model or create it
+        /// </summary>
+        public static ApplicationSettingViewModel GetProcessOrAdd(this ApplicationListSettingViewModel self, string process)
+        {
+            foreach (ISettingViewModel settingItemViewModel in self.Items)
+            {
+                if (settingItemViewModel is ApplicationSettingViewModel typed && typed.ApplicationName == process)
+                {
+                    return typed;
+                }
+            }
+
+            // Not found, create it
+            ApplicationSettingViewModel viewModel = new();
+            viewModel.ApplicationName = process;
+            
+            // OK
+            self.Items.Add(viewModel);
+            return viewModel;
+        }
     }
 }

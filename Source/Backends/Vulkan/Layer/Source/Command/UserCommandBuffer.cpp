@@ -168,10 +168,10 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                 // Actual length of the data
                 size_t length = cmd->commandSize - sizeof(StageBufferCommand);
 
-                // Shader Read -> Transfer Write
+                // Shader Read/Write -> Transfer Write
                 VkBufferMemoryBarrier barrier{};
                 barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-                barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
                 barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                 barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -198,9 +198,9 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                     reinterpret_cast<const uint8_t*>(cmd) + sizeof(StageBufferCommand)
                 );
 
-                // Transfer Write -> Shader Read
+                // Transfer Write -> Shader Read/Write
                 barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 
                 // Stall the pipeline
                 device->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
@@ -259,7 +259,6 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
             }
         }
     }
-
 
     // Reconstruct expected user state
     ReconstructState(device, commandBuffer, streamState, state.reconstructionFlags);

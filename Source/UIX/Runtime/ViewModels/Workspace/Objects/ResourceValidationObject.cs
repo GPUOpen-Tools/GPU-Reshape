@@ -26,14 +26,15 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using DynamicData;
+using System.Linq;
 using ReactiveUI;
 using Runtime.Threading;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class ResourceValidationObject : ReactiveObject
+    public class ResourceValidationObject : ReactiveObject, ISerializable
     {
         public string DecoratedName
         {
@@ -103,6 +104,31 @@ namespace Studio.ViewModels.Workspace.Objects
                 _unique.Remove(pump[^1].Message);
                 pump.RemoveAt(pump.Count - 1);
             }
+        }
+
+        /// <summary>
+        /// Serialize this object
+        /// </summary>
+        public object Serialize()
+        {
+            return new SerializationMap()
+            {
+                { "MaxInstances", MaxInstances },
+                {
+                    "Resource", new SerializationMap()
+                    {
+                        { "PUID", Resource.PUID },
+                        { "Name", Resource.Name },
+                        { "Version", Resource.Version },
+                        { "Width", Resource.Width },
+                        { "Height", Resource.Height },
+                        { "Depth", Resource.Depth },
+                        { "Format", Resource.Format },
+                        { "IsUnknown", Resource.IsUnknown }
+                    }
+                },
+                { "Instances", new SerializationList(Instances.Select(x => x.Serialize())) }
+            };
         }
 
         /// <summary>

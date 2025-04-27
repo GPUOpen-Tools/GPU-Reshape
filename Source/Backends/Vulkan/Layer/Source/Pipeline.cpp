@@ -32,6 +32,7 @@
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
 #include <Backends/Vulkan/States/RaytracingPipelineState.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
+#include <Backends/Vulkan/Controllers/MetadataController.h>
 
 // Shared
 #include <Shared/ShaderRecordPatching.h>
@@ -50,6 +51,9 @@ static ShaderModuleState* GetPipelineStageShaderModule(DeviceDispatchTable* tabl
         state->table = table;
         state->object = nullptr;
         state->createInfoDeepCopy.DeepCopy(table->allocators, *moduleCreateInfo);
+        
+        // Inform the controller
+        table->metadataController->CreateShader(state);
 
         // Keep track of it
         table->states_shaderModule.Add(nullptr, state);

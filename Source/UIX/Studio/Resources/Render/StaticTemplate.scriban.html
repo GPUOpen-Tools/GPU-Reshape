@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+
+<!-- Statically (Scriban) and dynamically (Vue) rendered HTML -->
+<html data-theme="business" class="bg-base-300">
+    <head>
+        <title>GPU-Reshape Report</title>
+    
+        <!-- CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/themes/prism-tomorrow.css" rel="stylesheet"/>
+        <link href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+        <link href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/plugins/line-highlight/prism-line-highlight.min.css" rel="stylesheet" />
+        <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+        <link href="https://cdn.jsdelivr.net/npm/daisyui@5/theme/business.css" rel="stylesheet" type="text/css" />
+        <link href="https://cdn.jsdelivr.net/npm/vue-virtual-scroller@2.0.0-beta.8/dist/vue-virtual-scroller.min.css" rel="stylesheet">
+    
+        <!-- Vue, remove .prod for development -->
+        <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    
+        <!-- Tailwind, development build (TODO) -->
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.1"></script>
+    
+        <!-- PrismJS -->
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/prism.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-c.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-hlsl.js"></script>
+
+        <!-- Virtual Scroller -->
+        <script src="https://cdn.jsdelivr.net/npm/vue-virtual-scroller@2.0.0-beta.8/dist/vue-virtual-scroller.min.js"></script>
+        
+        <!-- ChartJS -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+        <!-- Luicide -->
+        <script src="https://cdn.jsdelivr.net/npm/lucide@0.487.0/dist/umd/lucide.min.js"></script>
+        
+        <style>        
+            /** Containers */
+    
+            .container-main {
+                padding: 2rem 2rem 0 2rem;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                max-width: 1750px;
+            }
+    
+            .container-code {
+                background: #2d2d2d;
+            }
+            
+            .container-tr-vm {
+                padding: 0;
+            }
+    
+            .container-relative {
+                position: relative;
+            }
+            
+            .container-center-y {
+                margin: 0;
+                position: absolute;
+                top: 50%;
+                -ms-transform: translateY(-50%);
+                transform: translateY(-50%);
+            }
+    
+            .container-detail {
+                border-top: 1px solid var(--color-base-100);
+            }
+    
+            .container-detail-table {
+                border-left: 1px solid var(--color-base-100);
+            }
+            
+            /** Table */
+    
+            .tr-item {
+                height: 12px;
+                border: 2px solid black;
+                border-radius: 5px;
+            }
+    
+            .tr-container {
+                display: flex;
+                align-items: center;
+            }
+    
+            .tr-item-error {
+                border-color: var(--color-error);
+            }
+    
+            .tr-item-warning {
+                border-color: var(--color-warning);
+            }
+    
+            .tr-item-info {
+                border-color: var(--color-secondary);
+            }
+            
+            /** Code */
+    
+            .container-source {
+                color: #ccc;
+                background: none;
+                font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+                font-size: 1em;
+                text-align: left;
+                white-space: pre;
+                word-spacing: normal;
+                word-break: normal;
+                word-wrap: normal;
+                line-height: 1.5;
+                -moz-tab-size: 4;
+                -o-tab-size: 4;
+                tab-size: 4;
+                -webkit-hyphens: none;
+                -moz-hyphens: none;
+                -ms-hyphens: none;
+                hyphens: none;
+            }
+            
+            .line-number {
+                width: var(--line-number-width);
+                letter-spacing: -1px;
+                border-right: 1px solid #999;
+                margin-right: 1em;
+                text-align: right;
+                padding-right: .5em;
+                height: 25px;
+                color: #999;
+            }
+
+            .line {
+                background-color: var(--line-severity-color);
+                min-width: 100%;
+                display: flex;
+            }
+
+            .line-none { }
+
+            .line-info {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .line-warning {
+                background-color: rgba(255, 255, 0, 0.2);
+            }
+
+            .line-error {
+                background-color: rgba(255, 0, 0, 0.2);
+            }
+
+            .vue-recycle-scroller.ready.direction-vertical .vue-recycle-scroller__item-view {
+                min-width: 100%;
+                width: auto;
+            }
+        </style>
+    </head>
+    
+    <body class="font-sans">
+        <!-- Vue mount point -->
+        <div id="app">
+            <!-- Navigation Header -->
+            <div class="navbar bg-base-100 shadow-sm">
+                <div class="flex-1">
+                    <p class="btn btn-ghost text-xl">GPU-Reshape Report</p>
+                </div>
+                <div class="navbar-end">
+                    <a class="btn btn-circle tooltip tooltip-left" 
+                       target="_blank"
+                       data-tip="Official GitHub Repository"
+                       href="https://github.com/GPUOpen-Tools/GPU-Reshape">
+                        <i data-lucide="github"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Main Container -->
+            <div class="container-main">
+                <!-- Row-0 Region -->
+                <div class="flex flex-col lg:flex-row gap-8">
+                    <!-- Report Summary -->
+                    <div class="lg:w-3/5">
+                        <div class="card bg-base-100 card-lg shadow-sm lg:h-75">
+                            <div class="card-body">
+                                <h2 class="card-title">Report Details - {{ Model.Summary.PrimaryProcessName }}</h2>
+                                <div class="text-base/8">
+                                    <p>
+                                        <span class="text-muted-color">Validation detected </span>
+
+                                        <!-- Render categories -->
+                                        {{ if Model.Summary.Message.Errors > 0 }}
+                                            <span class="text-error font-medium">{{ Model.Summary.Message.Errors }} errors, </span>
+                                        {{ end }}
+                                        {{ if Model.Summary.Message.Warnings > 0 }}
+                                            <span class="text-warning font-medium">{{ Model.Summary.Message.Warnings }} warnings, </span>
+                                        {{ end }}
+                                        {{ if Model.Summary.Message.Infos > 0 }}
+                                            <span class="text-secondary font-medium">{{ Model.Summary.Message.Infos }} notices</span>
+                                        {{ end }}
+                                        {{ if Model.Summary.Message.Warnings + Model.Summary.Message.Errors + Model.Summary.Message.Infos == 0 }}
+                                            <span class="text-success font-medium">no issues</span>
+                                        {{ end }}
+                                    </p>
+
+                                    <!-- Shader summary -->
+                                    <p>
+                                        <span class="text-muted-color">Instrumented {{ Model.Summary.Instrumentation.PassedShaders + Model.Summary.Instrumentation.FailedShaders }} shaders in {{
+                                            Model.Summary.Instrumentation.ShaderSeconds | math.format "F2"
+                                        }}s. </span>
+                                        {{ if Model.Summary.Instrumentation.FailedShaders == 0 }} <span class="text-muted-color">OK</span> {{ end }}
+                                        {{ if Model.Summary.Instrumentation.FailedShaders != 0 }} <span class="text-error font-medium">One or more shaders failed!</span> {{ end }}
+                                    </p>
+
+                                    <!-- Pipeline summary -->
+                                    <p>
+                                        <span class="text-muted-color">Instrumented {{ Model.Summary.Instrumentation.PassedPipelines + Model.Summary.Instrumentation.FailedPipelines }} pipelines in {{
+                                            Model.Summary.Instrumentation.PipelineSeconds | math.format "F2"
+                                        }}s. </span>
+                                        {{ if Model.Summary.Instrumentation.FailedPipelines == 0 }} <span class="text-muted-color">OK</span> {{ end }}
+                                        {{ if Model.Summary.Instrumentation.FailedPipelines != 0 }} <span class="text-error font-medium">One or more pipelines failed!</span> {{ end }}
+                                    </p>
+
+                                    <!-- Features -->
+                                    <p>
+                                        <span class="text-muted-color">Enabled features {{ Model.Summary.PrimaryProcessConfiguration }}</span>
+                                    </p>
+
+                                    <!-- Configuration -->
+                                    <p>
+                                        <span class="text-muted-color">Configured with </span>
+                                        {{ if Model.Summary.Detail }}<span class="text-muted-color">Detailed exports</span> {{ end }}
+                                        {{ if Model.Summary.Coverage }}<span class="text-muted-color">, Coverage reporting</span> {{ end }}
+                                        {{ if Model.Summary.SynchronousRecording }}<span class="text-muted-color">, Synchronous Recording</span> {{ end }}
+                                        {{ if Model.Summary.TexelAddressing }}<span class="text-muted-color">, Texel Addressing</span> {{ end }}
+                                        {{ if Model.Summary.SafeGuard }} <span class="text-muted-color">, Safe Guarding</span> {{ end }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- Report Coverage Chart -->
+                    <div class="lg:w-2/5">
+                        <div class="card bg-base-100 card-lg shadow-sm lg:h-75">
+                            <div class="card-body">
+                                <h2 class="card-title">Validation Coverage</h2>
+                                <div class="lg:h-50">
+                                    <canvas id="coverage-canvas-el"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        
+                <br/>
+        
+                <!-- Contents Table -->
+                <div class="tabs tabs-border">
+                    <!-- Shaders Tab -->
+                    <input type="radio" name="my_tabs_2" class="tab" aria-label="Shaders" checked="checked"/>
+                    <div class="tab-content border-base-300 bg-base-100">
+                        <div class="flex flex-col lg:flex-row gap-0 h-[825px] overflow-hidden">
+                            <!-- Shader Tree -->
+                            <div class="lg:w-2/6 overflow-y-scroll bg-base-100">
+                                <ul class="menu menu-md w-full">
+                                    {{ for Shader in Model.Shaders }}
+                                        <li @click.stop="onSelectShaderMessage({{Shader.Model.GUID}}, 0)">
+                                            <details open>
+                                                <summary>
+                                                    {{ if Shader.Model.Filename != "" }}
+                                                        {{ Shader.Model.Filename }}
+                                                    {{ else }}
+                                                        Shader {{ Shader.Model.GUID }} - No Symbols
+                                                    {{ end }}
+                                                </summary>
+                                                <ul>
+                                                    {{ for Message in Shader.Messages }}
+                                                    <li @click.stop="onSelectShaderMessage({{Shader.Model.GUID}}, {{for.index}})">
+                                                        <div class="tr-container">
+                                                            <div class="tr-item tr-item-{{ Message.Severity | string.downcase }}"></div>
+                                                            <a>Line {{ Message.Segment.Line + 1 }} - {{ Message.Content }}</a>
+                                                        </div>
+                                                    </li>
+                                                    {{ end }}
+                                                </ul>
+                                            </details>
+                                        </li>
+                                    {{ end }}
+                                </ul>
+                            </div>
+        
+                            <!-- Shader Contents -->
+                            <div class="lg:w-4/6 container-code">
+                                <!-- Selection Info -->
+                                <div v-if="shaderContents == null" class="text-center align-middle text-muted-color h-full container-relative">
+                                    <div class="container-center-y text-center w-full">
+                                        No shader selected
+                                    </div>
+                                </div>
+        
+                                <!-- Navigation + Code -->
+                                <div id="container-code-el" class="h-full">
+                                    <div class="breadcrumbs text-sm bg-base-100 p-1">
+                                        <ul>
+                                            <li v-if="selectedShader && !selectedShader.hasSymbols">No Symbols</li>
+                                            <li v-if="selectedShaderFile">[[selectedShaderFile.filename]]</li>
+                                            <li v-if="selectedMessage">line [[selectedMessage.Segment.Line]]</li>
+                                            <li v-if="selectedMessage">[[selectedMessage.Content]]</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="h-[calc(100%-28px)]">
+                                        <recycle-scroller
+                                            ref="codeScroller"
+                                            class="scroller container-source h-full"
+                                            :items="shaderContentLines"
+                                            :item-size="25"
+                                            key-field="id"
+                                            v-slot="{ item }">
+                                            <div class="line" :class="'line-' + item.severity">
+                                                <span class="line-number">
+                                                    [[item.id + 1]]
+                                                </span>
+                                                <span v-html="item.html"/>
+                                            </div>
+                                        </recycle-scroller>
+                                    </div>
+                                </div>
+        
+                                <!-- Validation Details -->
+                                <div id="container-detail-el" class="container-detail h-0">
+                                    <!-- Resource wise collection -->
+                                    <div v-if="hasDetail && selectedMessage.Detail.Type === 'ResourceList'" class="flex h-full w-full" style="flex-direction: column">
+                                        <div class="h-full w-full">
+                                            <div class="h-full flex flex-col lg:flex-row gap-0">
+                                                <!-- Resource Table -->
+                                                <div class="h-full lg:w-2/6">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Resource</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="instance in messageDetailInstances"
+                                                                @click="onSelectResourceInstance(instance)"
+                                                                class="cursor-pointer hover:bg-base-300">
+                                                                <th>[[instance.Resource.Name]]</th>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                
+                                                <!-- Detail Table -->
+                                                <div class="h-full lg:w-4/6 container-detail-table">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Details</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="instance in resourceDetailInstances" 
+                                                                class="hover:bg-base-300">
+                                                                <th>[[instance.Message]]</th>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+        
+                                        <!-- Selected resource info-->
+                                        <div class="w-full bg-base-100 text-sm">
+                                            [[resourceInfo]]
+                                        </div>
+                                    </div>
+
+                                    <!-- Generic collection -->
+                                    <div v-if="hasDetail && selectedMessage.Detail.Type === 'GenericList'" class="flex h-full w-full" style="flex-direction: column">
+                                        <div class="h-full w-full">
+                                            <div class="h-full flex flex-col lg:flex-row gap-0">
+                                                <!-- Instance Table -->
+                                                <div class="w-full h-full">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Details</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="instance in messageDetailInstances"
+                                                                @click="onSelectResourceInstance(instance)"
+                                                                class="cursor-pointer hover:bg-base-300">
+                                                                <th>[[instance]]</th>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Selected resource info-->
+                                        <div class="w-full bg-base-100 text-sm">
+                                            [[resourceInfo]]
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- Logging Tab -->
+                    <input type="radio" name="my_tabs_2" class="tab" aria-label="Log"/>
+                    <div class="tab-content border-base-300 bg-base-100">
+                        <div class="overflow-x-auto h-[825px] overflow-y-auto">
+                            <table class="table table-md">
+                                <thead>
+                                    <tr>
+                                        <th>Severity</th>
+                                        <th>System</th>
+                                        <th>Message</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Render the logs statically -->
+                                    {{ for Log in Model.Logs }}
+                                        <tr>
+                                            <td>
+                                                <div class="tr-container gap-2">
+                                                    <div class="tr-item tr-item-{{ Log.Severity | string.downcase }}"></div>
+                                                    <a>{{ Log.Severity }}</a>
+                                                </div>
+                                            </td>
+                                            <td>{{ Log.System }}</td>
+                                            <td>{{ Log.Message }}</td>
+                                            <td class="container-tr-vm">
+                                                {{ if Log.ViewModel != null }}
+                                                    <a class="btn tooltip tooltip-left h-8 w-13"
+                                                       data-tip="Open embedded report"
+                                                       onclick="LogModal{{for.index}}.showModal()">
+                                                        <i data-lucide="external-link"></i>
+                                                    </a>
+                                                {{ end }}
+                                            </td>
+                                        </tr>
+                                    {{ end }}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Render the log view models statically -->
+        {{ for Log in Model.Logs }}
+            {{ if Log.ViewModel != null }}
+                <dialog id="LogModal{{for.index}}" class="modal">
+                    <div class="modal-box">
+                        <!-- Close button -->
+                        <form method="dialog">
+                            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">x</button>
+                        </form>
+
+                        <!-- Summary -->
+                        <h3 class="text-lg font-bold">Instrumentation Report</h3>
+                        <p><span class="py-4">Passed shaders: {{Log.ViewModel.PassedShaders}}, failed shaders {{Log.ViewModel.FailedShaders}}, took {{Log.ViewModel.ShaderMilliseconds}}ms.</span></p>
+                        <p><span class="py-4">Passed pipelines: {{Log.ViewModel.PassedPipelines}}, failed pipelines {{Log.ViewModel.FailedPipelines}}, took {{Log.ViewModel.PipelineMilliseconds}}ms.</span></p>
+                        <br/>
+        
+                        <!-- Backend table -->
+                        <div class="card bg-base-200 card-sm shadow-sm lg:h-96 overflow-y-scroll">
+                            <div class="card-body">
+                                <h2 class="card-title">Backend Messages</h2>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Render the messages -->
+                                        {{ for Message in Log.ViewModel.Messages }}
+                                            <tr>
+                                                <td>{{ Message }}</td>
+                                            </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Close when click outside of modal -->
+                    <form method="dialog" class="modal-backdrop">
+                        <button>close</button>
+                    </form>
+                </dialog>
+            {{ end }}
+        {{ end }}
+        
+        <script>
+            // Create the application
+            const app = Vue.createApp({
+                data() {
+                    return {
+                        // Currently displayed shader contents
+                        shaderContents: Vue.ref(null),
+                        shaderContentLines: Vue.ref([]),
+                        
+                        // All selection
+                        selectedShader: Vue.ref(null),
+                        selectedShaderFile: Vue.ref(null),
+                        selectedMessage: Vue.ref(null),
+
+                        // Detail sets
+                        hasDetail: Vue.ref(null),
+                        messageDetailInstances: Vue.ref(null),
+                        resourceDetailInstances: Vue.ref(null),
+                        resourceInfo: Vue.ref(null),
+                        
+                        // Embed all shader contents
+                        shaders: [
+                            {{ for Shader in Model.Shaders }}
+                            {
+                                guid: {{ Shader.Model.GUID }},
+                                filename: {{ Shader.Model.Filename | string.literal }},
+                                hasSymbols: {{ Shader.HasSymbols }},
+                                {{ if !Shader.HasSymbols && Shader.Model.Program }}
+                                    program: {{ Shader.Model.Program | string.literal }},
+                                {{ end }}
+                                files: [
+                                    {{ for File in Shader.Files }}
+                                    {
+                                        filename: {{ File.Model.Filename | string.literal }},
+                                        content: {{ File.Model.Contents | string.literal }}
+                                    },
+                                    {{ end }}
+                                ],
+                                messages: [
+                                    {{ for Message in Shader.MessageRenders }}
+                                       {{ Message }},
+                                    {{ end }}
+                                ]
+                            },
+                            {{ end }}
+                        ],
+        
+                        // To be populated lookup
+                        shaderLookup: {}
+                    }
+                },
+                mounted() {
+                    // Create general lookup
+                    for (const shader of this.shaders) {
+                        this.shaderLookup[shader.guid] = shader;
+                    }
+        
+                    // Render the coverage chart
+                    new Chart(document.getElementById('coverage-canvas-el'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: [
+                                {{ for Data in Model.Summary.Message.Chart.Data }}
+                                    '{{ Data.Content }}',
+                                {{ end }}
+                            ],
+                            datasets: [{
+                                label: 'Occurrances',
+                                data: [
+                                    {{ for Data in Model.Summary.Message.Chart.Data }}
+                                        {{ Data.Count }},
+                                    {{ end }}
+                                ],
+                                backgroundColor: [
+                                    {{ for Data in Model.Summary.Message.Chart.Data }}
+                                        'rgba({{ Data.Color.R }}, {{ Data.Color.G }}, {{ Data.Color.B }}, 1)',
+                                    {{ end }}
+                                ],
+                                borderColor: 'rgb(127, 127, 127)',
+                                hoverOffset: 4
+                            }]
+                        },
+                        options: {
+                            animation: false,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'left'
+                                }
+                            }
+                        }
+                    });
+                },
+                methods: {
+                    // Invoked on general selection
+                    onSelectShaderMessage(guid, index) {
+                        const shader  = this.shaderLookup[guid];
+                        const message = shader.messages[index];
+                        this.selectedMessage = message
+                        
+                        // Get the target file to display
+                        let file = null
+                        if (message.Segment.FileUID < shader.files.length) {
+                            file = this.shaderLookup[guid].files[message.Segment.FileUID];
+                        }
+                        
+                        // Has the shader or the selected file changed?
+                        const changedFile = this.selectedShader !== shader || this.selectedShaderFile !== file
+                        if (changedFile) {
+                            this.selectedShader = shader
+                            this.selectedShaderFile = file
+        
+                            // Display the file contents or underlying program (no symbols)
+                            if (file !== null) {
+                                this.shaderContents = file.content;
+                            } else {
+                                this.shaderContents = shader.program;
+                            }
+    
+                            // Highlight all lines
+                            this.highlightSources();
+                        }
+                        
+                        // Do we have any extra detail on this validation message?
+                        this.hasDetail = message.Detail != null && message.Detail.Instances.length > 0
+                        this.setDetailPanelVisibility(this.hasDetail)
+                        
+                        // If so, setup the collection
+                        if (this.hasDetail) {
+                            this.messageDetailInstances = message.Detail.Instances
+                            
+                            // Always select the first resource
+                            if (message.Detail.Type === 'ResourceList') {
+                                this.onSelectResourceInstance(message.Detail.Instances[0]);
+                            }
+                        }
+                        
+                        // Scroll to the message
+                        // Hack: DOM update seem to take two trips before it can scroll, for some reason...
+                        Vue.nextTick(() => Vue.nextTick(() => this.scrollToLine(changedFile ? "instant" : "smooth", message.Segment.Line)));
+                    },
+                    
+                    // Invoked on resource selection
+                    onSelectResourceInstance(instance) {
+                        this.resourceDetailInstances = instance.Instances;
+                        
+                        // Format the info, if UNKNOWN it's a buffer (impl. detail, but useful)
+                        const resource = instance.Resource
+                        if (resource.Format === "UNKNOWN") {
+                            this.resourceInfo = `Resource byte-width:${resource.Width} format:${resource.Format}`
+                        } else {
+                            this.resourceInfo = `Resource width:${resource.Width} height:${resource.Height} depth:${resource.Depth} format:${resource.Format} (base mip)`
+                        }
+                    },
+                    
+                    // Highlight the source code
+                    highlightSources() {
+                        console.time('GRS.Container.Source.Highlighting')
+                        
+                        // Split into lines
+                        const lines = this.shaderContents.split('\n')
+                        
+                        // Set line column width
+                        document.documentElement.style.setProperty('--line-number-width', `${String(lines.length).length}em`);
+
+                        // Message map
+                        messageLookup = new Map()
+                        for (const message of this.selectedShader.messages) {
+                            messageLookup.set(message.Segment.Line, message);
+                        }
+                        
+                        // Render highlighting per line
+                        this.shaderContentLines = lines.map((line, index) => ({
+                            id: index,
+                            severity: messageLookup.has(index) ? messageLookup.get(index).Severity.toLowerCase() : "none",
+                            html: Prism.highlight(line, Prism.languages.hlsl, 'hlsl')
+                        }));
+
+                        console.timeEnd('GRS.Container.Source.Highlighting')
+                    },
+                    
+                    // Set the detail visibility
+                    setDetailPanelVisibility(visible) {
+                        const codeEl   = document.getElementById('container-code-el')
+                        const detailEl = document.getElementById('container-detail-el')
+                        
+                        // This is a bit ugly, but so are my CSS skills, so it evens out?
+                        if (visible) {
+                            codeEl.classList.remove('h-full')
+                            codeEl.classList.add('h-3/4')
+                            detailEl.classList.remove('h-0')
+                            detailEl.classList.add('h-1/4')
+                        } else {
+                            codeEl.classList.remove('h-3/4')
+                            codeEl.classList.add('h-full')
+                            detailEl.classList.remove('h-1/4')
+                            detailEl.classList.add('h-0')
+                        }
+                    },
+                    
+                    // Scroll to a particular line
+                    scrollToLine(behaviour, line) {
+                        const itemHeight = this.$refs.codeScroller.itemSize;
+                        const clientRect = this.$refs.codeScroller.$el.getBoundingClientRect()
+                        
+                        // Offset the line so that it appears in the middle
+                        const lineOffset = clientRect.height / itemHeight / 2
+                        const lineStart = Math.max(0, line - lineOffset)
+                        this.$refs.codeScroller.scrollToItem(lineStart);
+                    }
+                }
+            });
+
+            // Declare components
+            app.component('recycle-scroller', VueVirtualScroller.RecycleScroller)
+        
+            // Finally, hook the app
+            // We change the templating to avoid collisions with Scriban
+            app.config.compilerOptions.delimiters = ['[[', ']]']
+            app.mount('#app')
+
+            // Install all icons            
+            lucide.createIcons();
+        </script>
+    </body>
+</html>

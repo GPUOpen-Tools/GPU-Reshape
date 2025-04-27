@@ -45,7 +45,7 @@ namespace Studio
         {
             object? value = null;
             
-            if (!App.DefaultStyle.TryGetResource(name, null, out value) || value == null)
+            if (!App.DesktopApp.DefaultStyle.TryGetResource(name, null, out value) || value == null)
             {
 #if DEBUG
                 Debug.WriteLine($"ResourceLocator - Failed to find resource '{name}'");
@@ -81,6 +81,12 @@ namespace Studio
         /// <returns>null if not found</returns>
         public static StreamGeometry? GetIcon(string name)
         {
+            // May be headless
+            if (Application.Current == null)
+            {
+                return null;
+            }
+            
             // May not exist
             if (!Application.Current!.Styles.TryGetResource(name, null, out object? resource))
             {

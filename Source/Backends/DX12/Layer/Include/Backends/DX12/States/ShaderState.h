@@ -103,6 +103,9 @@ struct ShaderState : public ReferenceObject {
     ///     Avoided during regular use to not tamper with performance.
     IDXModule* module{nullptr};
 
+    /// If true, this object has an external owner
+    bool hasExternalReference = false;
+
     /// Unique ID
     uint64_t uid{0};
 

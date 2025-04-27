@@ -391,6 +391,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
         // Start sync thread
         state->syncPointActionThread.Start(std::bind(DeviceSyncPoint, state));
+
+        // Inform the environment of post installs, handles headless modes
+        state->environment.PostInstall(state->uid);
     }
 
     // Cleanup

@@ -66,6 +66,9 @@ struct SBTSharedAllocationContext {
 
     /// Total allocation size
     UInt64 AllocationSize;
+
+    /// Allocation offset, used for validation
+    UInt64 AllocationOffset;
 };
 
 HLSL_INLINE void SBTAlignInPlace(HLSL_REF(UInt64) value, uint align32) {
@@ -229,5 +232,6 @@ HLSL_INLINE D3D12_DISPATCH_RAYS_DESC SBTContextPatch(HLSL_REF(SBTSharedAllocatio
 #endif // __cplusplus
 
     // OK
+    Context.AllocationOffset = patchedOffset;
     return Context.Dispatch;
 }

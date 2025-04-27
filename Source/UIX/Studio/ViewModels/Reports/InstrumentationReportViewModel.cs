@@ -25,10 +25,11 @@
 // 
 
 using System.Collections.Generic;
+using Runtime.ViewModels.Traits;
 
 namespace Studio.ViewModels.Reports
 {
-    public class InstrumentationReportViewModel
+    public class InstrumentationReportViewModel : ISerializable
     {
         /// <summary>
         /// Number of passed shaders
@@ -84,5 +85,25 @@ namespace Studio.ViewModels.Reports
         /// All diagnostic messages
         /// </summary>
         public List<string> Messages { get; } = new();
+
+        /// <summary>
+        /// Serialize this object
+        /// </summary>
+        public object Serialize()
+        {
+            return new SerializationMap()
+            {
+                { "PassedShaders", PassedShaders },
+                { "FailedShaders", FailedShaders },
+                { "PassedPipelines", PassedPipelines },
+                { "FailedPipelines", FailedPipelines },
+                { "ShaderMilliseconds", ShaderMilliseconds },
+                { "ShaderSeconds", ShaderSeconds },
+                { "PipelineMilliseconds", PipelineMilliseconds },
+                { "TotalMilliseconds", TotalMilliseconds },
+                { "TotalSeconds", TotalSeconds },
+                { "Messages", Messages }
+            };
+        }
     }
 }

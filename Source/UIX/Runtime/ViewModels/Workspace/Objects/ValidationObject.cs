@@ -24,13 +24,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class ValidationObject : ReactiveObject
+    public class ValidationObject : ReactiveObject, ISerializable
     {
         /// <summary>
         /// Number of messages
@@ -113,6 +115,27 @@ namespace Studio.ViewModels.Workspace.Objects
         public void NotifyCountChanged()
         {
             this.RaisePropertyChanged(nameof(Count));
+        }
+        
+        /// <summary>
+        /// Serialize this object
+        /// </summary>
+        public object Serialize()
+        {
+            return new SerializationMap()
+            {
+                { "Severity", Enum.GetName(Severity) },
+                { "Count", Count },
+                { "Content", Content },
+                { "Extract", Extract },
+                { "Segment", Segment?.Location },
+                
+                // Report detail if anything
+                {
+                    "Detail",
+                    (DetailViewModel as ISerializable)?.Serialize()
+                }
+            };
         }
 
         /// <summary>

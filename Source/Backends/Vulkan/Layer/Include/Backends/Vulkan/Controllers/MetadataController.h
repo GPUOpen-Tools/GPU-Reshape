@@ -47,6 +47,7 @@ class Registry;
 class Dispatcher;
 class IBridge;
 class ShaderCompiler;
+struct ShaderModuleState;
 struct DeviceDispatchTable;
 struct ReferenceObject;
 
@@ -66,6 +67,11 @@ public:
     /// Commit all changes
     void Commit();
 
+public:
+    /// Invoked on shader creation
+    /// \param state given state
+    void CreateShader(ShaderModuleState* state);
+
 protected:
     /// Message handlers
     void OnMessage(const struct GetPipelineNameMessage& message);
@@ -77,6 +83,8 @@ protected:
     void OnMessage(const struct GetShaderUIDRangeMessage& message);
     void OnMessage(const struct GetPipelineUIDRangeMessage& message);
     void OnMessage(const struct GetShaderSourceMappingMessage& message);
+    void OnMessage(const struct ReleaseShaderMessage& message);
+    void OnMessage(const struct SetUseShaderExternalReferenceMessage& message);
 
 private:
     DeviceDispatchTable* table;
@@ -86,6 +94,9 @@ private:
 
     /// Components
     ComRef<ShaderCompiler> shaderCompiler;
+
+    /// If true, each shader has an external reference that must be released manually
+    bool useShaderExternalReference = false;
 
     /// Pending response stream
     MessageStream stream;

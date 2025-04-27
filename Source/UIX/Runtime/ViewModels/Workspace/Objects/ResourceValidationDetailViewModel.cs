@@ -26,12 +26,14 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class ResourceValidationDetailViewModel : ReactiveObject, IValidationDetailViewModel
+    public class ResourceValidationDetailViewModel : ReactiveObject, IValidationDetailViewModel, ISerializable
     {
         /// <summary>
         /// Current selected resource
@@ -135,6 +137,18 @@ namespace Studio.ViewModels.Workspace.Objects
             
             // OK
             return validationObject;
+        }
+        
+        /// <summary>
+        /// Serialize this object
+        /// </summary>
+        public object Serialize()
+        {
+            return new SerializationMap()
+            {
+                { "Type", "ResourceList" },
+                { "Instances", new SerializationList(Resources.Select(x => x.Serialize())) }
+            };
         }
 
         /// <summary>

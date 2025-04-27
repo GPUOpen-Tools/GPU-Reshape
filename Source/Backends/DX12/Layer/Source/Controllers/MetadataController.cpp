@@ -104,6 +104,14 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetShaderILMessage>());
                     break;
                 }
+                case SetUseShaderExternalReferenceMessage::kID: {
+                    OnMessage(*it.Get<SetUseShaderExternalReferenceMessage>());
+                    break;
+                }
+                case ReleaseShaderMessage::kID: {
+                    OnMessage(*it.Get<ReleaseShaderMessage>());
+                    break;
+                }
                 case GetShaderBlockGraphMessage::kID: {
                     OnMessage(*it.Get<GetShaderBlockGraphMessage>());
                     break;
@@ -189,6 +197,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     if (!shader || !shader->module) {
         auto&& response = view.Add<ShaderCodeMessage>();
         response->shaderUID = message.shaderUID;
+        response->poolCode = message.poolCode;
         response->found = false;
         return;
     }
@@ -272,6 +281,22 @@ void MetadataController::OnMessage(const GetShaderILMessage& message) {
     file->shaderUID = message.shaderUID;
     file->found = true;
     file->program.Set(ilStream.str());
+}
+
+void MetadataController::OnMessage(const struct ReleaseShaderMessage &message) {
+    // Release if found
+    if (ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID)) {
+        if (shader->hasExternalReference) {
+            destroyRef(shader, allocators);
+            shader->hasExternalReference = false;
+        } else {
+            device->logBuffer.Add("DX12", LogSeverity::Error, "Releasing shader without external reference");
+        }
+    }
+}
+
+void MetadataController::OnMessage(const struct SetUseShaderExternalReferenceMessage &message) {
+    useShaderExternalReference = message.enabled;
 }
 
 void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
@@ -416,4 +441,11 @@ void MetadataController::Commit() {
     // Export general to bridge
     bridge->GetOutput()->AddStreamAndSwap(stream);
     bridge->GetOutput()->AddStreamAndSwap(segmentMappingStream);
+}
+
+void MetadataController::CreateShader(ShaderState *state) {
+    if (useShaderExternalReference) {
+        state->hasExternalReference = true;
+        state->AddUser();
+    }
 }

@@ -28,6 +28,7 @@
 #include <Backends/Vulkan/ShaderModule.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Compiler/SpvModule.h>
+#include <Backends/Vulkan/Controllers/MetadataController.h>
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateShaderModule(VkDevice device, const VkShaderModuleCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkShaderModule* pShaderModule) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -42,6 +43,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateShaderModule(VkDevice device, const 
     auto state = table->states_shaderModule.Add(*pShaderModule, new (table->allocators) ShaderModuleState);
     state->table = table;
     state->object = *pShaderModule;
+
+    // Inform the controller
+    table->metadataController->CreateShader(state);
 
     // External user
     state->AddUser();

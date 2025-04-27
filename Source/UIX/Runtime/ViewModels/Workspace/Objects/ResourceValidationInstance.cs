@@ -25,10 +25,11 @@
 // 
 
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class ResourceValidationInstance : ReactiveObject
+    public class ResourceValidationInstance : ReactiveObject, ISerializable
     {
         /// <summary>
         /// Instance message
@@ -64,6 +65,18 @@ namespace Studio.ViewModels.Workspace.Objects
         {
             get => _count;
             set => _count = value;
+        }
+
+        /// <summary>
+        /// Serialize this object
+        /// </summary>
+        public object Serialize()
+        {
+            return new SerializationMap()
+            {
+                { "Message", Message },
+                { "Count", Count }
+            };
         }
 
         /// <summary>

@@ -93,8 +93,11 @@ private:
         bool released{false};
     };
 
+    /// Get the bucket for a free
+    Bucket& GetFreeBucket(size_t length);
+    
     /// Get the bucket for an allocation
-    Bucket& GetBucket(size_t length);
+    Bucket& GetReuseBucket(size_t length);
 
     /// All allocations this step
     std::vector<LazyAllocationEntry> allocations;
