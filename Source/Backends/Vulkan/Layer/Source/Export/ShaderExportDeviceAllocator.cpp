@@ -32,7 +32,7 @@
 #include <bit>
 
 ShaderExportDeviceAllocation ShaderExportDeviceAllocator::Allocate(DeviceDispatchTable* table, size_t length) {
-    Bucket& bucket = GetBucket(length);
+    Bucket& bucket = GetReuseBucket(length);
 
     // Free allocation?
     if (!bucket.entries.empty()) {
@@ -103,7 +103,7 @@ ShaderExportDeviceAllocation ShaderExportDeviceAllocator::Allocate(DeviceDispatc
 }
 
 void ShaderExportDeviceAllocator::Free(const ShaderExportDeviceAllocation &allocation) {
-    Bucket& bucket = GetBucket(allocation.length);
+    Bucket& bucket = GetFreeBucket(allocation.length);
 
     // Mark as released
     allocations[allocation.index].released = true;
@@ -118,7 +118,7 @@ void ShaderExportDeviceAllocator::LazyFree() {
     // Free all unreleased allocations
     for (LazyAllocationEntry &entry: allocations) {
         if (!entry.released) {
-            Bucket& bucket = GetBucket(entry.allocation.length);
+            Bucket& bucket = GetFreeBucket(entry.allocation.length);
 
             bucket.entries.push_back(AllocationEntry {
                 .allocation = entry.allocation,
@@ -150,8 +150,20 @@ void ShaderExportDeviceAllocator::Clear() {
     buckets.clear();
 }
 
-ShaderExportDeviceAllocator::Bucket& ShaderExportDeviceAllocator::GetBucket(size_t length) {
-    uint64_t level = std::bit_width(std::max(1ull, length - 1u));
+ShaderExportDeviceAllocator::Bucket & ShaderExportDeviceAllocator::GetFreeBucket(size_t length) {
+    unsigned long level;
+    ENSURE(_BitScanReverse(&level, static_cast<uint32_t>(std::bit_floor(length))), "Invalid length");
+
+    if (level >= buckets.size()) {
+        buckets.resize(level + 1);
+    }
+
+    return buckets[level];
+}
+
+ShaderExportDeviceAllocator::Bucket & ShaderExportDeviceAllocator::GetReuseBucket(size_t length) {
+    unsigned long level;
+    ENSURE(_BitScanReverse(&level, static_cast<uint32_t>(std::bit_ceil(length))), "Invalid length");
 
     if (level >= buckets.size()) {
         buckets.resize(level + 1);
