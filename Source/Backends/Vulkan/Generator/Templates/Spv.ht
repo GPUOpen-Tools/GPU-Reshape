@@ -57,3 +57,11 @@ inline void VisitSpvOperands(SpvOp op, const SpvId* words, uint32_t wordCount, F
 $OPERANDS
     }
 }
+
+inline bool IsSpvTypeOp(SpvOp op) {
+    switch (op) {
+        default:
+            return false;
+$TYPES
+    }
+}
