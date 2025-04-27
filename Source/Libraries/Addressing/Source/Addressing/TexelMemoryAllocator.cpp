@@ -210,6 +210,11 @@ void TexelMemoryAllocator::UpdateResidency(Queue queue) {
     std::vector<SchedulerTileMapping> tileMappings;
     tileMappings.reserve(tileResidencyAllocator.GetRequestCount());
 
+    // Skip if nothing
+    if (tileMappings.empty()) {
+        return;
+    }
+
     // Map all new requests
     for (uint32_t i = 0; i < tileResidencyAllocator.GetRequestCount(); i++) {
         const TileMappingRequest& request = tileResidencyAllocator.GetRequest(i);
