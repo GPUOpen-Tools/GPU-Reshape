@@ -1,0 +1,98 @@
+// 
+// The MIT License (MIT)
+// 
+// Copyright (c) 2024 Advanced Micro Devices, Inc.,
+// Fatalist Development AB (Avalanche Studio Group),
+// and Miguel Petersen.
+// 
+// All Rights Reserved.
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy 
+// of this software and associated documentation files (the "Software"), to deal 
+// in the Software without restriction, including without limitation the rights 
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+// of the Software, and to permit persons to whom the Software is furnished to do so, 
+// subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all 
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+// PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+// FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+// ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// 
+
+#pragma once
+
+// Layer
+#include <Backends/Vulkan/Allocation/Allocation.h>
+
+// Common
+#include <Common/ComRef.h>
+
+// Std
+#include <vector>
+
+// Forward declarations
+class DeviceAllocator;
+struct DeviceDispatchTable;
+
+struct ShaderExportConstantAllocation {
+    /// Underlying resource
+    VkBuffer buffer{VK_NULL_HANDLE};
+
+    /// Staging memory
+    void* staging{nullptr};
+
+    /// Offset into resource
+    uint64_t offset{0};
+};
+
+struct ShaderExportConstantSegment {
+    /// Check if this staging buffer can accommodate for a given length
+    /// \param length given length
+    /// \return true if this segment can accommodate
+    bool CanAccomodate(size_t length, size_t align = 1) {
+        size_t headAligned = head;
+        headAligned = (headAligned + align - 1) & ~(align - 1);
+        return headAligned + length <= size;
+    }
+
+    /// Underlying allocation
+    Allocation allocation;
+
+    /// Underlying buffer
+    VkBuffer buffer{VK_NULL_HANDLE};
+    
+    /// Staging memory
+    void* staging{nullptr};
+
+    /// Total size of this allocation
+    size_t size{0};
+
+    /// Head offset of this allocation
+    size_t head{0};
+};
+
+struct ShaderExportConstantAllocator {
+    /// Allocate from this constant allocator
+    /// \param table the device table
+    /// \param length length of the allocation
+    /// \param align the expected alignment
+    /// \return given allocation
+    ShaderExportConstantAllocation Allocate(DeviceDispatchTable* table, size_t length, size_t align = 1);
+
+    /// Stage data to device resource
+    /// \param table the device table
+    /// @param commandBuffer the command buffer to stage from
+    /// @param resource resource to stage
+    /// @param offset destination offset into resource 
+    /// @param data data to stage
+    /// @param length size of data to stage
+    void StageData(DeviceDispatchTable* table, VkCommandBuffer commandBuffer, VkBuffer resource, uint64_t offset, const void* data, size_t length);
+
+    /// All staging buffers
+    std::vector<ShaderExportConstantSegment> staging;
+};

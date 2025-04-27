@@ -35,7 +35,7 @@ struct SBTPatchConstantData {
     uint SBTRecordCount;
     uint IdentifierDWordStride;
     uint NativeIdentifierDWordStride;
-    uint PatchIdentifierDWordStride;
+    uint IdentifierHandleDWordStride;
 };
 
 struct SBTShaderGroupIdentifierEmbeddedData {

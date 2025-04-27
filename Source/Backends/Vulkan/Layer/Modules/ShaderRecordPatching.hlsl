@@ -57,17 +57,24 @@
 /// 
 
 /// All constant data
+[[vk::binding(0)]]
 ConstantBuffer<SBTPatchConstantData> Constants : register(b0);
 
 /// The in-place patched dwords
-RWBuffer<uint> RWSBTPatchedDWords : register(u1);
+[[vk::binding(1)]]
+StructuredBuffer<uint> SBTSourceDWords : register(t1);
+
+/// The in-place patched dwords
+[[vk::binding(2)]]
+RWStructuredBuffer<uint> RWSBTPatchedDWords : register(u2);
 
 /// The patched identifier dwords
-Buffer<uint> PatchIdentifierDWords : register(t2);
+[[vk::binding(3)]]
+StructuredBuffer<uint> PatchIdentifierDWords : register(t3);
 
 SBTShaderGroupIdentifierEmbeddedData GetEmbeddedData(uint Offset) {
     SBTShaderGroupIdentifierEmbeddedData Data;
-    Data.PatchIndex = RWSBTPatchedDWords[Offset + Constants.NativeIdentifierDWordStride + 0];
+    Data.PatchIndex = SBTSourceDWords[Offset + Constants.NativeIdentifierDWordStride + 0];
     return Data;
 }
 
@@ -84,11 +91,23 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
     SBTShaderGroupIdentifierEmbeddedData Embedded = GetEmbeddedData(DWordOffset);
 
     // Patch identifier offset
-    uint PatchDWordOffset = Embedded.PatchIndex * Constants.PatchIdentifierDWordStride;
+    uint PatchDWordOffset = Embedded.PatchIndex * Constants.NativeIdentifierDWordStride;
 
     // Copy the patched shader identifier over
     // (May not actually be instrumented)
     for (uint DWordIndex = 0; DWordIndex < Constants.NativeIdentifierDWordStride; DWordIndex++) {
         RWSBTPatchedDWords[DWordOffset + DWordIndex] = PatchIdentifierDWords[PatchDWordOffset + DWordIndex];
+    }
+
+    // Total number of user dwords
+    uint UserDataDWordCount = Constants.IdentifierDWordStride - Constants.IdentifierHandleDWordStride;
+
+    // Copy over all constant user data
+    for (uint DWordIndex = 0; DWordIndex < UserDataDWordCount; DWordIndex++) {
+        // Src offsets by the padded handlee size, whereas Dst offsets by the native handle
+        // We keep the stride as is
+        uint SrcOffset = DWordOffset + Constants.IdentifierHandleDWordStride + DWordIndex;
+        uint DstOffset = DWordOffset + Constants.NativeIdentifierDWordStride + DWordIndex;
+        RWSBTPatchedDWords[DstOffset] = SBTSourceDWords[SrcOffset];
     }
 }

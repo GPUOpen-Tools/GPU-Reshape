@@ -237,6 +237,16 @@ VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkBindBufferMemory(VkDevice device, VkBuffer
     bufferState->memoryTag.opaque = bufferState;
     bufferState->memoryTag.baseOffset = memoryOffset;
 
+    // Get address if possible
+    if (table->next_vkGetBufferDeviceAddress) {
+        VkBufferDeviceAddressInfo info{VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
+        info.buffer = buffer;
+        bufferState->virtualAddress = table->next_vkGetBufferDeviceAddress(table->object, &info);
+
+        // Add to table
+        table->virtualAddressTable.Add(bufferState, bufferState->virtualAddress, bufferState->createInfo.size);
+    }
+
     // OK
     return VK_SUCCESS;
 }

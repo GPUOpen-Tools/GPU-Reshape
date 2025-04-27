@@ -33,6 +33,9 @@
 #include <Backends/Vulkan/Resource/DescriptorDataSegment.h>
 #include <Backends/Vulkan/Controllers/Versioning.h>
 #include <Backends/Vulkan/ShaderData/ConstantShaderDataBuffer.h>
+#include <Backends/Vulkan/Export/ShaderExportConstantAllocator.h>
+#include <Backends/Vulkan/Export/ShaderExportDeviceAllocator.h>
+#include <Backends/Vulkan/Export/ShaderExportFreeDescriptorAllocator.h>
 
 // Backend
 #include <Backend/CommandContextHandle.h>
@@ -112,6 +115,22 @@ struct ShaderExportRenderPassState {
     bool insideRenderPass{false};
 };
 
+#ifndef NDEBUG
+struct ShaderExportStreamStateDebugStream {
+    /// Identifying name
+    std::string name;
+
+    /// Mapped data for later reading
+    const void* mappedData{nullptr};
+
+    /// Offset to read from
+    uint64_t offset{0};
+
+    /// Number of bytes to read from the offset
+    uint64_t length{0};
+};
+#endif // NDEBUG
+
 /// Single stream state
 struct ShaderExportStreamState {
     /// Is this state pending?
@@ -132,8 +151,24 @@ struct ShaderExportStreamState {
     /// Shared constants buffer
     ConstantShaderDataBuffer constantShaderDataBuffer;
 
+    /// Shared constants allocator
+    /// Useful for small transient allocations
+    ShaderExportConstantAllocator constantAllocator;
+
+    /// Shared allocators
+    ShaderExportFreeDescriptorAllocatorSegment freeDescriptorAllocator;
+
+    /// Shared device allocator
+    /// Useful for larger, stateful allocations
+    ShaderExportDeviceAllocator deviceAllocator;
+
     /// Top context handle
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
+
+#ifndef NDEBUG
+    /// All pending debug streams
+    std::vector<ShaderExportStreamStateDebugStream> debugStreams;
+#endif // NDEBUG
 };
 
 struct ShaderExportStreamSegmentUserContext {

@@ -50,6 +50,7 @@
 #include <Backends/Vulkan/Scheduler/Scheduler.h>
 #include <Backends/Vulkan/QueueInfoWriter.h>
 #include <Backends/Vulkan/States/RaytracingPipelineState.h>
+#include <Backends/Vulkan/Programs/Programs.h>
 
 // Common
 #include <Common/Registry.h>
@@ -526,6 +527,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
         }
     }
 
+    // Create all internal programs
+    table->programs = CreatePrograms(table->allocators, table);
+    
     // Apply environment
     ApplyStartupEnvironment(table);
 

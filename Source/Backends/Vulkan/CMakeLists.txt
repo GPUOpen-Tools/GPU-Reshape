@@ -218,7 +218,7 @@ add_custom_command(
 
 # Inbuilt modules
 Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModule.hlsl Layer/Include/Backends/Vulkan/Modules/InbuiltTemplateModule kSPIRVInbuiltTemplateModule)
-Project_AddHLSL(GeneratedInbuilt cs_6_0 "-O3" Layer/Modules/ShaderRecordPatching.hlsl Layer/Include/Backends/DX12/Modules/ShaderRecordPatching kShaderRecordPatching)
+Project_AddHLSL(GeneratedInbuilt cs_6_0 "-O3" Layer/Modules/ShaderRecordPatching.hlsl Layer/Include/Backends/Vulkan/Modules/ShaderRecordPatching kShaderRecordPatching)
 
 # Create layer
 add_library(
@@ -251,8 +251,13 @@ add_library(
     Layer/Source/Controllers/VersioningController.cpp
     Layer/Source/Export/ShaderExportHost.cpp
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
+    Layer/Source/Export/ShaderExportFreeDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
+    Layer/Source/Export/ShaderExportConstantAllocator.cpp
+    Layer/Source/Export/ShaderExportDeviceAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp
+    Layer/Source/Programs/Programs.cpp
+    Layer/Source/Programs/RaytracingPrograms.cpp
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Scheduler/Scheduler.cpp
     Layer/Source/Compiler/SpvSourceMap.cpp

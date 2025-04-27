@@ -34,6 +34,7 @@
 #include <Backends/Vulkan/DeepCopyObjects.Gen.h>
 #include <Backends/Vulkan/ShaderData/ConstantShaderDataBuffer.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceIdentifierMap.h>
+#include <Backends/Vulkan/Resource/ResourceVirtualAddressTable.h>
 #include <Backends/Vulkan/States/ExclusiveQueue.h>
 
 // Common
@@ -77,6 +78,7 @@ struct FrameBufferState;
 struct FenceState;
 struct QueueState;
 struct DeviceMemoryState;
+struct Programs;
 class IFeature;
 class IBridge;
 class InstrumentationController;
@@ -299,6 +301,7 @@ struct DeviceDispatchTable {
     PFN_vkCreateSemaphore                    next_vkCreateSemaphore;
     PFN_vkDestroySemaphore                   next_vkDestroySemaphore;
     PFN_vkGetRayTracingShaderGroupHandlesKHR next_vkGetRayTracingShaderGroupHandlesKHR;
+    PFN_vkGetBufferDeviceAddress             next_vkGetBufferDeviceAddress;
 
     /// Properties
     VkPhysicalDeviceProperties2                     physicalDeviceProperties{};
@@ -321,6 +324,12 @@ struct DeviceDispatchTable {
     /// Command buffer dispatch table
     std::mutex                 commandBufferMutex;
     CommandBufferDispatchTable commandBufferDispatchTable;
+
+    /// Sorted virtual address table
+    ResourceVirtualAddressTable virtualAddressTable;
+
+    /// Internal programs
+    Programs* programs{nullptr};
 
     /// Shared remapping tables
     EventDataStack::RemappingTable eventRemappingTable;

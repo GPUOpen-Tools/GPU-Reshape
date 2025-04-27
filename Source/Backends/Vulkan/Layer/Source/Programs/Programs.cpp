@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,59 +24,18 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+#include <Backends/Vulkan/Programs/Programs.h>
+#include <Backends/Vulkan/Programs/RaytracingPrograms.h>
 
-// Layer
-#include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
-#include <Backends/Vulkan/States/DeviceMemoryTag.h>
+Programs* CreatePrograms(const Allocators& allocators, DeviceDispatchTable* table) {
+    auto programs = new (allocators) Programs();
 
-// Common
-#include "Common/Containers/ReferenceObject.h"
+    // Create state object manipulation programs
+    if (!CreateRaytracingPrograms(allocators, table, programs->raytracing)) {
+        destroy(programs, allocators);
+        return nullptr;
+    }
 
-// Std
-#include <cstdint>
-#include <vector>
-
-// Forward declarations
-struct DeviceDispatchTable;
-
-struct BufferState {
-    /// Backwards reference
-    DeviceDispatchTable* table;
-
-    /// User buffer
-    VkBuffer object{VK_NULL_HANDLE};
-
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
-
-    /// Creation info
-    VkBufferCreateInfo createInfo;
-
-    /// Bound memory tag
-    DeviceMemoryTag memoryTag;
-
-    /// Optional, address
-    uint64_t virtualAddress = UINT64_MAX;
-
-    /// Optional debug name
-    char* debugName{nullptr};
-
-    /// Unique identifier, unique for the type
-    uint64_t uid;
-};
-
-struct BufferViewState {
-    /// Backwards reference
-    BufferState* parent;
-
-    /// User buffer
-    VkBufferView object{VK_NULL_HANDLE};
-
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
-
-    /// Unique identifier, unique for the type
-    uint64_t uid;
-};
+    // OK
+    return programs;
+}

@@ -31,6 +31,7 @@
 #include <Backends/Vulkan/Allocation/Allocation.h>
 
 // Std
+#include <unordered_map>
 #include <span>
 
 // Forward declarations
@@ -76,9 +77,6 @@ struct RaytracingShaderGroupIdentifierSet {
 struct RaytracingShaderIdentifierPatch {
     /// Linear set of handle data
     uint8_t* patchHandleData{nullptr};
-
-    /// Number of patched entries
-    uint64_t count{0};
 
     /// Allocations
     Allocation listAllocation;

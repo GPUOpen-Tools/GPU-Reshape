@@ -40,6 +40,8 @@ DeviceAllocator::~DeviceAllocator() {
 void DeviceAllocator::Install(DeviceDispatchTable *table) {
     // Populate the vulkan functions
     VmaVulkanFunctions vkFunctions{};
+    vkFunctions.vkGetDeviceProcAddr = table->next_vkGetDeviceProcAddr;
+    vkFunctions.vkGetInstanceProcAddr = table->next_vkGetInstanceProcAddr;
     vkFunctions.vkAllocateMemory = table->next_vkAllocateMemory;
     vkFunctions.vkBindBufferMemory = table->next_vkBindBufferMemory;
     vkFunctions.vkBindBufferMemory2KHR = table->next_vkBindBufferMemory2KHR;
@@ -69,6 +71,12 @@ void DeviceAllocator::Install(DeviceDispatchTable *table) {
     allocatorInfo.physicalDevice = table->physicalDevice;
     allocatorInfo.device = table->object;
     allocatorInfo.pVulkanFunctions = &vkFunctions;
+
+    // If the app uses device a ddresses, we need to be able to address the underlying blocks as such
+    if (table->next_vkGetBufferDeviceAddress) {
+        allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    }
+    
     vmaCreateAllocator(&allocatorInfo, &allocator);
 }
 

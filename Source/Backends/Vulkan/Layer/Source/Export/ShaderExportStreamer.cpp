@@ -56,7 +56,17 @@
 #include <Common/Registry.h>
 #include <Backends/Vulkan/Translation.h>
 
-ShaderExportStreamer::ShaderExportStreamer(DeviceDispatchTable *table) : table(table), dynamicOffsetAllocator(table->allocators) {
+// System
+#if defined(_MSC_VER)
+#   include <Windows.h>
+#   undef min
+#   undef max
+#endif // _MSC_VER
+
+ShaderExportStreamer::ShaderExportStreamer(DeviceDispatchTable *table) :
+    table(table),
+    dynamicOffsetAllocator(table->allocators),
+    freeDescriptorAllocator(table) {
 
 }
 
@@ -96,6 +106,18 @@ ShaderExportStreamer::~ShaderExportStreamer() {
         table->next_vkDestroyBuffer(table->object, state->constantShaderDataBuffer.buffer, nullptr);
         deviceAllocator->Free(state->constantShaderDataBuffer.allocation);
     }
+
+    // Free all descriptor data segments
+    for (const DescriptorDataSegmentEntry& entry : freeDescriptorDataSegmentEntries) {
+        table->deviceAllocator->Free(entry.allocation);
+    }
+
+    // Free all constant allocators
+    for (const ShaderExportConstantAllocator& allocator : freeConstantAllocators) {
+        for (const ShaderExportConstantSegment& staging : allocator.staging) {
+            table->deviceAllocator->Free(staging.allocation);
+        }
+    }
 }
 
 ShaderExportQueueState *ShaderExportStreamer::AllocateQueueState(QueueState* queue) {
@@ -124,6 +146,9 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
 
     // Create the constants data buffer
     state->constantShaderDataBuffer = table->dataHost->CreateConstantDataBuffer();
+
+    // Set shared allocators
+    state->freeDescriptorAllocator.allocator = &freeDescriptorAllocator;
 
     // Create descriptor data allocator
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
@@ -250,10 +275,27 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
         // Set current for successive binds
         bindState.currentSegment = allocation;
     }
+
+    // Pop constant allocator if available
+    if (!freeConstantAllocators.empty()) {
+        state->constantAllocator = freeConstantAllocators.back();
+        freeConstantAllocators.pop_back();
+    }
+
+    // Pop device allocator if available
+    if (!freeDeviceAllocators.empty()) {
+        state->deviceAllocator = freeDeviceAllocators.back();
+        freeDeviceAllocators.pop_back();
+    }
 }
 
 void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state) {
     std::lock_guard guard(mutex);
+
+#ifndef NDEBUG
+    // Process debugging streams
+    ProcessStreamDebug(state);
+#endif // NDEBUG
 
     // Release all bind points
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
@@ -285,6 +327,17 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state) {
     for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
         descriptorAllocator->Free(allocation.info);
     }
+
+    // Move constant allocator to the segment
+    if (!state->constantAllocator.staging.empty()) {
+        FreeConstantAllocator(state->constantAllocator);
+    }
+
+    // Recycle the device allocator
+    FreeDeviceAllocator(state->deviceAllocator);
+
+    // Free shared allocations
+    state->freeDescriptorAllocator.Reset();
     
     // Clear push data
     state->persistentPushConstantData.resize(table->physicalDeviceProperties.properties.limits.maxPushConstantsSize);
@@ -421,6 +474,37 @@ void ShaderExportStreamer::Process(ShaderExportQueueState* queueState) {
         }
     }
 }
+
+#ifndef NDEBUG
+void ShaderExportStreamer::ProcessStreamDebug(ShaderExportStreamState* state) {
+    if (state->debugStreams.empty()) {
+        return;
+    }
+
+    // Always serial
+    static std::mutex mutex;
+    std::lock_guard guard(mutex);
+    
+    for (const ShaderExportStreamStateDebugStream& stream : state->debugStreams) {
+        // For now, treat it all as dwords
+        const auto* dwords = reinterpret_cast<const uint32_t*>(static_cast<const uint8_t*>(stream.mappedData) + stream.offset);
+
+        std::stringstream ss;
+        ss << "Debug Stream '" << stream.name << "':\n";
+
+        // Dump all dwords
+        for (uint32_t i = 0; i < stream.length / sizeof(uint32_t); i++) {
+            ss << "\t [" << i << "] " << dwords[i] << "\n";
+        }
+
+        // TODO[rt]: Non MSVC printing
+        OutputDebugStringA(ss.str().c_str());
+    }
+
+    // Cleanup
+    state->debugStreams.clear();
+}
+#endif // NDEBUG
 
 void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBindPoint bindPoint, VkCommandBuffer commandBuffer) {
     // Translate the bind point
@@ -728,6 +812,54 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment, Tr
 
     // Done!
     return true;
+}
+
+void ShaderExportStreamer::FreeConstantAllocator(ShaderExportConstantAllocator& allocator) {
+    static constexpr size_t kLargeConstantThreshold = 64'000;
+    
+    // Cleanup the staging data
+    if (!allocator.staging.empty()) {
+        size_t trimCount = allocator.staging.size();
+
+        // If we're below the threshold, keep the last chunk
+        // Large chunks can easily accumulate as they're swapped between different streaming state
+        if (allocator.staging.back().size < kLargeConstantThreshold) {
+            trimCount--;
+        }
+        
+        // Free all staging allocations except the last
+        for (size_t i = 0; i < trimCount; i++) {
+            table->deviceAllocator->Free(allocator.staging[i].allocation);
+        }
+
+        // Remove all but the last
+        allocator.staging.erase(allocator.staging.begin(), allocator.staging.begin() + trimCount);
+
+        // Reset head counter
+        if (!allocator.staging.empty()) {
+            allocator.staging.back().head = 0;
+        }
+    }
+
+    // Add to free pool
+    freeConstantAllocators.push_back(allocator);
+
+    // Erase local state
+    allocator.staging.clear();
+}
+
+void ShaderExportStreamer::FreeDeviceAllocator(ShaderExportDeviceAllocator &allocator) {
+    // Free all lazy allocations
+    allocator.LazyFree();
+
+    // Update for the sake of good measure
+    allocator.Update(deviceAllocator);
+
+    // To the pool
+    freeDeviceAllocators.push_back(allocator);
+
+    // Cleanup
+    allocator.Clear();
 }
 
 void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue, ShaderExportStreamSegment *segment) {
