@@ -69,6 +69,9 @@ bool ShaderDataHost::Install() {
     capabilityTable.supportsTiledResources = (options.TiledResourcesTier != D3D12_TILED_RESOURCES_TIER_NOT_SUPPORTED);
     capabilityTable.bufferMaxElementCount = UINT64_MAX;
 
+    // TODO: This is not correct
+    capabilityTable.bufferMaxSize = UINT64_MAX;
+
     // Install coverage support
     ComRef coverage = registry->AddNew<ShaderDataValidationCoverage>();
     coverage->Install();
