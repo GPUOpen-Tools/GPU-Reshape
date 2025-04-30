@@ -527,6 +527,11 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "ResourceToken %" << load->resource;
             break;
         }
+        case OpCode::ExecutionInfo: {
+            auto info = instr->As<IL::ExecutionInfoInstruction>();
+            line << "ExecutionInfo";
+            break;
+        }
         case OpCode::Rem: {
             auto rem = instr->As<IL::RemInstruction>();
             line << "Rem %" << rem->lhs << " %" << rem->rhs;
@@ -1847,7 +1852,7 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"Buffer\": " << store->buffer << ",";
             out.Line() << "\"Index\": " << store->index << ",";
             out.Line() << "\"Value\": " << store->value << ",";
-            out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
+            out.Line() << "\"ComponentMask\": " << static_cast<uint32_t>(store->mask.value) << ",";
             break;
         }
         case IL::OpCode::StoreBufferRaw: {
@@ -1855,7 +1860,7 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"Buffer\": " << store->buffer << ",";
             out.Line() << "\"Index\": " << store->index << ",";
             out.Line() << "\"Value\": " << store->value << ",";
-            out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
+            out.Line() << "\"ComponentMask\": " << static_cast<uint32_t>(store->mask.value) << ",";
             out.Line() << "\"Alignment\": " << store->alignment << ",";
             break;
         }
@@ -2189,7 +2194,7 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"Texture\": " << store->texture << ",";
             out.Line() << "\"Index\": " << store->index << ",";
             out.Line() << "\"Texel\": " << store->texel << ",";
-            out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
+            out.Line() << "\"ComponentMask\": " << static_cast<uint32_t>(store->mask.value) << ",";
             break;
         }
         case IL::OpCode::Any: {
@@ -2216,7 +2221,7 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             auto load = instr->As<IL::LoadBufferRawInstruction>();
             out.Line() << "\"Buffer\": " << load->buffer << ",";
             out.Line() << "\"Index\": " << load->index << ",";
-            out.Line() << "\"ComponentMask\": " << load->mask.value << ",";
+            out.Line() << "\"ComponentMask\": " << static_cast<uint32_t>(load->mask.value) << ",";
             out.Line() << "\"Alignment\": " << load->alignment << ",";
 
             if (load->offset != IL::InvalidID) {
@@ -2232,6 +2237,9 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
         case IL::OpCode::ResourceToken: {
             auto load = instr->As<IL::ResourceTokenInstruction>();
             out.Line() << "\"Resource\": " << load->resource << ",";
+            break;
+        }
+        case IL::OpCode::ExecutionInfo: {
             break;
         }
         case IL::OpCode::Rem: {

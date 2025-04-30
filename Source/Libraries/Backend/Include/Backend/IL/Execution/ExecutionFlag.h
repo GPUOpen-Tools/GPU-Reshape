@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,28 +26,21 @@
 
 #pragma once
 
-// Layer
-#include <Backends/DX12/Config.h>
-#include <Backends/DX12/States/RootParameterVisibility.h>
-#include <Backends/DX12/States/RootSignatureVisibilityClass.h>
-#include <Backends/DX12/Resource/DescriptorDataControl.h>
+// Common
+#include <Common/Enum.h>
 
-struct RootSignaturePhysicalMapping {
-    /// Signature hash
-    uint64_t signatureHash{0};
+enum class ExecutionFlag : uint32_t {
+    /// This is a general draw execution
+    TypeDraw = BIT(0),
 
-    /// Number of dwords required by the root signature
-    uint32_t rootDWordCount{0};
+    /// This is a general dispatch execution
+    TypeDispatch = BIT(1),
 
-    /// Number of descriptor dwords required by the root signature
-    uint32_t rootDescriptorDWordCount{0};
+    /// This is a general raytracing execution
+    TypeRaytracing = BIT(2),
 
-    /// DWord offset for each root parameter
-    uint32_t rootDWordOffsets[MaxRootSignatureDWord]{};
-
-    /// All register binding classes
-    RootSignatureVisibilityClass visibility[static_cast<uint32_t>(RootParameterVisibility::Count)];
-
-    /// Data control for this root signature
-    DescriptorDataControl descriptorDataControl;
+    /// The execution is indirect in nature
+    TypeIndirect = BIT(3),
 };
+
+BIT_SET(ExecutionFlag);

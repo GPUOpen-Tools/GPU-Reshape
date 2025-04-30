@@ -31,7 +31,8 @@
 #include <Backends/DX12/DeepCopy.Gen.h>
 #include <Backends/DX12/InstrumentationInfo.h>
 #include <Backends/DX12/PipelineSubObjectWriter.h>
-#include "PipelineType.h"
+#include <Backends/DX12/States/PipelineType.h>
+#include <Backends/DX12/States/PipelineInstrument.h>
 
 // Common
 #include <Common/Containers/Vector.h>
@@ -65,16 +66,16 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
 
     /// Add an instrument to this module
     /// \param featureBitSet the enabled feature set
-    /// \param pipeline the pipeline in question
-    void AddInstrument(uint64_t featureBitSet, IUnknown* pipeline) {
+    /// \param instrument the instrument in question
+    void AddInstrument(uint64_t featureBitSet, PipelineInstrument* instrument) {
         std::lock_guard lock(mutex);
-        instrumentObjects[featureBitSet] = pipeline;
+        instrumentObjects[featureBitSet] = instrument;
     }
 
     /// Get an instrument
     /// \param featureBitSet the enabled feature set
     /// \return nullptr if not found
-    IUnknown* GetInstrument(uint64_t featureBitSet) {
+    PipelineInstrument* GetInstrument(uint64_t featureBitSet) {
         std::lock_guard lock(mutex);
         auto&& it = instrumentObjects.find(featureBitSet);
         if (it == instrumentObjects.end()) {
@@ -103,8 +104,8 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
     /// Type of this pipeline
     PipelineType type{PipelineType::None};
 
-    /// Replaced pipeline object, fx. instrumented version
-    std::atomic<IUnknown*> hotSwapObject{nullptr};
+    /// Replaced instrument object
+    std::atomic<PipelineInstrument*> hotSwapObject;
 
     /// Signature for this pipeline
     RootSignatureState* signature{nullptr};
@@ -123,7 +124,7 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
 
     /// Instrumented objects lookup
     /// TODO: How do we manage lifetimes here?
-    std::map<uint64_t, IUnknown*> instrumentObjects;
+    std::map<uint64_t, PipelineInstrument*> instrumentObjects;
 
     /// Optional pipeline stream blob
     PipelineSubObjectWriter subObjectWriter;

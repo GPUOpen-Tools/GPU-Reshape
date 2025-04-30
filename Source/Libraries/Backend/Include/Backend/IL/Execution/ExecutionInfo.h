@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,28 +26,45 @@
 
 #pragma once
 
-// Layer
-#include <Backends/DX12/Config.h>
-#include <Backends/DX12/States/RootParameterVisibility.h>
-#include <Backends/DX12/States/RootSignatureVisibilityClass.h>
-#include <Backends/DX12/Resource/DescriptorDataControl.h>
+// Backend
+#include <Backend/IL/Execution/ExecutionFlag.h>
 
-struct RootSignaturePhysicalMapping {
-    /// Signature hash
-    uint64_t signatureHash{0};
+struct ExecutionInfo {
+    /// A rolling execution counter UID
+    /// This is typically atomically allocated, and is expected to roll on the numerical limit
+    /// Useful for expected transient results based on <reasonable> amounts of invocations within submissions
+    uint32_t rollingExecutionUID;
 
-    /// Number of dwords required by the root signature
-    uint32_t rootDWordCount{0};
+    /// Execution set flags
+    ExecutionFlagSet executionFlags;
+    
+    /// UID of the pipeline being executed
+    uint32_t pipelineUID;
 
-    /// Number of descriptor dwords required by the root signature
-    uint32_t rootDescriptorDWordCount{0};
+    /// UID of the active scope
+    uint32_t scopeUID;
 
-    /// DWord offset for each root parameter
-    uint32_t rootDWordOffsets[MaxRootSignatureDWord]{};
+    /// Payload data
+    struct {
+        struct {
+            /// Number of vertices
+            uint32_t vertexCount;
 
-    /// All register binding classes
-    RootSignatureVisibilityClass visibility[static_cast<uint32_t>(RootParameterVisibility::Count)];
+            /// Number of indices
+            uint32_t indexCount;
+        } draw;
 
-    /// Data control for this root signature
-    DescriptorDataControl descriptorDataControl;
+        struct {
+            /// General dispatch dimensions
+            uint32_t groupCountX;
+            uint32_t groupCountY;
+            uint32_t groupCountZ;
+        } dispatch;
+    } payload;
 };
+
+/// Number of dwords required for the execution structure
+static constexpr uint32_t kExecutionInfoDWordCount = sizeof(ExecutionInfo) / sizeof(uint32_t);
+
+/// Sanity check
+static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 9);

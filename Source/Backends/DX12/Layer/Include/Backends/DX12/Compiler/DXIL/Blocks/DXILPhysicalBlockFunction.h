@@ -330,6 +330,20 @@ private:
     /// \param _instr instruction to be compiled
     void CompileResourceTokenInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source , const IL::ResourceTokenInstruction* _instr);
 
+    /// Compile an execution info instruction
+    /// \param job source job
+    /// \param block destination block
+    /// \param source all source instructions
+    /// \param _instr instruction to be compiled
+    void CompileExecutionInfoInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& vector, const IL::ExecutionInfoInstruction* _instr);
+
+    /// Load a data control dword from the row aligned cbuffer address
+    /// \param job source job
+    /// \param block destination block
+    /// @param DWordIndex the specific dword to be loaded
+    /// @return dword id
+    IL::ID LoadDataControlDWord(const DXCompileJob& job, LLVMBlock* block, uint32_t DWordIndex);
+    
     /// Migrate an operand in a constant block
     /// \param declaration function declaration
     /// \param operand operand to migrate 

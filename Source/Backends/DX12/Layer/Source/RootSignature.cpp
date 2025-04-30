@@ -32,6 +32,9 @@
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 
+// Backend
+#include <Backend/IL/Execution/ExecutionInfo.h>
+
 // Common
 #include <Common/Hash.h>
 
@@ -306,6 +309,33 @@ static void CombineHash(uint64_t& hash, D3D12_STATIC_SAMPLER_DESC1 root) {
     CombineHash(hash, root.Flags);
 }
 
+static void AlignDataControlRow4(DescriptorDataControl& control) {
+    if (uint32_t pending = control.dwordCount % 4; pending > 0) {
+        control.dwordCount += 4 - pending;
+    }
+}
+
+static DescriptorDataControl GetDescriptorDataControl(RootSignaturePhysicalMapping* mapping) {
+    DescriptorDataControl control{};
+
+    // Always starts with the header
+    control.dwordCount += sizeof(DescriptorDataHeader);
+
+    // Append PRM data, always appears without an indirection data the control header
+    control.dwordCount += mapping->rootDWordCount;
+
+    // Append execution info, indirect
+    AlignDataControlRow4(control);
+    {
+        ASSERT(control.dwordCount % 4 == 0, "Unaligned execution header");
+        control.header.executionRowOffset = control.dwordCount / 4;
+        control.dwordCount += kExecutionInfoDWordCount;
+    }
+
+    // OK
+    return control;
+}
+
 template<typename T, typename U>
 static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount, const U* staticSamplers, uint32_t staticSamplerCount) {
     auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping;
@@ -503,6 +533,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
     // Set total number of dwords needed
     mapping->rootDWordCount = rootDWordOffset;
     mapping->rootDescriptorDWordCount = rootDescriptorDWordOffset;
+    
+    // Set data control
+    mapping->descriptorDataControl = GetDescriptorDataControl(mapping);
     
     // OK
     return mapping;

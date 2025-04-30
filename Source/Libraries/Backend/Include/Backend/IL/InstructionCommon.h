@@ -509,6 +509,9 @@ namespace Backend::IL {
                 functor(typed->resource);
                 break;
             }
+            case ::IL::OpCode::ExecutionInfo: {
+                break;
+            }
             case ::IL::OpCode::ResourceSize: {
                 auto typed = instr->As<::IL::ResourceSizeInstruction>();
                 functor(typed->resource);

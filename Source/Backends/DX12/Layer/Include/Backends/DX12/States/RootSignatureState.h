@@ -28,8 +28,8 @@
 
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
-#include "RootRegisterBindingInfo.h"
-#include "RootSignatureLogicalMapping.h"
+#include <Backends/DX12/States/RootRegisterBindingInfo.h>
+#include <Backends/DX12/States/RootSignatureLogicalMapping.h>
 
 // Common
 #include <Common/Allocators.h>

@@ -27,27 +27,27 @@
 #pragma once
 
 // Layer
-#include <Backends/DX12/Config.h>
-#include <Backends/DX12/States/RootParameterVisibility.h>
-#include <Backends/DX12/States/RootSignatureVisibilityClass.h>
-#include <Backends/DX12/Resource/DescriptorDataControl.h>
+#include <Backends/DX12/Compiler/DXStream.h>
 
-struct RootSignaturePhysicalMapping {
-    /// Signature hash
-    uint64_t signatureHash{0};
+// Backend
+#include <Backend/IL/FeatureTable.h>
 
-    /// Number of dwords required by the root signature
-    uint32_t rootDWordCount{0};
+struct ShaderInstrument {
+    ShaderInstrument(const Allocators& allocators) : stream(allocators) {
+        
+    }
 
-    /// Number of descriptor dwords required by the root signature
-    uint32_t rootDescriptorDWordCount{0};
+    /// Default constructors
+    ShaderInstrument(const ShaderInstrument& other) = default;
+    ShaderInstrument(ShaderInstrument&& other) = default;
 
-    /// DWord offset for each root parameter
-    uint32_t rootDWordOffsets[MaxRootSignatureDWord]{};
+    /// Default assignment
+    ShaderInstrument& operator=(const ShaderInstrument& other) = default;
+    ShaderInstrument& operator=(ShaderInstrument&& other) = default;
+    
+    /// The instrumented stream
+    DXStream stream;
 
-    /// All register binding classes
-    RootSignatureVisibilityClass visibility[static_cast<uint32_t>(RootParameterVisibility::Count)];
-
-    /// Data control for this root signature
-    DescriptorDataControl descriptorDataControl;
+    /// The instrumented feature table
+    IL::FeatureTable featureTable;
 };

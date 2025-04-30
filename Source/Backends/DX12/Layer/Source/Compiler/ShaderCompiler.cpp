@@ -240,7 +240,8 @@ bool ShaderCompiler::CompileShader(const ShaderJob &job) {
     compileJob.messages = scope;
 
     // Instrumented data
-    DXStream stream(allocators);
+    ShaderInstrument shaderInstrument(allocators);
+    shaderInstrument.featureTable = module->GetProgram()->GetFeatureTable();
 
     // Debugging
     if (!debugPath.empty()) {
@@ -249,7 +250,7 @@ bool ShaderCompiler::CompileShader(const ShaderJob &job) {
     }
 
     // Attempt to recompile
-    if (!module->Compile(compileJob, stream)) {
+    if (!module->Compile(compileJob, shaderInstrument.stream)) {
         ++job.diagnostic->failedJobs;
         return false;
     }
@@ -261,7 +262,7 @@ bool ShaderCompiler::CompileShader(const ShaderJob &job) {
     }
 
     // Assign the instrument
-    job.state->AddInstrument(job.instrumentationKey, stream);
+    job.state->AddInstrument(job.instrumentationKey, new (allocators) ShaderInstrument(shaderInstrument));
 
     // Mark as passed
     ++job.diagnostic->passedJobs;

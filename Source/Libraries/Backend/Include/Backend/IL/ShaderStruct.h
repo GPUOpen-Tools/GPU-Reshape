@@ -26,6 +26,9 @@
 
 #pragma once
 
+// Backend
+#include <Backend/IL/ID.h>
+
 namespace IL {
     template<typename T>
     struct ShaderStruct {

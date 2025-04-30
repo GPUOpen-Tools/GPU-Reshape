@@ -57,6 +57,7 @@ struct CommandQueueState;
 struct DeviceState;
 struct CommandListState;
 struct DescriptorHeapState;
+struct ExecutionInfo;
 class IBridge;
 
 class ShaderExportStreamer : public TComponent<ShaderExportStreamer> {
@@ -143,6 +144,12 @@ public:
     /// \param commandList the command list
     void SetGraphicsRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, ID3D12GraphicsCommandList* commandList);
 
+    /// Set the execution info
+    /// @param state the stream state
+    /// @param type the pipeline type to bind for
+    /// @param executionInfo the execution info to set
+    void SetExecutionInfo(ShaderExportStreamState* state, PipelineType type, const ExecutionInfo& executionInfo);
+
     /// Commit all compute data
     /// \param state given state
     /// \param commandList current command list
@@ -157,9 +164,9 @@ public:
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param pipelineObject active backend state being bound
-    /// \param instrumented true if an instrumented pipeline has been bound
-    /// \param commandList the command list
-    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, IUnknown* pipelineObject, bool instrumented, ID3D12GraphicsCommandList* list);
+    /// \param instrument the instrumented pipeline
+    /// \param list the command list
+    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, IUnknown* pipelineObject, PipelineInstrument* instrument, ID3D12GraphicsCommandList* list);
 
     /// Map a stream state pre submission
     /// \param state the stream state

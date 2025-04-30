@@ -236,8 +236,8 @@ struct ShaderExportStreamState {
     /// Currently instrumented pipeline
     IUnknown* pipelineObject{nullptr};
 
-    /// Is the current pipeline instrumented?
-    bool isInstrumented{false};
+    /// Current pipeline instrument, null if not instrumented
+    PipelineInstrument* pipelineInstrument{nullptr};
 
     /// All segment descriptors, lifetime bound to deferred segment
     Vector<ShaderExportSegmentDescriptorEntry> segmentDescriptors;

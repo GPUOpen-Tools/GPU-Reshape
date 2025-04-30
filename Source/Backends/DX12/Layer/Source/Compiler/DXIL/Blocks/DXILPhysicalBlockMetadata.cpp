@@ -30,10 +30,12 @@
 #include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILConstant.h>
+#include <Backends/DX12/Resource/DescriptorDataControl.h>
 
 // Backend
 #include <Backend/IL/TypeSize.h>
 #include <Backend/IL/Metadata/KernelMetadata.h>
+#include <Backend/IL/Execution/ExecutionInfo.h>
 
 // Common
 #include <Common/Sink.h>
@@ -1496,6 +1498,10 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
 }
 
 void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) {
+    // Max control structure size
+    uint32_t maxControlDWords = job.instrumentationKey.physicalMapping->descriptorDataControl.dwordCount;
+    ASSERT(maxControlDWords >= job.instrumentationKey.physicalMapping->rootDWordCount + DescriptorDataHeaderDWordCount, "Unexpected control dword count");
+    
     // i32
     const Backend::IL::Type *i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true});
     const Backend::IL::Type *i32x4 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{.containedType=i32, .dimension=4});
@@ -1506,7 +1512,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
             // [i32 x 4]
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType {
                 .elementType = i32x4,
-                .count = (job.instrumentationKey.physicalMapping->rootDWordCount + 3) / 4u
+                .count = (maxControlDWords + 3) / 4u
             })
         }
     }, "CBufferDescriptorData");

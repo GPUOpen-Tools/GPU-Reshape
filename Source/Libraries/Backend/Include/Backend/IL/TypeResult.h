@@ -390,6 +390,10 @@ namespace Backend::IL {
         return program.GetTypeMap().GetResourceToken();
     }
 
+    inline const Type* ResultOf(Program& program, const ExecutionInfoInstruction* instr) {
+        return program.GetTypeMap().GetExecutionInfo();
+    }
+
     inline const Type* ResultOf(Program& program, const ResourceSizeInstruction* instr) {
         const Type* resource = program.GetTypeMap().GetType(instr->resource);
         if (!resource) {

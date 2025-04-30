@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,28 +26,35 @@
 
 #pragma once
 
-// Layer
-#include <Backends/DX12/Config.h>
-#include <Backends/DX12/States/RootParameterVisibility.h>
-#include <Backends/DX12/States/RootSignatureVisibilityClass.h>
-#include <Backends/DX12/Resource/DescriptorDataControl.h>
+// Std
+#include <cstdint>
 
-struct RootSignaturePhysicalMapping {
-    /// Signature hash
-    uint64_t signatureHash{0};
+struct DescriptorDataHeader {
+    uint32_t GetExecutionDWordOffset() const {
+        // Rows are stored as uint4's
+        return executionRowOffset * 4;
+    }
+    
+    /// PRM offsets always start at base, without exception
+    /// This also avoids a dependent scalar lookup
+    /// uint32_t prmOffset = sizeof(DescriptorDataHeader);
 
-    /// Number of dwords required by the root signature
-    uint32_t rootDWordCount{0};
+    /// Execution info offset
+    uint32_t executionRowOffset = 0;
+};
 
-    /// Number of descriptor dwords required by the root signature
-    uint32_t rootDescriptorDWordCount{0};
+/// Number of dwords per header
+static constexpr uint32_t DescriptorDataHeaderDWordCount = sizeof(DescriptorDataHeader) / sizeof(uint32_t);
 
-    /// DWord offset for each root parameter
-    uint32_t rootDWordOffsets[MaxRootSignatureDWord]{};
+struct DescriptorDataControl {
+    /// Get the root dword offset
+    uint32_t GetRootDWordOffset(uint32_t rootDWord) const {
+        return DescriptorDataHeaderDWordCount + rootDWord;
+    }
+    
+    /// Shader visible header
+    DescriptorDataHeader header;
 
-    /// All register binding classes
-    RootSignatureVisibilityClass visibility[static_cast<uint32_t>(RootParameterVisibility::Count)];
-
-    /// Data control for this root signature
-    DescriptorDataControl descriptorDataControl;
+    /// Total number of dwords
+    uint32_t dwordCount = 0;
 };

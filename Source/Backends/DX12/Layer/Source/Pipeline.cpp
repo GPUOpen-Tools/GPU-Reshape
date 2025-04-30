@@ -574,6 +574,7 @@ PipelineState::~PipelineState() {
     // Release all instrumented objects
     for (auto&& kv : instrumentObjects) {
         kv.second->Release();
+        destroy(kv.second, allocators);
     }
 
     // Release all references to the shader modules
@@ -612,23 +613,17 @@ void ShaderState::ReleaseHost() {
     parent->shaderSet.Remove(key);
 }
 
-D3D12_SHADER_BYTECODE ShaderState::GetInstrument(const ShaderInstrumentationKey &instrumentationKey) {
-    if (!instrumentationKey.featureBitSet) {
-        return byteCode; 
-    }
-
-    // Instrumented request
+ShaderInstrument* ShaderState::GetInstrument(const ShaderInstrumentationKey &instrumentationKey) {
     std::lock_guard lock(mutex);
+    
+    // Instrumented request
     auto&& it = instrumentObjects.find(instrumentationKey);
     if (it == instrumentObjects.end()) {
-        return {};
+        return nullptr;
     }
 
-    // To bytecode
-    D3D12_SHADER_BYTECODE byteCode;
-    byteCode.pShaderBytecode = it->second.GetData();
-    byteCode.BytecodeLength = it->second.GetByteSize();
-    return byteCode;
+    // OK
+    return it->second;
 }
 
 bool ShaderState::Reserve(const ShaderInstrumentationKey &instrumentationKey) {
@@ -637,7 +632,7 @@ bool ShaderState::Reserve(const ShaderInstrumentationKey &instrumentationKey) {
     std::lock_guard lock(mutex);
     auto&& it = instrumentObjects.find(instrumentationKey);
     if (it == instrumentObjects.end()) {
-        instrumentObjects.emplace(instrumentationKey, parent->allocators);
+        instrumentObjects.emplace(instrumentationKey, nullptr);
         return true;
     }
 
@@ -656,7 +651,7 @@ bool ShaderState::RemoveInstrument(const ShaderInstrumentationKey &key) {
     return false;
 }
 
-void ShaderState::AddInstrument(const ShaderInstrumentationKey &instrumentationKey, const DXStream &instrument) {
+void ShaderState::AddInstrument(const ShaderInstrumentationKey &instrumentationKey, ShaderInstrument* instrument) {
     std::lock_guard lock(mutex);
     ASSERT(instrumentationKey.featureBitSet, "Invalid instrument addition");
 
