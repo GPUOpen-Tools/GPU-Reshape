@@ -3972,6 +3972,9 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::ThreadId))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(i)->id);
                                 block->AddRecord(CompileIntrinsicCall(threadIds[i], intrinsic, 2, ops));
+
+                                // Set type for svox
+                                program.GetTypeMap().SetType(threadIds[0], program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{}));
                             }
 
                             // Create svox
