@@ -415,7 +415,6 @@ void DebugFeature::OnSyncPoint() {
 
         // Empty out last stream
         MessageStreamView<DebugBreakpointStreamMessage> view(stream);
-        stream.Clear();
 
         // Allocate breakpoint data
         auto message = view.Add(DebugBreakpointStreamMessage::AllocationInfo {
