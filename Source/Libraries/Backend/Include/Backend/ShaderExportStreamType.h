@@ -26,41 +26,12 @@
 
 #pragma once
 
-// Backend
-#include <Backend/ShaderExportStreamType.h>
+// Common
+#include <Common/Enum.h>
 
-// Message
-#include <Message/Message.h>
-
-// Std
-#include <cstdint>
-
-/// Shader export type metadata
-struct ShaderExportTypeInfo {
-    template<typename T>
-    static ShaderExportTypeInfo FromType() {
-        using ShaderExport = typename T::ShaderExport;
-        using Schema = typename T::Schema;
-
-        ShaderExportTypeInfo info{};
-        info.messageSchema = Schema::GetSchema(T::kID);
-        info.noSGUID = ShaderExport::kNoSGUID;
-        info.structured = ShaderExport::kStructured;
-        info.typeSize = sizeof(T);
-        return info;
-    }
-
-    /// Expected schema
-    MessageSchema messageSchema{};
-
-    /// Is the SGUID excluded?
-    bool noSGUID{false};
-
-    /// Is this a structured type?
-    bool structured{false};
-
-    ShaderExportStreamTypeSet streamType = ShaderExportStreamType::Output;
-
-    /// Size of the resulting type
-    size_t typeSize{0};
+enum class ShaderExportStreamType {
+    Input = BIT(0),
+    Output = BIT(1),
 };
+
+BIT_SET(ShaderExportStreamType);

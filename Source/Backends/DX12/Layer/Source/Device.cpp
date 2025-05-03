@@ -878,11 +878,6 @@ void GlobalDeviceDetour::Uninstall() {
 }
 
 void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
-    // Invoke feature tables
-    for (const FeatureHookTable& table : device->featureHookTables) {
-        table.syncPoint.TryInvoke();
-    }
-    
     // Commit all logging to bridge
     device->logBuffer.Commit(device->bridge.GetUnsafe());
     
@@ -897,6 +892,11 @@ void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
         device->exportStreamer->Process(queueState);
     } else {
         device->exportStreamer->Process();
+    }
+    
+    // Invoke feature tables
+    for (const FeatureHookTable& table : device->featureHookTables) {
+        table.syncPoint.TryInvoke();
     }
 
     // Commit bridge

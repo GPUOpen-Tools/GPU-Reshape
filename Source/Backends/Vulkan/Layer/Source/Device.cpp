@@ -594,11 +594,6 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 }
 
 void BridgeDeviceSyncPoint(DeviceDispatchTable *table, ShaderExportQueueState* queueState) {
-    // Invoke feature tables
-    for (const FeatureHookTable& featureTable : table->featureHookTables) {
-        featureTable.syncPoint.TryInvoke();
-    }
-
     // Commit all logging to bridge
     table->parent->logBuffer.Commit(table->bridge.GetUnsafe());
     
@@ -615,6 +610,11 @@ void BridgeDeviceSyncPoint(DeviceDispatchTable *table, ShaderExportQueueState* q
         table->exportStreamer->Process();
     }
 
+    // Invoke feature tables
+    for (const FeatureHookTable& featureTable : table->featureHookTables) {
+        featureTable.syncPoint.TryInvoke();
+    }
+    
     // Update the environment?
     if (table->environmentUpdateAction.Step()) {
         table->parent->environment.Update(GetEnvironmentDeviceInfo(table));

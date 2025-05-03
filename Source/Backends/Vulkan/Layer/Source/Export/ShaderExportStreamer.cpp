@@ -762,7 +762,8 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment, Tr
         return false;
     }
 
-    // Output for messages
+    // Streams for messages
+    IMessageStorage* input = bridge->GetInput();
     IMessageStorage* output = bridge->GetOutput();
 
     // Map the counters
@@ -779,6 +780,11 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment, Tr
         // Limit the counter by the physical size of the buffer (may exceed)
         elementCount = std::min(elementCount, static_cast<uint32_t>(streamInfo.byteSize / streamInfo.typeInfo.typeSize));
 
+        // No data, no stream
+        if (!elementCount) {
+            continue;
+        }
+        
         // Map the stream
         auto* stream = static_cast<uint8_t*>(deviceAllocator->Map(streamInfo.allocation.host));
 
@@ -791,8 +797,15 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment, Tr
         messageStream.SetVersionID(segment->versionSegPoint.id);
         messageStream.SetData(stream, size, static_cast<uint32_t>(size / streamInfo.typeInfo.typeSize));
 
+        // Add input
+        if (streamInfo.typeInfo.streamType & ShaderExportStreamType::Input) {
+            input->AddStream(messageStream);
+        }
+        
         // Add output
-        output->AddStream(messageStream);
+        if (streamInfo.typeInfo.streamType & ShaderExportStreamType::Output) {
+            output->AddStream(messageStream);
+        }
 
         // Unmap
         deviceAllocator->Unmap(streamInfo.allocation.host);
