@@ -39,6 +39,7 @@
 #include <Backend/IL/Emitters/Emitter.h>
 #include <Backend/Scheduler/SchedulerPrimitive.h>
 #include <Backend/ShaderProgram/ShaderProgram.h>
+#include <Backend/Device/DeviceStateRef.h>
 
 // Schemas
 #include <Schemas/Features/DebugConfig.h>
@@ -223,10 +224,14 @@ private:
     /// Shared lock
     std::mutex mutex;
     
-    /// Shader SGUID
+    /// Shared components
     ComRef<IShaderSGUIDHost> sguidHost;
     ComRef<IShaderDataHost>  shaderDataHost;
     ComRef<IScheduler>       scheduler;
+    ComRef<IDeviceStateVote> stateVote;
+
+    /// All device states
+    DeviceStateRef<DeviceStatePooling> poolingState;
 
     /// Stored as naked pointer due to reference counting
     IBridge* bridge{nullptr};

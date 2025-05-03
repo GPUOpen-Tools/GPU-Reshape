@@ -25,6 +25,7 @@
 // 
 
 #include <Backends/Vulkan/Device.h>
+#include <Backends/Vulkan/DeviceStateVote.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Instance.h>
@@ -321,6 +322,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Try to get the vendor
     table->vendor = GetVendor(table->physicalDeviceProperties.properties.vendorID);
+
+    // Register the state voter
+    table->registry.AddNew<DeviceStateVote>(table);
 
     // Create a deep copy
     table->createInfo.DeepCopy(table->allocators, *pCreateInfo);

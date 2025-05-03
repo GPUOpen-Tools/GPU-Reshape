@@ -25,6 +25,7 @@
 // 
 
 #include <Backends/DX12/Device.h>
+#include <Backends/DX12/DeviceStateVote.h>
 #include <Backends/DX12/Resource.h>
 #include <Backends/DX12/Fence.h>
 #include <Backends/DX12/RootSignature.h>
@@ -273,6 +274,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
         // Try to get the vendor
         state->vendor = GetVendor(dxgiAdapter);
+
+        // Register the state voter
+        state->registry.AddNew<DeviceStateVote>(state);
         
         // Set stride bounds
         state->cpuHeapTable.SetStrideBound(state->object);

@@ -47,6 +47,11 @@ public:
         Stop();
     }
 
+    /// Set the interval value
+    void SetInterval(const std::chrono::milliseconds &value) {
+        interval.store(value, std::memory_order_relaxed);
+    }
+
     /// Start this action thread
     /// \param action functor to be invoked on each interval
     void Start(const std::function<void()>& action) {
@@ -72,13 +77,16 @@ private:
         while (!exitFlag.load()) {
             action();
 
+            // TODO: This loop really should do a busy wait in the last ms, or something close to it
+            auto localInterval = interval.load(std::memory_order_relaxed);
+
             // Record after the action, ensures we take the action time into account
             auto now = std::chrono::high_resolution_clock::now();
 
             // If the action time exceeds the interval, don't yield the thread
             auto deltaMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - last);
-            if (deltaMs < interval) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(interval - deltaMs));
+            if (deltaMs < localInterval) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(localInterval - deltaMs));
             }
     
             last = now;
@@ -94,7 +102,7 @@ public:
 
 private:
     /// Constant interval
-    std::chrono::milliseconds interval;
+    std::atomic<std::chrono::milliseconds> interval;
 
     /// Owned thread
     std::thread thread;

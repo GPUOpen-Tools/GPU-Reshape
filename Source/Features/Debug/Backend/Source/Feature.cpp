@@ -47,6 +47,8 @@
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/ShaderBufferStruct.h>
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
+#include <Backend/Device/DeviceState.h>
+#include <Backend/Device/DeviceStateRef.h>
 
 // Generated schema
 #include <Schemas/Features/Debug.h>
@@ -127,6 +129,9 @@ bool DebugFeature::Install() {
     // Register for messages
     bridge = registry->Get<IBridge>().GetUnsafe();
     bridge->Register(BreakpointAcquisitionMessage::kID, this);
+
+    // Get state voter, used primarily for scheduler changes
+    stateVote = registry->Get<IDeviceStateVote>();
 
     // OK
     return true;
@@ -239,6 +244,14 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                         .format = Backend::IL::Format::R8UInt,
                         .flagSet = ShaderDataBufferFlag::Host
                     }, "DebugStreamHost");
+
+                    // Assign breakpoint device states
+                    if (!poolingState.IsSet()) {
+                        // Greatly increase pooling rate, speeds up breakpoint streaming
+                        poolingState = DeviceStateRef(stateVote.GetUnsafe(), DeviceStatePooling {
+                            .intervalMS = 1
+                        });
+                    }
                     
                     break;
                 }
@@ -251,6 +264,11 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                             breakpoints.erase(breakpointIt);
                             break;
                         }
+                    }
+
+                    // Reset breakpoint device states
+                    if (breakpoints.empty()) {
+                        poolingState = {};
                     }
                     break;
                 }
