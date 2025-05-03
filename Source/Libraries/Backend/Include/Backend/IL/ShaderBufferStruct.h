@@ -34,23 +34,56 @@
 
 namespace IL {
     template<typename T>
-    struct ShaderStruct {
-        ShaderStruct(IL::ID data) : data(data) {
-            
+    struct ShaderBufferStruct {
+        ShaderBufferStruct() = default;
+
+        /// Constructor
+        /// @param buffer buffer to r/w 
+        /// @param offset optional, base offset
+        ShaderBufferStruct(IL::ID buffer, IL::ID offset = InvalidID) : buffer(buffer), offset(offset) {
+        
         }
 
-        /// Get a value within the struct
-        /// Must be dword aligned
-        /// \param emitter instruction emitter to use
-        /// \return dword value
+        /// Get a member value
         template<auto M, typename E>
         IL::ID Get(E& emitter) {
-            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(DWordOffset<M>())->id);
+            return emitter.Extract(emitter.LoadBuffer(emitter.Load(buffer), GetDWordOffset<M>(emitter)), emitter.GetProgram()->GetConstants().UInt(0)->id);
+        }
+
+        /// Set a member value
+        template<auto M, typename E>
+        void Set(E& emitter, IL::ID value) {
+            return emitter.StoreBuffer(emitter.Load(buffer), GetDWordOffset<M>(emitter), value);
+        }
+
+        /// Perform an atomic CAS on a member
+        template<auto M, typename E>
+        IL::ID AtomicCompareExchange(E& emitter, IL::ID comparator, IL::ID value) {
+            return emitter.AtomicCompareExchange(emitter.AddressOf(buffer, GetDWordOffset<M>(emitter)), comparator, value);
+        }
+
+        /// Get the address of a member
+        template<auto M, typename E>
+        IL::ID AddressOf(E& emitter) {
+            return emitter.AddressOf(buffer, GetDWordOffset<M>(emitter));
         }
 
         /// Get the dword offset of a member
+        template<auto M, typename E>
+        IL::ID GetDWordOffset(E& emitter) {
+            IL::ID dwordOffset = emitter.GetProgram()->GetConstants().UInt(GetStaticDWordOffset<M>())->id;
+
+            // Has base offset?
+            if (offset != InvalidID) {
+                dwordOffset = emitter.Add(dwordOffset, offset);
+            }
+
+            return dwordOffset;
+        }
+
+        /// Get the static dword offset of a member
         template<auto M>
-        uint32_t DWordOffset() {
+        static uint32_t GetStaticDWordOffset() {
             static T dummy;
             size_t offset = reinterpret_cast<size_t>(&(dummy.*M)) - reinterpret_cast<size_t>(&dummy);
             ASSERT(offset % sizeof(uint32_t) == 0, "Non-dword aligned offset");
@@ -58,7 +91,7 @@ namespace IL {
         }
 
     private:
-        /// Underlying data
-        IL::ID data;
+        IL::ID buffer{InvalidID};
+        IL::ID offset{InvalidID};
     };
 }

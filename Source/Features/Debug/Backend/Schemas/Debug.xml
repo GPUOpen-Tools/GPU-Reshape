@@ -28,13 +28,7 @@
 
 
 <schema>
-    <shader-export name="DebugAssert">
-        <chunk name="Detail">
-            <field name="token" type="uint32"/>
-            <field name="coordinate" type="array" element="uint32" length="3"/>
-        </chunk>
-
-        <field name="isTexture" type="uint32" bits="1"/>
-        <field name="isWrite" type="uint32" bits="1"/>
+    <shader-export name="BreakpointAcquisition" no-sguid="true">
+        <field name="uid" type="uint32"/>
     </shader-export>
 </schema>

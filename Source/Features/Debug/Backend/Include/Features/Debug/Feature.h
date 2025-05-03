@@ -38,9 +38,11 @@
 #include <Backend/IL/VisitContext.h>
 #include <Backend/IL/Emitters/Emitter.h>
 #include <Backend/Scheduler/SchedulerPrimitive.h>
+#include <Backend/ShaderProgram/ShaderProgram.h>
 
 // Schemas
 #include <Schemas/Features/DebugConfig.h>
+#include <Schemas/Features/Debug.h>
 
 // Bridge
 #include <Bridge/IBridgeListener.h>
@@ -56,8 +58,11 @@
 #include <Common/Allocator/BuddyAllocator.h>
 
 // Forward declarations
+class IBridge;
 class IScheduler;
 class IShaderSGUIDHost;
+class ChecksumShaderProgram;
+struct CommandBuilder;
 
 class DebugFeature final : public IFeature, public IShaderFeature, public IBridgeListener {
 public:
@@ -93,7 +98,13 @@ public:
 private:
     /// Hook tables
     void OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount);
+    void OnJoin(CommandContextHandle contextHandle);
     void OnSyncPoint();
+
+    /// Invoked on breakpoint acquisition
+    /// @param acqMessage the message
+    /// @param builder immediate builder
+    void OnBreakpointAcquired(const BreakpointAcquisitionMessage* acqMessage, CommandBuilder& builder);
 
 private:
     /// Get the static ordering for a value
@@ -113,6 +124,13 @@ private:
     /// @return next iterator
     IL::BasicBlock::Iterator InjectBreakpoint(const IL::VisitContext& context, const IL::BasicBlock::Iterator& it, DebugBreakpointMessage breakpoint);
 
+    /// Acquire a breakpoint
+    /// @param it instruction being instrumented
+    /// @param breakpointBlock the breakpoint interrupt block
+    /// @param breakpoint breakpoint data
+    /// @return next instruction iterator
+    IL::BasicBlock::Iterator AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, DebugBreakpointMessage breakpoint);
+
 private:
     struct Breakpoint {
         /// Monotic id of this breakpoint
@@ -123,6 +141,9 @@ private:
 
         /// Allocated stream size
         uint64_t streamSize = 0;
+
+        /// Is this breakpoint pending collection?
+        bool pendingCollection = false;
 
         /// Underlying allocation
         BuddyAllocation allocation;
@@ -139,6 +160,18 @@ private:
         } payload;
     };
 
+    struct BreakpointData {
+        /// The allocated offset
+        IL::ID allocationOffset;
+    };
+
+    /// Find a breakpoint from uid
+    Breakpoint* FindBreakpointNoLock(uint32_t uid);
+
+    /// Get a breakpoint for emitting
+    BreakpointData GetBreakpoint(IL::Emitter<>& emitter, DebugBreakpointMessage breakpoint);
+
+private:
     /// All breakpoints
     std::vector<Breakpoint> breakpoints;
 
@@ -195,8 +228,17 @@ private:
     ComRef<IShaderDataHost>  shaderDataHost;
     ComRef<IScheduler>       scheduler;
 
+    /// Stored as naked pointer due to reference counting
+    IBridge* bridge{nullptr};
+
     /// Shader data
     ShaderDataID streamBufferID{InvalidShaderDataID};
+
+    /// Programs
+    ComRef<ChecksumShaderProgram> patchShaderProgram;
+
+    /// Program ids
+    ShaderProgramID patchShaderProgramID{InvalidShaderProgramID};
 
     /// Export id for this feature
     ShaderExportID exportID{};

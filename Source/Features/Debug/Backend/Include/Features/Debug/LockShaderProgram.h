@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,39 +26,48 @@
 
 #pragma once
 
-// Backend
-#include <Backend/IL/ID.h>
-
 // Common
-#include <Common/Assert.h>
+#include <Common/ComRef.h>
 
-namespace IL {
-    template<typename T>
-    struct ShaderStruct {
-        ShaderStruct(IL::ID data) : data(data) {
-            
+// Backend
+#include <Backend/ShaderProgram/IShaderProgram.h>
+#include <Backend/ShaderData/ShaderData.h>
+
+class LockShaderProgram final : public IShaderProgram {
+public:
+    /// Constructor
+    LockShaderProgram(ShaderDataID streamBufferID);
+
+    /// Install the lock program
+    /// \return
+    bool Install();
+
+    /// IShaderProgram
+    void Inject(IL::Program &program) override;
+
+    /// Interface querying
+    void *QueryInterface(ComponentID id) override {
+        switch (id) {
+            case IComponent::kID:
+                return static_cast<IComponent*>(this);
+            case IShaderProgram::kID:
+                return static_cast<IShaderProgram*>(this);
         }
 
-        /// Get a value within the struct
-        /// Must be dword aligned
-        /// \param emitter instruction emitter to use
-        /// \return dword value
-        template<auto M, typename E>
-        IL::ID Get(E& emitter) {
-            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(DWordOffset<M>())->id);
-        }
+        return nullptr;
+    }
 
-        /// Get the dword offset of a member
-        template<auto M>
-        uint32_t DWordOffset() {
-            static T dummy;
-            size_t offset = reinterpret_cast<size_t>(&(dummy.*M)) - reinterpret_cast<size_t>(&dummy);
-            ASSERT(offset % sizeof(uint32_t) == 0, "Non-dword aligned offset");
-            return static_cast<uint32_t>(offset / sizeof(uint32_t));
-        }
+    /// Get the allocation offset ID
+    ShaderDataID GetPatchDataID() const {
+        return patchID;
+    }
 
-    private:
-        /// Underlying data
-        IL::ID data;
-    };
-}
+private:
+    /// Shared data host
+    ComRef<IShaderDataHost> shaderDataHost{nullptr};
+
+    ShaderDataID streamBufferID{InvalidShaderDataID};
+
+    /// Shader data
+    ShaderDataID patchID{InvalidShaderDataID};
+};

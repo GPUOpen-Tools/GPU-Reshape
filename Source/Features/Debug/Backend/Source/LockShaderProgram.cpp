@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,41 +24,44 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+#include <Features/Debug/LockShaderProgram.h>
+#include <Features/Debug/BreakpointPatchData.h>
+#include <Features/Debug/BreakpointStreamingHeader.h>
 
 // Backend
-#include <Backend/IL/ID.h>
+#include <Backend/IL/ProgramCommon.h>
+#include <Backend/ShaderData/IShaderDataHost.h>
+#include <Backend/IL/Emitters/Emitter.h>
+#include <Backend/IL/ShaderBufferStruct.h>
+#include <Backend/IL/ShaderStruct.h>
 
 // Common
-#include <Common/Assert.h>
+#include <Common/Registry.h>
 
-namespace IL {
-    template<typename T>
-    struct ShaderStruct {
-        ShaderStruct(IL::ID data) : data(data) {
-            
-        }
+LockShaderProgram::LockShaderProgram(ShaderDataID streamBufferID) : streamBufferID(streamBufferID) {
+    
+}
 
-        /// Get a value within the struct
-        /// Must be dword aligned
-        /// \param emitter instruction emitter to use
-        /// \return dword value
-        template<auto M, typename E>
-        IL::ID Get(E& emitter) {
-            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(DWordOffset<M>())->id);
-        }
+bool LockShaderProgram::Install() {
+    // Shader data host
+    shaderDataHost = registry->Get<IShaderDataHost>();
 
-        /// Get the dword offset of a member
-        template<auto M>
-        uint32_t DWordOffset() {
-            static T dummy;
-            size_t offset = reinterpret_cast<size_t>(&(dummy.*M)) - reinterpret_cast<size_t>(&dummy);
-            ASSERT(offset % sizeof(uint32_t) == 0, "Non-dword aligned offset");
-            return static_cast<uint32_t>(offset / sizeof(uint32_t));
-        }
+    // Create patch data
+    patchID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointPatchData>());
 
-    private:
-        /// Underlying data
-        IL::ID data;
-    };
+    // OK
+    return true;
+}
+
+void LockShaderProgram::Inject(IL::Program &program) {
+    // Get entry point
+    IL::Function* entryPoint = program.GetEntryPoint();
+    
+    // Must have termination block
+    IL::BasicBlock* entryBlock = Backend::IL::GetTerminationBlock(program);
+    if (!entryBlock) {
+        return;
+    }
+
+    // TODO: ...
 }

@@ -44,6 +44,9 @@ struct ExecutionInfo {
     /// UID of the active scope
     uint32_t scopeUID;
 
+    /// UID of the queue this is currently executing on
+    uint32_t queueUID;
+
     /// Payload data
     struct {
         struct {
@@ -67,4 +70,4 @@ struct ExecutionInfo {
 static constexpr uint32_t kExecutionInfoDWordCount = sizeof(ExecutionInfo) / sizeof(uint32_t);
 
 /// Sanity check
-static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 9);
+static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 10);

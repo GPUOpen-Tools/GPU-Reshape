@@ -27,6 +27,9 @@
 // Feature
 #include <Features/Debug/Feature.h>
 #include <Features/Debug/BreakpointType.h>
+#include <Features/Debug/BreakpointPatchData.h>
+#include <Features/Debug/BreakpointStreamingHeader.h>
+#include <Features/Debug/ChecksumShaderProgram.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -41,6 +44,9 @@
 #include <Backend/IL/Metadata/KernelMetadata.h>
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/Scheduler/SchedulerTileMapping.h>
+#include <Backend/IL/ShaderStruct.h>
+#include <Backend/IL/ShaderBufferStruct.h>
+#include <Backend/ShaderProgram/IShaderProgramHost.h>
 
 // Generated schema
 #include <Schemas/Features/Debug.h>
@@ -49,6 +55,9 @@
 // Message
 #include <Message/IMessageStorage.h>
 #include <Message/MessageStreamCommon.h>
+
+// Bridge
+#include <Bridge/IBridge.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -72,7 +81,9 @@ bool DebugFeature::Install() {
     shaderDataHost = registry->Get<IShaderDataHost>();
 
     // Allocate the shared export
-    exportID = exportHost->Allocate<DebugAssertMessage>();
+    auto messageType = ShaderExportTypeInfo::FromType<BreakpointAcquisitionMessage>();
+    messageType.streamType = ShaderExportStreamType::Input;
+    exportID = exportHost->Allocate(messageType);
 
     // Optional sguid host
     sguidHost = registry->Get<IShaderSGUIDHost>();
@@ -95,6 +106,27 @@ bool DebugFeature::Install() {
 
     // Create residency handler for the streaming buffer
     tileResidencyAllocator.Install(kDebugStreamBufferSize);
+    
+#if 0 // TODO[dbg]: Use or not?
+    // Must have program host
+    auto programHost = registry->Get<IShaderProgramHost>();
+    if (!programHost) {
+        return false;
+    }
+
+    // Create the signal program
+    patchShaderProgram = registry->New<ChecksumShaderProgram>(streamBufferID);
+    if (!patchShaderProgram->Install()) {
+        return false;
+    }
+
+    // Register signaller
+    patchShaderProgramID = programHost->Register(patchShaderProgram);
+#endif
+
+    // Register for messages
+    bridge = registry->Get<IBridge>().GetUnsafe();
+    bridge->Register(BreakpointAcquisitionMessage::kID, this);
 
     // OK
     return true;
@@ -104,6 +136,7 @@ FeatureHookTable DebugFeature::GetHookTable() {
     FeatureHookTable table{};
     table.preSubmit = BindDelegate(this, DebugFeature::OnSubmitBatchBegin);
     table.syncPoint = BindDelegate(this, DebugFeature::OnSyncPoint);
+    table.join = BindDelegate(this, DebugFeature::OnJoin);
     return table;
 }
 
@@ -112,7 +145,7 @@ void DebugFeature::CollectExports(const MessageStream &exports) {
 }
 
 void DebugFeature::CollectMessages(IMessageStorage *storage) {
-    storage->AddStreamAndSwap(stream);
+    
 }
 
 void DebugFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
@@ -145,8 +178,21 @@ void DebugFeature::Inject(IL::Program &program, const MessageStreamView<> &speci
 
 void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
     std::lock_guard guard(mutex);
-
+    
+    // Command buffer for stages
+    CommandBuffer  buffer;
+    CommandBuilder builder(buffer);
+    
     for (uint32_t i = 0; i < count; i++) {
+        // Handle GPU feedback
+        // TODO[dbg]: This is ugly
+        if (streams[i].GetSchema().type == MessageSchemaType::Static) {
+            for (auto it = ConstMessageStreamView<BreakpointAcquisitionMessage>(streams[i]).GetIterator(); it; ++it) {
+                OnBreakpointAcquired(it.Get(), builder);
+            }
+            continue;
+        }
+        
         ConstMessageStreamView view(streams[i]);
 
         // Visit all ordered messages
@@ -179,7 +225,7 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                     }
 
                     // Allocate the underlying memory
-                    breakpoint.allocation = buddyAllocator.Allocate(breakpoint.streamSize);
+                    breakpoint.allocation = buddyAllocator.Allocate(breakpoint.streamSize + sizeof(BreakpointStreamingHeader));
 
                     // Map the relevant times for the range
                     tileResidencyAllocator.Allocate(
@@ -189,7 +235,7 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
 
                     // Create streaming counter-part
                     breakpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-                        .elementCount = breakpoint.streamSize,
+                        .elementCount = breakpoint.allocation.length,
                         .format = Backend::IL::Format::R8UInt,
                         .flagSet = ShaderDataBufferFlag::Host
                     }, "DebugStreamHost");
@@ -257,16 +303,40 @@ void DebugFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const Co
     });
 
     CommandBuilder builder(submitContext.postContext->buffer);
+    {
+#if 0 // TODO[dbg]: Use or not?
+        // Wait for any ongoing shaders
+        builder.UAVBarrier();
+        
+        builder.SetShaderProgram(patchShaderProgramID);
+
+        for (Breakpoint& breakpoint: breakpoints) {
+            BreakpointPatchData patchData;
+            patchData.allocationDWordOffset = static_cast<uint32_t>(breakpoint.allocation.offset / sizeof(uint32_t));
+            patchData.streamDWordCount = static_cast<uint32_t>(breakpoint.allocation.length / sizeof(uint32_t)) - BreakpointStreamingHeaderDWordCount;
+
+            //  TODO[dbg]: Indirect support is a must
+            builder.SetDescriptorData(patchShaderProgram->GetPatchDataID(), patchData);
+            builder.Dispatch((patchData.streamDWordCount + 255) / 256, 1, 1);
+        }
+
+        builder.UAVBarrier();
+#endif
     
-    // Copy the debug streaming buffer to host
-    for (const Breakpoint& breakpoint : breakpoints) {
-        // TODO[dbg]: This is incorrect, of course
-        builder.CopyBuffer(
-            streamBufferID, breakpoint.allocation.offset,
-            breakpoint.hostStreamingBuffer, 0,
-            breakpoint.streamSize
-        );
+        // Copy the debug streaming buffer to host
+        for (const Breakpoint& breakpoint : breakpoints) {
+            // TODO[dbg]: This is incorrect, of course
+            builder.CopyBuffer(
+                streamBufferID, breakpoint.allocation.offset,
+                breakpoint.hostStreamingBuffer, 0,
+                breakpoint.allocation.length
+            );
+        }
     }
+}
+
+void DebugFeature::OnJoin(CommandContextHandle contextHandle) {
+    
 }
 
 bool DebugFeature::ThrottleController(RequestController &controller) {
@@ -308,10 +378,22 @@ void DebugFeature::OnSyncPoint() {
         return;
     }
 
+    // Buffer for stages
+    CommandBuffer buffer;
+    CommandBuilder builder(buffer);
+    
     // Stream out the breakpoints separately
-    for (const Breakpoint& breakpoint : breakpoints) {
+    for (Breakpoint& breakpoint : breakpoints) {
+        if (!breakpoint.pendingCollection) {
+            continue;
+        }
+        
         // Map the streaming buffer
-        void* data = shaderDataHost->Map(breakpoint.hostStreamingBuffer);
+        void* mapped = shaderDataHost->Map(breakpoint.hostStreamingBuffer);
+
+        // Payload is after the header
+        auto* header  = static_cast<BreakpointStreamingHeader*>(mapped);
+        void* payload = header + 1;
 
         // Empty out last stream
         MessageStreamView<DebugBreakpointStreamMessage> view(stream);
@@ -323,7 +405,7 @@ void DebugFeature::OnSyncPoint() {
         });
 
         // TODO[dbg]: Can we somehow map this in-place? There's a lot of copies going on
-        std::memcpy(message->data.Get(), data, breakpoint.streamSize);
+        std::memcpy(message->data.Get(), payload, breakpoint.streamSize);
 
         // Write out request data
         message->request = ++defaultController.requestIndex;
@@ -334,7 +416,32 @@ void DebugFeature::OnSyncPoint() {
         message->height = breakpoint.payload.image.height;
 
         // Done!
-        shaderDataHost->Unmap(breakpoint.hostStreamingBuffer, data);
+        shaderDataHost->Unmap(breakpoint.hostStreamingBuffer, mapped);
+    
+        // Patch the header
+        BreakpointStreamingHeader patchHeader{};
+        builder.StageBuffer(streamBufferID, breakpoint.allocation.offset, sizeof(BreakpointStreamingHeader), &patchHeader);
+
+        // Collected!
+        breakpoint.pendingCollection = false;
+    }
+
+    // Any commands?
+    if (buffer.Count()) {
+        scheduler->Schedule(Queue::ExclusiveTransfer, buffer, nullptr);
+    }
+    
+    // Any immediate streams?
+    if (!stream.IsEmpty()) {
+        bridge->GetOutput()->AddStreamAndSwap(stream);
+    }
+}
+
+void DebugFeature::OnBreakpointAcquired(const BreakpointAcquisitionMessage *acqMessage, CommandBuilder& builder) {
+    // If it failed to resolve, it may have been removed
+    if (Breakpoint *breakpoint = FindBreakpointNoLock(acqMessage->uid)) {
+        ASSERT(!breakpoint->pendingCollection, "GPU double-signalled breakpoint for collection");
+        breakpoint->pendingCollection = true;
     }
 }
 
@@ -514,29 +621,11 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
         return it;
     }
 
-    // Get the tiled allocation offset
-    IL::ID allocationOffset;
-    {
-        std::lock_guard guard(mutex);
+    // Get emitter
+    BreakpointData breakpointData = GetBreakpoint(emitter, breakpoint);
 
-        // Find the relevant breakpoint
-        const Breakpoint* candidate = nullptr;
-        for (const Breakpoint& _candidate : breakpoints) {
-            if (_candidate.uid == breakpoint.uid) {
-                candidate = &_candidate;
-                break;
-            }
-        }
-
-        // Shouldn't happen
-        if (!candidate) {
-            ASSERT(false, "Invalid candidate");
-            return it;
-        }
-
-        // Set the dword offset
-        allocationOffset = emitter.UInt32(static_cast<uint32_t>(candidate->allocation.offset / sizeof(uint32_t)));
-    }
+    // Payload starts after the header
+    IL::ID payloadStart = emitter.Add(breakpointData.allocationOffset, emitter.UInt32(BreakpointStreamingHeaderDWordCount));
     
     // Get the data ids
     IL::ID streamDataID = context.program.GetShaderDataMap().Get(streamBufferID)->id;
@@ -550,12 +639,173 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     // Finally, store it
     emitter.StoreBuffer(
         emitter.Load(streamDataID),
-        emitter.Add(allocationOffset, order),
+        emitter.Add(payloadStart, order),
         pixel
     );
 
-    // Interrupt the block
-    return SplitInterruptBlock(context, it, interruptBlock);
+    // Run it through the acquisition
+    return AcquireBreakpoint(context, it, interruptBlock, breakpoint);
+}
+
+IL::BasicBlock::Iterator DebugFeature::AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, DebugBreakpointMessage breakpoint) {
+    /**
+     * Basic optimized acquisition.
+     *
+     * acq = (header.acquiredExecutionUID == rollingExecutionUID)
+     * if (header.acquiredExecutionUID == 0) {
+     *   last = AtomicCAS(&header.acquiredExecutionUID, 0, rollingExecutionUID)
+     *   
+     *   allocated = (last == 0)
+     *   if (allocated) {
+     *     Export(BreakpointAcquisitionMessage {
+     *       .uid = <uid>
+     *     });
+     *   }
+     *   
+     *   acq = (allocated || last == rollingExecutionUID)
+     * }
+     *
+     * acq = phi <...>
+     */
+
+    // Allocate blocks
+    IL::BasicBlock* headerBlock = context.function.GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* casBlock    = context.function.GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* casMerge    = context.function.GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* exportBlock      = context.function.GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* exportMergeBlock = context.function.GetBasicBlocks().AllocBlock();
+    
+    // Split the iterator to resume
+    // Excluding the iterator itself, since we may want to reference the instruction results
+    it.block->Split(resumeBlock, std::next(it));
+
+    // Immediately branch to the header
+    IL::Emitter(context.program, *it.block).Branch(headerBlock);
+    IL::Emitter<> headerEmitter(context.program, *headerBlock);
+
+    // Find the relevant breakpoint
+    BreakpointData breakpointData = GetBreakpoint(headerEmitter, breakpoint);
+
+    // Get the current execution
+    IL::ShaderStruct<ExecutionInfo> execution(headerEmitter.ExecutionInfo());
+
+    // Get the header
+    IL::ShaderBufferStruct<BreakpointStreamingHeader> header(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.allocationOffset);
+
+    // Read the curent acquired UID
+    // This is a regular buffer read, not atomic
+    IL::ID acquiredUID = header.Get<&BreakpointStreamingHeader::acquiredExecutionUID>(headerEmitter);
+
+    // Acquired states, first check if it's equal to the current UID
+    IL::ID executionUID      = execution.Get<&ExecutionInfo::rollingExecutionUID>(headerEmitter);
+    IL::ID acquiredHeader = headerEmitter.Equal(acquiredUID, executionUID);
+    IL::ID acquiredCAS       = IL::InvalidID;
+
+    // If not acquired, and it's equal to zero (i.e., unallocated), enter the CAS block
+    // With this we've validated that we don't hold the lock and nothing else does.
+    // Of course, the cache lines may not represent the real state, but in case of mismatches
+    // we'll enter the CAS block anyhow.
+    headerEmitter.BranchConditional(
+        headerEmitter.Equal(acquiredUID, headerEmitter.UInt32(0)),
+        casBlock,
+        casMerge,
+        IL::ControlFlow::Selection(casMerge)
+    );
+
+    // CAS
+    {
+        IL::Emitter<> casEmitter(context.program, *casBlock);
+
+        // Actually do the CAS
+        IL::ID previousValue = header.AtomicCompareExchange<&BreakpointStreamingHeader::acquiredExecutionUID>(casEmitter, casEmitter.UInt32(0), executionUID);
+
+        // Allocated if it was zero
+        IL::ID allocatedCAS = casEmitter.Equal(previousValue, casEmitter.UInt32(0));
+
+        // Either we allocated or acquired the UID
+        acquiredCAS = casEmitter.Or(allocatedCAS, casEmitter.Equal(previousValue, executionUID));
+
+        // If allocated, move to the export block
+        casEmitter.BranchConditional(allocatedCAS, exportBlock, exportMergeBlock, IL::ControlFlow::Selection(exportMergeBlock));
+
+        // Export
+        {
+            IL::Emitter<> exportEmitter(context.program, *exportBlock);
+
+            // Write out that the breakpoint was allocated
+            // Since streams are per-submission, this is entirely atomic and coherent
+            BreakpointAcquisitionMessage::ShaderExport msg;
+            msg.uid = exportEmitter.UInt32(breakpoint.uid);
+            exportEmitter.Export(exportID, msg);
+
+            exportEmitter.Branch(exportMergeBlock);
+        }
+        
+        // Export Merge
+        {
+            IL::Emitter<> mergeEmitter(context.program, *exportMergeBlock);
+            mergeEmitter.Branch(casMerge);
+        }
+    }
+
+    // Resume
+    {
+        IL::Emitter<> mergeEmitter(context.program, *casMerge);
+
+        // Merge the inbound acquired states
+        IL::ID acquired = mergeEmitter.Phi(headerBlock, acquiredHeader, exportMergeBlock, acquiredCAS);
+
+        // If acquired, do breakpoint stuff, otherwise resume the program as usual
+        mergeEmitter.BranchConditional(
+            acquired,
+            breakpointBlock,
+            resumeBlock,
+            IL::ControlFlow::Selection(resumeBlock)
+        );
+    }
+    
+    // Branch the breakpoint to resume
+    IL::Emitter(context.program, *breakpointBlock).Branch(resumeBlock);
+
+    // Iterate again from resume
+    return resumeBlock->begin();
+}
+
+DebugFeature::Breakpoint * DebugFeature::FindBreakpointNoLock(uint32_t uid) {
+    // Find the relevant breakpoint
+    for (Breakpoint& _candidate : breakpoints) {
+        if (_candidate.uid == uid) {
+            return &_candidate;
+        }
+    }
+
+    // Not found
+    return nullptr;
+}
+
+DebugFeature::BreakpointData DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, DebugBreakpointMessage breakpoint) {
+    BreakpointData data{};
+    
+    // Get the tiled allocation offset
+    {
+        std::lock_guard guard(mutex);
+
+        // Find the relevant breakpoint
+        const Breakpoint* candidate = FindBreakpointNoLock(breakpoint.uid);
+
+        // Shouldn't happen
+        if (!candidate) {
+            ASSERT(false, "Invalid candidate");
+            return data;
+        }
+
+        // Set the dword offset
+        data.allocationOffset = emitter.UInt32(static_cast<uint32_t>(candidate->allocation.offset / sizeof(uint32_t)));
+    }
+
+    // OK
+    return data;
 }
 
 FeatureInfo DebugFeature::GetInfo() {

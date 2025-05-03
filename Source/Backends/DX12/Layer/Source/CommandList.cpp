@@ -1248,10 +1248,23 @@ void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandLis
 }
 
 static ExecutionInfo GetBaseExecutionInfo(CommandListState* state) {
+    DeviceState* device = GetState(state->parent);
+
+    // Default info
     ExecutionInfo info{};
-    info.rollingExecutionUID = GetTable(state->parent).state->rollingExecutionUID++;
+
+    // Allocate the identifier, we never want zero as that's reserved
+    do {
+        info.rollingExecutionUID = device->rollingExecutionUID++;
+    } while (!info.rollingExecutionUID);
+
+    // Pipeline is optional
     info.pipelineUID = state->streamState->pipeline ? static_cast<uint32_t>(state->streamState->pipeline->uid) : 0;
+
+    // Scope is not implemented yet
     info.scopeUID = 0;
+
+    // OK
     return info;
 }
 
