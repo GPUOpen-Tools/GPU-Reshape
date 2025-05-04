@@ -30,7 +30,9 @@ public class BreakpointRegistryService : IPropertyService
         {
             var msg = bus.Add<RegisterDebugBreakpointMessage>();
             msg.uid = breakpointViewModel.UID;
-            msg.type = (uint)breakpointViewModel.Type;
+            
+            // TODO[dbg]: Temporary code, remove
+            msg.flags = (uint)BreakpointFlag.AllowImageFPUNorm8888Compression;
         }
     }
     

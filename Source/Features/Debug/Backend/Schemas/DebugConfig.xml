@@ -42,8 +42,8 @@
     </message>
 
     <message name="RegisterDebugBreakpoint">
-        <field name="type" type="uint32"/>
         <field name="uid" type="uint32"/>
+        <field name="flags" type="uint32"/>
     </message>
 
     <message name="DeregisterDebugBreakpoint">
@@ -52,11 +52,16 @@
 
     <message name="DebugBreakpointStream">
         <field name="request" type="uint32"/>
-        <field name="width" type="uint32"/>
-        <field name="height" type="uint32"/>
-        <field name="type" type="uint32"/>
-        <field name="dataType" type="uint32"/>
         <field name="uid" type="uint32"/>
         <field name="data" type="array" element="uint8"/>
+        <field name="dataFormat" type="uint32"/>
+        <field name="dataTypeId" type="uint32"/>
+        <field name="dataCompression" type="uint32"/>
+        <field name="dataDWordStride" type="uint32"/>
+        <field name="dataOrder" type="uint32"/>
+        <field name="dataStaticWidth" type="uint32"/>
+        <field name="dataStaticHeight" type="uint32"/>
+        <field name="dataStaticDepth" type="uint32"/>
+        <field name="dataDynamicCounter" type="uint32"/>
     </message>
 </schema>

@@ -1,14 +1,14 @@
 ﻿namespace GRS.Features.Debug.UIX.ViewModels;
 
-public enum BreakpointType
+public enum BreakpointDisplayMode
 {
     /// <summary>
-    /// Two dimensional image
+    /// To be displayed as an image
     /// </summary>
     Image,
     
     /// <summary>
-    /// Raw, uncompressed, data
+    /// Raw data, represented with its dimensions
     /// </summary>
-    RawData
+    Structural
 }

@@ -26,6 +26,9 @@
 
 #pragma once
 
+// Std
+#include <cstdint>
+
 namespace Backend::IL {
     enum class Format {
         None,

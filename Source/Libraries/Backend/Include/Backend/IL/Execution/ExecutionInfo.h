@@ -63,7 +63,7 @@ struct ExecutionInfo {
             uint32_t groupCountY;
             uint32_t groupCountZ;
         } dispatch;
-    } payload;
+    };
 };
 
 /// Number of dwords required for the execution structure

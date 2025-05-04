@@ -25,8 +25,7 @@
 // 
 
 #include <Features/Debug/ChecksumShaderProgram.h>
-#include <Features/Debug/BreakpointPatchData.h>
-#include <Features/Debug/BreakpointStreamingHeader.h>
+#include <Features/Debug/BreakpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -84,7 +83,7 @@ void ChecksumShaderProgram::Inject(IL::Program &program) {
     entryBlock->Split(exitBlock, entryBlock->GetTerminator());
 
     // Breakpoint header
-    IL::ShaderBufferStruct<BreakpointStreamingHeader> header;
+    IL::ShaderBufferStruct<BreakpointHeader> header;
 
     // Thread id
     IL::ID threadID{IL::InvalidID};
@@ -95,10 +94,10 @@ void ChecksumShaderProgram::Inject(IL::Program &program) {
         threadID = entryEmitter.Extract(entryEmitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID), entryEmitter.UInt32(0));
         
         // Get the header
-        header = IL::ShaderBufferStruct<BreakpointStreamingHeader>(streamDataID, patch.Get<&BreakpointPatchData::allocationDWordOffset>(entryEmitter));
+        header = IL::ShaderBufferStruct<BreakpointHeader>(streamDataID, patch.Get<&BreakpointPatchData::allocationDWordOffset>(entryEmitter));
 
         // Was this acquired?
-        IL::ID acquired = header.Get<&BreakpointStreamingHeader::acquiredExecutionUID>(entryEmitter);
+        IL::ID acquired = header.Get<&BreakpointHeader::acquiredExecutionUID>(entryEmitter);
         IL::ID validDWord = entryEmitter.NotEqual(acquired, entryEmitter.UInt32(0));
         
         // Check the copy is out of bounds
@@ -132,7 +131,7 @@ void ChecksumShaderProgram::Inject(IL::Program &program) {
 
         // Dumb checksum
         bodyEmitter.AtomicXOr(
-            header.AddressOf<&BreakpointStreamingHeader::streamingChecksum>(bodyEmitter),
+            header.AddressOf<&BreakpointHeader::streamingChecksum>(bodyEmitter),
             value
         );
         

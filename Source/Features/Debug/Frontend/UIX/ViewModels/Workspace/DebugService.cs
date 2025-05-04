@@ -96,14 +96,26 @@ namespace GRS.Features.Debug.UIX.Workspace
             {
                 uint request = message.request;
 
-                // Deserialize on the message thread
-                object payload = null;
-                switch ((BreakpointType)message.type)
+                // TODO[dbg]: Temporary code for selecting the display mode
+                BreakpointDisplayMode mode;
+                if ((BreakpointDataOrder)message.dataOrder == BreakpointDataOrder.Static &&
+                    (BreakpointCompression)message.dataCompression == BreakpointCompression.FPUNorm8888)
                 {
-                    case BreakpointType.Image:
-                        payload = DeserializeImagePayload(message);
+                    mode = BreakpointDisplayMode.Image;
+                }
+                else
+                {
+                    mode = BreakpointDisplayMode.Structural;
+                }
+                
+                // Deserialize on the message thread
+                object? payload = null;
+                switch (mode)
+                {
+                    case BreakpointDisplayMode.Image:
+                        payload = DeserializeImagePayload(message, mode);
                         break;
-                    case BreakpointType.RawData:
+                    case BreakpointDisplayMode.Structural:
                         break;
                 }
                 
@@ -118,12 +130,12 @@ namespace GRS.Features.Debug.UIX.Workspace
                     }
 
                     // Install the payload
-                    switch ((BreakpointType)flat.type)
+                    switch (mode)
                     {
-                        case BreakpointType.Image:
+                        case BreakpointDisplayMode.Image:
                             InstallImagePayload(breakpointViewModel, (Bitmap)payload!);
                             break;
-                        case BreakpointType.RawData:
+                        case BreakpointDisplayMode.Structural:
                             break;
                     }
 
@@ -139,24 +151,23 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Deserialize an incoming image payload
         /// </summary>
-        private unsafe object DeserializeImagePayload(DebugBreakpointStreamMessage message)
+        private unsafe object DeserializeImagePayload(DebugBreakpointStreamMessage message, BreakpointDisplayMode mode)
         {
-            // TODO[dbg]: Standardize this
-            switch (message.dataType)
+            switch (mode)
             {
                 default:
                 {
                     throw new InvalidOperationException();
                 }
-                case 0:
+                case BreakpointDisplayMode.Image:
                 {
                     return new WriteableBitmap(
                         PixelFormat.Rgba8888, AlphaFormat.Opaque,
-                        new IntPtr(message.data.GetDataStart()), new PixelSize((int)message.width, (int)message.height),
-                        new Vector(96, 96), (int)(message.width * 4)
+                        new IntPtr(message.data.GetDataStart()), new PixelSize((int)message.dataStaticWidth, (int)message.dataStaticHeight),
+                        new Vector(96, 96), (int)(message.dataStaticWidth * 4)
                     );
                 }
-                case 1:
+                case BreakpointDisplayMode.Structural:
                 {
                     using var stream = new UnmanagedMemoryStream(message.data.GetDataStart(), message.data.Count);
                     return new Bitmap(stream);

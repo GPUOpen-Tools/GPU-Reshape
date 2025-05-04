@@ -30,7 +30,7 @@ public class BreakpointViewModel : ReactiveObject
     /// <summary>
     /// Type of this breakpoint
     /// </summary>
-    public BreakpointType Type { get; set; }
+    public BreakpointDisplayMode DisplayMode { get; set; }
     
     /// <summary>
     /// Internal view model

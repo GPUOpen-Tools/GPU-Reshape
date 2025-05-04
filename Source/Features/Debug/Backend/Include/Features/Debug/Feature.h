@@ -27,7 +27,7 @@
 #pragma once
 
 // Debug
-#include <Features/Debug/BreakpointType.h>
+#include <Features/Debug/BreakpointHeader.h>
 
 // Backend
 #include <Backend/IFeature.h>
@@ -40,6 +40,8 @@
 #include <Backend/Scheduler/SchedulerPrimitive.h>
 #include <Backend/ShaderProgram/ShaderProgram.h>
 #include <Backend/Device/DeviceStateRef.h>
+#include <Backend/IL/ShaderBufferStruct.h>
+#include <Backend/IL/ShaderStruct.h>
 
 // Schemas
 #include <Schemas/Features/DebugConfig.h>
@@ -108,11 +110,6 @@ private:
     void OnBreakpointAcquired(const BreakpointAcquisitionMessage* acqMessage, CommandBuilder& builder);
 
 private:
-    /// Get the static ordering for a value
-    /// @param it value to get ordering for
-    /// @return ordering
-    IL::ID GetStaticOrderingFor(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction *it);
-
     /// Interrupt a visitation context
     /// @param it instruction to interrupt
     /// @param interruptBlock the finalized interrupt block
@@ -123,22 +120,18 @@ private:
     /// @param it instruction to debug
     /// @param breakpoint breakpoint to be added
     /// @return next iterator
-    IL::BasicBlock::Iterator InjectBreakpoint(const IL::VisitContext& context, const IL::BasicBlock::Iterator& it, DebugBreakpointMessage breakpoint);
-
-    /// Acquire a breakpoint
-    /// @param it instruction being instrumented
-    /// @param breakpointBlock the breakpoint interrupt block
-    /// @param breakpoint breakpoint data
-    /// @return next instruction iterator
-    IL::BasicBlock::Iterator AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, DebugBreakpointMessage breakpoint);
+    IL::BasicBlock::Iterator InjectBreakpoint(const IL::VisitContext& context, const IL::BasicBlock::Iterator& it, const DebugBreakpointMessage& breakpoint);
 
 private:
     struct Breakpoint {
         /// Monotic id of this breakpoint
         uint32_t uid = 0;
 
-        /// Type of this breakpoint
-        BreakpointType type{};
+        /// Flags
+        BreakpointFlag flags{BreakpointFlag::None};
+
+        /// Host layout, determined at compile time
+        BreakpointDataHostLayout hostLayout{};
 
         /// Allocated stream size
         uint64_t streamSize = 0;
@@ -151,27 +144,92 @@ private:
 
         /// Streaming buffer
         ShaderDataID hostStreamingBuffer = InvalidShaderDataID;
-
-        /// Type payload
-        union {
-            struct {
-                uint32_t width;
-                uint32_t height;
-            } image;
-        } payload;
     };
 
     struct BreakpointData {
+        /// The dynamically assigned ordering type
+        IL::ID orderType{IL::InvalidID};
+
+        /// The calculated order
+        IL::ID order{IL::InvalidID};
+
+        /// The statically computed ordering dimensions
+        IL::ID staticOrderWidth{IL::InvalidID};
+        IL::ID staticOrderHeight{IL::InvalidID};
+        IL::ID staticOrderDepth{IL::InvalidID};
+
+        /// The total number of streamed dwords
+        IL::ID dwordStreamCount{IL::InvalidID};
+
         /// The allocated offset
-        IL::ID allocationOffset;
+        IL::ID allocationOffset{IL::InvalidID};
     };
 
     /// Find a breakpoint from uid
     Breakpoint* FindBreakpointNoLock(uint32_t uid);
 
-    /// Get a breakpoint for emitting
-    BreakpointData GetBreakpoint(IL::Emitter<>& emitter, DebugBreakpointMessage breakpoint);
+    /// Get breakpoint device data
+    /// @param emitter target emitter
+    /// @param breakpoint host breakpoint data
+    /// @param breakpointData device breakpoint data
+    void GetBreakpoint(IL::Emitter<>& emitter, Breakpoint* breakpoint, BreakpointData& breakpointData);
 
+    /// Get a breakpoint from its message
+    /// @param emitter target emitter
+    /// @param breakpoint host breakpoint data
+    /// @param breakpointData device breakpoint data
+    void GetBreakpoint(IL::Emitter<>& emitter, DebugBreakpointMessage breakpoint, BreakpointData& breakpointData);
+
+    /// Store all value dwords of a breakpoint
+    /// @param context parent context
+    /// @param emitter target emitter
+    /// @param value value, potentially structured, to be stored
+    /// @param breakpoint host breakpoint data
+    /// @param breakpointData device breakpoint data
+    void StoreBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData);
+
+    /// Try to get the texel format of a breakpoint
+    /// @param context parent context
+    /// @param instr exporting instruction
+    /// @param id value to check for
+    /// @param breakpoint host breakpoint data
+    /// @return true if a format is appropriate, over structured data
+    bool GetBreakpointFormat(const IL::VisitContext& context, const IL::Instruction* instr, IL::ID id, Breakpoint* breakpoint);
+
+    /// Try to get the breakpoint data host layout, fails in case it's not a valid breakpoint
+    /// @param context parent context
+    /// @param instr exporting instruction
+    /// @param value value to check for
+    /// @param breakpoint host breakpoint data
+    /// @return false if failed
+    bool GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint *breakpoint);
+
+    /// Store all exported breakpoint data
+    /// @param context parent context
+    /// @param emitter target emitter
+    /// @param instr exporting instruction
+    /// @param value value to check for
+    /// @param breakpoint host breakpoint data
+    /// @param breakpointData device breakpoint data
+    void StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData);
+
+    /// 
+    /// @param context parent context
+    /// @param emitter target emitter
+    /// @param execution the current execution info
+    /// @param breakpointHeader the breakpoint header state
+    /// @param breakpoint host breakpoint data
+    /// @param breakpointData device breakpoint data
+    void GetBreakpointOrdering(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<BreakpointHeader>& breakpointHeader, Breakpoint *breakpoint, BreakpointData& breakpointData);
+
+    /// Acquire a breakpoint
+    /// @param it instruction being instrumented
+    /// @param breakpointBlock the breakpoint interrupt block
+    /// @param breakpoint breakpoint data
+    /// @param breakpointData
+    /// @return next instruction iterator
+    IL::BasicBlock* AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    
 private:
     /// All breakpoints
     std::vector<Breakpoint> breakpoints;

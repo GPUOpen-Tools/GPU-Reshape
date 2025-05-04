@@ -42,10 +42,11 @@ namespace IL {
         /// Get a value within the struct
         /// Must be dword aligned
         /// \param emitter instruction emitter to use
+        /// \param dwordOffset optional, additional dword offset
         /// \return dword value
         template<auto M, typename E>
-        IL::ID Get(E& emitter) {
-            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(DWordOffset<M>())->id);
+        IL::ID Get(E& emitter, uint32_t dwordOffset = 0) {
+            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(DWordOffset<M>() + dwordOffset)->id);
         }
 
         /// Get the dword offset of a member

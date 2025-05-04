@@ -1340,8 +1340,8 @@ void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList* list, UINT Ver
     if (UsesExecutionInfo(table.state)) {
         ExecutionInfo info = GetBaseExecutionInfo(table.state);
         info.executionFlags = ExecutionFlag::TypeDraw;
-        info.payload.draw.vertexCount = VertexCountPerInstance;
-        info.payload.draw.indexCount = 0;
+        info.draw.vertexCount = VertexCountPerInstance;
+        info.draw.indexCount = 0;
         device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Graphics, info);
     }
     
@@ -1362,8 +1362,8 @@ void WINAPI HookID3D12CommandListDrawIndexedInstanced(ID3D12CommandList* list, U
     if (UsesExecutionInfo(table.state)) {
         ExecutionInfo info = GetBaseExecutionInfo(table.state);
         info.executionFlags = ExecutionFlag::TypeDraw;
-        info.payload.draw.vertexCount = 9;
-        info.payload.draw.indexCount = IndexCountPerInstance;
+        info.draw.vertexCount = 9;
+        info.draw.indexCount = IndexCountPerInstance;
         device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Graphics, info);
     }
 
@@ -1384,9 +1384,9 @@ void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList* list, UINT ThreadGr
     if (UsesExecutionInfo(table.state)) {
         ExecutionInfo info = GetBaseExecutionInfo(table.state);
         info.executionFlags = ExecutionFlag::TypeDispatch;
-        info.payload.dispatch.groupCountX = ThreadGroupCountX;
-        info.payload.dispatch.groupCountY = ThreadGroupCountY;
-        info.payload.dispatch.groupCountZ = ThreadGroupCountZ;
+        info.dispatch.groupCountX = ThreadGroupCountX;
+        info.dispatch.groupCountY = ThreadGroupCountY;
+        info.dispatch.groupCountZ = ThreadGroupCountZ;
         device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Compute, info);
     }
 

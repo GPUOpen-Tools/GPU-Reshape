@@ -25,8 +25,7 @@
 // 
 
 #include <Features/Debug/LockShaderProgram.h>
-#include <Features/Debug/BreakpointPatchData.h>
-#include <Features/Debug/BreakpointStreamingHeader.h>
+#include <Features/Debug/BreakpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>

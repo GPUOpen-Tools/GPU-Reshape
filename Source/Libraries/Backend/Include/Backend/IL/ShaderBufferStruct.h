@@ -52,8 +52,8 @@ namespace IL {
 
         /// Set a member value
         template<auto M, typename E>
-        void Set(E& emitter, IL::ID value) {
-            return emitter.StoreBuffer(emitter.Load(buffer), GetDWordOffset<M>(emitter), value);
+        void Set(E& emitter, IL::ID value, uint32_t dwordOffset = 0) {
+            emitter.StoreBuffer(emitter.Load(buffer), GetDWordOffset<M>(emitter, dwordOffset), value);
         }
 
         /// Perform an atomic CAS on a member
@@ -70,15 +70,15 @@ namespace IL {
 
         /// Get the dword offset of a member
         template<auto M, typename E>
-        IL::ID GetDWordOffset(E& emitter) {
-            IL::ID dwordOffset = emitter.GetProgram()->GetConstants().UInt(GetStaticDWordOffset<M>())->id;
+        IL::ID GetDWordOffset(E& emitter, uint32_t dwordOffset = 0) {
+            IL::ID dwordOffsetId = emitter.GetProgram()->GetConstants().UInt(GetStaticDWordOffset<M>() + dwordOffset)->id;
 
             // Has base offset?
             if (offset != InvalidID) {
-                dwordOffset = emitter.Add(dwordOffset, offset);
+                dwordOffsetId = emitter.Add(dwordOffsetId, offset);
             }
 
-            return dwordOffset;
+            return dwordOffsetId;
         }
 
         /// Get the static dword offset of a member

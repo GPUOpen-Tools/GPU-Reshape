@@ -29,6 +29,6 @@
 
 <schema>
     <shader-export name="BreakpointAcquisition" no-sguid="true">
-        <field name="uid" type="uint32"/>
+        <field name="uid" type="uint32" bits="24"/>
     </shader-export>
 </schema>

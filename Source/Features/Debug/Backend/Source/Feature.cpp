@@ -26,9 +26,7 @@
 
 // Feature
 #include <Features/Debug/Feature.h>
-#include <Features/Debug/BreakpointType.h>
-#include <Features/Debug/BreakpointPatchData.h>
-#include <Features/Debug/BreakpointStreamingHeader.h>
+#include <Features/Debug/BreakpointHeader.h>
 #include <Features/Debug/ChecksumShaderProgram.h>
 
 // Backend
@@ -49,6 +47,7 @@
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
 #include <Backend/Device/DeviceState.h>
 #include <Backend/Device/DeviceStateRef.h>
+#include <Backend/IL/TypeSize.h>
 
 // Generated schema
 #include <Schemas/Features/Debug.h>
@@ -66,8 +65,7 @@
 #include <Common/Registry.h>
 
 /// TODO[dbg]: Temporary work
-static constexpr uint32_t kWidth = 1920;
-static constexpr uint32_t kHeight = 1080;
+static constexpr uint32_t kInitialBreakpointSize = 32'000'000;
 
 /// Maximum streaming size
 static constexpr uint64_t kDebugStreamBufferSize = UINT32_MAX; // ~4gb
@@ -214,23 +212,11 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                     // Add breakpoint
                     Breakpoint& breakpoint = breakpoints.emplace_back();
                     breakpoint.uid = msg->uid;
-                    breakpoint.type = static_cast<BreakpointType>(msg->type);
-
-                    // Create payload
-                    switch (breakpoint.type) {
-                        case BreakpointType::Image: {
-                            breakpoint.payload.image.width = kWidth;
-                            breakpoint.payload.image.height = kHeight;
-                            breakpoint.streamSize = breakpoint.payload.image.width * breakpoint.payload.image.height * sizeof(uint32_t);
-                            break;
-                        }
-                        case BreakpointType::Data: {
-                            break;
-                        }
-                    }
+                    breakpoint.flags = static_cast<BreakpointFlag>(msg->flags);
+                    breakpoint.streamSize = kInitialBreakpointSize;
 
                     // Allocate the underlying memory
-                    breakpoint.allocation = buddyAllocator.Allocate(breakpoint.streamSize + sizeof(BreakpointStreamingHeader));
+                    breakpoint.allocation = buddyAllocator.Allocate(breakpoint.streamSize + sizeof(BreakpointHeader));
 
                     // Map the relevant times for the range
                     tileResidencyAllocator.Allocate(
@@ -410,34 +396,42 @@ void DebugFeature::OnSyncPoint() {
         void* mapped = shaderDataHost->Map(breakpoint.hostStreamingBuffer);
 
         // Payload is after the header
-        auto* header  = static_cast<BreakpointStreamingHeader*>(mapped);
+        auto* header  = static_cast<BreakpointHeader*>(mapped);
         void* payload = header + 1;
 
+        // How much we actually need to stream
+        uint32_t effectiveStreamSize = header->dwordStreamCount * sizeof(uint32_t);
+        
         // Empty out last stream
         MessageStreamView<DebugBreakpointStreamMessage> view(stream);
 
         // Allocate breakpoint data
         auto message = view.Add(DebugBreakpointStreamMessage::AllocationInfo {
-            .dataCount = breakpoint.streamSize
+            .dataCount = effectiveStreamSize
         });
 
         // TODO[dbg]: Can we somehow map this in-place? There's a lot of copies going on
-        std::memcpy(message->data.Get(), payload, breakpoint.streamSize);
+        std::memcpy(message->data.Get(), payload, effectiveStreamSize);
 
         // Write out request data
         message->request = ++defaultController.requestIndex;
-        message->type = 0;
-        message->dataType = 0;
         message->uid = breakpoint.uid;
-        message->width = breakpoint.payload.image.width;
-        message->height = breakpoint.payload.image.height;
+        message->dataFormat = static_cast<uint32_t>(breakpoint.hostLayout.format);
+        message->dataTypeId = breakpoint.hostLayout.type ? breakpoint.hostLayout.type->id : IL::InvalidID;
+        message->dataCompression = static_cast<uint32_t>(breakpoint.hostLayout.compression);
+        message->dataDWordStride = breakpoint.hostLayout.dataDWordStride;
+        message->dataOrder = static_cast<uint32_t>(header->dataOrder);
+        message->dataStaticWidth = header->staticWidth;
+        message->dataStaticHeight = header->staticHeight;
+        message->dataStaticDepth = header->staticDepth;
+        message->dataDynamicCounter = header->dynamicCounter;
 
         // Done!
         shaderDataHost->Unmap(breakpoint.hostStreamingBuffer, mapped);
     
         // Patch the header
-        BreakpointStreamingHeader patchHeader{};
-        builder.StageBuffer(streamBufferID, breakpoint.allocation.offset, sizeof(BreakpointStreamingHeader), &patchHeader);
+        BreakpointHeader patchHeader{};
+        builder.StageBuffer(streamBufferID, breakpoint.allocation.offset, sizeof(BreakpointHeader), &patchHeader);
 
         // Collected!
         breakpoint.pendingCollection = false;
@@ -462,33 +456,6 @@ void DebugFeature::OnBreakpointAcquired(const BreakpointAcquisitionMessage *acqM
     }
 }
 
-IL::ID DebugFeature::GetStaticOrderingFor(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction* it) {
-    auto* md = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.function.GetID());
-
-    // Right now only supporting compute
-    if (!md || md->type != IL::KernelType::Compute) {
-        return IL::InvalidID;
-    }
-
-    // Get typed dispatch index
-    IL::ID dtid = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
-
-    // Get dimensions
-    IL::ID x = emitter.Extract(dtid, emitter.UInt32(0));
-    IL::ID y = emitter.Extract(dtid, emitter.UInt32(1));
-
-    // Get guard mask against the expected bounds
-    IL::ID mask = emitter.LessThan(x, emitter.UInt32(kWidth));
-    mask = emitter.And(mask, emitter.LessThan(y, emitter.UInt32(kHeight)));
-
-    // Dumb selection
-    return emitter.Select(
-        mask,
-        emitter.Add(emitter.Mul(y, emitter.UInt32(kWidth)), x),
-        emitter.UInt32(64000)
-    );
-}
-
 IL::BasicBlock::Iterator DebugFeature::SplitInterruptBlock(const IL::VisitContext& context, IL::BasicBlock::Iterator it, IL::BasicBlock *interruptBlock) {
     // Split the iterator to resume
     // Excluding the iterator itself, since we may want to reference the instruction results
@@ -503,25 +470,31 @@ IL::BasicBlock::Iterator DebugFeature::SplitInterruptBlock(const IL::VisitContex
     return resumeBlock->begin();
 }
 
-static bool IsTypeSupported(const Backend::IL::Type* type) {
+static bool IsTypeSerializationSupported(const Backend::IL::Type* type) {
     switch (type->kind) {
         default: {
+            // TODO[dbg]: Matrix, Array
+            // TODO[dbg]: Resources PRMT!
             return false;
         }
         case Backend::IL::TypeKind::Bool:
         case Backend::IL::TypeKind::Int:
         case Backend::IL::TypeKind::FP: {
+            // Always supported
             return true;
         }
         case Backend::IL::TypeKind::Vector: {
             auto typed = type->As<Backend::IL::VectorType>();
-            return IsTypeSupported(typed->containedType) && typed->dimension <= 4;
+
+            // Supports serialization if the contained can be
+            return IsTypeSerializationSupported(typed->containedType);
         }
         case Backend::IL::TypeKind::Struct: {
             auto typed = type->As<Backend::IL::StructType>();
 
+            // Supports serialization if every member can be
             for (const Backend::IL::Type *member: typed->memberTypes) {
-                if (!IsTypeSupported(member)) {
+                if (!IsTypeSerializationSupported(member)) {
                     return false;
                 }
             }
@@ -531,7 +504,46 @@ static bool IsTypeSupported(const Backend::IL::Type* type) {
     }
 }
 
-static IL::ID GetDataPixel(const IL::VisitContext &context, IL::Emitter<> emitter, IL::ID value) {
+static bool SupportsImageFPUnormCompression(const IL::Instruction* instr, const Backend::IL::Type* type) {
+    switch (type->kind) {
+        default: {
+            // Nope
+            return false;
+        }
+        case Backend::IL::TypeKind::FP: {
+            // Always supported
+            return true;
+        }
+        case Backend::IL::TypeKind::Vector: {
+            auto typed = type->As<Backend::IL::VectorType>();
+
+            // Supports compression if the contained can be
+            // Up to 4 components
+            return SupportsImageFPUnormCompression(instr, typed->containedType) && typed->dimension <= 4u;
+        }
+        case Backend::IL::TypeKind::Struct: {
+            auto typed = type->As<Backend::IL::StructType>();
+
+            // Only supported for special case loads/samples
+            if (!instr->Is<IL::LoadBufferInstruction>() &&
+                !instr->Is<IL::LoadTextureInstruction>() &&
+                !instr->Is<IL::SampleTextureInstruction>()) {
+                return false;
+            }
+
+            // Supports compression if every member can be
+            for (const Backend::IL::Type *member: typed->memberTypes) {
+                if (!SupportsImageFPUnormCompression(instr, member)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+}
+
+static IL::ID CompressFPUnorm8888(const IL::VisitContext &context, IL::Emitter<> emitter, IL::ID value) {
     const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
 
     // Extended emitter for common operations
@@ -549,7 +561,7 @@ static IL::ID GetDataPixel(const IL::VisitContext &context, IL::Emitter<> emitte
             // Compose color byte by byte
             IL::ID pixel = emitter.UInt32(0);
             for (uint32_t i = 0; i < typed->dimension; i++) {
-                IL::ID component = GetDataPixel(context, emitter, emitter.Extract(value, emitter.UInt32(i)));
+                IL::ID component = CompressFPUnorm8888(context, emitter, emitter.Extract(value, emitter.UInt32(i)));
                 pixel = emitter.BitOr(pixel, emitter.BitShiftLeft(component, emitter.UInt32(i * 8)));
             }
             return pixel;
@@ -560,7 +572,7 @@ static IL::ID GetDataPixel(const IL::VisitContext &context, IL::Emitter<> emitte
             // Compose color byte by byte
             IL::ID pixel = emitter.UInt32(0);
             for (uint32_t i = 0; i < typed->memberTypes.size(); i++) {
-                IL::ID component = GetDataPixel(context, emitter, emitter.Extract(value, emitter.UInt32(i)));
+                IL::ID component = CompressFPUnorm8888(context, emitter, emitter.Extract(value, emitter.UInt32(i)));
                 pixel = emitter.BitOr(pixel, emitter.BitShiftLeft(component, emitter.UInt32(i * 8)));
             }
             return pixel;
@@ -603,68 +615,351 @@ static IL::ID GetInstructionDebugValue(const IL::Instruction* instr) {
     }
 }
 
-IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, DebugBreakpointMessage breakpoint) {
-    // 
-    // ACQUIRE FIRST INVOCATION
-    // bIs = false
-    // if (debugMd.uid == invocationUID)
-    //   bIs = true
-    // else:
-    //   bIs = interlockedOr(debugMd.uid, invocationUID)
-    //
-    // WRITE MD
-    // interlockedMax(debugMd.maxDispatch.xyz, DTID.xyz)
-    //
-    // WRITE DATA
-    // debugMd[order] = X
-    //
-
-    // Emit in the interrupt block
-    IL::BasicBlock* interruptBlock = context.function.GetBasicBlocks().AllocBlock();
-    IL::Emitter<> emitter(context.program, *interruptBlock);
-
-    // Get the value to be emitted
-    IL::ID value = GetInstructionDebugValue(it);
-
-    // Check if the type is supported
-    const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
-    if (!type || !IsTypeSupported(type)) {
-        return it;
+bool DebugFeature::GetBreakpointFormat(const IL::VisitContext& context, const IL::Instruction* instr, IL::ID id, Breakpoint* breakpoint) {
+    // Check compression
+    switch (breakpoint->hostLayout.compression) {
+        default: {
+            //  No compression
+            break;
+        }
+        case BreakpointCompression::FPUnorm8888: {
+            breakpoint->hostLayout.format = Backend::IL::Format::RGBA8;
+            return true;
+        }
     }
 
-    // Get the export order
-    IL::ID order = GetStaticOrderingFor(context, emitter, it);
-    if (order == IL::InvalidID) {
-        return it;
-    }
-
-    // Get emitter
-    BreakpointData breakpointData = GetBreakpoint(emitter, breakpoint);
-
-    // Payload starts after the header
-    IL::ID payloadStart = emitter.Add(breakpointData.allocationOffset, emitter.UInt32(BreakpointStreamingHeaderDWordCount));
-    
-    // Get the data ids
-    IL::ID streamDataID = context.program.GetShaderDataMap().Get(streamBufferID)->id;
-
-    // Compose the pixel colors
-    IL::ID pixel = GetDataPixel(context, emitter, value);
-
-    // 255 Alpha
-    pixel = emitter.BitOr(pixel, emitter.UInt32(0xFF << 24));
-
-    // Finally, store it
-    emitter.StoreBuffer(
-        emitter.Load(streamDataID),
-        emitter.Add(payloadStart, order),
-        pixel
-    );
-
-    // Run it through the acquisition
-    return AcquireBreakpoint(context, it, interruptBlock, breakpoint);
+    // No format
+    // TODO[dbg]: This is obviously incomplete
+    return false;
 }
 
-IL::BasicBlock::Iterator DebugFeature::AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, DebugBreakpointMessage breakpoint) {
+bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint) {
+    // May not have an associated type
+    const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
+    if (!type) {
+        return false;
+    }
+
+    // Type may not be serializable
+    if (!IsTypeSerializationSupported(type)) {
+        return false;
+    }
+
+    // Check kernel type support
+    auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.function.GetID());
+    switch (kernelType->type) {
+        case IL::KernelType::None:
+        case IL::KernelType::Vertex:
+        case IL::KernelType::Geometry:
+        case IL::KernelType::Hull:
+        case IL::KernelType::Domain:
+        case IL::KernelType::Amplification:
+        case IL::KernelType::Mesh:
+        case IL::KernelType::Pixel:
+        case IL::KernelType::RayGen:
+        case IL::KernelType::RayMiss:
+        case IL::KernelType::RayHit:
+        case IL::KernelType::Lib:
+            // Not supported, yet
+            return false;
+        case IL::KernelType::Compute:
+            // Supported
+            break;
+    }
+
+    // Supports 8-8-8-8 compression?
+    if (breakpoint->flags & BreakpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, type)) {
+        breakpoint->hostLayout.compression = BreakpointCompression::FPUnorm8888;
+    }
+
+    // Try to get the format
+    if (GetBreakpointFormat(context, instr, value, breakpoint)) {
+        // Assume stride
+        breakpoint->hostLayout.dataDWordStride = static_cast<uint32_t>(GetSize(breakpoint->hostLayout.format) / sizeof(uint32_t));
+    } else {
+        // If not relevant, just assume the type
+        breakpoint->hostLayout.type = type;
+
+        // TODO[dbg]: I guess we don't need to handle alignment?
+        breakpoint->hostLayout.dataDWordStride = static_cast<uint32_t>(GetPODNonAlignedTypeByteSize(type) / sizeof(uint32_t));
+    }
+
+    // Host layout supported
+    return true;
+}
+
+void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<BreakpointHeader>& breakpointHeader, Breakpoint *breakpoint, BreakpointData& breakpointData) {
+    auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.function.GetID());
+
+    // Default init
+    breakpointData.staticOrderWidth = emitter.UInt32(0);
+    breakpointData.staticOrderHeight = emitter.UInt32(0);
+    breakpointData.staticOrderDepth = emitter.UInt32(0);
+
+    switch (kernelType->type) {
+        default: {
+            ASSERT(false, "Unexpected type");
+            break;
+        }
+        case IL::KernelType::Compute: {
+            auto* kernelWorkgroupSize = context.program.GetMetadataMap().GetMetadata<IL::KernelWorkgroupSizeMetadata>(context.function.GetID());
+            IL::ID dwordStride = emitter.UInt32(breakpoint->hostLayout.dataDWordStride);
+
+            // Get the number of thread groups
+            IL::ID threadGroupsX = execution.Get<&ExecutionInfo::dispatch>(emitter, 0);
+            IL::ID threadGroupsY = execution.Get<&ExecutionInfo::dispatch>(emitter, 1);
+            IL::ID threadGroupsZ = execution.Get<&ExecutionInfo::dispatch>(emitter, 2);
+
+            // Determine the thread counts
+            breakpointData.staticOrderWidth = emitter.Mul(threadGroupsX, emitter.UInt32(kernelWorkgroupSize->threadsX));
+            breakpointData.staticOrderHeight = emitter.Mul(threadGroupsY, emitter.UInt32(kernelWorkgroupSize->threadsY));
+            breakpointData.staticOrderDepth = emitter.Mul(threadGroupsZ, emitter.UInt32(kernelWorkgroupSize->threadsZ));
+
+            // Determine the max number of dwords
+            breakpointData.dwordStreamCount = emitter.Mul(breakpointData.staticOrderWidth, emitter.Mul(breakpointData.staticOrderHeight, emitter.Mul(breakpointData.staticOrderDepth, dwordStride)));
+
+            // Select dynamic if we exceed 
+            breakpointData.orderType = emitter.Select(
+                emitter.GreaterThan(breakpointData.dwordStreamCount, emitter.UInt32(static_cast<uint32_t>(breakpoint->streamSize /  sizeof(uint32_t)))),
+                emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic)),
+                emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Static))
+            );
+
+            // Get typed dispatch index
+            IL::ID dtid = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
+
+            // Get dimensions
+            IL::ID x = emitter.Extract(dtid, emitter.UInt32(0));
+            IL::ID y = emitter.Extract(dtid, emitter.UInt32(1));
+            IL::ID z = emitter.Extract(dtid, emitter.UInt32(2));
+
+            // Static ordering
+            IL::ID staticOrder;
+            {
+                // z * w * h + y * w + x
+                staticOrder = emitter.Mul(z, emitter.Mul(breakpointData.staticOrderWidth, breakpointData.staticOrderHeight));
+                staticOrder = emitter.Add(staticOrder, emitter.Mul(y, breakpointData.staticOrderWidth));
+                staticOrder = emitter.Add(staticOrder, x);
+            }
+
+            // Dynamic ordering counterpart
+            // TODO[dbg]: Implement
+            IL::ID dynamicOrder;
+            {
+                dynamicOrder = emitter.UInt32(0);
+            }
+
+            // Select the appropriate order
+            breakpointData.order = emitter.Select(
+                emitter.Equal(breakpointData.orderType, emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic))),
+                dynamicOrder,
+                staticOrder
+            );
+            
+#if !defined(NDEBUG) && 0
+            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, x, 0);
+            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, y, 1);
+            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, z, 2);
+            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, threadGroupsX, 3);
+            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, threadGroupsY, 4);
+            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, threadGroupsZ, 5);
+#endif // NDEBUG
+            break;
+        }
+    }
+}
+
+static void GetBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, uint32_t& byteOffset, TrivialStackVector<IL::ID, 16u>& dwords) {
+    const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
+
+    // Structural
+    switch (type->kind) {
+        default: {
+            break;
+        }
+        case Backend::IL::TypeKind::Vector: {
+            auto typed = type->As<Backend::IL::VectorType>();
+
+            // Get all nested dwords
+            for (uint32_t i = 0; i < typed->dimension; i++) {
+                GetBreakpointDataDWords(
+                    context, emitter, emitter.Extract(value, emitter.UInt32(i)),
+                    byteOffset,
+                    dwords
+                );
+            }
+            
+            return;
+        }
+        case Backend::IL::TypeKind::Struct: {
+            auto typed = type->As<Backend::IL::StructType>();
+
+            // Get all nested dwords
+            for (uint32_t i = 0; i < static_cast<uint32_t>(typed->memberTypes.size()); i++) {
+                GetBreakpointDataDWords(
+                    context, emitter, emitter.Extract(value, emitter.UInt32(i)),
+                    byteOffset,
+                    dwords
+                );
+            }
+            
+            return;
+        }
+    }
+
+    // TODO: Hmm, >32 bit handling?
+    const Backend::IL::Type *encodeType = context.program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {
+        .bitWidth = 32
+    });
+    
+    // Type conversion
+    switch (type->kind) {
+        default: {
+            ASSERT(false, "Unexpected type");
+            break;
+        }
+        case Backend::IL::TypeKind::Bool: {
+            value = emitter.Select(value, emitter.UInt32(1), emitter.UInt32(0));
+            break;
+        }
+        case Backend::IL::TypeKind::Int:
+        case Backend::IL::TypeKind::FP: {
+            // TODO[dbg]: Handle ext
+            // TODO[dbg]: double?
+            break;
+        }
+    }
+
+    // Cast to u32
+    value = emitter.BitCast(value, encodeType);
+
+    // Get the number of bytes
+    uint32_t byteCount = static_cast<uint32_t>(GetPODNonAlignedTypeByteSize(type));
+
+    // Fast path for dword aligned offset and data
+    if (byteOffset % sizeof(uint32_t) == 0 && byteCount == sizeof(uint32_t)) {
+        uint32_t dword = static_cast<uint32_t>(byteOffset / sizeof(uint32_t));
+        dwords[dword] = value;
+        return;
+    }
+
+    // Not aligned, write the data out, carefully handling the dword boundaries
+    for (uint32_t componentByteOffset = 0; componentByteOffset < byteCount;) {
+        uint32_t dword          = static_cast<uint32_t>(byteOffset / sizeof(uint32_t));
+        uint32_t dwordBitOffset = static_cast<uint32_t>((byteOffset % sizeof(uint32_t)) * 8);
+        uint32_t nextDWord      = dword + 1;
+        uint32_t remBytes       = std::min(byteCount - componentByteOffset, static_cast<uint32_t>(nextDWord * sizeof(uint32_t)) - componentByteOffset);
+        
+        // Take the value, cut out the portion that we're writing
+        IL::ID maskedValue = emitter.BitAnd(
+            emitter.BitShiftRight(value, emitter.UInt32(static_cast<uint32_t>(componentByteOffset % sizeof(uint32_t)) * 8)),
+            emitter.UInt32(std::bit_width(remBytes) - 1)
+        );
+
+        // Write the destination dword
+        dwords[dword] = emitter.BitOr(dwords[dword], emitter.BitShiftLeft(maskedValue, emitter.UInt32(dwordBitOffset)));
+
+        // Next offset
+        componentByteOffset += remBytes;
+        byteOffset += remBytes;
+    }
+}
+
+void DebugFeature::StoreBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {
+    // Zero init dwords
+    TrivialStackVector<IL::ID, 16u> dwords(breakpoint->hostLayout.dataDWordStride);
+    for (uint32_t i = 0; i < breakpoint->hostLayout.dataDWordStride; i++) {
+        dwords[i] = emitter.UInt32(0);
+    }
+
+    // Get the data dwords, handles alignment
+    uint32_t byteOffset = 0;
+    GetBreakpointDataDWords(context, emitter, value, byteOffset, dwords);
+
+    // Get the data ids
+    IL::ID streamLoadID = emitter.Load(context.program.GetShaderDataMap().Get(streamBufferID)->id);
+    
+    // Payload starts after the header
+    IL::ID payloadStart = emitter.Add(breakpointData.allocationOffset, emitter.UInt32(BreakpointStreamingHeaderDWordCount));
+
+    // Offset by the order
+    payloadStart = emitter.Add(payloadStart, breakpointData.order);
+    
+    // Finally, write them out
+    for (uint32_t i = 0; i < breakpoint->hostLayout.dataDWordStride; i++) {
+        IL::ID offset = emitter.Add(payloadStart, i);
+        emitter.StoreBuffer(streamLoadID, offset, dwords[i]);
+    }
+}
+
+void DebugFeature::StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {    
+    // Handle any kind of compression
+    switch (breakpoint->hostLayout.compression) {
+        default: {
+            //  No compression
+            break;
+        }
+        case BreakpointCompression::FPUnorm8888: {
+            // Compress the value
+            value = CompressFPUnorm8888(context, emitter, value);
+
+            // 255 Alpha
+            // TODO[dbg]: Remove this, testing only
+            value = emitter.BitOr(value, emitter.UInt32(0xFF << 24));
+            break;
+        }
+    }
+
+    // Finally, store the dwords
+    StoreBreakpointDataDWords(context, emitter, value, breakpoint, breakpointData);
+}
+
+IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, const DebugBreakpointMessage& breakpointMessage) {
+    // TODO[dbg]: Send a message back "nothing to debug!" This shouldn't come from a message
+
+    // Find the relevant breakpoint
+    Breakpoint* breakpoint = FindBreakpointNoLock(breakpointMessage.uid);
+    if (!breakpoint) {
+        return it;
+    }
+    
+    // Get the value to be debugged
+    IL::ID value = GetInstructionDebugValue(it);
+    if (value == IL::InvalidID) {
+        return it;
+    }
+
+    // Try to determine the data layout
+    // This may fail if there's nothing suitable
+    if (!GetBreakpointDataHostLayout(context, it, value, breakpoint)) {
+        return it;
+    }
+
+    /**
+     * At this point the breakpoint has been accepted, emitting is allowed
+     **/
+    
+    // Emit in the interrupt block
+    IL::BasicBlock* interruptBlock = context.function.GetBasicBlocks().AllocBlock();
+    IL::Emitter<>   emitter(context.program, *interruptBlock);
+
+    // Intermediate data
+    BreakpointData breakpointData;
+    
+    // Acquire it logically before, to access some shared findings
+    IL::BasicBlock* resumeBlock = AcquireBreakpoint(context, it, interruptBlock, breakpoint, breakpointData);
+
+    // Store the breakpoint data
+    StoreBreakpointData(context, emitter, resumeBlock->begin(), value, breakpoint, breakpointData);
+    
+    // Branch the breakpoint to resume
+    IL::Emitter(context.program, *interruptBlock).Branch(resumeBlock);
+
+    // Resume iteration
+    return resumeBlock->begin();
+}
+
+IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData) {
     /**
      * Basic optimized acquisition.
      *
@@ -702,17 +997,20 @@ IL::BasicBlock::Iterator DebugFeature::AcquireBreakpoint(const IL::VisitContext 
     IL::Emitter<> headerEmitter(context.program, *headerBlock);
 
     // Find the relevant breakpoint
-    BreakpointData breakpointData = GetBreakpoint(headerEmitter, breakpoint);
+    GetBreakpoint(headerEmitter, breakpoint, breakpointData);
 
     // Get the current execution
     IL::ShaderStruct<ExecutionInfo> execution(headerEmitter.ExecutionInfo());
 
     // Get the header
-    IL::ShaderBufferStruct<BreakpointStreamingHeader> header(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.allocationOffset);
+    IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.allocationOffset);
+
+    // Get the ordering, this is used by both the acquire header and export
+    GetBreakpointOrdering(context, headerEmitter, execution, breakpointHeader, breakpoint, breakpointData);
 
     // Read the curent acquired UID
     // This is a regular buffer read, not atomic
-    IL::ID acquiredUID = header.Get<&BreakpointStreamingHeader::acquiredExecutionUID>(headerEmitter);
+    IL::ID acquiredUID = breakpointHeader.Get<&BreakpointHeader::acquiredExecutionUID>(headerEmitter);
 
     // Acquired states, first check if it's equal to the current UID
     IL::ID executionUID      = execution.Get<&ExecutionInfo::rollingExecutionUID>(headerEmitter);
@@ -735,7 +1033,7 @@ IL::BasicBlock::Iterator DebugFeature::AcquireBreakpoint(const IL::VisitContext 
         IL::Emitter<> casEmitter(context.program, *casBlock);
 
         // Actually do the CAS
-        IL::ID previousValue = header.AtomicCompareExchange<&BreakpointStreamingHeader::acquiredExecutionUID>(casEmitter, casEmitter.UInt32(0), executionUID);
+        IL::ID previousValue = breakpointHeader.AtomicCompareExchange<&BreakpointHeader::acquiredExecutionUID>(casEmitter, casEmitter.UInt32(0), executionUID);
 
         // Allocated if it was zero
         IL::ID allocatedCAS = casEmitter.Equal(previousValue, casEmitter.UInt32(0));
@@ -753,8 +1051,16 @@ IL::BasicBlock::Iterator DebugFeature::AcquireBreakpoint(const IL::VisitContext 
             // Write out that the breakpoint was allocated
             // Since streams are per-submission, this is entirely atomic and coherent
             BreakpointAcquisitionMessage::ShaderExport msg;
-            msg.uid = exportEmitter.UInt32(breakpoint.uid);
+            msg.uid = exportEmitter.UInt32(breakpoint->uid);
             exportEmitter.Export(exportID, msg);
+
+            // Update the breakpoint header's device data layout
+            // Used on the host to resolve ordering
+            breakpointHeader.Set<&BreakpointHeader::dataOrder>(exportEmitter, breakpointData.orderType);
+            breakpointHeader.Set<&BreakpointHeader::staticWidth>(exportEmitter, breakpointData.staticOrderWidth);
+            breakpointHeader.Set<&BreakpointHeader::staticHeight>(exportEmitter, breakpointData.staticOrderHeight);
+            breakpointHeader.Set<&BreakpointHeader::staticDepth>(exportEmitter, breakpointData.staticOrderDepth);
+            breakpointHeader.Set<&BreakpointHeader::dwordStreamCount>(exportEmitter, breakpointData.dwordStreamCount);
 
             exportEmitter.Branch(exportMergeBlock);
         }
@@ -781,12 +1087,9 @@ IL::BasicBlock::Iterator DebugFeature::AcquireBreakpoint(const IL::VisitContext 
             IL::ControlFlow::Selection(resumeBlock)
         );
     }
-    
-    // Branch the breakpoint to resume
-    IL::Emitter(context.program, *breakpointBlock).Branch(resumeBlock);
 
-    // Iterate again from resume
-    return resumeBlock->begin();
+    // Iterate again
+    return resumeBlock;
 }
 
 DebugFeature::Breakpoint * DebugFeature::FindBreakpointNoLock(uint32_t uid) {
@@ -801,28 +1104,25 @@ DebugFeature::Breakpoint * DebugFeature::FindBreakpointNoLock(uint32_t uid) {
     return nullptr;
 }
 
-DebugFeature::BreakpointData DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, DebugBreakpointMessage breakpoint) {
-    BreakpointData data{};
-    
-    // Get the tiled allocation offset
-    {
-        std::lock_guard guard(mutex);
+void DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, Breakpoint *breakpoint, BreakpointData& breakpointData) {
+    // Set the dword offset
+    breakpointData.allocationOffset = emitter.UInt32(static_cast<uint32_t>(breakpoint->allocation.offset / sizeof(uint32_t)));
+}
 
-        // Find the relevant breakpoint
-        const Breakpoint* candidate = FindBreakpointNoLock(breakpoint.uid);
+void DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, DebugBreakpointMessage breakpoint, BreakpointData& breakpointData) {
+    std::lock_guard guard(mutex);
 
-        // Shouldn't happen
-        if (!candidate) {
-            ASSERT(false, "Invalid candidate");
-            return data;
-        }
+    // Find the relevant breakpoint
+    Breakpoint* candidate = FindBreakpointNoLock(breakpoint.uid);
 
-        // Set the dword offset
-        data.allocationOffset = emitter.UInt32(static_cast<uint32_t>(candidate->allocation.offset / sizeof(uint32_t)));
+    // Shouldn't happen
+    if (!candidate) {
+        ASSERT(false, "Invalid candidate");
+        return;
     }
 
-    // OK
-    return data;
+    // Set the dword offset
+    GetBreakpoint(emitter, candidate, breakpointData);
 }
 
 FeatureInfo DebugFeature::GetInfo() {
