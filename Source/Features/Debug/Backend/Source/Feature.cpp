@@ -887,7 +887,7 @@ void DebugFeature::StoreBreakpointDataDWords(const IL::VisitContext &context, IL
     
     // Finally, write them out
     for (uint32_t i = 0; i < breakpoint->hostLayout.dataDWordStride; i++) {
-        IL::ID offset = emitter.Add(payloadStart, i);
+        IL::ID offset = emitter.Add(payloadStart, emitter.UInt32(i));
         emitter.StoreBuffer(streamLoadID, offset, dwords[i]);
     }
 }
