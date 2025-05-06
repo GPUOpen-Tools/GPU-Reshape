@@ -65,7 +65,7 @@
 #include <Common/Registry.h>
 
 /// TODO[dbg]: Temporary work
-static constexpr uint32_t kInitialBreakpointSize = 32'000'000;
+static constexpr uint32_t kInitialBreakpointSize = 16'000'000;
 
 /// Maximum streaming size
 static constexpr uint64_t kDebugStreamBufferSize = UINT32_MAX; // ~4gb
@@ -93,6 +93,9 @@ bool DebugFeature::Install() {
 
     // Create monotonic primitive
     exclusiveTransferPrimitiveID = scheduler->CreatePrimitive();
+
+    // Create lifetime queue
+    contextLifetimeQueue.Install(scheduler);
 
     // Create tiled streaming buffer
     streamBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
@@ -137,7 +140,7 @@ bool DebugFeature::Install() {
 
 FeatureHookTable DebugFeature::GetHookTable() {
     FeatureHookTable table{};
-    table.preSubmit = BindDelegate(this, DebugFeature::OnSubmitBatchBegin);
+    table.preSubmit = BindDelegate(this, DebugFeature::OnPreSubmit);
     table.syncPoint = BindDelegate(this, DebugFeature::OnSyncPoint);
     table.join = BindDelegate(this, DebugFeature::OnJoin);
     return table;
@@ -244,16 +247,20 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                 case DeregisterDebugBreakpointMessage::kID: {
                     const DeregisterDebugBreakpointMessage *msg = it.Get<DeregisterDebugBreakpointMessage>();
 
-                    // Find the matching breakpoint
-                    for (auto breakpointIt = breakpoints.begin(); breakpointIt != breakpoints.end(); ++breakpointIt) {
-                        if (breakpointIt->uid == msg->uid) {
-                            breakpoints.erase(breakpointIt);
-                            break;
-                        }
+                    // Mark it for pending destruction
+                    if (Breakpoint* breakpoint = FindBreakpointNoLock(msg->uid)) {
+                        breakpoint->destructionLastCommit = contextLifetimeQueue.GetCommitHead();
+                        breakpoint->pendingDestruction = true;
                     }
 
+                    // Any live breakpoints?
+                    bool anyBreakpoint = false;
+                    for (const Breakpoint& breakpoint : breakpoints) {
+                        anyBreakpoint |= !breakpoint.pendingDestruction;
+                    } 
+
                     // Reset breakpoint device states
-                    if (breakpoints.empty()) {
+                    if (!anyBreakpoint) {
                         poolingState = {};
                     }
                     break;
@@ -263,7 +270,7 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
     }
 }
 
-void DebugFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
+void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
     std::lock_guard guard(mutex);
 
     // Any tiles pending mapping?
@@ -306,6 +313,11 @@ void DebugFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const Co
         .value = exclusiveTransferPrimitiveMonotonicCounter
     });
 
+    // No breakpoints, let's not do redundant work
+    if (breakpoints.empty()) {
+        return;
+    }
+    
     CommandBuilder builder(submitContext.postContext->buffer);
     {
 #if 0 // TODO[dbg]: Use or not?
@@ -337,10 +349,14 @@ void DebugFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const Co
             );
         }
     }
+
+    // Add to the tracker
+    contextLifetimeQueue.Enqueue(submitContext, contexts, contextCount);
 }
 
 void DebugFeature::OnJoin(CommandContextHandle contextHandle) {
-    
+    std::lock_guard guard(mutex);
+    contextLifetimeQueue.Join(contextHandle);
 }
 
 bool DebugFeature::ThrottleController(RequestController &controller) {
@@ -376,6 +392,14 @@ void DebugFeature::OnSyncPoint() {
     if (breakpoints.empty()) {
         return;
     }
+
+    // Remove dead breakpoints
+    breakpoints.erase(
+        std::ranges::remove_if(breakpoints, [&](Breakpoint& breakpoint) {
+            return breakpoint.pendingDestruction && contextLifetimeQueue.IsCommitted(breakpoint.destructionLastCommit);
+        }).begin(),
+        breakpoints.end()
+    );
 
     // Throttle the data requests
     if (!ThrottleController(defaultController)) {

@@ -38,6 +38,7 @@
 #include <Backend/IL/VisitContext.h>
 #include <Backend/IL/Emitters/Emitter.h>
 #include <Backend/Scheduler/SchedulerPrimitive.h>
+#include <Backend/Feature/ContextLifetimeQueue.h>
 #include <Backend/ShaderProgram/ShaderProgram.h>
 #include <Backend/Device/DeviceStateRef.h>
 #include <Backend/IL/ShaderBufferStruct.h>
@@ -100,7 +101,7 @@ public:
 
 private:
     /// Hook tables
-    void OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount);
+    void OnPreSubmit(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount);
     void OnJoin(CommandContextHandle contextHandle);
     void OnSyncPoint();
 
@@ -138,6 +139,12 @@ private:
 
         /// Is this breakpoint pending collection?
         bool pendingCollection = false;
+
+        /// Is this breakpoint pending destruction?
+        bool pendingDestruction = false;
+
+        /// If pending destruction, the commit index we're waiting for
+        uint64_t destructionLastCommit = 0;
 
         /// Underlying allocation
         BuddyAllocation allocation;
@@ -277,6 +284,9 @@ private:
 
     /// Primitive used for all transfer synchronization
     SchedulerPrimitiveID exclusiveTransferPrimitiveID{InvalidSchedulerPrimitiveID};
+
+    /// Lifetime queue for safe destruction
+    ContextLifetimeQueue contextLifetimeQueue;
     
 private:
     /// Shared lock
