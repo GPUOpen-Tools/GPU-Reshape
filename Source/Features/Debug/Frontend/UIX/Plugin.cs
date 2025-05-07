@@ -29,6 +29,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using DynamicData;
+using GRS.Features.Debug.UIX.Settings;
 using GRS.Features.Debug.UIX.ViewModels;
 using GRS.Features.Debug.UIX.Workspace;
 using Runtime.Models.Objects;
@@ -41,6 +42,7 @@ using Studio.ViewModels.Shader;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
+using Studio.Views.Setting;
 using UIX.Views.Editor;
 
 namespace GRS.Features.Debug.UIX
@@ -68,6 +70,12 @@ namespace GRS.Features.Debug.UIX
             
             // Add editor extension
             ServiceRegistry.Get<IEditorService>()?.Extensions.Add(this);
+            
+            // Install the settings
+            ServiceRegistry.Get<ISettingsService>()?.Add(new DebugSettingViewModel());
+            
+            // Add locators
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(DebugSettingViewModel), typeof(DebugSettingView));
 
             // OK
             return true;

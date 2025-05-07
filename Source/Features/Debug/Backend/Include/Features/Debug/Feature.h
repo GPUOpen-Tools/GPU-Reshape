@@ -140,14 +140,14 @@ private:
         /// Is this breakpoint pending collection?
         bool pendingCollection = false;
 
-        /// Is this breakpoint pending destruction?
-        bool pendingDestruction = false;
+        /// Do we have a pending header upload?
+        bool pendingHeader = true;
 
-        /// If pending destruction, the commit index we're waiting for
-        uint64_t destructionLastCommit = 0;
+        /// The templated header for blitting
+        BreakpointHeader header{};
 
         /// Underlying allocation
-        BuddyAllocation allocation;
+        BuddyAllocation streamAllocation;
 
         /// Streaming buffer
         ShaderDataID hostStreamingBuffer = InvalidShaderDataID;
@@ -168,8 +168,22 @@ private:
         /// The total number of streamed dwords
         IL::ID dwordStreamCount{IL::InvalidID};
 
-        /// The allocated offset
-        IL::ID allocationOffset{IL::InvalidID};
+        /// The header offset
+        IL::ID headerOffset{IL::InvalidID};
+
+        /// The data pyaload offset
+        IL::ID payloadOffset{IL::InvalidID};
+    };
+
+    struct PendingDestruction {
+        /// Allocation to be released
+        BuddyAllocation allocation;
+
+        /// Streaming b uffer to be released
+        ShaderDataID hostStreamingBuffer = InvalidShaderDataID;
+
+        /// The last commit that used the allocations
+        uint64_t lastCommit = 0;
     };
 
     /// Find a breakpoint from uid
@@ -236,6 +250,12 @@ private:
     /// @param breakpointData
     /// @return next instruction iterator
     IL::BasicBlock* AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+
+private:
+    /// Create the payload for a given breakpoint
+    /// and update the templated header
+    /// @param breakpoint breakpoint to update
+    void CreateAndUpdatePayload(Breakpoint& breakpoint);
     
 private:
     /// All breakpoints
@@ -246,6 +266,9 @@ private:
 
     /// Debug memory tile allocator
     TileResidencyAllocator tileResidencyAllocator;
+
+    /// All pending destructions
+    std::vector<PendingDestruction> allocationDestructionQueue;
     
 private:
     using TimePoint = std::chrono::time_point<std::chrono::steady_clock, std::chrono::milliseconds>;

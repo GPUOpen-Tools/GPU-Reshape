@@ -44,6 +44,12 @@
     <message name="RegisterDebugBreakpoint">
         <field name="uid" type="uint32"/>
         <field name="flags" type="uint32"/>
+        <field name="streamSize" type="uint32"/>
+    </message>
+
+    <message name="ReallocateDebugBreakpoint">
+        <field name="uid" type="uint32"/>
+        <field name="streamSize" type="uint32"/>
     </message>
 
     <message name="DeregisterDebugBreakpoint">
@@ -63,5 +69,6 @@
         <field name="dataStaticHeight" type="uint32"/>
         <field name="dataStaticDepth" type="uint32"/>
         <field name="dataDynamicCounter" type="uint32"/>
+        <field name="dataRequestStreamSize" type="uint32"/>
     </message>
 </schema>

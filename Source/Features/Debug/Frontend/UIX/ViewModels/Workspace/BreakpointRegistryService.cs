@@ -30,6 +30,7 @@ public class BreakpointRegistryService : IPropertyService
         {
             var msg = bus.Add<RegisterDebugBreakpointMessage>();
             msg.uid = breakpointViewModel.UID;
+            msg.streamSize = (uint)breakpointViewModel.StreamSize;
             
             // TODO[dbg]: Temporary code, remove
             msg.flags = (uint)BreakpointFlag.AllowImageFPUNorm8888Compression;
@@ -49,6 +50,20 @@ public class BreakpointRegistryService : IPropertyService
         {
             var msg = bus.Add<DeregisterDebugBreakpointMessage>();
             msg.uid = breakpointViewModel.UID;
+        }
+    }
+
+    /// <summary>
+    /// Reallocate the backing memory for a breakpoint
+    /// </summary>
+    /// <param name="breakpointViewModel"></param>
+    public void Reallocate(BreakpointViewModel breakpointViewModel)
+    {
+        if (WorkspaceViewModel.Connection?.GetSharedBus() is { } bus)
+        {
+            var msg = bus.Add<ReallocateDebugBreakpointMessage>();
+            msg.uid = breakpointViewModel.UID;
+            msg.streamSize = (uint)breakpointViewModel.StreamSize;
         }
     }
 

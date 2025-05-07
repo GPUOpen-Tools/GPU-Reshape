@@ -64,8 +64,8 @@
 #include <Common/FileSystem.h>
 #include <Common/Registry.h>
 
-/// TODO[dbg]: Temporary work
-static constexpr uint32_t kInitialBreakpointSize = 16'000'000;
+/// Max number of breakpoints, TODO[dbg]: for now?
+static constexpr uint32_t kMaxBreakpoints = 1 << 16;
 
 /// Maximum streaming size
 static constexpr uint64_t kDebugStreamBufferSize = UINT32_MAX; // ~4gb
@@ -134,6 +134,10 @@ bool DebugFeature::Install() {
     // Get state voter, used primarily for scheduler changes
     stateVote = registry->Get<IDeviceStateVote>();
 
+    // Allocate breakpoint headers
+    buddyAllocator.Allocate(kMaxBreakpoints * sizeof(BreakpointHeader));
+    tileResidencyAllocator.Allocate(0, kMaxBreakpoints * sizeof(BreakpointHeader));
+    
     // OK
     return true;
 }
@@ -216,23 +220,42 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                     Breakpoint& breakpoint = breakpoints.emplace_back();
                     breakpoint.uid = msg->uid;
                     breakpoint.flags = static_cast<BreakpointFlag>(msg->flags);
-                    breakpoint.streamSize = kInitialBreakpointSize;
+                    breakpoint.streamSize = msg->streamSize;
 
-                    // Allocate the underlying memory
-                    breakpoint.allocation = buddyAllocator.Allocate(breakpoint.streamSize + sizeof(BreakpointHeader));
+                    // Setup payload
+                    CreateAndUpdatePayload(breakpoint);
 
-                    // Map the relevant times for the range
-                    tileResidencyAllocator.Allocate(
-                        breakpoint.allocation.offset,
-                        breakpoint.allocation.length
-                    );
+                    // Assign breakpoint device states
+                    if (!poolingState.IsSet()) {
+                        // Greatly increase pooling rate, speeds up breakpoint streaming
+                        poolingState = DeviceStateRef(stateVote.GetUnsafe(), DeviceStatePooling {
+                            .intervalMS = 1
+                        });
+                    }
+                    
+                    break;
+                }
+                case ReallocateDebugBreakpointMessage::kID: {
+                    const ReallocateDebugBreakpointMessage *msg = it.Get<ReallocateDebugBreakpointMessage>();
 
-                    // Create streaming counter-part
-                    breakpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-                        .elementCount = breakpoint.allocation.length,
-                        .format = Backend::IL::Format::R8UInt,
-                        .flagSet = ShaderDataBufferFlag::Host
-                    }, "DebugStreamHost");
+                    // Try to find it
+                    Breakpoint* breakpoint = FindBreakpointNoLock(msg->uid);
+                    if (!breakpoint) {
+                        break;
+                    }
+
+                    // Push the old allocation to the queue
+                    allocationDestructionQueue.push_back(PendingDestruction {
+                        .allocation = breakpoint->streamAllocation,
+                        .hostStreamingBuffer = breakpoint->hostStreamingBuffer,
+                        .lastCommit = contextLifetimeQueue.GetCommitHead()
+                    });
+
+                    // Set new streaming size
+                    breakpoint->streamSize = msg->streamSize;
+
+                    // Setup payload
+                    CreateAndUpdatePayload(*breakpoint);
 
                     // Assign breakpoint device states
                     if (!poolingState.IsSet()) {
@@ -247,20 +270,31 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                 case DeregisterDebugBreakpointMessage::kID: {
                     const DeregisterDebugBreakpointMessage *msg = it.Get<DeregisterDebugBreakpointMessage>();
 
-                    // Mark it for pending destruction
-                    if (Breakpoint* breakpoint = FindBreakpointNoLock(msg->uid)) {
-                        breakpoint->destructionLastCommit = contextLifetimeQueue.GetCommitHead();
-                        breakpoint->pendingDestruction = true;
+                    // TODO: This isn't really correct, since we're also not waiting for the instrumentation to commit the old stuff, and the pending submissions...
+                    // Tricky area to get right. We could have an "invalidated" header region, since the memory is technically still valid for a bit, but not sure.
+
+                    // Find breakpoint
+                    auto breakpoint = std::ranges::find_if(breakpoints, [&](const Breakpoint& candidate) {
+                        return candidate.uid == msg->uid;
+                    });
+
+                    // Shouldn't happen, but just in case
+                    if (breakpoint == breakpoints.end()) {
+                        break;
                     }
 
-                    // Any live breakpoints?
-                    bool anyBreakpoint = false;
-                    for (const Breakpoint& breakpoint : breakpoints) {
-                        anyBreakpoint |= !breakpoint.pendingDestruction;
-                    } 
+                    // Free its memory
+                    allocationDestructionQueue.push_back(PendingDestruction {
+                        .allocation = breakpoint->streamAllocation,
+                        .hostStreamingBuffer = breakpoint->hostStreamingBuffer,
+                        .lastCommit = contextLifetimeQueue.GetCommitHead()
+                    });
+
+                    // No longer tracked
+                    breakpoints.erase(breakpoint);
 
                     // Reset breakpoint device states
-                    if (!anyBreakpoint) {
+                    if (breakpoints.empty()) {
                         poolingState = {};
                     }
                     break;
@@ -273,10 +307,12 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
 void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
     std::lock_guard guard(mutex);
 
+    // Anything to sync?
+    bool hasSyncRequest = false;
+
     // Any tiles pending mapping?
     if (tileResidencyAllocator.GetRequestCount()) {
-        // Allocate the next sync value
-        ++exclusiveTransferPrimitiveMonotonicCounter;
+        hasSyncRequest = true;
         
         // All mappings
         std::vector<SchedulerTileMapping> tileMappings;
@@ -299,12 +335,37 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
 
         // Create the tile mappings for the new resource
         scheduler->MapTiles(Queue::ExclusiveTransfer, streamBufferID, static_cast<uint32_t>(tileMappings.size()), tileMappings.data());
+    }
 
+    // No breakpoints, let's not do redundant work
+    if (breakpoints.empty() && !hasSyncRequest) {
+        return;
+    }
+
+    // Sync buffer
+    CommandBuffer syncBuffer;
+    CommandBuilder syncBuilder(syncBuffer);
+
+    // Handle header mappings
+    for (Breakpoint& breakpoint : breakpoints) {
+        if (!breakpoint.pendingHeader) {
+            continue;
+        }
+
+        // Reset the header
+        syncBuilder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
+        breakpoint.pendingHeader = false;
+    }
+
+    if (hasSyncRequest) {
+        // Allocate the next sync value
+        ++exclusiveTransferPrimitiveMonotonicCounter;
+        
         // Submit to the transfer queue
         SchedulerPrimitiveEvent event;
         event.id = exclusiveTransferPrimitiveID;
         event.value = exclusiveTransferPrimitiveMonotonicCounter;
-        scheduler->Schedule(Queue::ExclusiveTransfer, CommandBuffer {}, &event);
+        scheduler->Schedule(Queue::ExclusiveTransfer, syncBuffer, &event);
     }
 
     // Submissions always wait for the last mappings
@@ -312,13 +373,8 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
         .id = exclusiveTransferPrimitiveID,
         .value = exclusiveTransferPrimitiveMonotonicCounter
     });
-
-    // No breakpoints, let's not do redundant work
-    if (breakpoints.empty()) {
-        return;
-    }
     
-    CommandBuilder builder(submitContext.postContext->buffer);
+    CommandBuilder postBuilder(submitContext.postContext->buffer);
     {
 #if 0 // TODO[dbg]: Use or not?
         // Wait for any ongoing shaders
@@ -338,14 +394,22 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
 
         builder.UAVBarrier();
 #endif
-    
+
         // Copy the debug streaming buffer to host
+        // TODO[dbg]: This is incorrect, of course
         for (const Breakpoint& breakpoint : breakpoints) {
-            // TODO[dbg]: This is incorrect, of course
-            builder.CopyBuffer(
-                streamBufferID, breakpoint.allocation.offset,
+            // TODO[dbg]: Now we're doing two copies, not so nice
+            
+            postBuilder.CopyBuffer(
+                streamBufferID, breakpoint.uid * sizeof(BreakpointHeader),
                 breakpoint.hostStreamingBuffer, 0,
-                breakpoint.allocation.length
+                sizeof(BreakpointHeader)
+            );
+            
+            postBuilder.CopyBuffer(
+                streamBufferID, breakpoint.streamAllocation.offset,
+                breakpoint.hostStreamingBuffer, sizeof(BreakpointHeader),
+                breakpoint.streamAllocation.length
             );
         }
     }
@@ -393,13 +457,19 @@ void DebugFeature::OnSyncPoint() {
         return;
     }
 
-    // Remove dead breakpoints
-    breakpoints.erase(
-        std::ranges::remove_if(breakpoints, [&](Breakpoint& breakpoint) {
-            return breakpoint.pendingDestruction && contextLifetimeQueue.IsCommitted(breakpoint.destructionLastCommit);
-        }).begin(),
-        breakpoints.end()
-    );
+    // Remove dead allocations
+    allocationDestructionQueue.erase(std::ranges::remove_if(allocationDestructionQueue, [&](const PendingDestruction& pending) {
+        if (!contextLifetimeQueue.IsCommitted(pending.lastCommit)) {
+            return false;
+        }
+
+        // No longer in use, free the memory
+        buddyAllocator.Free(pending.allocation);
+
+        // TODO[dbg]: Fix the bug!
+        // shaderDataHost->Destroy(pending.hostStreamingBuffer);
+        return true;
+    }).begin(), allocationDestructionQueue.end());
 
     // Throttle the data requests
     if (!ThrottleController(defaultController)) {
@@ -424,7 +494,8 @@ void DebugFeature::OnSyncPoint() {
         void* payload = header + 1;
 
         // How much we actually need to stream
-        uint32_t effectiveStreamSize = header->dwordStreamCount * sizeof(uint32_t);
+        uint64_t requestedStreamSize = header->dwordStreamCount * sizeof(uint32_t);
+        uint64_t effectiveStreamSize = std::min(breakpoint.streamSize, requestedStreamSize);
         
         // Empty out last stream
         MessageStreamView<DebugBreakpointStreamMessage> view(stream);
@@ -449,13 +520,13 @@ void DebugFeature::OnSyncPoint() {
         message->dataStaticHeight = header->staticHeight;
         message->dataStaticDepth = header->staticDepth;
         message->dataDynamicCounter = header->dynamicCounter;
+        message->dataRequestStreamSize = static_cast<uint32_t>(requestedStreamSize);
 
         // Done!
         shaderDataHost->Unmap(breakpoint.hostStreamingBuffer, mapped);
     
         // Patch the header
-        BreakpointHeader patchHeader{};
-        builder.StageBuffer(streamBufferID, breakpoint.allocation.offset, sizeof(BreakpointHeader), &patchHeader);
+        builder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
 
         // Collected!
         breakpoint.pendingCollection = false;
@@ -742,9 +813,12 @@ void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Em
             // Determine the max number of dwords
             breakpointData.dwordStreamCount = emitter.Mul(breakpointData.staticOrderWidth, emitter.Mul(breakpointData.staticOrderHeight, emitter.Mul(breakpointData.staticOrderDepth, dwordStride)));
 
+            // Max number of dwords
+            IL::ID payloadDWordCount = breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(emitter);
+
             // Select dynamic if we exceed 
             breakpointData.orderType = emitter.Select(
-                emitter.GreaterThan(breakpointData.dwordStreamCount, emitter.UInt32(static_cast<uint32_t>(breakpoint->streamSize /  sizeof(uint32_t)))),
+                emitter.GreaterThan(breakpointData.dwordStreamCount, payloadDWordCount),
                 emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic)),
                 emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Static))
             );
@@ -784,9 +858,6 @@ void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Em
             breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, x, 0);
             breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, y, 1);
             breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, z, 2);
-            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, threadGroupsX, 3);
-            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, threadGroupsY, 4);
-            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, threadGroupsZ, 5);
 #endif // NDEBUG
             break;
         }
@@ -903,11 +974,8 @@ void DebugFeature::StoreBreakpointDataDWords(const IL::VisitContext &context, IL
     // Get the data ids
     IL::ID streamLoadID = emitter.Load(context.program.GetShaderDataMap().Get(streamBufferID)->id);
     
-    // Payload starts after the header
-    IL::ID payloadStart = emitter.Add(breakpointData.allocationOffset, emitter.UInt32(BreakpointStreamingHeaderDWordCount));
-
     // Offset by the order
-    payloadStart = emitter.Add(payloadStart, breakpointData.order);
+    IL::ID payloadStart = emitter.Add(breakpointData.payloadOffset, breakpointData.order);
     
     // Finally, write them out
     for (uint32_t i = 0; i < breakpoint->hostLayout.dataDWordStride; i++) {
@@ -1027,7 +1095,10 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
     IL::ShaderStruct<ExecutionInfo> execution(headerEmitter.ExecutionInfo());
 
     // Get the header
-    IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.allocationOffset);
+    IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.headerOffset);
+
+    // Get payload offset
+    breakpointData.payloadOffset = breakpointHeader.Get<&BreakpointHeader::payloadDWordOffset>(headerEmitter);
 
     // Get the ordering, this is used by both the acquire header and export
     GetBreakpointOrdering(context, headerEmitter, execution, breakpointHeader, breakpoint, breakpointData);
@@ -1116,6 +1187,28 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
     return resumeBlock;
 }
 
+void DebugFeature::CreateAndUpdatePayload(Breakpoint &breakpoint) {
+    // Allocate the underlying memory
+    breakpoint.streamAllocation = buddyAllocator.Allocate(breakpoint.streamSize);
+
+    // Setup the default header
+    breakpoint.header.payloadDWordOffset = static_cast<uint32_t>(breakpoint.streamAllocation.offset / sizeof(uint32_t));
+    breakpoint.header.payloadDWordCount  = static_cast<uint32_t>(breakpoint.streamSize / sizeof(uint32_t));
+
+    // Map the relevant times for the range
+    tileResidencyAllocator.Allocate(
+        breakpoint.streamAllocation.offset,
+        breakpoint.streamAllocation.length
+    );
+
+    // Create streaming counter-part
+    breakpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
+        .elementCount = breakpoint.streamAllocation.length + sizeof(BreakpointHeader),
+        .format = Backend::IL::Format::R8UInt,
+        .flagSet = ShaderDataBufferFlag::Host
+    }, "DebugStreamHost");
+}
+
 DebugFeature::Breakpoint * DebugFeature::FindBreakpointNoLock(uint32_t uid) {
     // Find the relevant breakpoint
     for (Breakpoint& _candidate : breakpoints) {
@@ -1130,7 +1223,7 @@ DebugFeature::Breakpoint * DebugFeature::FindBreakpointNoLock(uint32_t uid) {
 
 void DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, Breakpoint *breakpoint, BreakpointData& breakpointData) {
     // Set the dword offset
-    breakpointData.allocationOffset = emitter.UInt32(static_cast<uint32_t>(breakpoint->allocation.offset / sizeof(uint32_t)));
+    breakpointData.headerOffset = emitter.UInt32(breakpoint->uid * BreakpointHeaderDWordCount);
 }
 
 void DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, DebugBreakpointMessage breakpoint, BreakpointData& breakpointData) {

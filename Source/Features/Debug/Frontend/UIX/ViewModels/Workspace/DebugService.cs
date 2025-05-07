@@ -32,11 +32,13 @@ using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using GRS.Features.Debug.UIX.Settings;
 using GRS.Features.Debug.UIX.ViewModels;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Instrumentation;
+using Studio.Services;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 using UIX.Views;
@@ -74,6 +76,9 @@ namespace GRS.Features.Debug.UIX.Workspace
 
             // Get the breakpoint registry for the workspace
             _breakpointRegistryService = ViewModel.PropertyCollection.GetService<BreakpointRegistryService>();
+
+            // Get the settings
+            _debugSettingViewModel = ServiceRegistry.Get<ISettingsService>()?.Get<DebugSettingViewModel>();
         }
 
         /// <summary>
@@ -94,8 +99,6 @@ namespace GRS.Features.Debug.UIX.Workspace
             
             foreach (DebugBreakpointStreamMessage message in view)
             {
-                uint request = message.request;
-
                 // TODO[dbg]: Temporary code for selecting the display mode
                 BreakpointDisplayMode mode;
                 if ((BreakpointDataOrder)message.dataOrder == BreakpointDataOrder.Static &&
@@ -118,34 +121,76 @@ namespace GRS.Features.Debug.UIX.Workspace
                     case BreakpointDisplayMode.Structural:
                         break;
                 }
+
+                // Total number of streamed data
+                uint byteCount = (uint)message.data.Count;
                 
-                var flat = message.Flat;
+                // Flatten the data for UI thread
+                DebugBreakpointStreamMessage.FlatInfo flat = message.Flat;
                 
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    // Get the breakpoint
-                    if (!(_breakpointRegistryService?.Lookup.TryGetValue(flat.uid, out BreakpointViewModel? breakpointViewModel) ?? false))
-                    {
-                        return;
-                    }
-
-                    // Install the payload
-                    switch (mode)
-                    {
-                        case BreakpointDisplayMode.Image:
-                            InstallImagePayload(breakpointViewModel, (Bitmap)payload!);
-                            break;
-                        case BreakpointDisplayMode.Structural:
-                            break;
-                    }
-
-                    // Notice the streamer that this request was handled
-                    if (ViewModel.Connection?.GetSharedBus().Add<DebugBreakpointStreamHandledMessage>() is { } limit)
-                    {
-                        limit.request = request;
-                    }
+                    ProcessStreamRequest(flat, mode, payload, byteCount);
                 });
             }
+        }
+
+        /// <summary>
+        /// Invoked on stream requests
+        /// </summary>
+        private void ProcessStreamRequest(DebugBreakpointStreamMessage.FlatInfo flat, BreakpointDisplayMode mode, object? payload, uint byteCount)
+        {
+            uint request = flat.request;
+
+            // Get the breakpoint
+            if (!(_breakpointRegistryService?.Lookup.TryGetValue(flat.uid, out BreakpointViewModel? breakpointViewModel) ?? false))
+            {
+                return;
+            }
+
+            // Install the payload
+            switch (mode)
+            {
+                case BreakpointDisplayMode.Image:
+                    InstallImagePayload(breakpointViewModel, (Bitmap)payload!);
+                    break;
+                case BreakpointDisplayMode.Structural:
+                    break;
+            }
+
+            // Notice the streamer that this request was handled
+            if (ViewModel.Connection?.GetSharedBus() is { } sharedBus)
+            {
+                var limit = sharedBus.Add<DebugBreakpointStreamHandledMessage>();
+                limit.request = request;
+            }
+
+            // Did we export more than we streamed?
+            // If so, try to grow the backing memory
+            if (byteCount < flat.dataRequestStreamSize)
+            {
+                ReallocateBreakpoint(breakpointViewModel, flat);
+            }
+        }
+
+        /// <summary>
+        /// Grow the backing memory of a breakpoint
+        /// </summary>
+        private void ReallocateBreakpoint(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage.FlatInfo flat)
+        {
+            // Determine the new size
+            uint limit             = (_debugSettingViewModel?.MaxBreakpointMemoryMb ?? 32) * 1000000;
+            uint optimalStreamSize = Math.Min((uint)(flat.dataRequestStreamSize * 1.1), limit);
+
+            // May be capped by limits
+            if (breakpointViewModel.StreamSize == optimalStreamSize)
+            {
+                return;
+            }
+            
+            // Let the backend reallocate it
+            breakpointViewModel.StreamSize = optimalStreamSize;
+            _breakpointRegistryService?.Reallocate(breakpointViewModel);
         }
 
         /// <summary>
@@ -232,5 +277,10 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// Internal registry
         /// </summary>
         private readonly BreakpointRegistryService? _breakpointRegistryService;
+
+        /// <summary>
+        /// Internal settings
+        /// </summary>
+        private readonly DebugSettingViewModel? _debugSettingViewModel;
     }
 }

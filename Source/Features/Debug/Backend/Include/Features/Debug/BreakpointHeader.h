@@ -62,6 +62,12 @@ struct BreakpointHeader {
     /// The execution UID that owns this breakpoint
     uint32_t acquiredExecutionUID{0};
 
+    /// Starting offset of the payload dwords
+    uint32_t payloadDWordOffset{0};
+
+    /// Total number of payload dwords
+    uint32_t payloadDWordCount{0};
+
     /// The lock for checksum data
     uint32_t streamingChecksumLock{0};
 
@@ -85,9 +91,7 @@ struct BreakpointHeader {
     uint32_t dwordStreamCount{0};
 
     /// Useful for debugging
-#ifndef NDEBUG
-    uint32_t debugPayloads[8];
-#endif // NDEBUG
+    uint32_t paddingPayload[5];
 };
 
 struct BreakpointPatchData {
@@ -99,5 +103,9 @@ struct BreakpointPatchData {
 };
 
 /// Number of dwords
+static constexpr uint32_t BreakpointHeaderDWordCount = sizeof(BreakpointHeader) / sizeof(uint32_t);
 static constexpr uint32_t BreakpointDynamicHeaderDWordCount = sizeof(BreakpointDynamicHeader) / sizeof(uint32_t);
 static constexpr uint32_t BreakpointStreamingHeaderDWordCount = sizeof(BreakpointHeader) / sizeof(uint32_t);
+
+/// Validation
+static_assert(sizeof(BreakpointHeader) == 64, "Unexpected size");
