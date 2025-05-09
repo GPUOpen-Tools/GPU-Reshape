@@ -60,6 +60,9 @@
 #define ENABLE_LOGGING 0
 #endif // NDEBUG
 
+/// Catch invalid detouring
+#define CATCH_DETOUR 0
+
 /// Greatly simplifies debugging
 #define ENABLE_WHITELIST 0
 
@@ -376,7 +379,10 @@ void ConditionallyBeginDetour(bool insideTransaction) {
 void ConditionallyEndDetour(bool insideTransaction) {
     // Commit if needed
     if (!insideTransaction) {
-        if (FAILED(DetourTransactionCommit())) {
+        if (LONG ErrorCode = DetourTransactionCommit(); FAILED(ErrorCode)) {
+#if CATCH_DETOUR
+            DebugBreak();
+#endif // CATCH_DETOUR
             return;
         }
     }
@@ -1622,6 +1628,20 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
     return next(flags, riid, ppFactory);
 }
 
+LONG DetourAttachCheck(void **ptr, void* detour) {
+    uint8_t* targetBlock = static_cast<uint8_t*>(*ptr);
+
+    // Check if there's an active breakpoint on the target
+    // This is usually due to manual function breakpoints in Visual Studio, leading to hard diagnose issues
+    if (targetBlock[0] == 0xCC) {
+        OutputDebugStringA("[GRS] Detouring failed due to active breakpoint\n");
+        ExitProcess(1);
+    }
+
+    // Attach as regular
+    return DetourAttach(ptr, detour);
+}
+
 void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
     OnDetourModule(AMDAGSModule, handle);
     
@@ -1634,19 +1654,19 @@ void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSInitialize = reinterpret_cast<PFN_AMD_AGS_INITIALIZE>(KernelXGetProcAddressOriginal(handle, "agsInitialize"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSInitialize), reinterpret_cast<void*>(HookAMDAGSInitialize));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSInitialize), reinterpret_cast<void*>(HookAMDAGSInitialize));
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSDeinitialize = reinterpret_cast<PFN_AMD_AGS_DEINITIALIZE>(KernelXGetProcAddressOriginal(handle, "agsDeInitialize"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDeinitialize), reinterpret_cast<void*>(HookAMDAGSDeinitialize));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDeinitialize), reinterpret_cast<void*>(HookAMDAGSDeinitialize));
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSCreateDevice = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSCreateDevice), reinterpret_cast<void*>(HookAMDAGSCreateDevice));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSCreateDevice), reinterpret_cast<void*>(HookAMDAGSCreateDevice));
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSDestroyDevice = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_DestroyDevice"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDestroyDevice), reinterpret_cast<void*>(HookAMDAGSDestroyDevice));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDestroyDevice), reinterpret_cast<void*>(HookAMDAGSDestroyDevice));
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSPushMarker = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_PushMarker"));
@@ -1654,11 +1674,11 @@ void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSPopMarker = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_PopMarker"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPopMarker), reinterpret_cast<void*>(HookAMDAGSPopMarker));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPopMarker), reinterpret_cast<void*>(HookAMDAGSPopMarker));
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSSetMarker = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_SetMarker"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSSetMarker), reinterpret_cast<void*>(HookAMDAGSSetMarker));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSSetMarker), reinterpret_cast<void*>(HookAMDAGSSetMarker));
 
     // End and update
     ConditionallyEndDetour(insideTransaction);
@@ -1676,15 +1696,15 @@ void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
 
     // Attach against original address
     DetourFunctionTable.next_D3D12GetInterfaceOriginal = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(KernelXGetProcAddressOriginal(handle, "D3D12GetInterface"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
 
     // Attach against original address
     DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "D3D12CreateDevice"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
 
     // Attach against original address
     DetourFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(KernelXGetProcAddressOriginal(handle, "D3D12EnableExperimentalFeatures"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
 
     // End and update
     ConditionallyEndDetour(insideTransaction);
@@ -1702,7 +1722,7 @@ void DetourD3D11Module(HMODULE handle, bool insideTransaction) {
 
     // Attach against original address
     DetourFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "D3D11On12CreateDevice"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D11On12CreateDeviceOriginal), reinterpret_cast<void*>(HookD3D11On12CreateDevice));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D11On12CreateDeviceOriginal), reinterpret_cast<void*>(HookD3D11On12CreateDevice));
 
     // End and update
     ConditionallyEndDetour(insideTransaction);
@@ -1720,18 +1740,18 @@ void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
 
     // Attach against original address
     DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(KernelXGetProcAddressOriginal(handle, "CreateDXGIFactory"));
-    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
+    DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
 
     // Attach against original address
     DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(KernelXGetProcAddressOriginal(handle, "CreateDXGIFactory1"));
     if (DetourFunctionTable.next_CreateDXGIFactory1Original) {
-        DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
+        DetourAttachCheck(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
     }
 
     // Attach against original address
     DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(KernelXGetProcAddressOriginal(handle, "CreateDXGIFactory2"));
     if (DetourFunctionTable.next_CreateDXGIFactory2Original) {
-        DetourAttach(&reinterpret_cast<void *&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
+        DetourAttachCheck(&reinterpret_cast<void *&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
     }
 
     // End and update
@@ -1945,7 +1965,10 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         DetourForeignModules(ModuleSnapshot {});
 
         // Commit all transactions
-        if (FAILED(DetourTransactionCommit())) {
+        if (LONG ErrorCode = DetourTransactionCommit(); FAILED(ErrorCode)) {
+#if CATCH_DETOUR
+            DebugBreak();
+#endif // CATCH_DETOUR
             return FALSE;
         }
 
@@ -1999,7 +2022,10 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             CloseHandle(InitializationEvent);
 
             // Commit all transactions
-            if (FAILED(DetourTransactionCommit())) {
+            if (LONG ErrorCode = DetourTransactionCommit(); FAILED(ErrorCode)) {
+#if CATCH_DETOUR
+                DebugBreak();
+#endif // CATCH_DETOUR
                 return FALSE;
             }
 
