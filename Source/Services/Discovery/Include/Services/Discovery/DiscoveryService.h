@@ -32,6 +32,7 @@
 
 // Discovery
 #include <Discovery/DiscoveryProcessCreateInfo.h>
+#include <Discovery/DiscoveryProcessLocalInfo.h>
 #include <Discovery/DiscoveryProcessInfo.h>
 
 // Std
@@ -77,6 +78,12 @@ public:
     ///   ? Disables global hooking of respective discovery
     /// \return success state
     bool UninstallGlobal();
+
+    /// Install all listeners onto the local process
+    /// @param localInfo the local install information
+    /// @param environment ordered message stream environment fed to the application
+    /// @return success state
+    bool InstallLocal(const DiscoveryProcessLocalInfo& localInfo, const MessageStream& environment);
 
     /// Check if conflicting instances are installed
     /// \return true if any are installed
