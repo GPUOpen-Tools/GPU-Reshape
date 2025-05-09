@@ -38,12 +38,24 @@ namespace Studio.App;
 
 public class CliApp : Application
 {
+    // Setup command signatures
+    static readonly RootCommand Command = new RootCommand("GPU Reshape")
+    {
+        LaunchCommand.Create(),
+        RenderCommand.Create()
+    };
+    
     public static void Build(string[] args)
     {
         AppBuilder.Configure<CliApp>()
             .UsePlatformDetect()
             .LogToTrace()
             .Start(AppMain, args);
+    }
+
+    public static bool IsCLI(string[] args)
+    {
+        return Command.Parse(args).Errors.Count == 0;
     }
 
     private static void AppMain(Application app, string[] args)
@@ -56,15 +68,8 @@ public class CliApp : Application
 
     private static async void AppMainTask(string[] args)
     {
-        // Setup command signatures
-        var command = new RootCommand("GPU Reshape")
-        {
-            LaunchCommand.Create(),
-            RenderCommand.Create()
-        };
-        
         // Invoke sync
-        await command.InvokeAsync(args);
+        await Command.InvokeAsync(args);
 
         // Stop the dispatcher
         _cancellationToken.Cancel();

@@ -25,6 +25,7 @@
 // 
 
 using System;
+using System.CommandLine;
 using System.Globalization;
 using System.Threading;
 using Avalonia;
@@ -38,8 +39,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.Themes;
 using Projektanker.Icons.Avalonia;
 using Projektanker.Icons.Avalonia.FontAwesome;
-using Studio.Plugin;
-using Studio.Services;
+using Studio.App.Commands;
 using Studio.ViewModels;
 using Studio.Views;
 
@@ -58,9 +58,15 @@ namespace Studio.App
             }
         };
 
-        public static void Build()
+        // Setup command signatures
+        static readonly RootCommand Command = new RootCommand("GPU Reshape")
         {
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(Array.Empty<string>());
+            AttachCommand.Create()
+        };
+
+        public static void Build(string[] args)
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         
         private static AppBuilder BuildAvaloniaApp()
@@ -104,7 +110,7 @@ namespace Studio.App
                     ));
         }
         
-        public override void OnFrameworkInitializationCompleted()
+        public override async void OnFrameworkInitializationCompleted()
         {
             // Create view model
             var vm = new MainWindowViewModel();
@@ -151,6 +157,12 @@ namespace Studio.App
             // Install all user plugins
             _serviceProvider.InstallPlugins();
 
+            // Invoke command line if requested
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { Args: { Length: > 0 } args })
+            {
+                await Command.InvokeAsync(args);
+            }
+            
             base.OnFrameworkInitializationCompleted();
         }
 
