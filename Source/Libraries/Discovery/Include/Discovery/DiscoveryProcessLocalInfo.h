@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,42 +26,16 @@
 
 #pragma once
 
-// Discovery
-#include <Discovery/IDiscoveryListener.h>
+// Common
+#include <Common/GlobalUID.h>
 
-// Std
-#include <string_view>
-#include <filesystem>
+struct DiscoveryProcessLocalInfo {
+    /// Optional, reserved token
+    GlobalUID reservedToken{};
 
-class DX12DiscoveryListener final : public IDiscoveryListener {
-public:
-    DX12DiscoveryListener();
+    /// Should all child processes be captured?
+    bool captureChildProcesses = true;
 
-    /// Overrides
-    bool IsRunning() override;
-    bool IsGloballyInstalled() override;
-    bool Start() override;
-    bool Stop() override;
-    void SetupBootstrappingEnvironment(const DiscoveryProcessCreateInfo& info, DiscoveryBootstrappingEnvironment& env) override;
-    bool InstallGlobal() override;
-    bool UninstallGlobal() override;
-    bool InstallLocal() override;
-    bool HasConflictingInstances() override;
-    bool UninstallConflictingInstances() override;
-
-private:
-    /// Start the service process
-    /// \return success state
-    bool StartProcess();
-
-    /// Stop the service process
-    /// \return success state
-    bool StopProcess();
-    
-private:
-    /// Is this listener presently globally installed?
-    bool isGlobal{false};
-
-    /// Backend path
-    std::filesystem::path servicePath;
+    /// Should all devices be attached?
+    bool attachAllDevices = true;
 };

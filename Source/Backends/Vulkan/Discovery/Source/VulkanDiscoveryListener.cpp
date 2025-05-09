@@ -391,6 +391,19 @@ bool VulkanDiscoveryListener::UninstallGlobal() {
     return true;
 }
 
+bool VulkanDiscoveryListener::InstallLocal() {
+    // Add search path and layer
+#ifdef _WIN32
+    _putenv_s("VK_LAYER_PATH", GetCurrentExecutableDirectory().string().c_str());
+    _putenv_s("VK_INSTANCE_LAYERS", VK_GPUOPEN_GPURESHAPE_LAYER_NAME);
+#else // WIN32
+#   error Not implemented
+#endif //  WIN32
+
+    // OK
+    return true;
+}
+
 bool VulkanDiscoveryListener::HasConflictingInstances() {
     // Check user
     if (FindConflictingImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers")) {
