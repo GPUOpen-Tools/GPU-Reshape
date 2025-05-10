@@ -173,6 +173,9 @@ private:
 
         /// The data pyaload offset
         IL::ID payloadOffset{IL::InvalidID};
+
+        /// Is this a dynamic export?
+        IL::ID isDynamic{IL::InvalidID};
     };
 
     struct PendingDestruction {
@@ -250,6 +253,14 @@ private:
     /// @param breakpointData
     /// @return next instruction iterator
     IL::BasicBlock* AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    
+    /// Acquire and allocate any appropriate ordering
+    /// @param it instruction being instrumented
+    /// @param breakpointBlock the breakpoint interrupt block
+    /// @param breakpoint breakpoint data
+    /// @param breakpointData
+    /// @return next instruction iterator
+    IL::BasicBlock* AcquireAndAllocateBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
 
 private:
     /// Create the payload for a given breakpoint

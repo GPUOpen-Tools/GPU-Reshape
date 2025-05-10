@@ -816,9 +816,12 @@ void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Em
             // Max number of dwords
             IL::ID payloadDWordCount = breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(emitter);
 
+            /// Is this a dynamic payload?
+            breakpointData.isDynamic = emitter.GreaterThan(breakpointData.dwordStreamCount, payloadDWordCount);
+
             // Select dynamic if we exceed 
             breakpointData.orderType = emitter.Select(
-                emitter.GreaterThan(breakpointData.dwordStreamCount, payloadDWordCount),
+                breakpointData.isDynamic,
                 emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic)),
                 emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Static))
             );
@@ -840,19 +843,8 @@ void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Em
                 staticOrder = emitter.Add(staticOrder, x);
             }
 
-            // Dynamic ordering counterpart
-            // TODO[dbg]: Implement
-            IL::ID dynamicOrder;
-            {
-                dynamicOrder = emitter.UInt32(0);
-            }
-
-            // Select the appropriate order
-            breakpointData.order = emitter.Select(
-                emitter.Equal(breakpointData.orderType, emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic))),
-                dynamicOrder,
-                staticOrder
-            );
+            // Assume static ordering for now, dynamic exporting happens later
+            breakpointData.order = staticOrder;
             
 #if !defined(NDEBUG) && 0
             breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, x, 0);
@@ -1039,7 +1031,7 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     BreakpointData breakpointData;
     
     // Acquire it logically before, to access some shared findings
-    IL::BasicBlock* resumeBlock = AcquireBreakpoint(context, it, interruptBlock, breakpoint, breakpointData);
+    IL::BasicBlock* resumeBlock = AcquireAndAllocateBreakpoint(context, it, interruptBlock, breakpoint, breakpointData);
 
     // Store the breakpoint data
     StoreBreakpointData(context, emitter, resumeBlock->begin(), value, breakpoint, breakpointData);
@@ -1073,12 +1065,12 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
      */
 
     // Allocate blocks
-    IL::BasicBlock* headerBlock = context.function.GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* casBlock    = context.function.GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* casMerge    = context.function.GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* exportBlock      = context.function.GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* exportMergeBlock = context.function.GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* headerBlock      = context.function.GetBasicBlocks().AllocBlock("Bk.Acquire.Header");
+    IL::BasicBlock* casBlock         = context.function.GetBasicBlocks().AllocBlock("Bk.Acquire.CAS");
+    IL::BasicBlock* casMerge         = context.function.GetBasicBlocks().AllocBlock("Bk.Acquire.CAS.Merge");
+    IL::BasicBlock* resumeBlock      = context.function.GetBasicBlocks().AllocBlock("Bk.Acquire.Resume");
+    IL::BasicBlock* exportBlock      = context.function.GetBasicBlocks().AllocBlock("Bk.Acquire.Export");
+    IL::BasicBlock* exportMergeBlock = context.function.GetBasicBlocks().AllocBlock("Bk.Acquire.Export.Merge");
     
     // Split the iterator to resume
     // Excluding the iterator itself, since we may want to reference the instruction results
@@ -1167,7 +1159,7 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
         }
     }
 
-    // Resume
+    // Merge
     {
         IL::Emitter<> mergeEmitter(context.program, *casMerge);
 
@@ -1184,6 +1176,68 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
     }
 
     // Iterate again
+    return resumeBlock;
+}
+
+IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
+    /**
+    * acq = acquire()
+    * if (acq) {
+    *   if (dynamic) {
+    *     order = allocDynamic()
+    *   }
+    *
+    *   order = phi <...>
+    *   breakpoint
+    */
+
+    // Allocate blocks
+    IL::BasicBlock* headerBlock  = context.function.GetBasicBlocks().AllocBlock("Bk.Inject.Header");
+    IL::BasicBlock* dynamicBlock = context.function.GetBasicBlocks().AllocBlock("Bk.Inject.DynamicAlloc");
+    IL::BasicBlock* mergeBlock   = context.function.GetBasicBlocks().AllocBlock("Bk.Inject.Merge");
+
+    // Acquire the breakpoint
+    IL::BasicBlock* resumeBlock = AcquireBreakpoint(context, it, headerBlock, breakpoint, breakpointData);
+
+    // Header
+    {
+        IL::Emitter<> emitter(context.program, *headerBlock);
+        emitter.BranchConditional(breakpointData.isDynamic, dynamicBlock, mergeBlock, IL::ControlFlow::Selection(mergeBlock));
+    }
+
+    // Dynamic Allocation
+    IL::ID dynamicOrder;
+    {
+        IL::Emitter<> dynamicEmitter(context.program, *dynamicBlock);
+
+        // Get the header
+        IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.headerOffset);
+
+        // Get dynamic ordering
+        dynamicOrder = breakpointHeader.AtomicAdd<&BreakpointHeader::dynamicCounter>(dynamicEmitter, dynamicEmitter.UInt32(1));
+
+        // Limit by available number of dwords
+        dynamicOrder = IL::ExtendedEmitter(dynamicEmitter).Min(dynamicOrder, breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(dynamicEmitter));
+
+        // To merge
+        dynamicEmitter.Branch(mergeBlock);
+    }
+
+    // Merge
+    {
+        IL::Emitter<> mergeEmitter(context.program, *mergeBlock);
+
+        // Select the appropriate ordering
+        breakpointData.order = mergeEmitter.Phi(
+            headerBlock, breakpointData.order,
+            dynamicBlock, dynamicOrder
+        );
+
+        // To the actual breakpoint
+        mergeEmitter.Branch(breakpointBlock);
+    }
+
+    // OK
     return resumeBlock;
 }
 

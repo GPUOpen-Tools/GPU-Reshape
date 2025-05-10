@@ -62,6 +62,12 @@ namespace IL {
             return emitter.AtomicCompareExchange(emitter.AddressOf(buffer, GetDWordOffset<M>(emitter)), comparator, value);
         }
 
+        /// Perform an atomic add on a member
+        template<auto M, typename E>
+        IL::ID AtomicAdd(E& emitter, IL::ID value) {
+            return emitter.AtomicAdd(emitter.AddressOf(buffer, GetDWordOffset<M>(emitter)), value);
+        }
+
         /// Get the address of a member
         template<auto M, typename E>
         IL::ID AddressOf(E& emitter) {
