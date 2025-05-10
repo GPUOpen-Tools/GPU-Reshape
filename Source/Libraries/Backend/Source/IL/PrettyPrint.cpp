@@ -83,7 +83,13 @@ void IL::PrettyPrint(const Program *program, const Function &function, IL::Prett
 }
 
 void IL::PrettyPrint(const Program *program, const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
-    out.Line() << "%" << basicBlock.GetID() << " = BasicBlock\n";
+    out.Line() << "%" << basicBlock.GetID() << " = BasicBlock";
+
+    if (const char* name = basicBlock.GetName()) {
+        out.stream << " '" << name << "'";
+    }
+
+    out.stream << "\n";
 
     // Print all instructions
     for (const IL::Instruction *instr: basicBlock) {

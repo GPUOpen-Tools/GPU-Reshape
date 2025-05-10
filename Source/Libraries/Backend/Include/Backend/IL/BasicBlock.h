@@ -525,6 +525,16 @@ namespace IL {
             return flags & value;
         }
 
+        /// Set the name of this block
+        void SetName(const char* value) {
+            name = value;
+        }
+
+        /// Get the name of this block
+        const char* GetName() const {
+            return name;
+        }
+
         /// Append an instruction
         /// \param instruction the instruction to be inserted
         /// \return inserted reference
@@ -1014,6 +1024,9 @@ namespace IL {
 
         /// Relocation block allocator
         RelocationAllocator relocationAllocator;
+
+        /// Name of this block
+        const char* name{nullptr};
 
         /// Function this block exists in
         Function* function{nullptr};

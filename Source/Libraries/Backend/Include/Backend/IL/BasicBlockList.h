@@ -52,11 +52,14 @@ namespace IL {
         }
 
         /// Allocate a new basic block
+        /// \param name optional name
         /// \return allocated basic block
-        BasicBlock* AllocBlock(ID bid) {
+        BasicBlock* AllocBlock(ID bid, const char* name = nullptr) {
             revision++;
 
             auto* basicBlock = new (allocators) BasicBlock(allocators, map, bid);
+            basicBlock->SetName(name);
+            
             basicBlocks.push_back(basicBlock);
             basicBlockMap[bid] = basicBlock;
 
@@ -65,9 +68,10 @@ namespace IL {
         }
 
         /// Allocate a new basic block
+        /// \param name optional name
         /// \return allocated basic block
-        BasicBlock* AllocBlock() {
-            return AllocBlock(map.AllocID());
+        BasicBlock* AllocBlock(const char* name = nullptr) {
+            return AllocBlock(map.AllocID(), name);
         }
 
         /// Get a block from an identifier
