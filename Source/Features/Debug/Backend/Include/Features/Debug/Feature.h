@@ -157,8 +157,11 @@ private:
         /// The dynamically assigned ordering type
         IL::ID orderType{IL::InvalidID};
 
-        /// The calculated order
-        IL::ID order{IL::InvalidID};
+        /// The calculated static order
+        IL::ID staticOrder{IL::InvalidID};
+
+        /// The assigned export order
+        IL::ID exportOrder{IL::InvalidID};
 
         /// The statically computed ordering dimensions
         IL::ID staticOrderWidth{IL::InvalidID};
@@ -173,6 +176,9 @@ private:
 
         /// The data pyaload offset
         IL::ID payloadOffset{IL::InvalidID};
+        
+        /// The payload data dword offset
+        IL::ID payloadDataOffset{IL::InvalidID};
 
         /// Is this a dynamic export?
         IL::ID isDynamic{IL::InvalidID};

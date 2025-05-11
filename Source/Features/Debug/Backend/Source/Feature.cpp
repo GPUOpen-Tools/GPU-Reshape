@@ -844,7 +844,7 @@ void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Em
             }
 
             // Assume static ordering for now, dynamic exporting happens later
-            breakpointData.order = staticOrder;
+            breakpointData.staticOrder = staticOrder;
             
 #if !defined(NDEBUG) && 0
             breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, x, 0);
@@ -966,12 +966,9 @@ void DebugFeature::StoreBreakpointDataDWords(const IL::VisitContext &context, IL
     // Get the data ids
     IL::ID streamLoadID = emitter.Load(context.program.GetShaderDataMap().Get(streamBufferID)->id);
     
-    // Offset by the order
-    IL::ID payloadStart = emitter.Add(breakpointData.payloadOffset, breakpointData.order);
-    
     // Finally, write them out
     for (uint32_t i = 0; i < breakpoint->hostLayout.dataDWordStride; i++) {
-        IL::ID offset = emitter.Add(payloadStart, emitter.UInt32(i));
+        IL::ID offset = emitter.Add(breakpointData.payloadDataOffset, emitter.UInt32(i));
         emitter.StoreBuffer(streamLoadID, offset, dwords[i]);
     }
 }
@@ -1200,13 +1197,22 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpoint(const IL::VisitConte
     IL::BasicBlock* resumeBlock = AcquireBreakpoint(context, it, headerBlock, breakpoint, breakpointData);
 
     // Header
+    IL::ID staticPayloadDataOffset;
     {
         IL::Emitter<> emitter(context.program, *headerBlock);
+
+        // Header offset within the payload
+        staticPayloadDataOffset = emitter.Mul(breakpointData.staticOrder, emitter.UInt32(breakpoint->hostLayout.dataDWordStride));
+
+        // Offset by payload offset
+        staticPayloadDataOffset = emitter.Add(breakpointData.payloadOffset, staticPayloadDataOffset);
+        
         emitter.BranchConditional(breakpointData.isDynamic, dynamicBlock, mergeBlock, IL::ControlFlow::Selection(mergeBlock));
     }
 
     // Dynamic Allocation
     IL::ID dynamicOrder;
+    IL::ID dynamicPayloadDataOffset;
     {
         IL::Emitter<> dynamicEmitter(context.program, *dynamicBlock);
 
@@ -1219,6 +1225,19 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpoint(const IL::VisitConte
         // Limit by available number of dwords
         dynamicOrder = IL::ExtendedEmitter(dynamicEmitter).Min(dynamicOrder, breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(dynamicEmitter));
 
+        // Header offset within the payload
+        IL::ID dynamicHeaderDWordOffset = dynamicEmitter.Mul(dynamicOrder, dynamicEmitter.UInt32(breakpoint->hostLayout.dataDWordStride + BreakpointDynamicHeaderDWordCount));
+
+        // Offset by payload offset
+        dynamicHeaderDWordOffset = dynamicEmitter.Add(breakpointData.payloadOffset, dynamicHeaderDWordOffset);
+
+        // Store the dynamic header
+        IL::ID streamLoadID = dynamicEmitter.Load(context.program.GetShaderDataMap().Get(streamBufferID)->id);
+        dynamicEmitter.StoreBuffer(streamLoadID, dynamicHeaderDWordOffset, breakpointData.staticOrder);
+
+        // Start writing after the header
+        dynamicPayloadDataOffset = dynamicEmitter.Add(dynamicHeaderDWordOffset, dynamicEmitter.UInt32(BreakpointDynamicHeaderDWordCount));
+
         // To merge
         dynamicEmitter.Branch(mergeBlock);
     }
@@ -1228,9 +1247,15 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpoint(const IL::VisitConte
         IL::Emitter<> mergeEmitter(context.program, *mergeBlock);
 
         // Select the appropriate ordering
-        breakpointData.order = mergeEmitter.Phi(
-            headerBlock, breakpointData.order,
+        breakpointData.exportOrder = mergeEmitter.Phi(
+            headerBlock, breakpointData.staticOrder,
             dynamicBlock, dynamicOrder
+        );
+
+        // Select the data offset
+        breakpointData.payloadDataOffset = mergeEmitter.Phi(
+            headerBlock, staticPayloadDataOffset,
+            dynamicBlock, dynamicPayloadDataOffset
         );
 
         // To the actual breakpoint

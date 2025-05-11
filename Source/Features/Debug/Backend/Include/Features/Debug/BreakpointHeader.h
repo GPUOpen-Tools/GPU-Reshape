@@ -38,10 +38,9 @@ enum class BreakpointDataOrder {
 };
 
 struct BreakpointDynamicHeader {
-    /// Thread indices that exported the data
-    uint32_t x;
-    uint32_t y;
-    uint32_t z;
+    /// Thread index that exported the data
+    /// Given that we know the dimensionality of the data, we can infer it from the linear index
+    uint32_t thread;
 };
 
 struct BreakpointDataHostLayout {
