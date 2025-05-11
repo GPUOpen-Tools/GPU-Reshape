@@ -217,7 +217,7 @@ namespace Studio.ViewModels.Tools
             // Open from derived
             if (ServiceRegistry.Get<IWindowService>() is { } service)
             {
-                service.OpenFor(instance.ViewModel);
+                service.OpenDialogFor(instance.ViewModel);
             }
         }
 

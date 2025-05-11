@@ -1,0 +1,56 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
+        xmlns:controls="clr-namespace:Studio.Views.Controls;assembly=UIX.Studio.Runtime"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="UIX.Views.BreakpointWindow"
+        x:DataType="viewModels:BreakpointViewModel"
+        Width="1280" Height="720"
+        Title="BreakpointDisplay">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Configuration -->
+        <Grid Grid.Row="0" Margin="3 2 3 2">
+            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                <!-- Archetype -->
+                <ComboBox SelectedIndex="0">
+                    <ComboBoxItem Content="Image"/>
+                    <ComboBoxItem Content="Structural"/>
+                </ComboBox>
+                
+                <!-- Display -->
+                <controls:LocatorViewHost 
+                    Margin="5 0 0 0"
+                    HorizontalAlignment="Stretch" 
+                    VerticalAlignment="Stretch" 
+                    ViewType="Config"
+                    DataContext="{Binding DisplayViewModel}"/>
+            </StackPanel>
+            
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <Label Content="{Binding FrameRate, FallbackValue=32, StringFormat='FPS: {0}'}" />
+            </StackPanel>
+        </Grid>
+        
+        <!-- Display -->
+        <Grid Grid.Row="1">
+            <Border 
+                Height="1"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Stretch"
+                Background="{DynamicResource LineBorderBrush}"/>
+            
+            <controls:LocatorViewHost 
+                Margin="0 1 0 0"
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch" 
+                DataContext="{Binding DisplayViewModel}" />
+        </Grid>
+    </Grid>
+</Window>

@@ -41,6 +41,7 @@
       <PackageReference Include="Avalonia" Version="11.1.1" />
       <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.0.1" />
       <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
+      <PackageReference Include="Avalonia.Diagnostics" Version="11.1.1" />
     </ItemGroup>
 
     <ItemGroup>
@@ -97,6 +98,13 @@
       </Compile>
       <Compile Update="Views\Settings\DebugSettingView.axaml.cs">
         <DependentUpon>DebugSettingView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\BreakpointWindow.axaml.cs">
+        <DependentUpon>BreakpointDisplayView.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Views\Display\ImageBreakpointDisplayConfigView.axaml.cs">
+        <DependentUpon>ImageBreakpointDisplayConfigView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
     </ItemGroup>

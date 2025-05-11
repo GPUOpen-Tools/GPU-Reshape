@@ -165,7 +165,7 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         private void OnConnect()
         {
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(new ConnectViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenDialogFor(new ConnectViewModel());
         }
 
         /// <summary>

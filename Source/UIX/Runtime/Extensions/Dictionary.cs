@@ -33,7 +33,7 @@ namespace Studio.Extensions
         /// <summary>
         /// Get an existing dictionary value or create a new one
         /// </summary>
-        public static V GetOrDefault<K, V>(this Dictionary<K, V> self, K key) where V : new()
+        public static V GetOrAddDefault<K, V>(this Dictionary<K, V> self, K key) where V : new()
         {
             // Try existing
             if (self.TryGetValue(key, out V? value))

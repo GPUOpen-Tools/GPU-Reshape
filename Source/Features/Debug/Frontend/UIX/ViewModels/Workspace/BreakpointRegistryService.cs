@@ -8,11 +8,6 @@ namespace GRS.Features.Debug.UIX.Workspace;
 public class BreakpointRegistryService : IPropertyService
 {
     /// <summary>
-    /// Breakpoint uid lookup
-    /// </summary>
-    public Dictionary<uint, BreakpointViewModel> Lookup { get; } = new();
-    
-    /// <summary>
     /// Parent workspace
     /// </summary>
     public IWorkspaceViewModel WorkspaceViewModel { get; set; }
@@ -23,7 +18,11 @@ public class BreakpointRegistryService : IPropertyService
     public void Register(BreakpointViewModel breakpointViewModel)
     {
         breakpointViewModel.UID = _allocationCounter++;
-        Lookup.Add(breakpointViewModel.UID, breakpointViewModel);
+
+        lock (_lookup)
+        {
+            _lookup.Add(breakpointViewModel.UID, breakpointViewModel);
+        }
 
         // Add breakpoint to the backend
         if (WorkspaceViewModel.Connection?.GetSharedBus() is { } bus)
@@ -31,9 +30,6 @@ public class BreakpointRegistryService : IPropertyService
             var msg = bus.Add<RegisterDebugBreakpointMessage>();
             msg.uid = breakpointViewModel.UID;
             msg.streamSize = (uint)breakpointViewModel.StreamSize;
-            
-            // TODO[dbg]: Temporary code, remove
-            msg.flags = (uint)BreakpointFlag.AllowImageFPUNorm8888Compression;
         }
     }
     
@@ -43,7 +39,10 @@ public class BreakpointRegistryService : IPropertyService
     /// <param name="breakpointViewModel"></param>
     public void Deregister(BreakpointViewModel breakpointViewModel)
     {
-        Lookup.Remove(breakpointViewModel.UID);
+        lock (_lookup)
+        {
+            _lookup.Remove(breakpointViewModel.UID);
+        }
 
         // Inform the backend that the breakpoint was removed
         if (WorkspaceViewModel.Connection?.GetSharedBus() is { } bus)
@@ -68,7 +67,23 @@ public class BreakpointRegistryService : IPropertyService
     }
 
     /// <summary>
+    /// Get a breakpoint
+    /// </summary>
+    public BreakpointViewModel? GetBreakpoint(uint uid)
+    {
+        lock (_lookup)
+        {
+            return _lookup.GetValueOrDefault(uid);
+        }
+    }
+
+    /// <summary>
     /// Monotonic breakpoint counter
     /// </summary>
     private uint _allocationCounter = 0;
+    
+    /// <summary>
+    /// Breakpoint uid lookup
+    /// </summary>
+    private Dictionary<uint, BreakpointViewModel> _lookup = new();
 }

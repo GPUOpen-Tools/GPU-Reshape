@@ -42,22 +42,22 @@ namespace Studio.Services
         public ILayoutViewModel? LayoutViewModel { get; set; } = null;
 
         /// <summary>
-        /// Open a window for a given view model
+        /// Open a dialog for a given view model
         /// </summary>
         /// <param name="viewModel">view model</param>
-        public Task<object?> OpenFor(object viewModel)
+        public Task<IWindowViewModel?> OpenDialogFor(object viewModel)
         {
             // Must have desktop lifetime
             if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             {
-                return Task.FromResult<object?>(null);
+                return Task.FromResult<IWindowViewModel?>(null);
             }
 
             // Attempt to resolve
             Window? window = _locator?.InstantiateDerived<Window>(viewModel);
             if (window == null)
             {
-                return Task.FromResult<object?>(null);
+                return Task.FromResult<IWindowViewModel?>(null);
             }
 
             // Properties
@@ -65,7 +65,43 @@ namespace Studio.Services
             window.DataContext = viewModel;
 
             // Show dialog as task
-            return window.ShowDialog(desktop.MainWindow).ContinueWith<object?>(_ => viewModel);
+            return window.ShowDialog(desktop.MainWindow).ContinueWith<IWindowViewModel?>(_ => new WindowViewModel
+            {
+                Window = window
+            });
+        }
+
+        /// <summary>
+        /// Open a window for a given view model
+        /// </summary>
+        /// <param name="viewModel">view model</param>
+        public IWindowViewModel? OpenFor(object viewModel)
+        {
+            // Must have desktop lifetime
+            if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                return null;
+            }
+
+            // Attempt to resolve
+            Window? window = _locator?.InstantiateDerived<Window>(viewModel);
+            if (window == null)
+            {
+                return null;
+            }
+
+            // Properties
+            window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            window.DataContext = viewModel;
+            
+            // Show it
+            window.Show(desktop.MainWindow);
+
+            // Show dialog as task
+            return new WindowViewModel
+            {
+                Window = window
+            };
         }
 
         /// <summary>

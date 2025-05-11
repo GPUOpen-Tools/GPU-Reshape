@@ -219,7 +219,6 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                     // Add breakpoint
                     Breakpoint& breakpoint = breakpoints.emplace_back();
                     breakpoint.uid = msg->uid;
-                    breakpoint.flags = static_cast<BreakpointFlag>(msg->flags);
                     breakpoint.streamSize = msg->streamSize;
 
                     // Setup payload
@@ -728,7 +727,7 @@ bool DebugFeature::GetBreakpointFormat(const IL::VisitContext& context, const IL
     return false;
 }
 
-bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint) {
+bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {
     // May not have an associated type
     const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
     if (!type) {
@@ -763,7 +762,7 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
     }
 
     // Supports 8-8-8-8 compression?
-    if (breakpoint->flags & BreakpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, type)) {
+    if (breakpointData.flags & BreakpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, type)) {
         breakpoint->hostLayout.compression = BreakpointCompression::FPUnorm8888;
     }
 
@@ -1010,9 +1009,13 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
         return it;
     }
 
+    // Intermediate data
+    BreakpointData breakpointData;
+    breakpointData.flags = static_cast<BreakpointFlag>(breakpointMessage.flags);
+
     // Try to determine the data layout
     // This may fail if there's nothing suitable
-    if (!GetBreakpointDataHostLayout(context, it, value, breakpoint)) {
+    if (!GetBreakpointDataHostLayout(context, it, value, breakpoint, breakpointData)) {
         return it;
     }
 
@@ -1023,9 +1026,6 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     // Emit in the interrupt block
     IL::BasicBlock* interruptBlock = context.function.GetBasicBlocks().AllocBlock();
     IL::Emitter<>   emitter(context.program, *interruptBlock);
-
-    // Intermediate data
-    BreakpointData breakpointData;
     
     // Acquire it logically before, to access some shared findings
     IL::BasicBlock* resumeBlock = AcquireAndAllocateBreakpoint(context, it, interruptBlock, breakpoint, breakpointData);

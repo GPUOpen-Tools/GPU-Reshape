@@ -129,7 +129,7 @@ namespace Studio.ViewModels.Workspace.Services
                             string code = shaderCode.code.String;
                             string filename = shaderCode.filename.String;
 
-                            _pendingShaderFiles.GetOrDefault(entry.ShaderViewModel).Add(new ShaderFileViewModel()
+                            _pendingShaderFiles.GetOrAddDefault(entry.ShaderViewModel).Add(new ShaderFileViewModel()
                             {
                                 Contents = code,
                                 UID = fileUID,

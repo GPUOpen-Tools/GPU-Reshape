@@ -1,4 +1,4 @@
-﻿namespace GRS.Features.Debug.UIX.ViewModels;
+﻿namespace GRS.Features.Debug.UIX.Models;
 
 /// <summary>
 /// Mirror of Cxx Format, keep up to date

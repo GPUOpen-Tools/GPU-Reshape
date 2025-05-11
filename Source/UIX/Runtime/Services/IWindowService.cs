@@ -37,10 +37,16 @@ namespace Studio.Services
         public ILayoutViewModel? LayoutViewModel { get; set; }
         
         /// <summary>
+        /// Open a dialog for a given view model
+        /// </summary>
+        /// <param name="viewModel">view model</param>
+        Task<IWindowViewModel?> OpenDialogFor(object viewModel);
+        
+        /// <summary>
         /// Open a window for a given view model
         /// </summary>
         /// <param name="viewModel">view model</param>
-        Task<object?> OpenFor(object viewModel);
+        IWindowViewModel? OpenFor(object viewModel);
 
         /// <summary>
         /// Request exit
@@ -55,7 +61,7 @@ namespace Studio.Services
         /// </summary>
         public static Task<T?> OpenFor<T>(this IWindowService self, object viewModel) where T : class
         {
-            return self.OpenFor(viewModel).ContinueWith<T?>(x => (T?)x.Result);
+            return self.OpenDialogFor(viewModel).ContinueWith<T?>(x => (T?)x.Result);
         }
     }
 }

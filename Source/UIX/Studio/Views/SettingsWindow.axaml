@@ -32,14 +32,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:id="using:Dock.Avalonia"
         xmlns:vm="using:Studio.ViewModels"
-        xmlns:views="using:Studio.Views"
-        xmlns:vc="using:Studio.ValueConverters"
-        xmlns:r="using:Studio.Resources"
         xmlns:controls="clr-namespace:Studio.Views.Controls"
-        xmlns:sm="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
         xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
+        xmlns:rcontrols="clr-namespace:Studio.Views.Controls;assembly=UIX.Studio.Runtime"
         mc:Ignorable="d"
         d:DesignWidth="750" d:DesignHeight="450"
         Width="800" Height="465"
@@ -85,7 +81,7 @@
 
         <!-- View -->
         <Grid Margin="210,46,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <controls:LocatorViewHost 
+            <rcontrols:LocatorViewHost 
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 
                 DataContext="{Binding SelectedSettingItem.Setting}" />

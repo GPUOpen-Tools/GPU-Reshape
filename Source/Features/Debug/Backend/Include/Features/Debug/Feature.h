@@ -128,9 +128,6 @@ private:
         /// Monotic id of this breakpoint
         uint32_t uid = 0;
 
-        /// Flags
-        BreakpointFlag flags{BreakpointFlag::None};
-
         /// Host layout, determined at compile time
         BreakpointDataHostLayout hostLayout{};
 
@@ -154,6 +151,9 @@ private:
     };
 
     struct BreakpointData {
+        /// Flags for this breakpoint
+        BreakpointFlag flags{BreakpointFlag::None};
+        
         /// The dynamically assigned ordering type
         IL::ID orderType{IL::InvalidID};
 
@@ -231,8 +231,9 @@ private:
     /// @param instr exporting instruction
     /// @param value value to check for
     /// @param breakpoint host breakpoint data
+    /// @param breakpointData device breakpoint data
     /// @return false if failed
-    bool GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint *breakpoint);
+    bool GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint *breakpoint, BreakpointData& breakpointData);
 
     /// Store all exported breakpoint data
     /// @param context parent context

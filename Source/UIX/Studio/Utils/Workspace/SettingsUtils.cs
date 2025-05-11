@@ -71,7 +71,7 @@ namespace Studio.Utils.Workspace
             }
 
             // Open window
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(settings);
+            ServiceRegistry.Get<IWindowService>()?.OpenDialogFor(settings);
         }
 
         /// <summary>

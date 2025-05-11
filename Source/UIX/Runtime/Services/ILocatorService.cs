@@ -25,6 +25,7 @@
 // 
 
 using System;
+using Studio.Views;
 
 namespace Studio.Services
 {
@@ -35,14 +36,16 @@ namespace Studio.Services
         /// </summary>
         /// <param name="type">source type</param>
         /// <param name="derived">derived type</param>
-        public void AddDerived(Type type, Type derived);
+        /// <param name="viewType">type of the view</param>
+        public void AddDerived(Type type, Type derived, ViewType viewType = ViewType.Primary);
         
         /// <summary>
         /// Get the derived type
         /// </summary>
         /// <param name="type">source type</param>
+        /// <param name="viewType">type of the view</param>
         /// <returns></returns>
-        public Type? GetDerived(Type type);
+        public Type? GetDerived(Type type, ViewType viewType = ViewType.Primary);
     }
 
     public static class LocatorServiceExtensions
@@ -52,12 +55,13 @@ namespace Studio.Services
         /// </summary>
         /// <param name="service">self service</param>
         /// <param name="type">origin type to instantiate from</param>
+        /// <param name="viewType">type of the view</param>
         /// <typeparam name="T">casted type</typeparam>
         /// <returns>null if failed</returns>
-        public static T? InstantiateDerived<T>(this ILocatorService service, Type type) where T : class
+        public static T? InstantiateDerived<T>(this ILocatorService service, Type type, ViewType viewType = ViewType.Primary) where T : class
         {
             // Get derived
-            Type? derived = service.GetDerived(type);
+            Type? derived = service.GetDerived(type, viewType);
             if (derived == null)
             {
                 return null;
@@ -73,10 +77,11 @@ namespace Studio.Services
         /// <param name="service">self service</param>
         /// <param name="type">origin type to instantiate from</param>
         /// <param name="source">origin object to instantiate from</param>
+        /// <param name="viewType">type of the view</param>
         /// <returns>null if failed</returns>
-        public static T? InstantiateDerived<T>(this ILocatorService service, object source) where T : class
+        public static T? InstantiateDerived<T>(this ILocatorService service, object source, ViewType viewType = ViewType.Primary) where T : class
         {
-            return service.InstantiateDerived<T>(source.GetType());
+            return service.InstantiateDerived<T>(source.GetType(), viewType);
         }
     }
 }

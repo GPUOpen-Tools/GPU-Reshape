@@ -107,6 +107,10 @@
         <AutoGen>True</AutoGen>
         <DependentUpon>Resources.resx</DependentUpon>
       </Compile>
+      <Compile Update="Views\Controls\LocatorViewHost.axaml.cs">
+        <DependentUpon>LocatorViewHost.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
 
 

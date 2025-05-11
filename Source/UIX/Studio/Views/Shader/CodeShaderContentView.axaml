@@ -37,6 +37,7 @@
              xmlns:shader="clr-namespace:Studio.ViewModels.Shader"
              xmlns:svm="clr-namespace:Runtime.ViewModels.Shader;assembly=UIX.Studio.Runtime"
              xmlns:controls="clr-namespace:Studio.Views.Controls"
+             xmlns:rcontrols="clr-namespace:Studio.Views.Controls;assembly=UIX.Studio.Runtime"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Shader.CodeShaderContentView"
@@ -77,7 +78,7 @@
             VerticalAlignment="Stretch"/>
         
         <Grid Grid.Row="1" x:Name="DetailGrid">
-            <controls:LocatorViewHost 
+            <rcontrols:LocatorViewHost 
                 x:Name="DetailViewHost" 
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch"

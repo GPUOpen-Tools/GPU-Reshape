@@ -155,10 +155,6 @@
       </Compile>
       <AvaloniaResource Include="Resources\Icons\Icon_NoFrame.png" />
       <AvaloniaResource Include="Resources\Icons\Icon_Frame.ico" />
-      <Compile Update="Views\Controls\LocatorViewHost.axaml.cs">
-        <DependentUpon>LocatorViewHost.axaml</DependentUpon>
-        <SubType>Code</SubType>
-      </Compile>
       <Compile Update="Views\PipelineFilterWindow.axaml.cs">
         <DependentUpon>CreatePipelineFilterWindow.axaml</DependentUpon>
         <SubType>Code</SubType>

@@ -31,6 +31,7 @@
     <message name="DebugBreakpoint">
         <field name="codeOffset" type="uint32"/>
         <field name="uid" type="uint32"/>
+        <field name="flags" type="uint32"/>
     </message>
     
     <message name="DebugConfig">
@@ -43,7 +44,6 @@
 
     <message name="RegisterDebugBreakpoint">
         <field name="uid" type="uint32"/>
-        <field name="flags" type="uint32"/>
         <field name="streamSize" type="uint32"/>
     </message>
 

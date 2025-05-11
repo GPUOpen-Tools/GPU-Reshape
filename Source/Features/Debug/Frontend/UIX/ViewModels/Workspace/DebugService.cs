@@ -25,12 +25,9 @@
 // 
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using Avalonia.Threading;
 using GRS.Features.Debug.UIX.Settings;
 using GRS.Features.Debug.UIX.ViewModels;
@@ -39,9 +36,9 @@ using Message.CLR;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Instrumentation;
 using Studio.Services;
+using Studio.ViewModels;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
-using UIX.Views;
 
 namespace GRS.Features.Debug.UIX.Workspace
 {
@@ -88,6 +85,15 @@ namespace GRS.Features.Debug.UIX.Workspace
         {
             // Remove listeners
             ViewModel.Connection?.Bridge?.Deregister(DebugBreakpointStreamMessage.ID, this);
+
+            // Close all windows
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                foreach (IWindowViewModel window in _windows.Values)
+                {
+                    window.Close();
+                }
+            });
         }
 
         /// <summary>
@@ -99,64 +105,95 @@ namespace GRS.Features.Debug.UIX.Workspace
             
             foreach (DebugBreakpointStreamMessage message in view)
             {
-                // TODO[dbg]: Temporary code for selecting the display mode
-                BreakpointDisplayMode mode;
-                if ((BreakpointDataOrder)message.dataOrder == BreakpointDataOrder.Static &&
-                    (BreakpointCompression)message.dataCompression == BreakpointCompression.FPUNorm8888)
+                // Get the breakpoint
+                if (_breakpointRegistryService?.GetBreakpoint(message.uid) is not {} breakpointViewModel)
                 {
-                    mode = BreakpointDisplayMode.Image;
-                }
-                else
-                {
-                    mode = BreakpointDisplayMode.Structural;
+                    continue;
                 }
                 
-                // Deserialize on the message thread
-                object? payload = null;
-                switch (mode)
+                // Do we have a processor?
+                if (breakpointViewModel.GetOrCreateProcessor(message, out IDisposable? processorCommit) is not { } processorViewModel)
                 {
-                    case BreakpointDisplayMode.Image:
-                        payload = DeserializeImagePayload(message, mode);
-                        break;
-                    case BreakpointDisplayMode.Structural:
-                        break;
+                    continue;
                 }
 
+                // Process it on the messaging thread, let the heavy weight stuff leave the UI thread be
+                object? payload = processorViewModel.Process(message);
+                
                 // Total number of streamed data
                 uint byteCount = (uint)message.data.Count;
                 
                 // Flatten the data for UI thread
                 DebugBreakpointStreamMessage.FlatInfo flat = message.Flat;
                 
+                // The rest needs to happen on the UI thread
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    ProcessStreamRequest(flat, mode, payload, byteCount);
+                    // If there's a commit, do it now
+                    processorCommit?.Dispose();
+                    
+                    // Any processed payloads?
+                    if (payload != null)
+                    {
+                        // Finally, install the payload
+                        if (breakpointViewModel.DisplayViewModel != null)
+                        {
+                            processorViewModel.Install(breakpointViewModel.DisplayViewModel, payload);
+                        }
+                    }
+
+                    // Update all breakpoint stats
+                    UpdateStats(breakpointViewModel);
+
+                    // TODO[dbg]: Dummy code
+                    OpenWindow(breakpointViewModel);
+                    
+                    // Internal stream handling
+                    ProcessStreamRequest(breakpointViewModel, flat, byteCount);
                 });
+            }
+        }
+
+        /// <summary>
+        /// Update all breakpoint statistics
+        /// </summary>
+        private void UpdateStats(BreakpointViewModel breakpointViewModel)
+        {
+            // Calculate average frametime
+            long  now = Stopwatch.GetTimestamp();
+            long  delta = now - breakpointViewModel.LastTimeStamp;
+            float seconds = delta / (float)Stopwatch.Frequency;
+            float frameRate = 1.0f / seconds;
+            float weight = 0.95f;
+            
+            // Update timing
+            breakpointViewModel.FrameRate = weight * breakpointViewModel.FrameRate + (1.0f - weight) * frameRate;
+            breakpointViewModel.LastTimeStamp = now;
+        }
+
+        /// <summary>
+        /// Open a window for a breakpoint
+        /// </summary>
+        private void OpenWindow(BreakpointViewModel breakpointViewModel)
+        {
+            if (_windows.ContainsKey(breakpointViewModel))
+            {
+                return;
+            }
+            
+            // Try to open the window
+            if (ServiceRegistry.Get<IWindowService>()?.OpenFor(breakpointViewModel) is { } window)
+            {
+                _windows.Add(breakpointViewModel, window);
             }
         }
 
         /// <summary>
         /// Invoked on stream requests
         /// </summary>
-        private void ProcessStreamRequest(DebugBreakpointStreamMessage.FlatInfo flat, BreakpointDisplayMode mode, object? payload, uint byteCount)
+        private void ProcessStreamRequest(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage.FlatInfo flat, uint byteCount)
         {
             uint request = flat.request;
-
-            // Get the breakpoint
-            if (!(_breakpointRegistryService?.Lookup.TryGetValue(flat.uid, out BreakpointViewModel? breakpointViewModel) ?? false))
-            {
-                return;
-            }
-
-            // Install the payload
-            switch (mode)
-            {
-                case BreakpointDisplayMode.Image:
-                    InstallImagePayload(breakpointViewModel, (Bitmap)payload!);
-                    break;
-                case BreakpointDisplayMode.Structural:
-                    break;
-            }
 
             // Notice the streamer that this request was handled
             if (ViewModel.Connection?.GetSharedBus() is { } sharedBus)
@@ -194,66 +231,6 @@ namespace GRS.Features.Debug.UIX.Workspace
         }
 
         /// <summary>
-        /// Deserialize an incoming image payload
-        /// </summary>
-        private unsafe object DeserializeImagePayload(DebugBreakpointStreamMessage message, BreakpointDisplayMode mode)
-        {
-            switch (mode)
-            {
-                default:
-                {
-                    throw new InvalidOperationException();
-                }
-                case BreakpointDisplayMode.Image:
-                {
-                    return new WriteableBitmap(
-                        PixelFormat.Rgba8888, AlphaFormat.Opaque,
-                        new IntPtr(message.data.GetDataStart()), new PixelSize((int)message.dataStaticWidth, (int)message.dataStaticHeight),
-                        new Vector(96, 96), (int)(message.dataStaticWidth * 4)
-                    );
-                }
-                case BreakpointDisplayMode.Structural:
-                {
-                    using var stream = new UnmanagedMemoryStream(message.data.GetDataStart(), message.data.Count);
-                    return new Bitmap(stream);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Install an image playload on the UI thread
-        /// </summary>
-        private void InstallImagePayload(BreakpointViewModel breakpointViewModel, Bitmap payload)
-        {
-            // Assign view model, change if needed
-            if (breakpointViewModel.DisplayViewModel is not ImageBreakpointDisplayViewModel displayViewModel)
-            {
-                breakpointViewModel.DisplayViewModel = displayViewModel = new ImageBreakpointDisplayViewModel();
-                
-                // TODO[dbg]: Temporary window for feature development
-                BreakpointDisplayView displayView = new();
-                displayView.DataContext = displayViewModel;
-                displayView.Width = 1920;
-                displayView.Height = 1080;
-                displayView.Show();
-            }
-
-            // Assign new image
-            displayViewModel.Image = payload;
-
-            // Calculate average frametime
-            long  now = Stopwatch.GetTimestamp();
-            long  delta = now - displayViewModel.LastTimeStamp;
-            float seconds = delta / (float)Stopwatch.Frequency;
-            float frameRate = 1.0f / seconds;
-            float weight = 0.95f;
-            
-            // Update timing
-            displayViewModel.FrameRate = weight * displayViewModel.FrameRate + (1.0f - weight) * frameRate;
-            displayViewModel.LastTimeStamp = now;
-        }
-
-        /// <summary>
         /// Check if a target may be instrumented
         /// </summary>
         public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable)
@@ -282,5 +259,10 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// Internal settings
         /// </summary>
         private readonly DebugSettingViewModel? _debugSettingViewModel;
+
+        /// <summary>
+        /// All breakpoint windows
+        /// </summary>
+        private Dictionary<BreakpointViewModel, IWindowViewModel> _windows = new();
     }
 }

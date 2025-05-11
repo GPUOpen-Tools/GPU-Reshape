@@ -35,7 +35,10 @@ namespace Studio.Views
 {
     public class ViewLocator : IViewLocator
     {
-        public IViewFor? DefaultView;
+        /// <summary>
+        /// View type for instantiations
+        /// </summary>
+        public ViewType ViewType = ViewType.Primary;
         
         public IViewFor? ResolveView<T>(T viewModel, string? contract = null)
         {
@@ -45,7 +48,7 @@ namespace Studio.Views
             }
             
             // Attempt to instantiate
-            IViewFor? view = ServiceRegistry.Get<ILocatorService>()?.InstantiateDerived<IViewFor>(viewModel);
+            IViewFor? view = ServiceRegistry.Get<ILocatorService>()?.InstantiateDerived<IViewFor>(viewModel, ViewType);
             if (view == null)
             {
                 return null;

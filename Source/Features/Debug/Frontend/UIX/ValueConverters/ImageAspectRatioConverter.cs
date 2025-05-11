@@ -25,22 +25,28 @@
 // 
 
 using System;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
-using ReactiveUI;
-using Studio.ViewModels.Controls;
+using System.Globalization;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
 
-namespace Studio.Views.Controls
+namespace Studio.ValueConverters
 {
-    public partial class LocatorViewHost : UserControl
+    public class ImageAspectRatioConverter : IValueConverter
     {
-        public LocatorViewHost()
+        /// <summary>
+        /// Convert the value
+        /// </summary>
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            InitializeComponent();
+            return value is true ? Stretch.Uniform : Stretch.Fill;
+        }
 
-            // Set locator
-            ViewHost.ViewLocator = new ViewLocator();
+        /// <summary>
+        /// Convert the value back
+        /// </summary>
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
         }
     }
 }

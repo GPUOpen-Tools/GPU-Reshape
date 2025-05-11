@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using DynamicData;
 using DynamicData.Binding;
+using GRS.Features.Debug.UIX.Models;
 using GRS.Features.Debug.UIX.Workspace;
 using Message.CLR;
 using ReactiveUI;
@@ -90,9 +91,12 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
         StaticMessageView<DebugBreakpointMessage, ReadWriteMessageStream> view = new(breakpointStream);
         foreach (BreakpointViewModel breakpointViewModel in Breakpoints.Where(x => x.SourceBinding != null))
         {
+            BreakpointConfig breakpointConfig = breakpointViewModel.GetBreakpointConfig();
+            
             var breakpoint = view.Add();
             breakpoint.codeOffset = breakpointViewModel.SourceBinding!.InstructionCodeOffset;
             breakpoint.uid = breakpointViewModel.UID;
+            breakpoint.flags = (uint)breakpointConfig.Flags;
         }
 
         // Create config

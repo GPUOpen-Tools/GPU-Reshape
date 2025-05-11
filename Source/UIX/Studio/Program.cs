@@ -25,6 +25,8 @@
 // 
 
 using System;
+using Avalonia;
+using Avalonia.Controls;
 using Studio.App;
 
 namespace Studio
@@ -43,6 +45,19 @@ namespace Studio
             
             // Otherwise assume desktop
             DesktopApp.Build();
+        }
+        
+        /// <summary>
+        /// Design-time helper
+        /// </summary>
+        private static AppBuilder BuildAvaloniaApp()
+        {
+            if (!Design.IsDesignMode)
+            {
+                throw new Exception("Design-stub invoked in runtime");
+            }
+            
+            return DesktopApp.BuildAvaloniaApp();
         }
     }
 }

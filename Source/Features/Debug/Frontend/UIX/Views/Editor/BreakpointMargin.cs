@@ -20,7 +20,7 @@ public class BreakpointMargin : AbstractMargin
     /// <summary>
     /// The target collection
     /// </summary>
-    public ShaderBreakpointCollectionViewModel CollectionViewModel { get; set; } = new();
+    public ShaderBreakpointCollectionViewModel CollectionViewModel { get; set; }
     
     /// <summary>
     /// Constructor
@@ -135,6 +135,7 @@ public class BreakpointMargin : AbstractMargin
             // None found, add it
             CollectionViewModel.Breakpoints.Add(new BreakpointViewModel
             {
+                ShaderProperty = CollectionViewModel.ShaderProperty,
                 SourceBinding = new SourceBinding
                 {
                     InstructionLine = lineBase0,
