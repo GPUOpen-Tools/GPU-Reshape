@@ -17,11 +17,15 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
         get => _image;
         set => this.RaiseAndSetIfChanged(ref _image, value);
     }
-    
+
     /// <summary>
     /// Shader property
     /// </summary>
-    public ShaderViewModel? ShaderProperty { get; set; }
+    public ShaderViewModel? ShaderProperty
+    {
+        get => _shaderProperty;
+        set => this.RaiseAndSetIfChanged(ref _shaderProperty, value);
+    }
 
     /// <summary>
     /// Should the aspect ratio be maintained? i.e., stretch or not
@@ -44,7 +48,7 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     public ImageBreakpointDisplayViewModel()
     {
         // Values that require reinstrumentation
-        this.WhenAnyValue(x => x.Compress)
+        this.WhenAnyValue(x => x.Compress, x => x.ShaderProperty)
             .Subscribe(_ => OnInstrumentChanged());
     }
 
@@ -67,17 +71,22 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
             config.Flags |= BreakpointFlag.AllowImageFPUNorm8888Compression;
         }
     }
-    
+
     /// <summary>
     /// Internal image
     /// </summary>
     private IImage? _image = null;
 
     /// <summary>
+    /// Internal property
+    /// </summary>
+    private ShaderViewModel? _shaderProperty;
+
+    /// <summary>
     /// Internal aspect ratio state
     /// </summary>
     private bool _maintainAspectRatio = true;
-    
+
     /// <summary>
     /// Internal compress state
     /// </summary>
