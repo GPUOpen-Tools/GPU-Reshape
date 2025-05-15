@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
+             xmlns:controls="clr-namespace:UIX.Views.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="UIX.Views.Display.ImageBreakpointDisplayView"
              x:DataType="viewModels:ImageBreakpointDisplayViewModel">
@@ -11,10 +12,13 @@
         <valueConverters:ImageAspectRatioConverter x:Key="ImageAspectRatioConverter"/>
     </UserControl.Resources>
     
-    <Image
-        x:Name="Image"
-        Source="{Binding Image}"
-        Stretch="{Binding MaintainAspectRatio, Converter={StaticResource ImageAspectRatioConverter}}"
-        HorizontalAlignment="Stretch"
-        VerticalAlignment="Stretch" />
+    <Grid>
+        <controls:Checkerboard/>
+        <Image
+            x:Name="Image"
+            Source="{Binding Image}"
+            Stretch="{Binding MaintainAspectRatio, Converter={StaticResource ImageAspectRatioConverter}}"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch" />
+    </Grid>
 </UserControl>
