@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
         </Grid.RowDefinitions>
         
         <!-- Configuration -->
@@ -51,6 +52,13 @@
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 
                 DataContext="{Binding DisplayViewModel}" />
+        </Grid>
+        
+        <!-- Info -->
+        <Grid Grid.Row="2">
+            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                <Label Content="{Binding Decoration}"/>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>

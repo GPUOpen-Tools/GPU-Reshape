@@ -71,6 +71,15 @@ public class BreakpointViewModel : ReactiveObject
         get => _frameRate;
         set => this.RaiseAndSetIfChanged(ref _frameRate, value);
     }
+    
+    /// <summary>
+    /// Decorated string
+    /// </summary>
+    public string Decoration
+    {
+        get => _decoration;
+        set => this.RaiseAndSetIfChanged(ref _decoration, value);
+    }
 
     /// <summary>
     /// Last time it was requested
@@ -135,10 +144,14 @@ public class BreakpointViewModel : ReactiveObject
                 return _processorViewModel;
             }
 
+            // To flat
+            DebugBreakpointStreamMessage.FlatInfo flat = message.Flat;
+
             // Always try to find a new archetype that's a better fit
             // The underlying data format may change depending on what's happening
             if (ServiceRegistry.Get<BreakpointDisplayRegistryService>()?.FindOptimalArchetype(message) is not { } archetypeViewModel || archetypeViewModel == _archetypeViewModel)
             {
+                disposable = new ActionDisposable(() => Decorate(flat));
                 return _processorViewModel;
             }
             
@@ -161,6 +174,9 @@ public class BreakpointViewModel : ReactiveObject
                     _displayViewModel.ShaderProperty = ShaderProperty;
                 }
                 
+                // Decorate the flat
+                Decorate(flat);
+                
                 // Raise, this doesn't have to be atomic
                 this.RaisePropertyChanged(nameof(DisplayViewModel));
                 this.RaisePropertyChanged(nameof(_processorViewModel));
@@ -170,6 +186,16 @@ public class BreakpointViewModel : ReactiveObject
             // OK
             return processor;
         }
+    }
+
+    private void Decorate(DebugBreakpointStreamMessage.FlatInfo flat)
+    {
+        // Get the typed data
+        var order       = (BreakpointDataOrder)flat.dataOrder;
+        var compression = (BreakpointCompression)flat.dataCompression;
+        
+        // Execution information
+        Decoration = $"Width:{flat.dataStaticWidth} Height:{flat.dataStaticHeight} Depth:{flat.dataStaticDepth} Compression:{compression} Order:{order}";
     }
 
     /// <summary>
@@ -230,4 +256,9 @@ public class BreakpointViewModel : ReactiveObject
     /// Shared monitor for archetype atomicity
     /// </summary>
     private object _monitor = new();
+
+    /// <summary>
+    /// Internal decoration
+    /// </summary>
+    private string _decoration;
 }

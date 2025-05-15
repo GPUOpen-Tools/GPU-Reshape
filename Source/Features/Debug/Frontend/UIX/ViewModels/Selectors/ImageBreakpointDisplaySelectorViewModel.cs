@@ -9,7 +9,7 @@ public class ImageBreakpointDisplaySelectorViewModel : IBreakpointDisplaySelecto
     {
         // Get the typed data
         var order       = (BreakpointDataOrder)message.dataOrder;
-        var compression = (BreakpointCompression)message.dataOrder;
+        var compression = (BreakpointCompression)message.dataCompression;
 
         // Dynamic data isn't supported yet
         if (order != BreakpointDataOrder.Static)
