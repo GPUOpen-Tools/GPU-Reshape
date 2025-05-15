@@ -20,10 +20,7 @@
         <Grid Grid.Row="0" Margin="3 2 3 2">
             <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
                 <!-- Archetype -->
-                <ComboBox SelectedIndex="0">
-                    <ComboBoxItem Content="Image"/>
-                    <ComboBoxItem Content="Structural"/>
-                </ComboBox>
+                <ComboBox SelectedItem="{Binding ArchetypeViewModel}" ItemsSource="{Binding Archetypes}" DisplayMemberBinding="{Binding Name}"/>
                 
                 <!-- Display -->
                 <controls:LocatorViewHost 

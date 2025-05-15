@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Avalonia.Threading;
 using GRS.Features.Debug.UIX.Models;
 using ReactiveUI;
@@ -37,9 +38,26 @@ public class BreakpointViewModel : ReactiveObject
     public BreakpointDisplayArchetypeViewModel? ArchetypeViewModel
     {
         get => MonitorRead(() => _archetypeViewModel);
-        set => MonitorWrite(() => this.RaiseAndSetIfChanged(ref _archetypeViewModel, value));
+        set => MonitorWrite(() =>
+        {
+            if (value != null)
+            {
+                LockUserArchetype(value);
+            }
+            
+            this.RaiseAndSetIfChanged(ref _archetypeViewModel, value);
+        });
     }
-    
+
+    /// <summary>
+    /// Valid archetypes for this breakpoint
+    /// </summary>
+    public BreakpointDisplayArchetypeViewModel[] Archetypes
+    {
+        get => _archetypes;
+        private set => this.RaiseAndSetIfChanged(ref _archetypes, value);
+    }
+
     /// <summary>
     /// is the archetype locked?
     /// </summary>
@@ -136,24 +154,35 @@ public class BreakpointViewModel : ReactiveObject
     {
         disposable = null;
         
+        // To flat
+        DebugBreakpointStreamMessage.FlatInfo flat = message.Flat;
+        
         lock (_monitor)
         {
             // May be locked
-            if (_archetypeLocked)
+            if (_archetypeLocked && _processorViewModel != null)
             {
+                disposable = new ActionDisposable(() =>
+                {
+                    Dispatcher.UIThread.VerifyAccess();
+                    Decorate(flat);
+                });
+
+                // Just assume the current
                 return _processorViewModel;
             }
 
-            // To flat
-            DebugBreakpointStreamMessage.FlatInfo flat = message.Flat;
-
             // Always try to find a new archetype that's a better fit
             // The underlying data format may change depending on what's happening
-            if (ServiceRegistry.Get<BreakpointDisplayRegistryService>()?.FindOptimalArchetype(message) is not { } archetypeViewModel || archetypeViewModel == _archetypeViewModel)
+            if (ServiceRegistry.Get<BreakpointDisplayRegistryService>()?.FindOptimalArchetypes(message) is not { Length: > 0 } archetypes || 
+                archetypes.First() == _archetypeViewModel)
             {
                 disposable = new ActionDisposable(() => Decorate(flat));
                 return _processorViewModel;
             }
+
+            // Assume the first
+            BreakpointDisplayArchetypeViewModel archetypeViewModel = archetypes.First();
             
             // Create the processor on the calling thread
             var processor = archetypeViewModel.CreateProcessor();
@@ -162,6 +191,9 @@ public class BreakpointViewModel : ReactiveObject
             disposable = new ActionDisposable(() =>
             {
                 Dispatcher.UIThread.VerifyAccess();
+
+                // Assign valid archetypes, doesn't have to be atomic
+                Archetypes = archetypes;
 
                 // Finalize objects
                 lock (_monitor)
@@ -179,8 +211,8 @@ public class BreakpointViewModel : ReactiveObject
                 
                 // Raise, this doesn't have to be atomic
                 this.RaisePropertyChanged(nameof(DisplayViewModel));
-                this.RaisePropertyChanged(nameof(_processorViewModel));
-                this.RaisePropertyChanged(nameof(_archetypeViewModel));
+                this.RaisePropertyChanged(nameof(ProcessorViewModel));
+                this.RaisePropertyChanged(nameof(ArchetypeViewModel));
             });
 
             // OK
@@ -196,6 +228,25 @@ public class BreakpointViewModel : ReactiveObject
         
         // Execution information
         Decoration = $"Width:{flat.dataStaticWidth} Height:{flat.dataStaticHeight} Depth:{flat.dataStaticDepth} Compression:{compression} Order:{order}";
+    }
+
+    /// <summary>
+    /// Lock the user archetype
+    /// </summary>
+    private void LockUserArchetype(BreakpointDisplayArchetypeViewModel archetypeViewModel)
+    {
+        // Mark it as locked
+        ArchetypeLocked = true;
+        
+        // Create the processor and display
+        _processorViewModel = archetypeViewModel.CreateProcessor();
+        _displayViewModel = archetypeViewModel.CreateDisplay();
+        _displayViewModel.ShaderProperty = ShaderProperty;
+        
+        // Raise
+        this.RaisePropertyChanged(nameof(DisplayViewModel));
+        this.RaisePropertyChanged(nameof(_processorViewModel));
+        this.RaisePropertyChanged(nameof(_archetypeViewModel));
     }
 
     /// <summary>
@@ -261,4 +312,9 @@ public class BreakpointViewModel : ReactiveObject
     /// Internal decoration
     /// </summary>
     private string _decoration;
+
+    /// <summary>
+    /// Internal archetypes
+    /// </summary>
+    private BreakpointDisplayArchetypeViewModel[] _archetypes = [];
 }

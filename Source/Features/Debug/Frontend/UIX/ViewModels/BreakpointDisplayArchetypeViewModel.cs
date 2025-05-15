@@ -8,10 +8,15 @@ namespace GRS.Features.Debug.UIX.ViewModels;
 public class BreakpointDisplayArchetypeViewModel
 {
     /// <summary>
+    /// Name of this archetype
+    /// </summary>
+    public string Name { set; get; }
+
+    /// <summary>
     /// The display archetype
     /// </summary>
     public Type Archetype { get; set; }
-    
+
     /// <summary>
     /// The selector view model
     /// Assigns a given priority for the archetype

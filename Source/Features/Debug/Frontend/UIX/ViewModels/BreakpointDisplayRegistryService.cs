@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Linq;
 using System.Collections.ObjectModel;
 using AvaloniaEdit.Utils;
 using GRS.Features.Debug.UIX.ViewModels.Processor;
@@ -21,6 +21,7 @@ public class BreakpointDisplayRegistryService
             // Standard image view
             new BreakpointDisplayArchetypeViewModel
             {
+                Name = "Image",
                 Archetype = typeof(ImageBreakpointDisplayViewModel),
                 Selector = new ImageBreakpointDisplaySelectorViewModel(),
                 ProcessorArchetypes = 
@@ -32,6 +33,7 @@ public class BreakpointDisplayRegistryService
             // Structured display
             new BreakpointDisplayArchetypeViewModel
             {
+                Name = "Structured",
                 Archetype = typeof(StructuredBreakpointDisplayViewModel),
                 Selector = new StructuredBreakpointDisplaySelectorViewModel(),
                 ProcessorArchetypes = 
@@ -46,20 +48,11 @@ public class BreakpointDisplayRegistryService
     /// Find the optimal archetype for a given breakpoint stream
     /// </summary>
     /// <returns>null if not appropriate</returns>
-    public BreakpointDisplayArchetypeViewModel? FindOptimalArchetype(DebugBreakpointStreamMessage message)
+    public BreakpointDisplayArchetypeViewModel[] FindOptimalArchetypes(DebugBreakpointStreamMessage message)
     {
-        KeyValuePair<int, BreakpointDisplayArchetypeViewModel?> candidate = new(0, null);
-
-        // Go through each archetype, try to see if it fits or not
-        // Always overwrite on the same priorities, makes external extensions easier
-        foreach (BreakpointDisplayArchetypeViewModel archetypeViewModel in Archetypes)
-        {
-            if (archetypeViewModel.Selector.GetPriority(message) is { } priority && priority >= candidate.Key)
-            {
-                candidate = new(priority, archetypeViewModel);
-            }
-        }
-
-        return candidate.Value;
+        return Archetypes
+            .ToList()
+            .OrderByDescending(x => x.Selector.GetPriority(message))
+            .ToArray();
     }
 }
