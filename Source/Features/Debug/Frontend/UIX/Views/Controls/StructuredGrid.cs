@@ -91,29 +91,6 @@ public class StructuredGrid : Control
         // Shared typeface
         var typeface = new Typeface("Segoe UI");
 
-        // Fill the cell bound geometry
-        var geometry = new StreamGeometry();
-        using (var ctx = geometry.Open())
-        {
-            for (int cellY = cellOffsetY; cellY < cellOffsetY + cellCountY; cellY++)
-            {
-                for (int cellX = cellOffsetX; cellX < cellOffsetX + cellCountX; cellX++)
-                {
-                    float x = cellX * CellWidth + OffsetX;
-                    float y = cellY * CellWidth + OffsetY;
-
-                    ctx.BeginFigure(new Point(x, y), true); 
-                    ctx.LineTo(new Point(x, y + CellWidth));
-                    ctx.LineTo(new Point(x + CellWidth, y + CellWidth));
-                    ctx.LineTo(new Point(x + CellWidth, y));
-                    ctx.EndFigure(true);
-                }
-            }
-        }
-
-        // Render the cell bounds
-        context.DrawGeometry(Brushes.Black, new Pen(Brushes.Gray), geometry);
-
         // Create a new bitmap for the 
         var bitmap = new WriteableBitmap(
             new PixelSize((int)visualBounds.Width,  (int)visualBounds.Height),
@@ -145,6 +122,29 @@ public class StructuredGrid : Control
         
         // Blit it!
         context.DrawImage(bitmap, new Rect(new Point(OffsetX, OffsetY), visualBounds.Size));
+
+        // Fill the cell bound geometry
+        var geometry = new StreamGeometry();
+        using (StreamGeometryContext ctx = geometry.Open())
+        {
+            for (int cellY = cellOffsetY; cellY < cellOffsetY + cellCountY; cellY++)
+            {
+                for (int cellX = cellOffsetX; cellX < cellOffsetX + cellCountX; cellX++)
+                {
+                    float x = cellX * CellWidth;
+                    float y = cellY * CellWidth;
+
+                    ctx.BeginFigure(new Point(x, y), false); 
+                    ctx.LineTo(new Point(x, y + CellWidth));
+                    ctx.LineTo(new Point(x + CellWidth, y + CellWidth));
+                    ctx.LineTo(new Point(x + CellWidth, y));
+                    ctx.EndFigure(true);
+                }
+            }
+        }
+
+        // Render the cell bounds
+        context.DrawGeometry(Brushes.Black, new Pen(Brushes.Gray), geometry);
 
         // Overlay text rendering
         for (int cellRelativeY = 0; cellRelativeY < cellCountY; cellRelativeY++)
