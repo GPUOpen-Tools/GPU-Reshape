@@ -102,7 +102,7 @@ public class BreakpointViewModel : ReactiveObject
     /// <summary>
     /// Last time it was requested
     /// </summary>
-    public long LastTimeStamp = 0;
+    public long ProcessThreadLastTimeStamp = 0;
 
     /// <summary>
     /// Statically allocated UID
