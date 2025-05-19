@@ -34,6 +34,7 @@ using GRS.Features.Debug.UIX.ViewModels;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio;
 using Studio.Models.Instrumentation;
 using Studio.Services;
 using Studio.ViewModels;
@@ -125,12 +126,16 @@ namespace GRS.Features.Debug.UIX.Workspace
                 
                 // Flatten the data for UI thread
                 DebugBreakpointStreamMessage.FlatInfo flat = message.Flat;
+
+                // Update all breakpoint stats
+                IDisposable statsCommit = UpdateStats(breakpointViewModel);
                 
                 // The rest needs to happen on the UI thread
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     // If there's a commit, do it now
                     processorCommit?.Dispose();
+                    statsCommit.Dispose();
                     
                     // Any processed payloads?
                     if (payload != null)
@@ -141,9 +146,6 @@ namespace GRS.Features.Debug.UIX.Workspace
                             processorViewModel.Install(breakpointViewModel.DisplayViewModel, payload);
                         }
                     }
-
-                    // Update all breakpoint stats
-                    UpdateStats(breakpointViewModel);
 
                     // TODO[dbg]: Dummy code
                     OpenWindow(breakpointViewModel);
@@ -157,18 +159,22 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Update all breakpoint statistics
         /// </summary>
-        private void UpdateStats(BreakpointViewModel breakpointViewModel)
+        private IDisposable UpdateStats(BreakpointViewModel breakpointViewModel)
         {
             // Calculate average frametime
             long  now = Stopwatch.GetTimestamp();
-            long  delta = now - breakpointViewModel.LastTimeStamp;
+            long  delta = now - breakpointViewModel.ProcessThreadLastTimeStamp;
             float seconds = delta / (float)Stopwatch.Frequency;
             float frameRate = 1.0f / seconds;
             float weight = 0.95f;
             
+            breakpointViewModel.ProcessThreadLastTimeStamp = now;
+            
             // Update timing
-            breakpointViewModel.FrameRate = weight * breakpointViewModel.FrameRate + (1.0f - weight) * frameRate;
-            breakpointViewModel.LastTimeStamp = now;
+            return new ActionDisposable(() =>
+            {
+                breakpointViewModel.FrameRate = weight * breakpointViewModel.FrameRate + (1.0f - weight) * frameRate;
+            });
         }
 
         /// <summary>
