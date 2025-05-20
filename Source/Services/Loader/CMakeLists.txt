@@ -1,4 +1,4 @@
-# 
+﻿# 
 # The MIT License (MIT)
 # 
 # Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,6 +24,26 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
-add_subdirectory(Loader)
-add_subdirectory(Discovery)
-add_subdirectory(HostResolver)
+
+# Create library
+add_library(
+    GRS.Services.Loader SHARED
+    Source/Dll.cpp
+    Source/Loader.cpp
+)
+
+# IDE source discovery
+SetSourceDiscovery(GRS.Services.Loader CXX Include Source)
+
+# Include directories
+target_include_directories(GRS.Services.Loader PUBLIC Include)
+
+# Dependencies
+target_link_libraries(
+    GRS.Services.Loader PUBLIC 
+    GRS.Libraries.Discovery
+    GRS.Libraries.Bridge
+    GRS.Libraries.Backend
+    GRS.Services.HostResolver
+    GRS.Services.Discovery
+)

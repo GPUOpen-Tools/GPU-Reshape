@@ -34,6 +34,7 @@
 #include <Common/Containers/Vector.h>
 
 // Std
+#include <mutex>
 #include <vector>
 
 // Forward declarations
@@ -51,8 +52,9 @@ public:
     /// Allocate a new descriptor
     /// \param width number of descriptors to allocate
     /// \param debugOwner debug only, owner for exhaustion debugging
+    /// \param fatalOnExhaust should exhaustion be a fatal error?
     /// \return descriptor base info
-    ShaderExportSegmentDescriptorInfo Allocate(uint32_t width, ShaderExportStreamState* debugOwner);
+    ShaderExportSegmentDescriptorInfo Allocate(uint32_t width, ShaderExportStreamState* debugOwner, bool fatalOnExhaust);
 
     /// Free a descriptor
     /// \param id
@@ -119,6 +121,9 @@ private:
     AllocationBucket rhsBucket;
 
 private:
+    /// Shared lock
+    std::mutex mutex;
+    
     /// Parent bound
     uint32_t bound;
 

@@ -26,13 +26,32 @@
 
 #pragma once
 
-namespace Backend {
-    /// Expected environment keys
-    static constexpr const char* kStartupEnvironmentKey = "GPUOpen.GRS.StartupEnvironment";
-    static constexpr const char* kReservedEnvironmentTokenKey = "GPUOpen.GRS.ReservedEnvironmentToken";
-    static constexpr const char* kNoServiceTrapKey = "GPUOpen.GRS.NoServiceTrap";
-    static constexpr const char* kCaptureChildProcessesKey = "GPUOpen.GRS.CaptureChildProcesses";
-    static constexpr const char* kAttachAllDevicesKey = "GPUOpen.GRS.AttachAllDevices";
-    static constexpr const char* kWaitForConnectionKey = "GPUOpen.GRS.WaitForConnection";
-    static constexpr const char* kSuspendDeferredInitializationKey = "GPUOpen.GRS.SuspendDeferredInitialization";
-}
+// Common
+#include <Common/Common.h>
+
+// Std
+#include <cstdint>
+
+/// Symbol helper
+#define GRS_SYMBOL(NAME, STR) \
+    [[maybe_unused]] static constexpr const char* k##NAME = STR; \
+    [[maybe_unused]] static constexpr const wchar_t* k##NAME##W = L##STR;
+
+/// Loader proc-fn types
+using PFN_GRS_LOADER_INSTALL            = bool(*)();
+using PFN_GRS_LOADER_GET_RESERVED_TOKEN = void(*)(char* output, uint32_t* length);
+
+/// Loader symbols
+GRS_SYMBOL(PFNGRSLoaderInstall,          "GRSLoaderInstall");
+GRS_SYMBOL(PFNGRSLoaderGetReservedToken, "GRSLoaderGetReservedToken");
+
+/// Install the GPU Reshape loader
+/// Ensures that all relevant backends are injected
+DLL_EXPORT_C bool GRSLoaderInstall();
+
+/// Get the reserved token for this loader
+/// Used for later attaching (e.g., GPUReshape attach -token [...])
+DLL_EXPORT_C void GRSLoaderGetReservedToken(char* output, uint32_t* length);
+
+// Cleanup
+#undef GRS_SYMBOL

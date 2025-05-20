@@ -37,14 +37,14 @@ namespace Studio
         private static void Main(string[] args)
         {
             // Any arguments?
-            if (args.Length > 0)
+            if (args.Length > 0 && CliApp.IsCLI(args))
             {
                 CliApp.Build(args);
                 return;
             }
             
             // Otherwise assume desktop
-            DesktopApp.Build();
+            DesktopApp.Build(args);
         }
         
         /// <summary>

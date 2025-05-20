@@ -26,13 +26,20 @@
 
 #pragma once
 
-namespace Backend {
-    /// Expected environment keys
-    static constexpr const char* kStartupEnvironmentKey = "GPUOpen.GRS.StartupEnvironment";
-    static constexpr const char* kReservedEnvironmentTokenKey = "GPUOpen.GRS.ReservedEnvironmentToken";
-    static constexpr const char* kNoServiceTrapKey = "GPUOpen.GRS.NoServiceTrap";
-    static constexpr const char* kCaptureChildProcessesKey = "GPUOpen.GRS.CaptureChildProcesses";
-    static constexpr const char* kAttachAllDevicesKey = "GPUOpen.GRS.AttachAllDevices";
-    static constexpr const char* kWaitForConnectionKey = "GPUOpen.GRS.WaitForConnection";
-    static constexpr const char* kSuspendDeferredInitializationKey = "GPUOpen.GRS.SuspendDeferredInitialization";
-}
+// Common
+#include <Common/GlobalUID.h>
+
+struct DiscoveryProcessLocalInfo {
+    /// Optional, reserved token
+    GlobalUID reservedToken{};
+
+    /// Should all child processes be captured?
+    bool captureChildProcesses = true;
+
+    /// Should all devices be attached?
+    bool attachAllDevices = true;
+
+    /// Suspend the deferred initialization thread?
+    /// TODO: All of this should be a flag set
+    bool suspendDeferredInitialization = false;
+};

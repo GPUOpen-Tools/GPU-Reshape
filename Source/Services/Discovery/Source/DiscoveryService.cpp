@@ -163,6 +163,53 @@ bool DiscoveryService::UninstallGlobal() {
     return !anyFailed;
 }
 
+bool DiscoveryService::InstallLocal(const DiscoveryProcessLocalInfo& localInfo, const MessageStream& environment) {
+    bool anyFailed = false;
+
+    // Install all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (!listener->InstallLocal()) {
+            anyFailed = true;
+        }
+    }
+
+    // For now, enable all capture modes by default
+#ifdef _WIN32
+    // Write the startup environment
+    if (environment.GetByteSize()) {
+        _putenv_s(Backend::kStartupEnvironmentKey, Backend::StartupEnvironment{}.WriteEnvironment(environment).c_str());
+    }
+    
+    // Write token if valid
+    if (localInfo.reservedToken.IsValid()) {
+        _putenv_s(Backend::kReservedEnvironmentTokenKey, localInfo.reservedToken.ToString().c_str());
+    }
+    
+    // All processes?
+    if (localInfo.captureChildProcesses) {
+        _putenv_s(Backend::kCaptureChildProcessesKey, "");
+    }
+
+    // All devices?
+    if (localInfo.attachAllDevices) {
+        _putenv_s(Backend::kAttachAllDevicesKey, "");
+    }
+
+    // Suspended initialization?
+    if (localInfo.suspendDeferredInitialization) {
+        _putenv_s(Backend::kSuspendDeferredInitializationKey, "");
+    }
+
+    // Disable service traps, must always bootstrap regardless of discoverability
+    _putenv_s(Backend::kNoServiceTrapKey, "");
+#else // _WIN32
+#   error Not implemented
+#endif // _WIN32
+
+    // OK
+    return !anyFailed;
+}
+
 bool DiscoveryService::HasConflictingInstances() {
     bool anyBad = false;
 
@@ -217,6 +264,11 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
     // All devices?
     if (createInfo.attachAllDevices) {
         bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kAttachAllDevicesKey, "");
+    }
+
+    // Suspended initialization?
+    if (createInfo.suspendDeferredInitialization) {
+        _putenv_s(Backend::kSuspendDeferredInitializationKey, "");
     }
 
     // Disable service traps, must always bootstrap regardless of discoverability

@@ -278,6 +278,10 @@ public:
     /// \param queueState the queue state
     void Process(CommandQueueState* queueState);
 
+    /// Process all pending descriptors
+    /// Locks
+    void ProcessDescriptors();
+
 private:
     /// Map all segment agnostic data
     /// \param descriptors descriptors to be bound
@@ -293,6 +297,13 @@ private:
     /// Process a segment
     bool ProcessSegment(ShaderExportStreamSegment* segment, TrivialStackVector<CommandContextHandle, 32u>& completedHandles);
 
+    /// Allocate descriptors for a segment
+    /// @param allocator owning allocator 
+    /// @param tsaStride the two-sided allocator stride
+    /// @param state owning state
+    /// @return always valid
+    ShaderExportSegmentDescriptorInfo AllocateSegmentDescriptors(ShaderExportFixedTwoSidedDescriptorAllocator *allocator, uint32_t tsaStride, ShaderExportStreamState *state);
+
     /// Free a segment
     void FreeSegmentNoQueueLock(CommandQueueState* queue, ShaderExportStreamSegment* segment);
 
@@ -307,6 +318,13 @@ private:
 
     /// Free a descriptor data segment
     void FreeDescriptorDataSegment(const DescriptorDataSegment& dataSegment);
+
+    /// Free all descriptor states
+    /// @param state states to free from
+    void FreeDescriptorState(ShaderExportStreamState *state);
+
+    /// Process all pending descriptors
+    void ProcessDescriptorsNoLock();
 
     /// Perform a linear search for a given heap segment
     /// \param state the state to search in

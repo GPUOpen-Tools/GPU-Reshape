@@ -234,6 +234,10 @@ bool NotifyIconDiscoveryListener::UninstallGlobal() {
     return true;
 }
 
+bool NotifyIconDiscoveryListener::InstallLocal() {
+    return true;
+}
+
 bool NotifyIconDiscoveryListener::HasConflictingInstances() {
     return FindConflictingService(kNotifyIconKey, notifyPath.wstring().c_str());
 }

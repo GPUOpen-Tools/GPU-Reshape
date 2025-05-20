@@ -24,15 +24,10 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+// System
+#include <Windows.h>
 
-namespace Backend {
-    /// Expected environment keys
-    static constexpr const char* kStartupEnvironmentKey = "GPUOpen.GRS.StartupEnvironment";
-    static constexpr const char* kReservedEnvironmentTokenKey = "GPUOpen.GRS.ReservedEnvironmentToken";
-    static constexpr const char* kNoServiceTrapKey = "GPUOpen.GRS.NoServiceTrap";
-    static constexpr const char* kCaptureChildProcessesKey = "GPUOpen.GRS.CaptureChildProcesses";
-    static constexpr const char* kAttachAllDevicesKey = "GPUOpen.GRS.AttachAllDevices";
-    static constexpr const char* kWaitForConnectionKey = "GPUOpen.GRS.WaitForConnection";
-    static constexpr const char* kSuspendDeferredInitializationKey = "GPUOpen.GRS.SuspendDeferredInitialization";
+/// DLL entrypoint
+BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
+    return TRUE;
 }

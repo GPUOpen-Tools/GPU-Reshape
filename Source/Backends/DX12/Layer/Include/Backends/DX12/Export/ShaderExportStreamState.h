@@ -60,6 +60,7 @@ struct FenceState;
 struct PipelineState;
 class DescriptorDataAppendAllocator;
 struct DescriptorHeapState;
+struct ShaderExportStreamSegment;
 
 /// Tracked descriptor allocation
 struct ShaderExportSegmentDescriptorAllocation {
@@ -273,6 +274,9 @@ struct ShaderExportStreamState {
     /// Top level context handle
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
 
+    /// The segment that currently references this state
+    ShaderExportStreamSegment* segment{nullptr};
+
 #ifndef NDEBUG
     /// All pending debug streams
     std::vector<ShaderExportStreamStateDebugStream> debugStreams;
@@ -315,6 +319,9 @@ struct ShaderExportStreamSegment {
     /// Optional contexts for user command buffers
     ShaderExportStreamSegmentUserContext userPreContext;
     ShaderExportStreamSegmentUserContext userPostContext;
+
+    /// All referenced streaming states
+    std::vector<ShaderExportStreamState*> streamStates;
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{UINT64_MAX};

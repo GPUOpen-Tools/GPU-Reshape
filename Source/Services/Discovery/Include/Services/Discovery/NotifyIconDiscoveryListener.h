@@ -44,6 +44,7 @@ public:
     void SetupBootstrappingEnvironment(const DiscoveryProcessCreateInfo &info, DiscoveryBootstrappingEnvironment &environment) override;
     bool InstallGlobal() override;
     bool UninstallGlobal() override;
+    bool InstallLocal() override;
     bool HasConflictingInstances() override;
     bool UninstallConflictingInstances() override;
 

@@ -267,6 +267,17 @@ bool DX12DiscoveryListener::UninstallGlobal() {
     return true;
 }
 
+bool DX12DiscoveryListener::InstallLocal() {
+    // Load the bootstrapper, note that we only support x64 for now on local installs
+    std::filesystem::path x64Path = GetBaseModuleDirectory() / "GRS.Backends.DX12.BootstrapperX64.dll";
+    if (!LoadLibraryA(x64Path.string().c_str())) {
+        return false;
+    }
+
+    // OK
+    return true;
+}
+
 bool DX12DiscoveryListener::HasConflictingInstances() {
     // Check startup service
     if (FindConflictingService(kDX12ServiceKey, servicePath.wstring().c_str())) {

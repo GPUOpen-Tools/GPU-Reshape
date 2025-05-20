@@ -155,6 +155,9 @@ Do you consent to this?</value>
     <data name="Launch_CaptureChildProcesses" xml:space="preserve">
         <value>Hook into the entire process tree of an application, automatically creates process hierarchy</value>
     </data>
+    <data name="Launch_SuspendDeferredInitialization" xml:space="preserve">
+        <value>Suspends the deferred initialization thread created on injection, this avoids some app-side TLS initialization order issues</value>
+    </data>
     <data name="Launch_AttachAllDevices" xml:space="preserve">
         <value>Attach to all graphical devices the application creates, a workspace is automatically created per device</value>
     </data>

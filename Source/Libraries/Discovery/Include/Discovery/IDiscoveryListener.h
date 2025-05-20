@@ -70,6 +70,10 @@ public:
     /// \return success state
     virtual bool UninstallGlobal() = 0;
 
+    /// Install this listener onto the local process
+    /// @return success state
+    virtual bool InstallLocal() = 0;
+
     /// Check if conflicting instances are installed
     /// \return true if any are installed
     virtual bool HasConflictingInstances() = 0;
