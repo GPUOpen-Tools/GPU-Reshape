@@ -81,8 +81,9 @@ ShaderExportFixedTwoSidedDescriptorAllocator::AllocationBucket & ShaderExportFix
     return width == lhsBucket.width ? rhsBucket : lhsBucket;
 }
 
-ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::Allocate(uint32_t width, ShaderExportStreamState* debugOwner) {
 ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::Allocate(uint32_t width, ShaderExportStreamState* debugOwner, bool fatalOnExhaust) {
+    std::lock_guard guard(mutex);
+    
     AllocationBucket& bucket = GetForwardBucket(width);
     
     // Any free'd?
@@ -195,6 +196,8 @@ ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::
 }
 
 void ShaderExportFixedTwoSidedDescriptorAllocator::Free(const ShaderExportSegmentDescriptorInfo& id) {
+    std::lock_guard guard(mutex);
+    
     AllocationBucket& bucket = GetForwardBucket(id.width);
 
     // Validate

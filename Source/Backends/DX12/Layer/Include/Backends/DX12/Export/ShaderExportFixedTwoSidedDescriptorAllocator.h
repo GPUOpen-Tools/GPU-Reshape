@@ -34,6 +34,7 @@
 #include <Common/Containers/Vector.h>
 
 // Std
+#include <mutex>
 #include <vector>
 
 // Forward declarations
@@ -120,6 +121,9 @@ private:
     AllocationBucket rhsBucket;
 
 private:
+    /// Shared lock
+    std::mutex mutex;
+    
     /// Parent bound
     uint32_t bound;
 

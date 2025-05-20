@@ -60,6 +60,7 @@ struct FenceState;
 struct PipelineState;
 class DescriptorDataAppendAllocator;
 struct DescriptorHeapState;
+struct ShaderExportStreamSegment;
 
 /// Tracked descriptor allocation
 struct ShaderExportSegmentDescriptorAllocation {

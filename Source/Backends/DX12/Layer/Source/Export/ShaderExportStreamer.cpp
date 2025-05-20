@@ -518,9 +518,6 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
         return;
     }
 
-    // Data race begone!
-    std::lock_guard guard(mutex);
-
     // Final segment allocation
     ShaderExportSegmentDescriptorAllocation allocation;
     
@@ -1389,7 +1386,8 @@ ShaderExportSegmentDescriptorInfo ShaderExportStreamer::AllocateSegmentDescripto
 
     // If the allocation failed, try to free up any pending descriptors
     if (!allocation.cpuHandle.ptr) {
-        ProcessDescriptorsNoLock();
+        // This is free scheduled, so lock it
+        ProcessDescriptors();
 
         // Try again, but consider it fatal at this point
         allocation = allocator->Allocate(tsaStride, state, true);
