@@ -46,6 +46,11 @@ public class CliUserWorkspaceConfig
     /// Redirect application outputs to this process
     /// </summary>
     public bool RedirectOutput { get; set; } = false;
+
+    /// <summary>
+    /// Suspend the deferred initialization thread
+    /// </summary>
+    public bool SuspendDeferredInitialization { get; set; } = false;
 }
 
 public class CliUserWorkspace
