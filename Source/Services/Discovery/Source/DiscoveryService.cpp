@@ -195,6 +195,11 @@ bool DiscoveryService::InstallLocal(const DiscoveryProcessLocalInfo& localInfo, 
         _putenv_s(Backend::kAttachAllDevicesKey, "");
     }
 
+    // Suspended initialization?
+    if (localInfo.suspendDeferredInitialization) {
+        _putenv_s(Backend::kSuspendDeferredInitializationKey, "");
+    }
+
     // Disable service traps, must always bootstrap regardless of discoverability
     _putenv_s(Backend::kNoServiceTrapKey, "");
 #else // _WIN32
@@ -259,6 +264,11 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
     // All devices?
     if (createInfo.attachAllDevices) {
         bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kAttachAllDevicesKey, "");
+    }
+
+    // Suspended initialization?
+    if (createInfo.suspendDeferredInitialization) {
+        _putenv_s(Backend::kSuspendDeferredInitializationKey, "");
     }
 
     // Disable service traps, must always bootstrap regardless of discoverability

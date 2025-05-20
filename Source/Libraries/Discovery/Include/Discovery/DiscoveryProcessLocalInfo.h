@@ -38,4 +38,8 @@ struct DiscoveryProcessLocalInfo {
 
     /// Should all devices be attached?
     bool attachAllDevices = true;
+
+    /// Suspend the deferred initialization thread?
+    /// TODO: All of this should be a flag set
+    bool suspendDeferredInitialization = false;
 };

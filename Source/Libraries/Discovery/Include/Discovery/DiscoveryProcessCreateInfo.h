@@ -54,6 +54,10 @@ struct DiscoveryProcessCreateInfo {
     /// Should all devices be attached?
     bool attachAllDevices = false;
 
+    /// Suspend the deferred initialization thread?
+    /// TODO: All of this should be a flag set
+    bool suspendDeferredInitialization = false;
+
     /// Should the pipes be redirected?
     /// If true, make sure to regularly read/flush the pipes
     bool redirectPipes = false;

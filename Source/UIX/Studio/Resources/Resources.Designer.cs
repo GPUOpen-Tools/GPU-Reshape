@@ -224,6 +224,15 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Suspends the deferred initialization thread created on injection, this avoids some app-side TLS initialization order issues.
+        /// </summary>
+        public static string Launch_SuspendDeferredInitialization {
+            get {
+                return ResourceManager.GetString("Launch_SuspendDeferredInitialization", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Enables use of synchronous recording, pipeline usage waits on compilation to finish. Required for certain features..
         /// </summary>
         public static string Launch_SynchronousRecording {

@@ -160,6 +160,12 @@ DetourSection KernelXCreateProcessAsUserWSection;
 static std::string BootstrapperPathX64 = (GetCurrentModuleDirectory() / "GRS.Backends.DX12.BootstrapperX64.dll").string();
 static std::string BootstrapperPathX32 = (GetCurrentModuleDirectory() / "GRS.Backends.DX12.BootstrapperX32.dll").string();
 
+/// Are we using a suspended deferred thread?
+bool IsSuspendedDeferredThread = false;
+
+/// Global initialization thread
+HANDLE InitializationThread;
+
 /// Event fired after deferred initialization has completed
 HANDLE InitializationEvent;
 
@@ -1439,6 +1445,12 @@ DWORD WINAPI DeferredInitialization(void*) {
 }
 
 void WaitForDeferredInitialization() {
+    // Finally, handle the init request
+    // Handled as late as possible
+    if (IsSuspendedDeferredThread) {
+        ResumeThread(InitializationThread);
+    }
+    
     // Wait for the deferred event
     DWORD result = WaitForSingleObject(InitializationEvent, INFINITE);
     if (result != WAIT_OBJECT_0) {
@@ -1891,14 +1903,18 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         // Create deferred initialization event
         InitializationEvent = CreateEvent(nullptr, true, false, nullptr);
 
+        // Using suspended initialization?
+        // This avoids issues where the thread prematurely initializes the apps TLS space
+        IsSuspendedDeferredThread = IsBackendKeySet(Backend::kSuspendDeferredInitializationKey);
+
         // Defer the initialization, thread only invoked after the dll attach chain
-        (void)CreateThread(
-            NULL,
+        InitializationThread = CreateThread(
+            nullptr,
             0,
             DeferredInitialization,
             NULL,
-            0,
-            NULL
+            IsSuspendedDeferredThread ? CREATE_SUSPENDED : 0x0,
+            nullptr
         );
 
         // Otherwise, begin detouring against potential loads

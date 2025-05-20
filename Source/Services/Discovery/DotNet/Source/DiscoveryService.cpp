@@ -118,6 +118,7 @@ bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryP
     nativeInfo.reservedToken = GlobalUID::FromString(static_cast<char *>(hGlobalReservedToken.ToPointer()));
     nativeInfo.captureChildProcesses = createInfo->captureChildProcesses;
     nativeInfo.attachAllDevices = createInfo->attachAllDevices;
+    nativeInfo.suspendDeferredInitialization = createInfo->suspendDeferredInitialization;
     nativeInfo.redirectPipes = createInfo->redirectPipes;
 
     // Convert environment to native

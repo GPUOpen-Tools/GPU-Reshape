@@ -142,6 +142,16 @@ namespace Studio.ViewModels
             get => _attachAllDevices;
             set => this.RaiseAndSetIfChanged(ref _attachAllDevices, value);
         }
+
+        /// <summary>
+        /// Should we suspend the deferred initialization?
+        /// </summary>
+        [DataMember]
+        public bool SuspendDeferredInitialization
+        {
+            get => _suspendDeferredInitialization;
+            set => this.RaiseAndSetIfChanged(ref _suspendDeferredInitialization, value);
+        }
         
         /// <summary>
         /// Optional, redirect all process pipes
@@ -546,6 +556,7 @@ namespace Studio.ViewModels
             processInfo.reservedToken = _pendingReservedToken;
             processInfo.captureChildProcesses = _captureChildProcesses;
             processInfo.attachAllDevices = _attachAllDevices;
+            processInfo.suspendDeferredInitialization = _suspendDeferredInitialization;
             processInfo.redirectPipes = RedirectPipes;
 
             // Parse environment
@@ -925,6 +936,11 @@ namespace Studio.ViewModels
         /// Internal attach all devices state
         /// </summary>
         private bool _attachAllDevices;
+
+        /// <summary>
+        /// Internal suspend state
+        /// </summary>
+        private bool _suspendDeferredInitialization;
         
         /// <summary>
         /// Internal safe guard state
