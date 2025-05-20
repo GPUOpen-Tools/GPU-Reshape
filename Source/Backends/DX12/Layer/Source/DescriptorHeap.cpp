@@ -106,7 +106,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
             // Request a "small" range
             // While this is not ideal, it does reduce the chance of collisions, assuming
             // applications allocate from front to back.
-            instrumentationBound = requestedBound / 4;
+            instrumentationBound = requestedBound / 3;
 
             // Limit the user (virtual) range by the full bound
             state->virtualDescriptorCount = expandedHeap.NumDescriptors - instrumentationBound;
