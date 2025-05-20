@@ -1700,6 +1700,12 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
         BridgeDeviceSyncPoint(device.state, table.state);
     }
 
+    // Process all pending descriptor states
+    // To reduce general (heap) register pressure, we check the pending completion states independently of the existing lifetime,
+    // latter which is tied to the command allocators. This greatly helps reduce the amount of concurrent descriptor states,
+    // and avoid exhausted heap issues.
+    device.state->exportStreamer->ProcessDescriptors();
+
     // Allocate submission segment
     ShaderExportStreamSegment* segment = device.state->exportStreamer->AllocateSegment();
     

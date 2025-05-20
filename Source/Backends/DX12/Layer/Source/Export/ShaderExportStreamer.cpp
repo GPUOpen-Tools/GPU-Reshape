@@ -292,7 +292,7 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
 
         // Allocate initial segment from shared allocator
         ShaderExportSegmentDescriptorAllocation allocation;
-        allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count(), state);
+        allocation.info = AllocateSegmentDescriptors(sharedGPUHeapAllocator, descriptorLayout.Count(), state);
         allocation.allocator = sharedGPUHeapAllocator;
 
         // Keep track of it, no actual (user) heap ownership so leave that null
@@ -527,7 +527,7 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     // Try to find existing allocation first
     if (!LinearFindHeapSegment(state, state->resourceHeap, state->samplerHeap, &allocation)) {
         // Not found, allocate initial segment from shared allocator
-        allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count(), state);
+        allocation.info = AllocateSegmentDescriptors(state->resourceHeap->allocator, descriptorLayout.Count(), state);
         allocation.allocator = state->resourceHeap->allocator;
 
         // Keep track of the allocation, used for later searches
@@ -804,18 +804,7 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
 
     // Uses descriptors?
     if (state->hasDescriptorState) {
-        // Move descriptor data ownership to segment
-        for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-            FreeDescriptorDataSegment(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
-        }
-
-        // Move constant ownership to the segment
-        freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
-
-        // Move ownership to the segment
-        for (const ShaderExportSegmentDescriptorEntry& segmentDescriptor : state->segmentDescriptors) {
-            segmentDescriptor.segment.allocator->Free(segmentDescriptor.segment.info);
-        }
+        FreeDescriptorState(state);
     }
 
     // Move constant allocator to the segment
@@ -830,9 +819,15 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     FreeHeapAllocator(state->heapAllocator);
 
     // Cleanup
-    state->constantShaderDataBuffer = {};
-    state->segmentDescriptors.clear();
     state->referencedHeaps.clear();
+
+    // Remove from owning state
+    if (ShaderExportStreamSegment* segment = state->segment) {
+        segment->streamStates.erase(
+            std::ranges::remove(state->segment->streamStates, state).begin(),
+            state->segment->streamStates.end()
+        );
+    }
 
     // OK
     state->pending = false;
@@ -1051,6 +1046,9 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ID3D12Grap
 
     // Empty out
     state->referencedHeaps.clear();
+
+    // Set owner
+    state->segment = segment;
 }
 
 void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
@@ -1386,6 +1384,53 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment, Tr
     return true;
 }
 
+ShaderExportSegmentDescriptorInfo ShaderExportStreamer::AllocateSegmentDescriptors(ShaderExportFixedTwoSidedDescriptorAllocator *allocator, uint32_t tsaStride, ShaderExportStreamState *state) {
+    ShaderExportSegmentDescriptorInfo allocation = allocator->Allocate(tsaStride, state, false);
+
+    // If the allocation failed, try to free up any pending descriptors
+    if (!allocation.cpuHandle.ptr) {
+        ProcessDescriptorsNoLock();
+
+        // Try again, but consider it fatal at this point
+        allocation = allocator->Allocate(tsaStride, state, true);
+    }
+
+    // OK
+    return allocation;
+}
+
+void ShaderExportStreamer::ProcessDescriptors() {
+    std::lock_guard guard(mutex);
+    ProcessDescriptorsNoLock();
+}
+
+void ShaderExportStreamer::ProcessDescriptorsNoLock() {
+    // Process queues
+    // ! Linear view locks
+    for (CommandQueueState* queueState : device->states_Queues.GetLinear()) {
+        for (ShaderExportStreamSegment* segment : queueState->exportState->liveSegments) {
+            if (!segment->fence->IsCommitted(segment->fenceNextCommitId)) {
+                continue;
+            }
+
+            // Free the state descriptor allocations
+            for (ShaderExportStreamState* state : segment->streamStates) {
+                if (state->hasDescriptorState) {
+                    FreeDescriptorState(state);
+                }
+            }
+
+            // Free the segments patch descriptors
+            sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
+            sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
+            
+            // Cleanup
+            segment->patchDeviceCPUDescriptor = {};
+            segment->patchDeviceGPUDescriptor = {};
+        }
+    }
+}
+
 void ShaderExportStreamer::FreeConstantAllocator(ShaderExportConstantAllocator& allocator) {
     static constexpr size_t kLargeConstantThreshold = 64'000;
     
@@ -1482,6 +1527,30 @@ void ShaderExportStreamer::FreeDescriptorDataSegment(const DescriptorDataSegment
     freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
 }
 
+void ShaderExportStreamer::FreeDescriptorState(ShaderExportStreamState *state) {
+    ASSERT(state->hasDescriptorState, "Unexpected state");
+
+    // Move descriptor data ownership to segment
+    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+        FreeDescriptorDataSegment(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
+    }
+
+    // Move constant ownership to the segment
+    freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
+
+    // Move ownership to the segment
+    for (const ShaderExportSegmentDescriptorEntry& segmentDescriptor : state->segmentDescriptors) {
+        segmentDescriptor.segment.allocator->Free(segmentDescriptor.segment.info);
+    }
+
+    // Cleanup
+    state->constantShaderDataBuffer = {};
+    state->segmentDescriptors.clear();
+
+    // No data left
+    state->hasDescriptorState = false;
+}
+
 void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, ShaderExportStreamSegment *segment) {
     // Remove fence reference
     segment->fence = nullptr;
@@ -1491,12 +1560,19 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     segment->versionSegPoint = {};
 
     // Release patch descriptors
-    sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
-    sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
+    if (segment->patchDeviceCPUDescriptor.cpuHandle.ptr) {
+        sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
+        sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
+    }
 
     // Release command list
     queue->PushCommandList(segment->immediatePrePatch);
     queue->PushCommandList(segment->immediatePostPatch);
+
+    // Release the segment references
+    for (ShaderExportStreamState* state : segment->streamStates) {
+        state->segment = nullptr;
+    } 
 
     // Cleanup
     segment->referencedHeaps.clear();
@@ -1505,6 +1581,7 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     segment->patchDeviceCPUDescriptor = {};
     segment->patchDeviceGPUDescriptor = {};
     segment->commandContextHandles.clear();
+    segment->streamStates.clear();
 
     // Add back to pool
     segmentPool.Push(segment);
@@ -1514,8 +1591,8 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQue
     std::lock_guard guard(mutex);
 
     // Create descriptors
-    segment->patchDeviceCPUDescriptor = sharedCPUHeapAllocator->Allocate(1, nullptr);
-    segment->patchDeviceGPUDescriptor = sharedGPUHeapAllocator->Allocate(1, nullptr);
+    segment->patchDeviceCPUDescriptor = AllocateSegmentDescriptors(sharedCPUHeapAllocator, 1, nullptr);
+    segment->patchDeviceGPUDescriptor = AllocateSegmentDescriptors(sharedGPUHeapAllocator, 1, nullptr);
 
     // Counter to be initialized
     const ShaderExportSegmentCounterInfo& counter = segment->allocation->counter;

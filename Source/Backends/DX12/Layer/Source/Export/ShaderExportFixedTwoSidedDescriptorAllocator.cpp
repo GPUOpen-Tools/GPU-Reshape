@@ -32,6 +32,7 @@
 
 // Std
 #include <algorithm>
+#include <set>
 
 ShaderExportFixedTwoSidedDescriptorAllocator::ShaderExportFixedTwoSidedDescriptorAllocator(ID3D12Device *device, ID3D12DescriptorHeap *heap, uint32_t lhsWidth, uint32_t rhsWidth, uint32_t offset, uint32_t bound) : bound(bound), heap(heap) {
     // Get the advance
@@ -81,6 +82,7 @@ ShaderExportFixedTwoSidedDescriptorAllocator::AllocationBucket & ShaderExportFix
 }
 
 ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::Allocate(uint32_t width, ShaderExportStreamState* debugOwner) {
+ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::Allocate(uint32_t width, ShaderExportStreamState* debugOwner, bool fatalOnExhaust) {
     AllocationBucket& bucket = GetForwardBucket(width);
     
     // Any free'd?
@@ -118,10 +120,30 @@ ShaderExportSegmentDescriptorInfo ShaderExportFixedTwoSidedDescriptorAllocator::
     // Out of descriptors?
     if (lhsBucket.slotAllocationCounter + rhsBucket.slotAllocationCounter + width > bound) {
         // Display friendly message
-        Backend::DiagnosticFatal(
-            "Two-Sided Descriptor Exhaustion",
-            "GPU Reshape has run out internal descriptors for command list patching. Please report this issue."
-        );
+        if (fatalOnExhaust) {
+#if HEAP_ALLOCATOR_TRACK_OWNER
+            // Determine the total number of live states
+            std::set<ShaderExportStreamState*> owners;
+            for (const ShaderExportSegmentDescriptorInfo& segment : segments) {
+                if (segment.debugOwner) {
+                    owners.insert(segment.debugOwner);
+                }
+            }
+            
+            const std::string detail = Format(
+                "A total of {0} recorded command lists (inc. internal), with {1} descriptor TSA entries",
+                owners.size(), segments.size()
+            );
+#else // HEAP_ALLOCATOR_TRACK_OWNER
+            const std::string detail = "Exceeded TSA allocation bounds, compile with HEAP_ALLOCATOR_TRACK_OWNER for more details.";
+#endif // HEAP_ALLOCATOR_TRACK_OWNER
+            
+            Backend::DiagnosticFatal(
+                "Two-Sided Descriptor Exhaustion",
+                "GPU Reshape has run out internal descriptors for command list patching. Please report this issue.\n\n{0}",
+                detail
+            );
+        }
 
         // Unreachable
         return {};
