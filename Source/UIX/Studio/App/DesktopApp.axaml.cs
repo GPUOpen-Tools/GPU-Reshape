@@ -69,7 +69,7 @@ namespace Studio.App
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         
-        private static AppBuilder BuildAvaloniaApp()
+        public static AppBuilder BuildAvaloniaApp()
         {
             IconProvider.Current.Register<FontAwesomeIconProvider>();
             
