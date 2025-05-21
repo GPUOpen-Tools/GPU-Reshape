@@ -80,6 +80,24 @@ namespace Runtime.ViewModels.Objects
         }
 
         /// <summary>
+        /// Is this object active?
+        /// </summary>
+        public bool Active
+        {
+            get => _active;
+            set => this.RaiseAndSetIfChanged(ref _active, value);
+        }
+
+        /// <summary>
+        /// Is this object instrumented?
+        /// </summary>
+        public bool Instrumented
+        {
+            get => _instrumented;
+            set => this.RaiseAndSetIfChanged(ref _instrumented, value);
+        }
+
+        /// <summary>
         /// Get the targetable instrumentation property
         /// </summary>
         /// <returns></returns>
@@ -151,5 +169,15 @@ namespace Runtime.ViewModels.Objects
         /// Internal stage
         /// </summary>
         private PipelineType _stage;
+
+        /// <summary>
+        /// Internal active state
+        /// </summary>
+        private bool _active;
+        
+        /// <summary>
+        /// Internal instrumented state
+        /// </summary>
+        private bool _instrumented;
     }
 }

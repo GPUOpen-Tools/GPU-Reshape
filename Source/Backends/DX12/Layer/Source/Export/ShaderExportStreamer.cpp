@@ -1464,12 +1464,14 @@ void ShaderExportStreamer::ProcessDescriptorsNoLock() {
             }
 
             // Free the segments patch descriptors
-            sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
-            sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
-            
-            // Cleanup
-            segment->patchDeviceCPUDescriptor = {};
-            segment->patchDeviceGPUDescriptor = {};
+            if (segment->patchDeviceCPUDescriptor.cpuHandle.ptr) {
+                sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
+                sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
+                    
+                // Cleanup
+                segment->patchDeviceCPUDescriptor = {};
+                segment->patchDeviceGPUDescriptor = {};
+            }
         }
     }
 }

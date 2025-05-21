@@ -413,6 +413,24 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Recently in-use.
+        /// </summary>
+        public static string Status_Active {
+            get {
+                return ResourceManager.GetString("Status_Active", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Currently instrumented.
+        /// </summary>
+        public static string Status_Instrumented {
+            get {
+                return ResourceManager.GetString("Status_Instrumented", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Selected shader files.
         /// </summary>
         public static string Tool_Files {

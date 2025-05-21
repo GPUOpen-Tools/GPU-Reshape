@@ -25,20 +25,14 @@
 // 
 
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using ReactiveUI;
 using Runtime.ViewModels.Objects;
 using Studio.Extensions;
-using Studio.Models.Logging;
-using Studio.Services;
 using Studio.ViewModels.Tools;
-using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.Views.Tools
 {
@@ -60,23 +54,66 @@ namespace Studio.Views.Tools
                 });
         }
 
-        private void OnPipelineIdentifierLayoutUpdated(object? sender, EventArgs e)
+        /// <summary>
+        /// Invoked on layout changes
+        /// </summary>
+        private void OnListboxLayoutUpdated(object? sender, EventArgs e)
         {
-            // Expected sender?
-            if (sender is not Control { DataContext: PipelineIdentifierViewModel pipelineIdentifierViewModel })
-                return;
+            // Get all the visible items
+            PipelineIdentifierViewModel[] visibleElements = PipelineList
+                .GetRealizedContainers()
+                .Select(x => x.DataContext)
+                .Cast<PipelineIdentifierViewModel>()
+                .ToArray();
 
-            // May already be pooled
-            if (pipelineIdentifierViewModel.HasBeenPooled)
-                return;
+            // Filter out items that are now no longer visible
+            if (_lastVisibleElements != null)
+            {
+                // Linear search, fine for this
+                _lastVisibleElements.Where(x => !visibleElements.Contains(x)).ForEach(pipelineViewModel =>
+                {
+                    if (_visibleIdentifiers.Remove(pipelineViewModel))
+                    {
+                        VM?.PooledIdentifiers.Remove(pipelineViewModel);
+                    }
+                });
+            }
             
-            // Enqueue request
-            VM?.PopulateSingle(pipelineIdentifierViewModel);
+            // Filter in items that are now visible
+            foreach (PipelineIdentifierViewModel pipelineIdentifierViewModel in visibleElements)
+            {
+                if (_visibleIdentifiers.Add(pipelineIdentifierViewModel))
+                {
+                    VM?.PooledIdentifiers.Add(pipelineIdentifierViewModel);
+                }
+                
+                // If an element just became visible, let's be "responsive" about it
+                VM?.PoolImmediate(pipelineIdentifierViewModel);
+                
+                // May already be pooled
+                if (!pipelineIdentifierViewModel.HasBeenPooled)
+                {
+                    // Enqueue request
+                    VM?.PopulateSingle(pipelineIdentifierViewModel);
 
-            // Mark as pooled
-            pipelineIdentifierViewModel.HasBeenPooled = true;
+                    // Mark as pooled
+                    pipelineIdentifierViewModel.HasBeenPooled = true;
+                }
+            }
+            
+            _lastVisibleElements = visibleElements;
         }
+
+        /// <summary>
+        /// Last visible elements
+        /// </summary>
+        private PipelineIdentifierViewModel[]? _lastVisibleElements;
         
+        /// <summary>
+        /// All visible identifiers
+        /// </summary>
+        private HashSet<PipelineIdentifierViewModel> _visibleIdentifiers = new();
+
         private PipelineTreeViewModel? VM => DataContext as PipelineTreeViewModel;
     }
 }

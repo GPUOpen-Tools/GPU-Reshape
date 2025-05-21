@@ -25,20 +25,14 @@
 // 
 
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using ReactiveUI;
 using Runtime.ViewModels.Objects;
 using Studio.Extensions;
-using Studio.Models.Logging;
-using Studio.Services;
 using Studio.ViewModels.Tools;
-using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.Views.Tools
 {
@@ -60,23 +54,66 @@ namespace Studio.Views.Tools
                 });
         }
 
-        private void OnShaderIdentifierLayoutUpdated(object? sender, EventArgs e)
+        /// <summary>
+        /// Invoked on layout changes
+        /// </summary>
+        private void OnListboxLayoutUpdated(object? sender, EventArgs e)
         {
-            // Expected sender?
-            if (sender is not Control { DataContext: ShaderIdentifierViewModel shaderIdentifierViewModel })
-                return;
+            // Get all the visible items
+            ShaderIdentifierViewModel[] visibleElements = ShaderList
+                .GetRealizedContainers()
+                .Select(x => x.DataContext)
+                .Cast<ShaderIdentifierViewModel>()
+                .ToArray();
 
-            // May already be pooled
-            if (shaderIdentifierViewModel.HasBeenPooled)
-                return;
+            // Filter out items that are now no longer visible
+            if (_lastVisibleElements != null)
+            {
+                // Linear search, fine for this
+                _lastVisibleElements.Where(x => !visibleElements.Contains(x)).ForEach(shaderViewModel =>
+                {
+                    if (_visibleIdentifiers.Remove(shaderViewModel))
+                    {
+                        VM?.PooledIdentifiers.Remove(shaderViewModel);
+                    }
+                });
+            }
             
-            // Enqueue request
-            VM?.PopulateSingle(shaderIdentifierViewModel);
+            // Filter in items that are now visible
+            foreach (ShaderIdentifierViewModel shaderIdentifierViewModel in visibleElements)
+            {
+                if (_visibleIdentifiers.Add(shaderIdentifierViewModel))
+                {
+                    VM?.PooledIdentifiers.Add(shaderIdentifierViewModel);
+                }
+                
+                // If an element just became visible, let's be "responsive" about it
+                VM?.PoolImmediate(shaderIdentifierViewModel);
+                
+                // May already be pooled
+                if (!shaderIdentifierViewModel.HasBeenPooled)
+                {
+                    // Enqueue request
+                    VM?.PopulateSingle(shaderIdentifierViewModel);
 
-            // Mark as pooled
-            shaderIdentifierViewModel.HasBeenPooled = true;
+                    // Mark as pooled
+                    shaderIdentifierViewModel.HasBeenPooled = true;
+                }
+            }
+            
+            _lastVisibleElements = visibleElements;
         }
         
+        /// <summary>
+        /// Last visible elements
+        /// </summary>
+        private ShaderIdentifierViewModel[]? _lastVisibleElements;
+        
+        /// <summary>
+        /// All visible identifiers
+        /// </summary>
+        private HashSet<ShaderIdentifierViewModel> _visibleIdentifiers = new();
+
         private ShaderTreeViewModel? VM => DataContext as ShaderTreeViewModel;
     }
 }

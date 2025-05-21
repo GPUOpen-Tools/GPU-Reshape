@@ -191,4 +191,10 @@ Do you consent to this?</value>
     <data name="Launch_Coverage" xml:space="preserve">
         <value>Enables coverage reporting, affects performance, catches more issues but limits streaming per shader location</value>
     </data>
+    <data name="Status_Active" xml:space="preserve">
+        <value>Recently in-use</value>
+    </data>
+    <data name="Status_Instrumented" xml:space="preserve">
+        <value>Currently instrumented</value>
+    </data>
 </root>

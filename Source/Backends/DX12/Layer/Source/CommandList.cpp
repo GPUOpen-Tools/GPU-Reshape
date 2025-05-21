@@ -1450,7 +1450,7 @@ void WINAPI HookID3D12CommandListSetComputeRoot32BitConstants(ID3D12CommandList 
     auto device = GetTable(table.state->parent);
 
     // Inform the streamer
-    device.state->exportStreamer->SetComputeRootConstants(table.state->streamState, RootParameterIndex, &pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
+    device.state->exportStreamer->SetComputeRootConstants(table.state->streamState, RootParameterIndex, pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
 
     // Pass down call chain
     table.next->SetComputeRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
@@ -1463,7 +1463,7 @@ void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstants(ID3D12CommandList
     auto device = GetTable(table.state->parent);
 
     // Inform the streamer
-    device.state->exportStreamer->SetGraphicsRootConstants(table.state->streamState, RootParameterIndex, &pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
+    device.state->exportStreamer->SetGraphicsRootConstants(table.state->streamState, RootParameterIndex, pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
 
     // Pass down call chain
     table.next->SetGraphicsRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
@@ -1625,6 +1625,9 @@ void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D1
     // Active pipeline
     ID3D12PipelineState* pipelineObject = instrument ? static_cast<ID3D12PipelineState*>(instrument->object) : Next(pipeline);
 
+    // Update last used
+    pipelineState->lastUsedTimestampNS.store(device.state->syncPointActionThread.GetLastTimeSinceEpochNS(), std::memory_order::relaxed);
+
     // Pass down callchain
     table.bottom->next_SetPipelineState(table.next, pipelineObject);
 
@@ -1655,6 +1658,9 @@ void WINAPI HookID3D12CommandListSetPipelineState1(ID3D12CommandList *list, ID3D
 
     // Active pipeline
     ID3D12StateObject* pipelineObject = instrument ? static_cast<ID3D12StateObject*>(instrument->object) : Next(stateObject);
+
+    // Update last used
+    stateObjectState->lastUsedTimestampNS.store(device.state->syncPointActionThread.GetLastTimeSinceEpochNS(), std::memory_order::relaxed);
 
     // Pass down callchain
     table.bottom->next_SetPipelineState1(table.next, pipelineObject);

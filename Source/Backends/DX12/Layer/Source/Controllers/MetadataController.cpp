@@ -132,6 +132,14 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetShaderSourceMappingMessage>());
                     break;
                 }
+                case GetPipelineStatusMessage::kID: {
+                    OnMessage(*it.Get<GetPipelineStatusMessage>());
+                    break;
+                }
+                case GetShaderStatusMessage::kID: {
+                    OnMessage(*it.Get<GetShaderStatusMessage>());
+                    break;
+                }
             }
         }
     }
@@ -297,6 +305,76 @@ void MetadataController::OnMessage(const struct ReleaseShaderMessage &message) {
 
 void MetadataController::OnMessage(const struct SetUseShaderExternalReferenceMessage &message) {
     useShaderExternalReference = message.enabled;
+}
+
+static bool IsPipelineActive(PipelineState* pipeline, std::chrono::nanoseconds referencePoint) {
+    auto nsEpochLastUsed = std::chrono::nanoseconds(pipeline->lastUsedTimestampNS.load(std::memory_order_relaxed));
+    auto secondSinceLast = std::chrono::duration_cast<std::chrono::seconds>(referencePoint - nsEpochLastUsed).count();
+
+    // Very arbitrary, anything of relevance here?
+    return secondSinceLast <= 5;
+}
+
+void MetadataController::OnMessage(const struct GetPipelineStatusMessage &message) {
+    MessageStream statusStream;
+
+    // Reference point for "active" state
+    auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
+
+    // Retrieve status for each pipeline
+    for (uint32_t i = 0; i < message.pipelineUIDs.count; i++) {
+        uint64_t uid = message.pipelineUIDs[i];
+
+        // Try to get pipeline
+        PipelineState* pipeline = device->states_Pipelines.GetFromUID(uid);
+        if (!pipeline) {
+            continue;
+        }
+
+        // Add status
+        auto* status = MessageStreamView<PipelineStatusMessage>(statusStream).Add();
+        status->pipelineUID = uid;
+        status->active = IsPipelineActive(pipeline, now);
+        status->instrumented = pipeline->hotSwapObject.load() != nullptr;
+    }
+
+    // Submit response
+    auto&& response = MessageStreamView(stream).Add<PipelineStatusCollectionMessage>(PipelineStatusCollectionMessage::AllocationInfo { .statusByteSize = statusStream.GetByteSize() });
+    response->status.Set(statusStream);
+}
+
+void MetadataController::OnMessage(const struct GetShaderStatusMessage &message) {
+    MessageStream statusStream;
+
+    // Reference point for "active" state
+    auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
+
+    // Retrieve status for each shader
+    for (uint32_t i = 0; i < message.shaderUIDs.count; i++) {
+        uint64_t uid = message.shaderUIDs[i];
+
+        // Try to get shader
+        ShaderState* shader = device->states_Shaders.GetFromUID(uid);
+        if (!shader) {
+            continue;
+        }
+
+        // Add status
+        auto* status = MessageStreamView<ShaderStatusMessage>(statusStream).Add();
+        status->shaderUID = uid;
+        status->active = false;
+        status->instrumented = false;
+        
+        // Check if any dependent pipeline is active
+        for (PipelineState* pipeline : device->dependencies_shaderPipelines.Get(shader)) {
+            status->active       |= IsPipelineActive(pipeline, now) ? 1 : 0;
+            status->instrumented |= pipeline->hotSwapObject.load() != nullptr;
+        }
+    }
+
+    // Submit response
+    auto&& response = MessageStreamView(stream).Add<ShaderStatusCollectionMessage>(ShaderStatusCollectionMessage::AllocationInfo { .statusByteSize = statusStream.GetByteSize() });
+    response->status.Set(statusStream);
 }
 
 void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {

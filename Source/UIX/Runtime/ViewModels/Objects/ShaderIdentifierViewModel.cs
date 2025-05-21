@@ -71,6 +71,24 @@ namespace Runtime.ViewModels.Objects
         }
 
         /// <summary>
+        /// Is this object active?
+        /// </summary>
+        public bool Active
+        {
+            get => _active;
+            set => this.RaiseAndSetIfChanged(ref _active, value);
+        }
+
+        /// <summary>
+        /// Is this object instrumented?
+        /// </summary>
+        public bool Instrumented
+        {
+            get => _instrumented;
+            set => this.RaiseAndSetIfChanged(ref _instrumented, value);
+        }
+
+        /// <summary>
         /// Given shader language
         /// </summary>
         public string Language
@@ -151,5 +169,15 @@ namespace Runtime.ViewModels.Objects
         /// Internal language
         /// </summary>
         private string _language;
+
+        /// <summary>
+        /// Internal active state
+        /// </summary>
+        private bool _active;
+        
+        /// <summary>
+        /// Internal instrumented state
+        /// </summary>
+        private bool _instrumented;
     }
 }

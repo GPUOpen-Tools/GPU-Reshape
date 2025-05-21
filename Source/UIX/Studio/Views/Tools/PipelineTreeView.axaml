@@ -104,19 +104,56 @@ type <LineBreak />
             BorderThickness="0"
             Tag="{Binding}"
             ItemsSource="{Binding FilteredIdentifiers}"
-            SelectionMode="Multiple">
+            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+            SelectionMode="Multiple"
+            LayoutUpdated="OnListboxLayoutUpdated">
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                </Style>
+            </ListBox.Styles>
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="objects:PipelineIdentifierViewModel">
-                    <StackPanel Orientation="Horizontal">
-                        <Border IsVisible="{Binding Stage, Converter={StaticResource PipelineStageConverter}}"
-                                Background="{Binding Stage, Converter={StaticResource PipelineStageConverter}}"
-                                CornerRadius="5"
-                                Padding="5 2 5 2"
-                                Margin="0 0 5 0">
+                    <DockPanel
+                        LastChildFill="True"
+                        HorizontalAlignment="Stretch">
+                        <Border
+                            DockPanel.Dock="Left"
+                            IsVisible="{Binding Stage, Converter={StaticResource PipelineStageConverter}}"
+                            Background="{Binding Stage, Converter={StaticResource PipelineStageConverter}}"
+                            CornerRadius="5"
+                            Padding="5 2 5 2"
+                            Margin="0 0 5 0">
                             <TextBlock Text="{Binding Stage}"/>
                         </Border>
-                        <TextBlock Height="20" Text="{Binding Descriptor}" LayoutUpdated="OnPipelineIdentifierLayoutUpdated"/>
-                    </StackPanel>
+                            
+                        <StackPanel 
+                            DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                            <Ellipse 
+                                Width="3" Height="3" 
+                                Margin="0 0 3 0"
+                                Fill="{StaticResource StatusActive}" 
+                                ToolTip.Tip="{x:Static r:Resources.Status_Active}"
+                                IsVisible="{Binding Active}"/>
+                            
+                            <Ellipse 
+                                Width="3" Height="3" 
+                                Margin="0 0 3 0"
+                                Fill="{StaticResource StatusInstrumented}"
+                                ToolTip.Tip="{x:Static r:Resources.Status_Instrumented}"
+                                IsVisible="{Binding Instrumented}"/>
+                        </StackPanel>
+                        
+                        <TextBlock 
+                            DockPanel.Dock="Left"
+                            Height="20" 
+                            HorizontalAlignment="Stretch"
+                            TextTrimming="CharacterEllipsis"
+                            Margin="0 0 5 0"
+                            Text="{Binding Descriptor}"/>
+                    </DockPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>

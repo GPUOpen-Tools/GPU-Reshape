@@ -85,6 +85,8 @@ protected:
     void OnMessage(const struct GetShaderSourceMappingMessage& message);
     void OnMessage(const struct ReleaseShaderMessage& message);
     void OnMessage(const struct SetUseShaderExternalReferenceMessage& message);
+    void OnMessage(const struct GetPipelineStatusMessage& message);
+    void OnMessage(const struct GetShaderStatusMessage& message);
 
 private:
     DeviceDispatchTable* table;
