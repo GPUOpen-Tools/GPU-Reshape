@@ -106,6 +106,9 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
     /// Replaced pipeline object, fx. instrumented version
     std::atomic<IUnknown*> hotSwapObject{nullptr};
 
+    /// Fully relaxed last-used timestamp
+    std::atomic<uint64_t> lastUsedTimestampNS{0};
+
     /// Signature for this pipeline
     RootSignatureState* signature{nullptr};
 

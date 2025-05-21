@@ -66,9 +66,14 @@ namespace Studio.ViewModels.Tools
         public ObservableCollection<PipelineIdentifierViewModel> PipelineIdentifiers { get; } = new();
         
         /// <summary>
-        /// All identifiers
+        /// All filtered identifiers
         /// </summary>
         public ObservableCollection<PipelineIdentifierViewModel> FilteredIdentifiers { get; } = new();
+        
+        /// <summary>
+        /// All visible and pooled identifiers
+        /// </summary>
+        public ObservableCollection<PipelineIdentifierViewModel> PooledIdentifiers { get; } = new();
 
         /// <summary>
         /// Is the help message visible?
@@ -160,8 +165,55 @@ namespace Studio.ViewModels.Tools
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(CreateFilterQuery);
             
+            // Create timer on main thread
+            _poolingTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(500),
+                IsEnabled = true
+            };
+
+            // Subscribe tick
+            _poolingTimer.Tick += OnPoolingTick;
+
+            // Must call start manually (a little vague)
+            _poolingTimer.Start();
+            
             // Suspension
             this.BindTypedSuspension();
+        }
+
+        /// <summary>
+        /// Invoked on ticks
+        /// </summary>
+        private void OnPoolingTick(object? sender, EventArgs e)
+        {
+            if (_workspaceViewModel is not { Connection: { } } || PooledIdentifiers.Count == 0)
+                return;
+            
+            // Create request
+            var message = _workspaceViewModel.Connection.GetSharedBus().Add<GetPipelineStatusMessage>(new GetPipelineStatusMessage.AllocationInfo
+            {
+                pipelineUIDsCount = (ulong)PooledIdentifiers.Count
+            });
+
+            // Fill all UIDs
+            for (var i = 0; i < PooledIdentifiers.Count; i++)
+            {
+                message.pipelineUIDs.SetValue(i, PooledIdentifiers[i].GUID);
+            }
+        }
+
+        /// <summary>
+        /// Pool an immediate identifier
+        /// </summary>
+        public void PoolImmediate(PipelineIdentifierViewModel identifierViewModel)
+        {
+            if (_workspaceViewModel is not { Connection: { } })
+                return;
+
+            // Submit it immediately
+            var message = _workspaceViewModel.Connection.GetSharedBus().Add<GetPipelineStatusMessage>(new GetPipelineStatusMessage.AllocationInfo { pipelineUIDsCount = 1 });
+            message.pipelineUIDs.SetValue(0, identifierViewModel.GUID);
         }
 
         /// <summary>
@@ -446,8 +498,38 @@ namespace Studio.ViewModels.Tools
                     case PipelineUIDRangeMessage.ID:
                         Handle(message.Get<PipelineUIDRangeMessage>());
                         break;
+                    case PipelineStatusCollectionMessage.ID:
+                        Handle(message.Get<PipelineStatusCollectionMessage>());
+                        break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Message handler
+        /// </summary>
+        private void Handle(PipelineStatusCollectionMessage message)
+        {
+            List<PipelineStatusMessage.FlatInfo> list = new();
+            
+            // Flatten pipelines
+            foreach (PipelineStatusMessage status in new StaticMessageView<PipelineStatusMessage>(message.status.Stream))
+            {
+                list.Add(status.Flat);
+            }
+            
+            // Update all active states on the UI thread
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                foreach (PipelineStatusMessage.FlatInfo info in list)
+                {
+                    if (_lookup.TryGetValue(info.pipelineUID, out PipelineIdentifierViewModel? value))
+                    {
+                        value.Active = info.active == 1;
+                        value.Instrumented = info.instrumented == 1;
+                    }
+                }
+            });
         }
 
         /// <summary>
@@ -652,5 +734,10 @@ namespace Studio.ViewModels.Tools
         /// Always populate identifiers on discovery?
         /// </summary>
         private bool _alwaysPopulate = true;
+
+        /// <summary>
+        /// Timer for pooling
+        /// </summary>
+        private readonly DispatcherTimer _poolingTimer;
     }
 }

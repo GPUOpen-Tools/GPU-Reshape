@@ -37,4 +37,18 @@
         <field name="type" type="uint32"/>
         <field name="name"  type="string"/>
     </message>
+
+    <message name="GetPipelineStatus">
+        <field name="pipelineUIDs" type="array" element="uint64"/>
+    </message>
+
+    <message name="PipelineStatus">
+        <field name="pipelineUID" type="uint64"/>
+        <field name="active" type="bool"/>
+        <field name="instrumented" type="bool"/>
+    </message>
+
+    <message name="PipelineStatusCollection">
+        <field name="status" type="stream"/>
+    </message>
 </schema>

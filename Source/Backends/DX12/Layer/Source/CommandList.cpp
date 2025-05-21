@@ -1520,6 +1520,9 @@ void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D1
         hotSwap = static_cast<ID3D12PipelineState *>(pipelineState->hotSwapObject.load());
     }
 
+    // Update last used
+    pipelineState->lastUsedTimestampNS.store(device.state->syncPointActionThread.GetLastTimeSinceEpochNS(), std::memory_order::relaxed);
+
     // Pass down callchain
     table.bottom->next_SetPipelineState(table.next, hotSwap ? hotSwap : Next(pipeline));
 
@@ -1547,6 +1550,9 @@ void WINAPI HookID3D12CommandListSetPipelineState1(ID3D12CommandList *list, ID3D
         // Load new hot-object
         hotSwap = static_cast<ID3D12StateObject *>(stateObjectState->hotSwapObject.load());
     }
+
+    // Update last used
+    stateObjectState->lastUsedTimestampNS.store(device.state->syncPointActionThread.GetLastTimeSinceEpochNS(), std::memory_order::relaxed);
 
     // Pass down callchain
     table.bottom->next_SetPipelineState1(table.next, hotSwap ? hotSwap : Next(stateObject));

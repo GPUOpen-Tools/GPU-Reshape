@@ -155,6 +155,9 @@ struct PipelineState : public ReferenceObject {
     /// Replaced pipeline object, fx. instrumented version
     std::atomic<VkPipeline> hotSwapObject{VK_NULL_HANDLE};
 
+    /// Fully relaxed last-used timestamp
+    std::atomic<uint64_t> lastUsedTimestampNS{0};
+
     /// Layout for this pipeline
     PipelineLayoutState* layout{nullptr};
 

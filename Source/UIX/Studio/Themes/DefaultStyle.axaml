@@ -99,6 +99,10 @@
         <SolidColorBrush x:Key="ToggleButtonCheckColorBrush">#2C2C2C</SolidColorBrush>
         <SolidColorBrush x:Key="LinkForeground">#8B529E</SolidColorBrush>
         <SolidColorBrush x:Key="LinkForegroundHighlight">#A869BB</SolidColorBrush>
+        
+        <!-- Status brushes -->
+        <SolidColorBrush x:Key="StatusActive">#92969C</SolidColorBrush>
+        <SolidColorBrush x:Key="StatusInstrumented">#268487</SolidColorBrush>
 
         <!-- Connection strings -->
         <Color x:Key="ConnectionKeyIP">#4C4C4C</Color>

@@ -94,4 +94,18 @@
         <field name="found"     type="bool"/>
         <field name="nodes"     type="string"/>
     </message>
+
+    <message name="GetShaderStatus">
+        <field name="shaderUIDs" type="array" element="uint64"/>
+    </message>
+
+    <message name="ShaderStatus">
+        <field name="shaderUID" type="uint64"/>
+        <field name="active" type="bool"/>
+        <field name="instrumented" type="bool"/>
+    </message>
+
+    <message name="ShaderStatusCollection">
+        <field name="status" type="stream"/>
+    </message>
 </schema>

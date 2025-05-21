@@ -39,7 +39,7 @@ public:
     /// Constructor
     /// \param interval given interval, initial action excluded
     IntervalActionThread(const std::chrono::milliseconds &interval) : interval(interval) {
-        
+        lastTimeSinceEpochNS = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
     }
 
     /// Destructor
@@ -63,6 +63,11 @@ public:
             thread.join();
         }
     }
+
+    /// Get the last action timestamp since epoch (nanoseconds)
+    uint64_t GetLastTimeSinceEpochNS() const {
+        return lastTimeSinceEpochNS.load(std::memory_order::relaxed);
+    }
     
 private:
     void ThreadEntry() {
@@ -70,6 +75,9 @@ private:
 
         // While open
         while (!exitFlag.load()) {
+            lastTimeSinceEpochNS.store(std::chrono::duration_cast<std::chrono::nanoseconds>(last.time_since_epoch()).count(), std::memory_order::relaxed);
+
+            // Invoke
             action();
 
             // Record after the action, ensures we take the action time into account
@@ -98,6 +106,9 @@ private:
 
     /// Owned thread
     std::thread thread;
+
+    /// Last invocation since epoch (nanoseconds)
+    std::atomic<uint64_t> lastTimeSinceEpochNS;
 
     /// Action to be invoked each interval
     std::function<void()> action;

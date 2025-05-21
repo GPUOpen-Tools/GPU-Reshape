@@ -346,6 +346,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
         pipeline = hotSwapObject;
     }
 
+    // Update last used
+    state->lastUsedTimestampNS.store(state->table->syncPointActionThread.GetLastTimeSinceEpochNS(), std::memory_order::relaxed);
+
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdBindPipeline(commandBuffer->object, pipelineBindPoint, pipeline);
 
