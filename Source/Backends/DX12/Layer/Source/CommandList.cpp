@@ -1381,7 +1381,7 @@ void WINAPI HookID3D12CommandListSetComputeRoot32BitConstants(ID3D12CommandList 
     auto device = GetTable(table.state->parent);
 
     // Inform the streamer
-    device.state->exportStreamer->SetComputeRootConstants(table.state->streamState, RootParameterIndex, &pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
+    device.state->exportStreamer->SetComputeRootConstants(table.state->streamState, RootParameterIndex, pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
 
     // Pass down call chain
     table.next->SetComputeRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
@@ -1394,7 +1394,7 @@ void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstants(ID3D12CommandList
     auto device = GetTable(table.state->parent);
 
     // Inform the streamer
-    device.state->exportStreamer->SetGraphicsRootConstants(table.state->streamState, RootParameterIndex, &pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
+    device.state->exportStreamer->SetGraphicsRootConstants(table.state->streamState, RootParameterIndex, pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
 
     // Pass down call chain
     table.next->SetGraphicsRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
