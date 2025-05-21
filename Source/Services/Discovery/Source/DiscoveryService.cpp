@@ -268,7 +268,7 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
 
     // Suspended initialization?
     if (createInfo.suspendDeferredInitialization) {
-        _putenv_s(Backend::kSuspendDeferredInitializationKey, "");
+        bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kSuspendDeferredInitializationKey, "");
     }
 
     // Disable service traps, must always bootstrap regardless of discoverability
