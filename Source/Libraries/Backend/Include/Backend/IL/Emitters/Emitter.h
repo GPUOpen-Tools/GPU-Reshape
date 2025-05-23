@@ -950,6 +950,25 @@ namespace IL {
             return Op(instr);
         }
 
+        BasicBlock::TypedIterator<SwitchInstruction> Switch(ID value, BasicBlock* defaultBlock, uint32_t count, SwitchCase* cases, ControlFlow controlFlow ) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            auto instr = ALLOCA_SIZE(IL::SwitchInstruction, IL::SwitchInstruction::GetSize(count));
+            instr->opCode = OpCode::Switch;
+            instr->source = source;
+            instr->controlFlow = controlFlow;
+            instr->result = IL::InvalidID;
+            instr->value = value;
+            instr->_default = defaultBlock->GetID();
+            instr->cases.count = count;
+            
+            for (uint32_t i = 0; i < count; i++) {
+                instr->cases[i] = cases[i];
+            }
+            
+            return Op(*instr);
+        }
+
         /// Add return instruction
         /// \param value optional value to return
         /// \return instruction reference

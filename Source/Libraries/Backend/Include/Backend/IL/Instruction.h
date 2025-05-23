@@ -582,7 +582,7 @@ namespace IL {
     };
 
     struct SwitchCase {
-        uint32_t literal{0};
+        ID literal;
         ID branch;
     };
 

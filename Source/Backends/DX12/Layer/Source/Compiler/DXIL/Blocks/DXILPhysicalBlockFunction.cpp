@@ -4228,14 +4228,11 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::Switch: {
                     auto _instr = instr->As<IL::SwitchInstruction>();
 
-                    // TODO: New switch statements
-                    uint64_t type = record.ops ? record.ops[0] : 0;
-
                     // Prepare record
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstSwitch);
                     record.opCount = 3 + 2 * _instr->cases.count;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-                    record.ops[0] = type;
+                    record.ops[0] = table.type.typeMap.GetType(program.GetTypeMap().GetType(_instr->value));
                     record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
                     record.ops[2] = branchMappings.at(_instr->_default);
 
