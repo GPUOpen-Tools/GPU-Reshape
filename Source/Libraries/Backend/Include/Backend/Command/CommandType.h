@@ -33,6 +33,7 @@ enum class CommandType {
     /// Immediate data
     SetEventData,
     SetDescriptorData,
+    SetResource,
 
     /// Resources
     StageBuffer,

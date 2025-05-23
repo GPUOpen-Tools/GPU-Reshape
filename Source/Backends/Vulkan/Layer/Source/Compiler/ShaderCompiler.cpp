@@ -79,11 +79,11 @@ bool ShaderCompiler::Install() {
 
     // Get number of resources
     uint32_t resourceCount;
-    shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::All);
+    shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::AllGlobal);
 
     // Fill resources
     shaderData.resize(resourceCount);
-    shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::All);
+    shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::AllGlobal);
 
     // OK
     return true;

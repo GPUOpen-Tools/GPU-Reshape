@@ -130,6 +130,16 @@ struct CommandBuilder {
         buffer.Add(UAVBarrierCommand{});
     }
 
+    /// Set a resource binding
+    /// @param data data binding
+    /// @param puid the puid to bind
+    void SetResource(ShaderDataID data, uint32_t puid) {
+        buffer.Add(SetResourceCommand {
+            .id = data,
+            .puid = puid
+        });
+    }
+
 private:
     CommandBuffer& buffer;
 };

@@ -422,6 +422,9 @@ public:
     /// Compile the shader data handles
     void CreateShaderDataHandles(const DXCompileJob& job);
 
+    /// Compile the shader binding data handles
+    void CreateShaderBindingDataHandles(const DXCompileJob& job);
+
     /// Compile the descriptor data handles
     void CreateDescriptorHandle(const DXCompileJob& job);
 

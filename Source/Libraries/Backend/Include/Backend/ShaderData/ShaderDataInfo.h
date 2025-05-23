@@ -48,6 +48,7 @@ struct ShaderDataInfo {
     union
     {
         ShaderDataBufferInfo buffer;
+        ShaderDataBufferBindingInfo bufferBinding;
         ShaderDataEventInfo event;
         ShaderDataDescriptorInfo descriptor;
     };

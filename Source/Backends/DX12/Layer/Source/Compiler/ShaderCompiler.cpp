@@ -87,11 +87,11 @@ bool ShaderCompiler::Install() {
 
     // Get number of resources
     uint32_t resourceCount;
-    shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::All);
+    shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::AllGlobal);
 
     // Fill resources
     shaderData.resize(resourceCount);
-    shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::All);
+    shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::AllGlobal);
 
     // Get the signers
     dxilSigner = registry->Get<DXILSigner>();
@@ -213,7 +213,7 @@ bool ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Pre-injection
     for (size_t i = 0; i < shaderFeatures.size(); i++) {
-        if (!(job.instrumentationKey.featureBitSet & (1ull << i))) {
+        if (!(job.instrumentationKey.featureBitSet & (1ull << i)) || !shaderFeatures[i]) {
             continue;
         }
 
@@ -223,7 +223,7 @@ bool ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Pass through all features
     for (size_t i = 0; i < shaderFeatures.size(); i++) {
-        if (!(job.instrumentationKey.featureBitSet & (1ull << i))) {
+        if (!(job.instrumentationKey.featureBitSet & (1ull << i)) || !shaderFeatures[i]) {
             continue;
         }
 

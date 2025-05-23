@@ -43,3 +43,11 @@ struct ShaderDataBufferInfo {
     /// All buffer flags
     ShaderDataBufferFlagSet flagSet{};
 };
+
+struct ShaderDataBufferBindingInfo {
+    /// Is this a writable binding?
+    bool isWritable = false;
+    
+    /// Format of each element
+    Backend::IL::Format format{Backend::IL::Format::None};
+};

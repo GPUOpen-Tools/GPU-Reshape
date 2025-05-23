@@ -50,6 +50,7 @@
 #include <Shared/ShaderBackendMessage.h>
 
 // Backend
+#include <Backend/IL/DeviceCommand.h>
 #include <Backend/SubmissionContext.h>
 #include <Backend/IFeature.h>
 
@@ -125,6 +126,11 @@ void CreateDeviceCommandProxies(DeviceState *state) {
             state->commandListProxies.featureHooks_EndRenderPass[i] = hookTable.endRenderPass;
             state->commandListProxies.featureBitSetMask_EndRenderPass |= (1ull << i);
         }
+
+        if (hookTable.deviceCommand.IsValid()) {
+            state->commandListProxies.featureHooks_ExecuteIndirect[i] = hookTable.deviceCommand;
+            state->commandListProxies.featureBitSetMask_ExecuteIndirect |= (1ull << i);
+        }
     }
 }
 
@@ -144,6 +150,7 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet
     state->commandListProxies.featureBitSet_BeginRenderPass = state->commandListProxies.featureBitSetMask_BeginRenderPass & featureSet;
     state->commandListProxies.featureBitSet_EndRenderPass = state->commandListProxies.featureBitSetMask_EndRenderPass & featureSet;
     state->commandListProxies.featureBitSet_OMSetRenderTargets = state->commandListProxies.featureBitSetMask_OMSetRenderTargets & featureSet;
+    state->commandListProxies.featureBitSet_ExecuteIndirect = state->commandListProxies.featureBitSetMask_ExecuteIndirect & featureSet;
 }
 
 static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue* commandQueue, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {
@@ -233,6 +240,70 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandQueue1(ID3D12Device *device, const D
     return CreateCommandQueueState(device, commandQueue, desc, riid, pCommandQueue);
 }
 
+static void CreateCommandSignatureCommandData(ID3D12Device *device, const D3D12_COMMAND_SIGNATURE_DESC* pDesc, CommandSignatureState* state) {
+    std::vector<uint32_t> dwords;
+
+    // Append header
+    dwords.push_back(pDesc->NumArgumentDescs);
+    dwords.push_back(pDesc->ByteStride);
+
+    // Append command types
+    for (uint32_t i = 0; i < pDesc->NumArgumentDescs; i++) {
+        switch (pDesc->pArgumentDescs[i].Type) {
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DRAW:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH:
+                dwords.push_back(static_cast<uint32_t>(IL::DeviceCommandType::Dispatch));
+                break;
+            case D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH:
+            case D3D12_INDIRECT_ARGUMENT_TYPE_INCREMENTING_CONSTANT:
+                dwords.push_back(static_cast<uint32_t>(IL::DeviceCommandType::Unexposed));
+                break;
+        }
+    }
+
+    // Resource info
+    D3D12_RESOURCE_DESC desc{};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    desc.Alignment = 0;
+    desc.Width = sizeof(uint32_t) * dwords.size();
+    desc.Height = 1;
+    desc.DepthOrArraySize = 1;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    desc.Format = DXGI_FORMAT_UNKNOWN;
+    desc.MipLevels = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.SampleDesc.Count = 1;
+
+    // Standard upload
+    D3D12_HEAP_PROPERTIES heapProperties{};
+    heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    // Create the resource
+    device->CreateCommittedResource(
+        &heapProperties, D3D12_HEAP_FLAG_NONE,
+        &desc, D3D12_RESOURCE_STATE_COMMON, nullptr,
+        __uuidof(ID3D12Resource), reinterpret_cast<void**>(&state->deviceCommandAllocation)
+    );
+
+    // Map the range
+    void* data{nullptr};
+    state->deviceCommandAllocation->Map(0, nullptr, &data);
+
+    // Copy over the data
+    std::memcpy(data, dwords.data(), desc.Width);
+
+    // Unmap
+    state->deviceCommandAllocation->Unmap(0, nullptr);
+}
+
 HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, const D3D12_COMMAND_SIGNATURE_DESC* pDesc, ID3D12RootSignature* pRootSignature, const IID& riid, void** ppvCommandSignature) {
     auto table = GetTable(device);
 
@@ -277,6 +348,9 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
                 break;
         }
     }
+
+    // Create the signature data for instrumentation
+    CreateCommandSignatureCommandData(device, pDesc, state);
 
     // Create detours
     commandSignature = CreateDetour(state->allocators, commandSignature, state);
@@ -1409,6 +1483,80 @@ void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12
     // Get signature
     auto signatureTable = GetTable(pCommandSignature);
 
+    // If there's a proxy, we need to create the destination arguments
+    if (table.state->proxies.featureBitSet_ExecuteIndirect) {
+        // Effective length of the commands
+        uint32_t commandByteLength = signatureTable.state->byteStride * MaxCommandCount;
+        
+        // Create dest command allocation
+        ShaderExportDeviceAllocation destAllocation = table.state->streamState->deviceAllocator.Allocate(device.state->deviceAllocator, commandByteLength);
+
+        // Transient resource state
+        ResourceState destState {
+            .object = destAllocation.allocation.resource,
+            .desc = destAllocation.allocation.resource->GetDesc(),
+            .uid = kResourceUIDTransient
+        };
+
+        // Allocate new PUID's for lookups
+        destState.virtualMapping.token.puid = device.state->physicalResourceIdentifierMap.AllocatePUID(&destState);
+
+        // Source Indirect -> Copy
+        // TODO[cmd]: This is incorrect, it could be masked
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = Next(pArgumentBuffer);
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        table.next->ResourceBarrier(1u, &barrier);
+
+        // Copy over the source commands
+        table.next->CopyBufferRegion(
+            destAllocation.allocation.resource, 0,
+            Next(pArgumentBuffer), ArgumentBufferOffset,
+            commandByteLength
+        );
+
+        // Source Copy -> Indirect
+        barrier.Transition.pResource = Next(pArgumentBuffer);
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+        table.next->ResourceBarrier(1u, &barrier);
+
+        // Dest Copy -> Unordered
+        barrier.Transition.pResource = destAllocation.allocation.resource;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        table.next->ResourceBarrier(1u, &barrier);
+
+        // Invoke proxies
+        if (ApplyFeatureHook<FeatureHook_ExecuteIndirect>(
+            table.state,
+            table.state->proxies.context,
+            table.state->proxies.featureBitSet_ExecuteIndirect,
+            table.state->proxies.featureHooks_ExecuteIndirect,
+            pCommandSignature, MaxCommandCount, pArgumentBuffer,
+            ArgumentBufferOffset, pCountBuffer, CountBufferOffset,
+            &destState
+        )) {
+            CommitCommands(table.state);
+        }
+
+        // Unordered -> Indirect
+        barrier.Transition.pResource = destAllocation.allocation.resource;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+        table.next->ResourceBarrier(1u, &barrier);
+
+        // Free the transient PUID's
+        device.state->physicalResourceIdentifierMap.FreePUID(destState.virtualMapping.token.puid);
+
+        // Overwrite the argument buffer
+        // Subsequent patching/instrumentation will work on the proxy-modified arguments
+        pArgumentBuffer      = destAllocation.allocation.resource;
+        ArgumentBufferOffset = 0;
+    }
+
     // State object (raytracing) EI's require patching
     if (signatureTable.state->activeTypes & PipelineType::StateObject) {
         // Let the indirect raytracing handle it
@@ -1428,7 +1576,7 @@ void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12
         table.next->ExecuteIndirect(
             signatureTable.next, 
             MaxCommandCount, 
-            Next(pArgumentBuffer), 
+            ConditionalNext(pArgumentBuffer),
             ArgumentBufferOffset, 
             Next(pCountBuffer), 
             CountBufferOffset

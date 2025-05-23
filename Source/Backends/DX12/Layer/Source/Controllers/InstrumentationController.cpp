@@ -38,6 +38,7 @@
 
 // Backend
 #include <Backend/IFeature.h>
+#include <Backend/IShaderFeature.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -77,6 +78,13 @@ bool InstrumentationController::Install() {
 
     auto bridge = registry->Get<IBridge>();
     bridge->Register(this);
+
+    // Get the instrumentation bit set
+    for (size_t i = 0; i < device->features.size(); i++) {
+        if (Cast<IShaderFeature>(device->features[i])) {
+            instrumentationFeatureBitSet |= 1ull << i;
+        }
+    }
 
     return true;
 }
@@ -857,6 +865,9 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
             // Get the super feature set
             uint64_t featureBitSet = shaderFeatureBitSet | dependentObject->instrumentationInfo.featureBitSet;
 
+            // Mark by instrumentation set
+            featureBitSet &= instrumentationFeatureBitSet;
+
             // No features?
             if (!featureBitSet) {
                 continue;
@@ -996,6 +1007,9 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             // ? Pipeline specific bit set fed back during shader compilation
             featureBitSet |= shaderState->instrumentationInfo.featureBitSet;
             featureBitSet |= state->instrumentationInfo.featureBitSet;
+
+            // Mark by instrumentation set
+            featureBitSet &= instrumentationFeatureBitSet;
 
             // Summarize
             superFeatureBitSet |= featureBitSet;

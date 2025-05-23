@@ -56,6 +56,11 @@ struct DXILBindingInfo {
     } global;
 
     struct {
+        /// Handle for shader datas
+        uint32_t shaderDataBindingHandleIds[static_cast<uint32_t>(DXILShaderResourceClass::Count)]{};
+    } bindings;
+
+    struct {
         /// Handle for descriptor data
         uint32_t descriptorConstantsHandleId{};
     } local;

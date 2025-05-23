@@ -36,6 +36,7 @@
 #include <Backend/CommandContext.h>
 #include <Backend/IL/Data/ValidationCoverage.h>
 #include <Backend/ShaderData/ShaderDataValidationCoverage.h>
+#include <Backend/Command/CommandBuilder.h>
 
 // Generated schema
 #include <Schemas/Features/Concurrency.h>

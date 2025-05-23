@@ -239,6 +239,10 @@ private:
     /// \param block appended block
     void CreateShaderDataHandle(const DXCompileJob &job, struct LLVMBlock* block);
 
+    /// Create the shader data handles
+    /// \param block appended block
+    void CreateShaderBindingDataHandle(const DXCompileJob &job, struct LLVMBlock* block);
+
     /// Create the descriptor handle
     /// \param block appended block
     void CreateDescriptorHandle(const DXCompileJob &job, struct LLVMBlock* block);

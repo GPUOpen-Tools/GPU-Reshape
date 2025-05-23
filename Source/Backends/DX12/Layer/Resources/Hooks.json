@@ -249,7 +249,11 @@
         "DiscardResource",
         "BeginRenderPass",
         "EndRenderPass",
-        "OMSetRenderTargets"
+        "OMSetRenderTargets",
+        "ExecuteIndirect"
+      ],
+      "manual-proxies": [
+        "ExecuteIndirect"
       ]
     },
     "ID3D12StateObject": {

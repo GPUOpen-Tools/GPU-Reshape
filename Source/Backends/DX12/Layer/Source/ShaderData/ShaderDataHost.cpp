@@ -142,6 +142,38 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info, cons
     return rid;
 }
 
+ShaderDataID ShaderDataHost::CreateBufferBinding(const ShaderProgramID& programID, const ShaderDataBufferBindingInfo &info) {
+    std::lock_guard guard(mutex);
+
+    // Determine index
+    ShaderDataID rid;
+    if (freeIndices.empty()) {
+        // Allocate at end
+        rid = static_cast<uint32_t>(indices.size());
+        indices.emplace_back();
+    } else {
+        // Consume free index
+        rid = freeIndices.back();
+        freeIndices.pop_back();
+    }
+
+    // Set index
+    indices[rid] = static_cast<uint32_t>(resources.size());
+
+    // Create allocation
+    ResourceEntry &entry = resources.emplace_back();
+    entry.info.id = rid;
+    entry.info.type = ShaderDataType::BufferBinding;
+    entry.info.bufferBinding = info;
+
+    // Set per program binding
+    ProgramEntry& program = programs[programID];
+    program.shaderDataIDs.push_back(rid);
+
+    // OK
+    return rid;
+}
+
 ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
     std::lock_guard guard(mutex);
     
@@ -273,6 +305,24 @@ D3D12MA::Allocation * ShaderDataHost::GetMappingAllocation(ShaderDataMappingID m
     return entry.allocation;
 }
 
+uint32_t ShaderDataHost::GetBindingRootIndex(ShaderProgramID programID, ShaderDataID rid) {
+    std::lock_guard guard(mutex);
+
+    // Get program
+    ASSERT(programs.contains(programID), "Program not registered");
+    ProgramEntry& program = programs[programID];
+
+    // Find the index of the RID
+    for (uint32_t i = 0; i < program.shaderDataIDs.size(); i++) {
+        if (program.shaderDataIDs[i] == rid) {
+            return i;
+        }
+    }
+
+    ASSERT(false, "Shader data not registered");
+    return InvalidShaderDataID;
+}
+
 void ShaderDataHost::Destroy(ShaderDataID rid) {
     std::lock_guard guard(mutex);
     uint32_t index = indices[rid];
@@ -320,6 +370,43 @@ void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataT
 
         for (uint32_t i = 0; i < resources.size(); i++) {
             if (mask & resources[i].info.type) {
+                value++;
+            }
+        }
+
+        *count = value;
+    }
+}
+
+void ShaderDataHost::Enumerate(ShaderProgramID programID, uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
+    std::lock_guard guard(mutex);
+
+    // Find program
+    auto it = programs.find(programID);
+    if (it == programs.end()) {
+        *count = 0;
+        return;
+    }
+    
+    if (out) {
+        uint32_t offset = 0;
+
+        for (uint32_t i = 0; i < it->second.shaderDataIDs.size(); i++) {
+            const ResourceEntry& resource = resources[indices[it->second.shaderDataIDs[i]]];
+
+            // Is of type?
+            if (mask & resource.info.type) {
+                out[offset++] = resource.info;
+            }
+        }
+    } else {
+        uint32_t value = 0;
+
+        for (uint32_t i = 0; i < it->second.shaderDataIDs.size(); i++) {
+            const ResourceEntry& resource = resources[indices[it->second.shaderDataIDs[i]]];
+            
+            // Is of type?
+            if (mask & resource.info.type) {
                 value++;
             }
         }

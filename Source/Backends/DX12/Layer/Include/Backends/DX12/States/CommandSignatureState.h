@@ -49,6 +49,9 @@ struct __declspec(uuid("077406A2-E417-48A3-B2F1-A147CAEF4CB3")) CommandSignature
     /// All arguments
     std::vector<D3D12_INDIRECT_ARGUMENT_DESC> arguments;
 
+    /// The backend command allocation
+    ID3D12Resource* deviceCommandAllocation = nullptr;
+
     /// Byte stride of this signature
     uint32_t byteStride{0};
 

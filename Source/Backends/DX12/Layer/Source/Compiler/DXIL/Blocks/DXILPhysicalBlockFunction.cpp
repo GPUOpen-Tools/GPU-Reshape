@@ -5995,6 +5995,7 @@ void DXILPhysicalBlockFunction::CreateHandles(const DXCompileJob &job, struct LL
     CreateEventHandle(job, block);
     CreateConstantHandle(job, block);
     CreateShaderDataHandle(job, block);
+    CreateShaderBindingDataHandle(job, block);
 }
 
 void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXCompileJob &job, struct LLVMBlock *block) {
@@ -6297,6 +6298,44 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXCompileJob &job, 
             DXILShaderResourceClass::UAVs,
             table.bindingInfo.global.shaderDataHandleId + registerOffset,
             table.bindingInfo.bindingInfo.global.shaderResourceBaseRegister + registerOffset
+        );
+
+        // Next
+        registerOffset++;
+    }
+}
+
+void DXILPhysicalBlockFunction::CreateShaderBindingDataHandle(const DXCompileJob &job, struct LLVMBlock *block) {
+    IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
+
+    // Current offset
+    uint32_t registerOffset = 0;
+
+    // Per-class offsets
+    uint32_t bindingHandleOffsets[static_cast<uint32_t>(DXILShaderResourceClass::Count)]{};
+
+    // Create a handle per resource
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (!(info.type & ShaderDataType::BindingMask)) {
+            continue;
+        }
+
+        // Get variable
+        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+
+        // Get the target class
+        DXILShaderResourceClass targetClass = info.bufferBinding.isWritable ? DXILShaderResourceClass::UAVs : DXILShaderResourceClass::SRVs;
+
+        // Offsets are always allocated in-class
+        uint32_t inClassOffset = bindingHandleOffsets[static_cast<uint32_t>(targetClass)]++;
+
+        // Create handle
+        CreateUniversalHandle(
+            block,
+            variable->id,
+            targetClass,
+            table.bindingInfo.bindings.shaderDataBindingHandleIds[static_cast<uint32_t>(targetClass)] + inClassOffset,
+            table.bindingInfo.bindingInfo.bindings.shaderBindingResourceBaseRegister + registerOffset
         );
 
         // Next

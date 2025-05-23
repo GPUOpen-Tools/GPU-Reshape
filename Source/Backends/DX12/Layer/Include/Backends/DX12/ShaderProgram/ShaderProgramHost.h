@@ -61,19 +61,14 @@ public:
     void Deregister(ShaderProgramID program) override;
 
     /// Get the shared signature
-    ID3D12RootSignature* GetSignature() const {
-        return rootSignature;
+    ID3D12RootSignature* GetSignature(ShaderProgramID id) const {
+        return programs[id].rootSignature;
     }
 
     /// Get the pipeline of a program
     ID3D12PipelineState* GetPipeline(ShaderProgramID id) const {
         return programs[id].pipeline;
     }
-
-private:
-    /// Create the shared root signature
-    /// \return success state
-    bool CreateRootSignature();
 
 private:
     struct ProgramEntry {
@@ -85,6 +80,18 @@ private:
 
         /// Source program
         ComRef<IShaderProgram> program;
+
+        /// Root signature
+        ID3D12RootSignature* rootSignature{nullptr};
+
+        /// Root bindings
+        RootRegisterBindingInfo rootBindingInfo;
+
+        /// Root physical mappings
+        RootSignaturePhysicalMapping* rootPhysicalMapping{nullptr};
+
+        /// Id of this program
+        ShaderProgramID id;
     };
 
     /// All programs, may contain empty slots
@@ -96,16 +103,6 @@ private:
 private:
     /// All exposed shader data
     Vector<ShaderDataInfo> shaderData;
-
-private:
-    /// Shared root signature
-    ID3D12RootSignature* rootSignature{nullptr};
-
-    /// Shared root bindings
-    RootRegisterBindingInfo rootBindingInfo;
-
-    /// Shared root physical mappings
-    RootSignaturePhysicalMapping* rootPhysicalMapping{nullptr};
 
 private:
     /// Base module used for templating

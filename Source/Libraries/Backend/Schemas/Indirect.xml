@@ -29,6 +29,6 @@
 
 <schema>
     <message name="SetIndirectConfig">
-        <field name="scratchByteCount" type="uint32" value="8000000"/>
+        <field name="scratchByteCount" type="uint32" value="32000000"/>
     </message>
 </schema>

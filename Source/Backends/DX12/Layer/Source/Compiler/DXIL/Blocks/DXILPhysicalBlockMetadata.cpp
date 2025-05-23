@@ -1346,6 +1346,7 @@ void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXCompileJob& job) {
     CreateDescriptorHandle(job);
     CreateEventHandle(job);
     CreateShaderDataHandles(job);
+    CreateShaderBindingDataHandles(job);
 }
 
 void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job) {
@@ -1772,6 +1773,95 @@ void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXCompileJob& job)
 
         // Next
         registerOffset++;
+    }
+}
+
+void DXILPhysicalBlockMetadata::CreateShaderBindingDataHandles(const DXCompileJob &job) {
+    IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
+
+    // All supported binding classes
+    DXILShaderResourceClass classes[] = {
+        DXILShaderResourceClass::SRVs,
+        DXILShaderResourceClass::UAVs
+    };
+
+    // Create bindings per class
+    for (DXILShaderResourceClass classKind : classes) {
+        MappedRegisterClass& _class = FindOrAddRegisterClass(classKind);
+
+        // Set binding info
+        // Handles are allocated linearly after the current index
+        table.bindingInfo.bindings.shaderDataBindingHandleIds[static_cast<uint32_t>(classKind)] = static_cast<uint32_t>(_class.handles.size());
+
+        // Current register offset
+        uint32_t registerOffset{0};
+
+        // Allocate bindings for the current class
+        for (const ShaderDataInfo& info : shaderDataMap) {
+            if (!(info.type & ShaderDataType::BindingMask)) {
+                continue;
+            }
+
+            // Next
+            uint32_t bindingRegisterOffset = registerOffset++;
+
+            // Right class?
+            DXILShaderResourceClass targetClass = info.bufferBinding.isWritable ? DXILShaderResourceClass::UAVs : DXILShaderResourceClass::SRVs;
+            if (targetClass != classKind) {
+                continue;
+            }
+
+            // Only buffers supported for now
+            ASSERT(info.type == ShaderDataType::BufferBinding, "Only buffers are implemented for now");
+
+            // Get mapped id
+            const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+            ASSERT(variable, "Failed to match variable to shader Data");
+
+            // Variables always pointer to
+            const auto* pointerType = variable->type->As<Backend::IL::PointerType>();
+
+            // {format}
+            const Backend::IL::Type* retTy = table.type.typeMap.FindNamedTypeOrAdd(Backend::IL::StructType {
+                .memberTypes = { pointerType->pointee->As<Backend::IL::BufferType>()->elementType }
+            }, "class.Buffer<Format>");
+
+            // {format}*
+            const Backend::IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+                .pointee = retTy,
+                .addressSpace = Backend::IL::AddressSpace::Function
+            });
+
+            // Create handle
+            DXILMetadataHandleEntry& handle = handles.emplace_back();
+            handle.name = "ShaderBindingResource";
+            handle.type = retTyPtr;
+            handle.bindSpace = job.instrumentationKey.bindingInfo.bindings.space;
+            handle.registerBase = job.instrumentationKey.bindingInfo.bindings.shaderBindingResourceBaseRegister + bindingRegisterOffset;
+            handle.registerRange = 1u;
+
+            switch (classKind) {
+                default:
+                    ASSERT(false, "Unknown class");
+                    break;
+                case DXILShaderResourceClass::SRVs:
+                    handle.srv.componentType = GetFormatComponent(info.bufferBinding.format);
+                    handle.srv.shape = DXILShaderResourceShape::TypedBuffer;
+                    break;
+                case DXILShaderResourceClass::UAVs:
+                    handle.uav.componentType = GetFormatComponent(info.bufferBinding.format);
+                    handle.uav.shape = DXILShaderResourceShape::TypedBuffer;
+                    break;
+            }
+
+            // Library variable
+            if (shadingModel._class == DXILShadingModelClass::Lib) {
+                handle.libVariable = CreateExternLibResourceVariable(handle.type);
+            }
+
+            // Append handle to class
+            _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
+        }
     }
 }
 

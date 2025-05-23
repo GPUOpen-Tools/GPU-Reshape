@@ -34,12 +34,16 @@ enum class ShaderDataType {
     Texture = BIT(1),
     Event = BIT(2),
     Descriptor = BIT(3),
+    BufferBinding = BIT(4),
 
     /// Descriptor occupying mask
     DescriptorMask = Buffer | Texture,
 
+    /// Binding occupying mask
+    BindingMask = BufferBinding,
+
     /// All data
-    All = Buffer | Texture | Event | Descriptor
+    AllGlobal = Buffer | Texture | Event | Descriptor
 };
 
 BIT_SET(ShaderDataType);

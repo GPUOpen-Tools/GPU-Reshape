@@ -27,10 +27,21 @@
 #pragma once
 
 // Layer
-#include "ReconstructionFlag.h"
+#include <Backends/DX12/Command/ReconstructionFlag.h>
 
 // Backend
 #include <Backend/ShaderProgram/ShaderProgram.h>
+
+// Common
+#include <Common/Containers/TrivialStackVector.h>
+
+// Forward declarations
+struct ResourceState;
+
+struct UserBinding {
+    /// Resource to be bound
+    ResourceState* resource{nullptr};
+};
 
 struct UserCommandState {
     /// Current reconstruction set
@@ -38,4 +49,7 @@ struct UserCommandState {
 
     /// Bound shader program
     ShaderProgramID shaderProgramID;
+
+    /// All program bindings
+    TrivialStackVector<UserBinding, 4u> shaderProgramBindings;
 };

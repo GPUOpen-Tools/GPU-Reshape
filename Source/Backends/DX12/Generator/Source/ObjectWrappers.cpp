@@ -140,6 +140,13 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
                 isProxied |= proxy.get<std::string>() == methodName;
             }
 
+            // Make sure it's not excluded
+            for (auto proxy : objDecl["manual-proxies"]) {
+                if (proxy.get<std::string>() == methodName) {
+                    isProxied = false;
+                }
+            }
+
             // Proxied hook?
             if (isProxied) {
                 // Pass down to next object
