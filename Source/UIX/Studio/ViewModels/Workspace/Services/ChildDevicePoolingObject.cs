@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
-using Avalonia;
 using Avalonia.Threading;
 using Bridge.CLR;
 using DynamicData;
 using Message.CLR;
 using Studio.Services;
 using Studio.Utils;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace.Services
@@ -84,6 +85,18 @@ namespace Studio.ViewModels.Workspace.Services
 
             // Create the process tree
             IPropertyViewModel targetPropertyViewModel = CreateProcessTree();
+
+            // If this is the first device for the tree, open the descriptor
+            if (!targetPropertyViewModel.Properties.Items.Cast<WorkspaceCollectionViewModel>().Any())
+            {
+                if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+                {
+                    layoutViewModel.DocumentLayout?.OpenDocument(new WorkspaceOverviewDescriptor()
+                    {
+                        Workspace = workspace
+                    });
+                }
+            }
             
             // Add to target
             targetPropertyViewModel.Properties.Add(workspace.PropertyCollection);
