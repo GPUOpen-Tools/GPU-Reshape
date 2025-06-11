@@ -59,6 +59,10 @@
 // Use feature programs instead of staging buffers for CPU-fed signalling
 #define USE_SIGNAL_PROGRAM 0
 
+// Relying on heartbeat threads isn't as easy as just checking the submission timelines
+// as the submission may be waiting for quite a while before starting execution.
+#define USE_HEARTBEAT_THREAD 0
+
 LoopFeature::LoopFeature() {
     /** poof */
 }
@@ -67,7 +71,9 @@ LoopFeature::~LoopFeature() {
     heartBeatExitFlag = true;
 
     // Wait for the heart beat
+#if USE_HEARTBEAT_THREAD
     heartBeatThread.join();
+#endif // USE_HEARTBEAT_THREAD
 }
 
 bool LoopFeature::Install() {
@@ -123,7 +129,9 @@ bool LoopFeature::Install() {
 
 bool LoopFeature::PostInstall() {
     // Start the heart beat thread
+#if USE_HEARTBEAT_THREAD
     heartBeatThread = std::thread(&LoopFeature::HeartBeatThreadWorker, this);
+#endif // USE_HEARTBEAT_THREAD
     
     // OK
     return true;
