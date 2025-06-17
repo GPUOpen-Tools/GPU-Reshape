@@ -166,13 +166,6 @@ bool DiscoveryService::UninstallGlobal() {
 bool DiscoveryService::InstallLocal(const DiscoveryProcessLocalInfo& localInfo, const MessageStream& environment) {
     bool anyFailed = false;
 
-    // Install all
-    for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        if (!listener->InstallLocal()) {
-            anyFailed = true;
-        }
-    }
-
     // For now, enable all capture modes by default
 #ifdef _WIN32
     // Write the startup environment
@@ -205,6 +198,13 @@ bool DiscoveryService::InstallLocal(const DiscoveryProcessLocalInfo& localInfo, 
 #else // _WIN32
 #   error Not implemented
 #endif // _WIN32
+
+    // Install all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (!listener->InstallLocal()) {
+            anyFailed = true;
+        }
+    }
 
     // OK
     return !anyFailed;
