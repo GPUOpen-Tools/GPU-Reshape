@@ -32,13 +32,29 @@
 // Std
 #include <cstdint>
 
+struct GRSLoaderSymbolInfo {
+    /// All paths
+    const char** paths = nullptr;
+
+    /// Number of symbol paths
+    uint32_t pathCount = 0;
+
+    /// Should subdirectories be scanned?
+    bool includeSubDirectories = false;
+};
+
+struct GRSLoaderInstallInfo {
+    /// All symbol information
+    GRSLoaderSymbolInfo symbol;
+};
+
 /// Symbol helper
 #define GRS_SYMBOL(NAME, STR) \
     [[maybe_unused]] static constexpr const char* k##NAME = STR; \
     [[maybe_unused]] static constexpr const wchar_t* k##NAME##W = L##STR;
 
 /// Loader proc-fn types
-using PFN_GRS_LOADER_INSTALL            = bool(*)();
+using PFN_GRS_LOADER_INSTALL            = bool(*)(const GRSLoaderInstallInfo* info);
 using PFN_GRS_LOADER_GET_RESERVED_TOKEN = void(*)(char* output, uint32_t* length);
 
 /// Loader symbols
@@ -47,7 +63,7 @@ GRS_SYMBOL(PFNGRSLoaderGetReservedToken, "GRSLoaderGetReservedToken");
 
 /// Install the GPU Reshape loader
 /// Ensures that all relevant backends are injected
-DLL_EXPORT_C bool GRSLoaderInstall();
+DLL_EXPORT_C bool GRSLoaderInstall(const GRSLoaderInstallInfo* info);
 
 /// Get the reserved token for this loader
 /// Used for later attaching (e.g., GPUReshape attach -token [...])

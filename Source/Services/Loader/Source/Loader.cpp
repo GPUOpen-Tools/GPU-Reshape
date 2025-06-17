@@ -31,13 +31,32 @@
 // Message
 #include <Message/MessageStream.h>
 
+// Schemas
+#include <Schemas/PDB.h>
+
 // Std
 #include <iostream>
 
 /// Per-process reserved token
 static GlobalUID GProcessReservedToken = GlobalUID::New();
 
-DLL_EXPORT_C bool GRSLoaderInstall() {
+static void CreateSymbolStartupEnvironment(const GRSLoaderInstallInfo* info, MessageStreamView<>& view) {
+    // Set config
+    auto* config = view.Add<SetPDBConfigMessage>();
+    config->recursive = info->symbol.includeSubDirectories;
+    config->pathCount = info->symbol.pathCount;
+
+    // Push all paths
+    for (uint32_t i = 0; i < info->symbol.pathCount; i++) {
+        auto* path = view.Add<SetPDBPathMessage>(SetPDBPathMessage::AllocationInfo { .pathLength = std::strlen(info->symbol.paths[i]) });
+        path->path.Set(info->symbol.paths[i]);
+    }
+
+    // Index all paths
+    view.Add<IndexPDPathsMessage>();
+}
+
+DLL_EXPORT_C bool GRSLoaderInstall(const GRSLoaderInstallInfo* info) {
     // Install the system wide host resolver
     HostResolverService resolverService;
     if (!resolverService.Install()) {
@@ -61,8 +80,12 @@ DLL_EXPORT_C bool GRSLoaderInstall() {
     DiscoveryProcessLocalInfo localInfo;
     localInfo.reservedToken = GProcessReservedToken;
 
-    // No startup environment
+    // Startup environment
     MessageStream stream;
+
+    // Setup config env
+    MessageStreamView<> view(stream);
+    CreateSymbolStartupEnvironment(info, view);
 
     // Finally, install GRS locally
     if (!discoveryService.InstallLocal(localInfo, stream)) {
