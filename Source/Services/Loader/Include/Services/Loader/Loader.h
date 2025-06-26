@@ -26,9 +26,6 @@
 
 #pragma once
 
-// Common
-#include <Common/Common.h>
-
 // Std
 #include <cstdint>
 
@@ -63,11 +60,11 @@ GRS_SYMBOL(PFNGRSLoaderGetReservedToken, "GRSLoaderGetReservedToken");
 
 /// Install the GPU Reshape loader
 /// Ensures that all relevant backends are injected
-DLL_EXPORT_C bool GRSLoaderInstall(const GRSLoaderInstallInfo* info);
+extern "C" __declspec(dllexport) bool GRSLoaderInstall(const GRSLoaderInstallInfo* info);
 
 /// Get the reserved token for this loader
 /// Used for later attaching (e.g., GPUReshape attach -token [...])
-DLL_EXPORT_C void GRSLoaderGetReservedToken(char* output, uint32_t* length);
+extern "C" __declspec(dllexport) void GRSLoaderGetReservedToken(char* output, uint32_t* length);
 
 // Cleanup
 #undef GRS_SYMBOL
