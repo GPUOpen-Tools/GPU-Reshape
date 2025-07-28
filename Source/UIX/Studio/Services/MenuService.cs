@@ -24,10 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using Avalonia.Controls;
 using DynamicData;
-using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Menu;
 
 namespace Studio.Services
@@ -46,6 +43,7 @@ namespace Studio.Services
             {
                 new FileMenuItemViewModel(),
                 new WorkspaceMenuItemViewModel(),
+                new InstrumentMenuItemViewModel(),
                 new HelpMenuItemViewModel(),
             });
         }

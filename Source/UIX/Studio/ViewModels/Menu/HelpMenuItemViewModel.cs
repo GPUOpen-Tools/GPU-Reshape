@@ -57,6 +57,15 @@ namespace Studio.ViewModels.Menu
         }
 
         /// <summary>
+        /// Is visible?
+        /// </summary>
+        public bool IsVisible
+        {
+            get => _isVisible;
+            set => this.RaiseAndSetIfChanged(ref _isVisible, value);
+        }
+
+        /// <summary>
         /// Items within
         /// </summary>
         public ObservableCollection<IMenuItemViewModel> Items { get; } = new();
@@ -146,5 +155,10 @@ namespace Studio.ViewModels.Menu
         /// Internal enabled state
         /// </summary>
         private bool _isEnabled = true;
+
+        /// <summary>
+        /// Internal visible state
+        /// </summary>
+        private bool _isVisible = true;
     }
 }

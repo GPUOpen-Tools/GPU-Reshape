@@ -53,6 +53,11 @@ namespace Studio.ViewModels.Menu
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
+        /// Is visible?
+        /// </summary>
+        public bool IsVisible { get; set; } = true;
+
+        /// <summary>
         /// Icon for this item
         /// </summary>
         public StreamGeometry? Icon => !string.IsNullOrEmpty(IconPath) ? ResourceLocator.GetIcon(IconPath) : null;

@@ -66,6 +66,7 @@
                         <Setter Property="ItemsSource" Value="{Binding (m:IMenuItemViewModel).Items}"/>
                         <Setter Property="Command" Value="{Binding (m:IMenuItemViewModel).Command}"/>
                         <Setter Property="IsEnabled" Value="{Binding Path=(m:IMenuItemViewModel).IsEnabled}"/>
+                        <Setter Property="IsVisible" Value="{Binding Path=(m:IMenuItemViewModel).IsVisible}"/>
                         <Setter Property="Icon">
                             <Template>
                                 <PathIcon 

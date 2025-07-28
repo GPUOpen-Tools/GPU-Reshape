@@ -26,14 +26,18 @@
 
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using System;
+using System.Collections.Generic;
 using Avalonia.Media;
-using DynamicData;
 using ReactiveUI;
 using Studio.Services;
+using Studio.ViewModels.Contexts;
+using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace;
 
 namespace Studio.ViewModels.Menu
 {
-    public class FileMenuItemViewModel : ReactiveObject, IMenuItemViewModel
+    public class InstrumentMenuItemViewModel : ReactiveObject, IMenuItemViewModel
     {
         /// <summary>
         /// Given header
@@ -80,50 +84,72 @@ namespace Studio.ViewModels.Menu
         /// <summary>
         /// Constructor
         /// </summary>
-        public FileMenuItemViewModel()
+        public InstrumentMenuItemViewModel()
         {
-            Items.AddRange(new IMenuItemViewModel[]
+            if (ServiceRegistry.Get<IWorkspaceService>() is { } service)
             {
-                new MenuItemViewModel()
+                service.WhenAnyValue(x => x.SelectedWorkspace).Subscribe(OnWorkspaceChanged);
+            }
+        }
+
+        /// <summary>
+        /// Invoked on workspace changes
+        /// </summary>
+        private void OnWorkspaceChanged(IWorkspaceViewModel? workspace)
+        {
+            Items.Clear();
+
+            // If not instrumentable, skip
+            IsVisible = workspace is { PropertyCollection: IInstrumentableObject };
+            if (!IsVisible)
+            {
+                return;
+            }
+            
+            // Get instrumentation context from workspace
+            List<IContextMenuItemViewModel> itemContexts = new();
+            _context.Install(itemContexts, new object []{ workspace!.PropertyCollection });
+
+            // Populate contexts
+            if (itemContexts.Count > 0)
+            {
+                InstallContextViewModels(this, itemContexts[0].Items);
+            }
+        }
+
+        /// <summary>
+        /// Install all context items
+        /// </summary>
+        private void InstallContextViewModels(IMenuItemViewModel viewModel, IList<IContextMenuItemViewModel> itemViewModels)
+        {
+            foreach (IContextMenuItemViewModel itemViewModel in itemViewModels)
+            {
+                // May not be visible
+                if (!itemViewModel.IsVisible)
                 {
-                    Header = "Settings",
-                    Command = ReactiveCommand.Create(OnSettings),
-                    IconPath = "Settings"
-                },
-                
-                new MenuItemViewModel()
-                {
-                    Header = "-"
-                },
-                
-                new MenuItemViewModel()
-                {
-                    Header = "Exit",
-                    Command = ReactiveCommand.Create(OnExit)
+                    continue;
                 }
-            });
-        }
 
+                MenuItemViewModel menuItem = new()
+                {
+                    Header = itemViewModel.Header,
+                    Command = itemViewModel.Command
+                };
+                viewModel.Items.Add(menuItem);
+                
+                InstallContextViewModels(menuItem, itemViewModel.Items);
+            }
+        }
+        
         /// <summary>
-        /// Invoked on settings
+        /// Shared instrumentation context
         /// </summary>
-        private void OnSettings()
-        {
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(new SettingsViewModel());
-        }
-
-        /// <summary>
-        /// Invoked on exit
-        /// </summary>
-        private void OnExit()
-        {
-            ServiceRegistry.Get<IWindowService>()?.Exit();
-        }
-
+        private InstrumentContextViewModel _context = new();
+        
         /// <summary>
         /// Internal header
         /// </summary>
-        private string _header = "File";
+        private string _header = "Instrument";
 
         /// <summary>
         /// Internal enabled state

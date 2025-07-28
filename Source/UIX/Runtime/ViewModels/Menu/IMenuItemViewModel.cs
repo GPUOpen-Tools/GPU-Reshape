@@ -51,6 +51,11 @@ namespace Studio.ViewModels.Menu
         /// Is this menu item enabled?
         /// </summary>
         public bool IsEnabled { get; set; }
+        
+        /// <summary>
+        /// Is this menu item visible?
+        /// </summary>
+        public bool IsVisible { get; set; }
 
         /// <summary>
         /// Icon for this item
