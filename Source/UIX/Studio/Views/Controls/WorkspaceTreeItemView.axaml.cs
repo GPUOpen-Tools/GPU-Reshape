@@ -25,9 +25,7 @@
 // 
 
 using System;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using ReactiveUI;
 using Studio.Extensions;
 using Studio.ViewModels.Controls;
@@ -61,17 +59,12 @@ namespace Studio.Views.Controls
                     }
                     
                     // Bind signals
-                    this.Events().DoubleTapped.Subscribe(x =>
+                    HitBorder.Events().DoubleTapped.Subscribe(x =>
                     {
                         x.Handled = true;
                         itemViewModel.OpenDocument.Execute(null);
                     });
                 });
-        }
-
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
         }
     }
 }
