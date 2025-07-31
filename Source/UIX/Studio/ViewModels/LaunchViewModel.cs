@@ -32,7 +32,6 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Windows.Input;
-using Avalonia;
 using Avalonia.Threading;
 using Bridge.CLR;
 using Discovery.CLR;
@@ -48,6 +47,7 @@ using Studio.Utils.Workspace;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Configurations;
 using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Properties.Config;
 
@@ -459,11 +459,8 @@ namespace Studio.ViewModels
             // Install on new workspace
             SelectedConfiguration.Install(WorkspaceViewModel);
 
-            // Force recording state?
-            if (SelectedConfiguration.Flags.HasFlag(WorkspaceConfigurationFlag.RequiresSynchronousRecording))
-            {
-                SynchronousRecording = true;
-            }
+            // Update all the flags
+            ApplyAndResetFlags();
             
             // Re-apply properties
             OnDetailChanged();
@@ -476,6 +473,48 @@ namespace Studio.ViewModels
             
             // Set name for suspension
             SelectedConfigurationName = SelectedConfiguration.Name;
+        }
+
+        /// <summary>
+        /// Applies all implicit flags and handles configuration resets
+        /// </summary>
+        private void ApplyAndResetFlags()
+        {
+            if (SelectedConfiguration == null)
+            {
+                return;
+            }
+            
+            // If this is a custom workspace, reset misc states
+            if (SelectedConfiguration is CustomConfigurationViewModel)
+            {
+                SynchronousRecording = false;
+                Coverage = false;
+            }
+            
+            // Force recording state?
+            if (SelectedConfiguration.Flags.HasFlag(WorkspaceConfigurationFlag.RequiresSynchronousRecording))
+            {
+                SynchronousRecording = true;
+            }
+
+            // If safe-guarding isn't exposed, reset it
+            if (!SelectedConfiguration.Flags.HasFlag(WorkspaceConfigurationFlag.CanSafeGuard))
+            {
+                SafeGuard = false;
+            }
+            
+            // If detail isn't exposed, reset it
+            if (!SelectedConfiguration.Flags.HasFlag(WorkspaceConfigurationFlag.CanDetail))
+            {
+                Detail = false;
+            }
+            
+            // If texel addressing isn't exposed, reset it
+            if (!SelectedConfiguration.Flags.HasFlag(WorkspaceConfigurationFlag.CanUseTexelAddressing))
+            {
+                TexelAddressing = false;
+            }
         }
 
         /// <summary>
