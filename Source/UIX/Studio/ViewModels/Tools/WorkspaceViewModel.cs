@@ -85,7 +85,16 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// All workspaces
         /// </summary>
-        public ObservableCollection<Controls.IObservableTreeItem> Workspaces { get; } = new();
+        public ObservableCollection<WorkspaceTreeItemViewModel> Workspaces { get; } = new();
+
+        /// <summary>
+        /// Bindable selected workspace
+        /// </summary>
+        public WorkspaceTreeItemViewModel? SelectedWorkspace
+        {
+            get => _selectedWorkspace;
+            set => this.RaiseAndSetIfChanged(ref _selectedWorkspace, value);
+        }
 
         /// <summary>
         /// Is the help message visible?
@@ -116,16 +125,33 @@ namespace Studio.ViewModels.Tools
             // Bind selected workspace
             _workspaceService
                 .WhenAnyValue(x => x.SelectedWorkspace)
-                .Subscribe(x =>
-                {
-                    Owner?.Factory?.SetActiveDockable(this);
-                });
+                .Subscribe(OnWorkspaceChanged);
             
             // Bind focus event
             _workspaceService.WorkspaceFocusNotify.Subscribe(_ =>
             {
                 Owner?.Factory?.SetActiveDockable(this);
             });
+        }
+
+        /// <summary>
+        /// Invoked on workspace changes
+        /// </summary>
+        public void OnWorkspaceChanged(IWorkspaceViewModel? workspaceViewModel)
+        {
+            Owner?.Factory?.SetActiveDockable(this);
+
+            if (workspaceViewModel != null)
+            {
+                foreach (WorkspaceTreeItemViewModel treeItemViewModel in Workspaces)
+                {
+                    if (FindWorkspaceTreeItem(treeItemViewModel, workspaceViewModel) is { } treeItem)
+                    {
+                        SelectedWorkspace = treeItem;
+                        break;
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -150,7 +176,7 @@ namespace Studio.ViewModels.Tools
         public void OnWorkspaceRemoved(Workspace.IWorkspaceViewModel workspaceViewModel)
         {
             // Find root item
-            Controls.IObservableTreeItem? item = Workspaces.FirstOrDefault(x => x.ViewModel == workspaceViewModel.PropertyCollection);
+            WorkspaceTreeItemViewModel? item = Workspaces.FirstOrDefault(x => x.ViewModel == workspaceViewModel.PropertyCollection);
 
             // Found?
             if (item != null)
@@ -158,6 +184,28 @@ namespace Studio.ViewModels.Tools
                 Workspaces.Remove(item);
                 IsHelpVisible = Workspaces.Count == 0;
             }
+        }
+
+        /// <summary>
+        /// Find the first workspace tree item with a view model
+        /// </summary>
+        private WorkspaceTreeItemViewModel? FindWorkspaceTreeItem(WorkspaceTreeItemViewModel itemViewModel, IWorkspaceViewModel workspaceViewModel)
+        {
+            if (itemViewModel.ViewModel == workspaceViewModel.PropertyCollection)
+            {
+                return itemViewModel;
+            }
+            
+            // Search children
+            foreach (WorkspaceTreeItemViewModel nestedItem in itemViewModel.Items)
+            {
+                if (FindWorkspaceTreeItem(nestedItem, workspaceViewModel) is { } item)
+                {
+                    return item;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -233,5 +281,10 @@ namespace Studio.ViewModels.Tools
         /// Internal help state
         /// </summary>
         private bool _isHelpVisible = true;
+
+        /// <summary>
+        /// Internal workspace state
+        /// </summary>
+        private WorkspaceTreeItemViewModel? _selectedWorkspace;
     }
 }

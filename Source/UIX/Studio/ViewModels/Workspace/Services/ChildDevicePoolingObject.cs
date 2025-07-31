@@ -85,9 +85,14 @@ namespace Studio.ViewModels.Workspace.Services
 
             // Create the process tree
             IPropertyViewModel targetPropertyViewModel = CreateProcessTree();
+            
+            // Add to target
+            bool isFirstDevice = !targetPropertyViewModel.Properties.Items.Cast<WorkspaceCollectionViewModel>().Any();
+            targetPropertyViewModel.Properties.Add(workspace.PropertyCollection);
+            workspace.PropertyCollection.Parent = targetPropertyViewModel;
 
             // If this is the first device for the tree, open the descriptor
-            if (!targetPropertyViewModel.Properties.Items.Cast<WorkspaceCollectionViewModel>().Any())
+            if (isFirstDevice)
             {
                 if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
                 {
@@ -97,10 +102,6 @@ namespace Studio.ViewModels.Workspace.Services
                     });
                 }
             }
-            
-            // Add to target
-            targetPropertyViewModel.Properties.Add(workspace.PropertyCollection);
-            workspace.PropertyCollection.Parent = targetPropertyViewModel;
         }
 
         /// <summary>

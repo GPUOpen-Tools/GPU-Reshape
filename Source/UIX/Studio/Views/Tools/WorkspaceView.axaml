@@ -83,7 +83,8 @@
             AutoScrollToSelectedItem="False"
             SelectionMode="Multiple"
             Tag="{Binding}"
-            ItemsSource="{Binding Workspaces}">
+            ItemsSource="{Binding Workspaces}"
+            SelectedItem="{Binding SelectedWorkspace}">
             <TreeView.Styles>
                 <Style Selector="TreeViewItem">
                     <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}"/>
