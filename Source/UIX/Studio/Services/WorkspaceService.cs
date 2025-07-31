@@ -95,6 +95,7 @@ namespace Studio.Services
             Configurations.AddRange(new IWorkspaceConfigurationViewModel[]
             {
                 new AllConfigurationViewModel(),
+                new NoneConfigurationViewModel(),
                 new CustomConfigurationViewModel(),
                 new BasicConfigurationViewModel(),
             });

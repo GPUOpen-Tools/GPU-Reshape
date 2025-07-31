@@ -99,8 +99,14 @@
     <data name="Workspace_Configuration_Custom_Name" xml:space="preserve">
         <value>Custom</value>
     </data>
+    <data name="Workspace_Configuration_None_Name" xml:space="preserve">
+        <value>None</value>
+    </data>
     <data name="Workspace_Configuration_Custom_Description" xml:space="preserve">
         <value>Setup a custom workspace</value>
+    </data>
+    <data name="Workspace_Configuration_None_Description" xml:space="preserve">
+        <value>Setup a workspace without instrumentation</value>
     </data>
     <data name="Workspace_Configuration_Basic_Header" xml:space="preserve">
         <value>Basic configuration, includes</value>

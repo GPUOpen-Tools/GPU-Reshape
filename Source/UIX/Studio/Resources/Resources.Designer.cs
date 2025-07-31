@@ -575,6 +575,24 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Setup a workspace without instrumentation.
+        /// </summary>
+        public static string Workspace_Configuration_None_Description {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_None_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to None.
+        /// </summary>
+        public static string Workspace_Configuration_None_Name {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_None_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Create a new workspace connection.
         /// </summary>
         public static string Workspace_Connect {
