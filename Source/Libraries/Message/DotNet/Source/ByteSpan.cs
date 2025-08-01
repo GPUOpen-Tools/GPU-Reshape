@@ -39,15 +39,6 @@ namespace Message.CLR
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe ByteSpan(byte* data, int length)
         {
-            Pin = null;
-            Data = data;
-            Length = length;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe ByteSpan(GCHandle? pin, byte* data, int length)
-        {
-            Pin = pin;
             Data = data;
             Length = length;
         }
@@ -56,9 +47,18 @@ namespace Message.CLR
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ByteSpan Slice(int offset)
         {
+            Validate();
+            
             unsafe
             {
-                return new ByteSpan(Pin, Data + offset, Math.Max(0, Length - offset));
+                ByteSpan span = new(Data + offset, Math.Max(0, Length - offset));
+#if DEBUG
+                if (_validator != null)
+                {
+                    span.SetValidator(_validator);
+                }
+#endif // DEBUG
+                return span;
             }
         }
 
@@ -66,9 +66,18 @@ namespace Message.CLR
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ByteSpan Slice(int offset, int length)
         {
+            Validate();
+            
             unsafe
             {
-                return new ByteSpan(Pin, Data + offset, length);
+                ByteSpan span = new(Data + offset, length);
+#if DEBUG
+                if (_validator != null)
+                {
+                    span.SetValidator(_validator);
+                }
+#endif // DEBUG
+                return span;
             }
         }
 
@@ -76,6 +85,8 @@ namespace Message.CLR
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<byte> AsRefSpan()
         {
+            Validate();
+            
             unsafe
             {
                 return new Span<byte>(Data, Length);
@@ -89,13 +100,36 @@ namespace Message.CLR
             get => Length == 0;
         }
 
-        // Optional pin
-        public GCHandle? Pin;
+        public void Validate()
+        {
+#if DEBUG
+            if (_validator != null)
+            {
+                Debug.Assert(_validatorVersion == _validator.Version, "Span invalidated after parent stream modification");
+            }
+#endif // DEBUG
+        }
+        
+#if DEBUG
+        public void SetValidator(MessageStreamValidator validator)
+        {
+            _validator = validator;
+            _validatorVersion = validator.Version;
+        }
+#endif // DEBUG
 
         // Underlying data
         public unsafe byte* Data;
 
         // Span length
         public int Length;
+        
+#if DEBUG
+        // Parent stream validator
+        private MessageStreamValidator? _validator;
+
+        // Assigned validation version, must match validator
+        private uint _validatorVersion = 0;
+#endif
     }
 }

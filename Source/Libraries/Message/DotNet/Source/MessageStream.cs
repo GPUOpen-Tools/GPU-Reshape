@@ -93,6 +93,15 @@ namespace Message.CLR
         ulong GetCount();
     }
 
+#if DEBUG
+    public class MessageStreamValidator
+    {
+        // Current validation version
+        // All stream slices must match the current validation version, otherwise risk stale GC pins
+        public uint Version = 0;
+    }
+#endif // DEBUG
+
     public sealed class ReadOnlyMessageStream : IMessageStream
     {
         public MessageSchema GetSchema()
@@ -122,9 +131,20 @@ namespace Message.CLR
 
         public ByteSpan GetSpan()
         {
+            Validate();
+            
             unsafe
             {
-                return new ByteSpan(Ptr, (int)Size);
+                ByteSpan span = new(Ptr, (int)Size);
+
+#if DEBUG
+                if (_validator != null)
+                {
+                    span.SetValidator(_validator);
+                }
+#endif // DEBUG
+                
+                return span;
             }
         }
 
@@ -132,19 +152,24 @@ namespace Message.CLR
         {
             throw new NotSupportedException("Allocation not supported on read only message streams");
         }
-
-        static unsafe ReadOnlyMessageStream FromBytes(MessageSchema schema, byte[] bytes)
+        
+        public void Validate()
         {
-            ReadOnlyMessageStream stream = new ReadOnlyMessageStream();
-            stream.Pin = GCHandle.Alloc(bytes, GCHandleType.Pinned);
-            stream.Ptr = (byte*)stream.Pin.Value.AddrOfPinnedObject();
-            stream.Schema = schema;
-            stream.Size = (ulong)bytes.Length;
-            return stream;
+#if DEBUG
+            if (_validator != null)
+            {
+                Debug.Assert(_validatorVersion == _validator.Version, "Span invalidated after parent stream modification");
+            }
+#endif // DEBUG
         }
 
-        // Optional pin
-        public GCHandle? Pin;
+#if DEBUG
+        public void SetValidator(MessageStreamValidator validator)
+        {
+            _validator = validator;
+            _validatorVersion = validator.Version;
+        }
+#endif // DEBUG
 
         // Top schema type
         public MessageSchema Schema;
@@ -160,10 +185,23 @@ namespace Message.CLR
 
         // Number of messages
         public ulong Count;
+        
+#if DEBUG
+        // Parent writable stream validator
+        private MessageStreamValidator? _validator;
+
+        // Assigned validation version, must match validator
+        private uint _validatorVersion = 0;
+#endif
     }
 
     public sealed class ReadWriteMessageStream : IMessageStream
     {
+        ~ReadWriteMessageStream()
+        {
+            LocalPin?.Free();
+        }
+        
         public MessageSchema GetSchema()
         {
             return Schema;
@@ -208,15 +246,20 @@ namespace Message.CLR
             // Create stream
             unsafe
             {
-                return new ReadOnlyMessageStream()
+                ReadOnlyMessageStream stream = new()
                 {
                     Count = Count,
-                    Pin = span.Pin,
                     Ptr = span.Data,
                     Schema = Schema,
                     VersionID = VersionID,
                     Size = (ulong)span.Length
                 };
+
+#if DEBUG
+                stream.SetValidator(Validator);
+#endif // DEBUG
+                
+                return stream;
             }
         }
 
@@ -227,12 +270,24 @@ namespace Message.CLR
                 byte[] byteData = Data.GetBuffer();
 
                 // Pin the current data
-                GCHandle pin = GCHandle.Alloc(byteData, GCHandleType.Pinned);
+                LocalPin?.Free();
+                LocalPin = GCHandle.Alloc(byteData, GCHandleType.Pinned);
 
                 // Construct span
-                return new ByteSpan(pin, (byte*)pin.AddrOfPinnedObject() + offset, (int)Data.Length - offset);
+                ByteSpan span = new((byte*)LocalPin.Value.AddrOfPinnedObject() + offset, (int)Data.Length - offset);
+                
+                // Assign the validator, make sure that any future views rely on the current pinned handle
+#if DEBUG
+                Validator.Version++;
+                span.SetValidator(Validator);
+#endif // DEBUG
+        
+                return span;
             }
         }
+
+        // Optional pin
+        public GCHandle? LocalPin;
 
         // Top schema type
         public MessageSchema Schema;
@@ -245,6 +300,11 @@ namespace Message.CLR
 
         // Read write stream
         public MemoryStream Data = new MemoryStream();
+        
+        // Shared validator, propagated to all slices
+#if DEBUG
+        public readonly MessageStreamValidator Validator = new();
+#endif // DEBUG
     }
 
     public class StaticMessageView<T, S> : IEnumerable<T> where T : struct, IMessage where S : IMessageStream
