@@ -131,12 +131,12 @@ namespace Studio.ViewModels.Workspace
         {
             get
             {
-                if (Name.Length > 0)
+                if (Name.Length > 0 && Name != "Unknown")
                 {
-                    return $"{Name} {API}";
+                    return $"{API} {Name} {_deviceUid}";
                 }
 
-                return API;
+                return $"{API} Device {_deviceUid}";
             }
         }
         
