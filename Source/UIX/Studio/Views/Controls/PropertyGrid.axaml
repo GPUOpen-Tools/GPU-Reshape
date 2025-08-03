@@ -21,7 +21,7 @@
     
     <Grid Margin="5">
         <!-- Categories -->
-        <ItemsControl ItemsSource="{Binding Categories}">
+        <ItemsControl x:Name="ItemsControl" ItemsSource="{Binding Categories}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="controls:PropertyCategoryViewModel">
                     <!-- Section -->
