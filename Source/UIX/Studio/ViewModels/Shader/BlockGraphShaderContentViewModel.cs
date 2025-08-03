@@ -163,7 +163,7 @@ namespace Studio.ViewModels.Shader
         private void OnObjectChanged()
         {
             // Submit request if not already
-            if (Object!.Contents == string.Empty)
+            if (Object!.BlockGraph == string.Empty)
             {
                 PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderBlockGraph(Object);
             }
