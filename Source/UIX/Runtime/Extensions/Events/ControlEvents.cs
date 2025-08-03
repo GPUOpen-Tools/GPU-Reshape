@@ -50,6 +50,30 @@ namespace Studio.Extensions
         }, handler => _control.DoubleTapped += handler, handler => _control.DoubleTapped -= handler);
         
         /// <summary>
+        /// Observable pointer pressed
+        /// </summary>
+        public IObservable<PointerPressedEventArgs> PointerPressed => Observable.FromEvent<EventHandler<PointerPressedEventArgs>, PointerPressedEventArgs>(handler =>
+        {
+            return (s, e) => handler(e);
+        }, handler => _control.PointerPressed += handler, handler => _control.PointerPressed -= handler);
+        
+        /// <summary>
+        /// Observable pointer released
+        /// </summary>
+        public IObservable<PointerReleasedEventArgs> PointerReleased => Observable.FromEvent<EventHandler<PointerReleasedEventArgs>, PointerReleasedEventArgs>(handler =>
+        {
+            return (s, e) => handler(e);
+        }, handler => _control.PointerReleased += handler, handler => _control.PointerReleased -= handler);
+        
+        /// <summary>
+        /// Observable pointer moved
+        /// </summary>
+        public IObservable<PointerEventArgs> PointerMoved => Observable.FromEvent<EventHandler<PointerEventArgs>, PointerEventArgs>(handler =>
+        {
+            return (s, e) => handler(e);
+        }, handler => _control.PointerMoved += handler, handler => _control.PointerMoved -= handler);
+        
+        /// <summary>
         /// Internal Control
         /// </summary>
         private readonly Control _control;

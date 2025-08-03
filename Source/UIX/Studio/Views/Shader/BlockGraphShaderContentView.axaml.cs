@@ -30,6 +30,7 @@ using System.Diagnostics;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using AvaloniaGraphControl;
 using DynamicData;
@@ -65,6 +66,56 @@ namespace Studio.Views.Shader
                         CreateGraph(contents);
                     });
                 });
+            });
+
+            // Bind pressed
+            ZoomBorder.Events().PointerPressed.Subscribe(e =>
+            {
+                if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                {
+                    return;
+                }
+                
+                // Mark as dragging
+                _isZoomDragging = true;
+                _lastZoomDragPosition = e.GetPosition(this);
+                
+                // Capture the cursor
+                ZoomBorder.Cursor = new Cursor(StandardCursorType.SizeAll);
+                e.Pointer.Capture(ZoomBorder);
+            });
+
+            // Bind moved
+            ZoomBorder.Events().PointerMoved.Subscribe(e =>
+            {
+                if (!_isZoomDragging)
+                {
+                    return;
+                }
+                
+                // Current offset
+                Point position = e.GetPosition(this);
+                Point delta = position - _lastZoomDragPosition;
+
+                // Pan the control
+                ZoomBorder.PanDelta(delta.X, delta.Y);
+                _lastZoomDragPosition = position;
+            });
+
+            // Bind released
+            ZoomBorder.Events().PointerReleased.Subscribe(e =>
+            {
+                if (!_isZoomDragging)
+                {
+                    return;
+                }
+                
+                // Release drag
+                _isZoomDragging = false;
+                
+                // Release the cursor
+                ZoomBorder.Cursor = new Cursor(StandardCursorType.Arrow);
+                e.Pointer.Capture(null);
             });
         }
 
@@ -156,5 +207,15 @@ namespace Studio.Views.Shader
                 }
             }
         }
+
+        /// <summary>
+        /// Are we currently dragging the view?
+        /// </summary>
+        private bool _isZoomDragging = false;
+        
+        /// <summary>
+        /// If dragging, the last position
+        /// </summary>
+        private Point _lastZoomDragPosition;
     }
 }
