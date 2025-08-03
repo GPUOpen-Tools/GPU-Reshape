@@ -238,6 +238,27 @@ bool DiscoveryService::UninstallConflictingInstances() {
     return !anyFailed;
 }
 
+#ifdef _WIN32
+static bool BindProcessLifetimes(HANDLE process) {
+    // Open a job object
+    // Yes, we're leaking this
+    HANDLE jpb = CreateJobObjectA(nullptr, nullptr);
+    if (!jpb) {
+        return false;
+    }
+
+    // On cleanup, close the process too
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limit = {};
+    limit.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    if (!SetInformationJobObject(jpb, JobObjectExtendedLimitInformation, &limit, sizeof(limit))) {
+        return false;
+    }
+
+    // Finally, assign it
+    return AssignProcessToJobObject(jpb, process);
+}
+#endif // _WIN32
+
 bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo &createInfo, const MessageStream& environment, DiscoveryProcessInfo& info) {
     DiscoveryBootstrappingEnvironment bootstrappingEnvironment;
 
@@ -358,6 +379,11 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
         static_cast<uint32_t>(dllKeys.size()), dllKeys.data(), nullptr
     )) {
         return false;
+    }
+
+    // Bind if requested, not fatal if failed
+    if (createInfo.closeProcessOnExit) {
+        BindProcessLifetimes(processInfo.hProcess);
     }
 
     // Set process info

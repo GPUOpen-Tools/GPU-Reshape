@@ -61,4 +61,7 @@ struct DiscoveryProcessCreateInfo {
     /// Should the pipes be redirected?
     /// If true, make sure to regularly read/flush the pipes
     bool redirectPipes = false;
+
+    /// Should the process be closed when this process exits?
+    bool closeProcessOnExit = true;
 };
