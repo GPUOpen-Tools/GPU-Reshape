@@ -104,6 +104,11 @@ struct SetDescriptorDataCommand : public TCommand<SetDescriptorDataCommand, Comm
     ShaderDataID id;
 };
 
+struct SetResourceCommand : public TCommand<SetResourceCommand, CommandType::SetResource> {
+    ShaderDataID id;
+    uint32_t puid;
+};
+
 enum class StageBufferFlag {
     None = 0,
     Atomic32 = BIT(1)

@@ -751,6 +751,11 @@ HRESULT WINAPI HookID3D12DeviceEvict(ID3D12Device* _this, UINT NumObjects, ID3D1
 ResourceState::~ResourceState() {
     auto table = GetTable(parent);
 
+    // If transient, there's nothing to release
+    if (uid == kResourceUIDTransient) {
+        return;
+    }
+
     // May be invalid
     if (!object) {
         parent->Release();

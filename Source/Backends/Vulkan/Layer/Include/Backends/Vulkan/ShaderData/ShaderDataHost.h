@@ -40,6 +40,7 @@
 // Std
 #include <vector>
 #include <mutex>
+#include <map>
 
 // Forward declarations
 struct DeviceDispatchTable;
@@ -79,6 +80,7 @@ public:
     
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info, const char* name) override;
+    ShaderDataID CreateBufferBinding(const ShaderProgramID& program, const ShaderDataBufferBindingInfo& info) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;
     ShaderDataID CreateDescriptorData(const ShaderDataDescriptorInfo &info) override;
     void *Map(ShaderDataID rid) override;
@@ -88,6 +90,7 @@ public:
     void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
     void EnumerateShader(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
+    void Enumerate(ShaderProgramID programID, uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
     ShaderDataCapabilityTable GetCapabilityTable() override;
 
 private:
@@ -109,6 +112,11 @@ private:
     struct MappingEntry {
         /// Underlying allocation
         VmaAllocation allocation;
+    };
+
+    struct ProgramEntry {
+        /// All program bindings
+        std::vector<ShaderDataID> shaderDataIDs;
     };
 
 private:
@@ -134,6 +142,9 @@ private:
 
     /// Linear resources
     std::vector<ResourceEntry> resources;
+
+    /// All programs
+    std::map<ShaderProgramID, ProgramEntry> programs;
 
 private:
     /// All free mapping indices

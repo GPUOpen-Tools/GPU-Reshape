@@ -277,6 +277,9 @@ private:
     /// The previous feature set during summarization
     uint64_t previousFeatureBitSet{0};
 
+    /// The feature set affecting general instrumentation
+    uint64_t instrumentationFeatureBitSet{0};
+
 private:
     bool synchronousRecording{false};
 };

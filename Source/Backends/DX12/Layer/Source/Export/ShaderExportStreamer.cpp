@@ -809,6 +809,32 @@ void ShaderExportStreamer::Process(CommandQueueState* queueState) {
     }
 }
 
+uint32_t ShaderExportStreamer::GetShaderExportDescriptorCount() {
+    return descriptorLayout.Count();
+}
+
+void ShaderExportStreamer::CreateExternalShaderExport(ShaderExportStreamState* state, const ShaderExportOwnedHeapAllocation& heapAllocation) {
+    // Setup allocation info
+    ShaderExportSegmentDescriptorAllocation allocation;
+    allocation.allocator = nullptr;
+    allocation.info = ShaderExportSegmentDescriptorInfo {
+        .cpuHandle = heapAllocation.cpu,
+        .gpuHandle = heapAllocation.gpu,
+        .width = GetShaderExportDescriptorCount(),
+        .offset = UINT32_MAX
+    };
+
+    // Keep track of the allocation, used for later searches
+    state->segmentDescriptors.push_back(ShaderExportSegmentDescriptorEntry {
+        .resourceHeap = nullptr,
+        .samplerHeap = nullptr,
+        .segment = allocation
+    });
+    
+    // Map immutable to current heap
+    MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
+}
+
 void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     std::lock_guard guard(mutex);
     ASSERT(state->pending, "Recycling non-pending stream state");
@@ -1585,7 +1611,9 @@ void ShaderExportStreamer::FreeDescriptorState(ShaderExportStreamState *state) {
 
     // Move ownership to the segment
     for (const ShaderExportSegmentDescriptorEntry& segmentDescriptor : state->segmentDescriptors) {
-        segmentDescriptor.segment.allocator->Free(segmentDescriptor.segment.info);
+        if (segmentDescriptor.segment.allocator) {
+            segmentDescriptor.segment.allocator->Free(segmentDescriptor.segment.info);
+        }
     }
 
     // Cleanup

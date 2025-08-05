@@ -239,6 +239,35 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
         dataOffset++;
     }
 
+    // Reset offset for user bindings
+    dataOffset = 0;
+
+    // Create bind info per binding
+    for (auto it = shaderDataMap.begin(); it != shaderDataMap.end(); it++) {
+        if (!(it->type & ShaderDataType::BindingMask)) {
+            continue;
+        }
+
+        // Destination container, may be writable
+        auto&& container = it->bufferBinding.isWritable ? uavs : srvs;
+        
+        container.Add(DXBCPSVBindInfoRevision1 {
+            .info0 = DXBCPSVBindInfo0{
+                .type = it->bufferBinding.isWritable ? DXBCPSVBindInfoType::UnorderedAccessView : DXBCPSVBindInfoType::ShaderResourceView,
+                .space = bindingInfo.bindings.space,
+                .low = bindingInfo.bindings.shaderBindingResourceBaseRegister + dataOffset,
+                .high = bindingInfo.bindings.shaderBindingResourceBaseRegister + dataOffset
+            },
+            .info1 = DXBCPSVBindInfo1{
+                .kind = DXBCPSVBindInfoKind::TypedBuffer,
+                .flags = 0
+            }
+        });
+
+        // Next
+        dataOffset++;
+    }
+
     // Overwrite thread counts
     if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision2)) {
         if (auto* metadata = program.GetMetadataMap().GetMetadata<IL::KernelWorkgroupSizeMetadata>(program.GetEntryPoint()->GetID())) {

@@ -33,6 +33,9 @@
 // Common
 #include <Common/Allocators.h>
 
+/// Transient resource, used for proxy bindings
+static constexpr uint64_t kResourceUIDTransient = UINT64_MAX;
+
 struct __declspec(uuid("09175D5B-BA8A-4531-9553-BC1CD024A1FE")) ResourceState {
     ~ResourceState();
 

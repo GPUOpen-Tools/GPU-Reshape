@@ -408,6 +408,7 @@ add_library(
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp
     Layer/Source/FeatureProxies.cpp
+    Layer/Source/IL/DeviceCommandEmitter.cpp
 
     # Generated source dependencies
     Layer/Source/DeepCopy.Gen.cpp

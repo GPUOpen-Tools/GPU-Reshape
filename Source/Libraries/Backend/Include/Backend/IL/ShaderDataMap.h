@@ -65,6 +65,16 @@ namespace IL {
                         .addressSpace = Backend::IL::AddressSpace::Resource
                     }));
                     break;
+                case ShaderDataType::BufferBinding:
+                    Add(info.id, typeMap.FindTypeOrAdd(Backend::IL::PointerType{
+                        .pointee = typeMap.FindTypeOrAdd(Backend::IL::BufferType{
+                            .elementType = Backend::IL::GetSampledFormatType(typeMap, info.bufferBinding.format),
+                            .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
+                            .texelType = info.bufferBinding.format
+                        }),
+                        .addressSpace = Backend::IL::AddressSpace::Resource
+                    }));
+                break;
                 case ShaderDataType::Texture:
                     ASSERT(false, "Not implemented");
                     break;

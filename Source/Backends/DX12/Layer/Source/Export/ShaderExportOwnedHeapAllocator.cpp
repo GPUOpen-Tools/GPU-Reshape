@@ -37,6 +37,7 @@ ShaderExportOwnedHeapAllocation ShaderExportOwnedHeapAllocator::Allocate(DeviceS
         // Create new segment
         ShaderExportOwnedHeapSegment& segment = segments.emplace_back();
         segment.stride = deviceState->object->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        segment.count = descriptorCount;
 
         // Create new heap
         D3D12_DESCRIPTOR_HEAP_DESC desc{};

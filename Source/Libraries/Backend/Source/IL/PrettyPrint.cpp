@@ -429,7 +429,7 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             for (uint32_t i = 0; i < _switch->cases.count; i++) {
                 const IL::SwitchCase &_case = _switch->cases[i];
                 line << "\n";
-                out.Line() << "       literal:" << _case.literal << " branch:%" << _case.branch;
+                out.Line() << "       literal:%" << _case.literal << " branch:%" << _case.branch;
             }
             break;
         }

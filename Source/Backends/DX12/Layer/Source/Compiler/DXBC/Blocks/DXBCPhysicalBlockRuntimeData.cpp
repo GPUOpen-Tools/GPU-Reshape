@@ -930,6 +930,35 @@ void DXBCPhysicalBlockRuntimeData::CompileResources(const DXCompileJob &job) {
         // Next
         dataOffset++;
     }
+
+    // Reset offset for user bindings
+    dataOffset = 0;
+
+    // Emit all shader bindings
+    for (auto it = shaderDataMap.begin(); it != shaderDataMap.end(); it++) {
+        if (!(it->type & ShaderDataType::BindingMask)) {
+            continue;
+        }
+
+        // Destination class
+        DXILShaderResourceClass targetClass = it->bufferBinding.isWritable ? DXILShaderResourceClass::UAVs : DXILShaderResourceClass::SRVs;
+
+        resourceRecords.records.push_back(ResourceEntry {
+            .record = DXBCRuntimeDataResourceRecord {
+                ._class = static_cast<uint32_t>(targetClass),
+                .shape = static_cast<uint32_t>(DXILShaderResourceShape::TypedBuffer),
+                .id = dxil.bindings.shaderDataBindingHandleIds[static_cast<uint32_t>(targetClass)] + dataOffset,
+                .space = dxil.bindingInfo.bindings.space,
+                .lower = dxil.bindingInfo.bindings.shaderBindingResourceBaseRegister + dataOffset,
+                .upper = dxil.bindingInfo.bindings.shaderBindingResourceBaseRegister + dataOffset,
+                .flags =  0
+            },
+            .name = "ShaderResource"
+        });
+
+        // Next
+        dataOffset++;
+    }
 }
 
 void DXBCPhysicalBlockRuntimeData::CompileResourceVisibility(const DXCompileJob& job) {

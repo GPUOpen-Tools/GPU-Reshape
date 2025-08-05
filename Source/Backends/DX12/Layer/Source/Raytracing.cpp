@@ -212,7 +212,7 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
 }
 
 static ID3D12Resource* CopyIndirectArgumentCommandBuffer(DeviceTable& device, CommandListState* state, CommandSignatureTable& signatureTable, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset) {
-    pArgumentBuffer = Next(pArgumentBuffer);
+    pArgumentBuffer = ConditionalNext(pArgumentBuffer);
     
     // We're going to copy over the command data
     ShaderExportDeviceAllocation commandAllocation = state->streamState->deviceAllocator.Allocate(device.state->deviceAllocator, signatureTable.state->byteStride * MaxCommandCount);
@@ -513,7 +513,7 @@ void HookID3D12CommandListExecuteIndirectRaytracing(ID3D12CommandList *list, ID3
 
     // If not instrumented, or failed, pass through
     if (!patched) {
-        patched       = Next(pArgumentBuffer);
+        patched       = ConditionalNext(pArgumentBuffer);
         patchedOffset = ArgumentBufferOffset;
     }
 

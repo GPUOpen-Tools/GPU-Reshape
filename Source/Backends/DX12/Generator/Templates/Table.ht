@@ -49,3 +49,9 @@ static inline bool IsWrapped(IUnknown* object) {
     IUnknown* next;
     return SUCCEEDED(object->QueryInterface(IID_Unwrap, reinterpret_cast<void**>(&next)));
 }
+
+/// Get the next object if wrapped
+template<typename T>
+static T* ConditionalNext(T* object) {
+    return object && IsWrapped(object) ? Next(object) : object;
+}

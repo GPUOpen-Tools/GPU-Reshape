@@ -282,6 +282,15 @@ public:
     /// Locks
     void ProcessDescriptors();
 
+public:
+    /// Get the number of descriptors for exporting
+    uint32_t GetShaderExportDescriptorCount();
+
+    /// Create an external shader export
+    /// @param state state to create the export for
+    /// @param heapAllocation allocation to create the export on
+    void CreateExternalShaderExport(ShaderExportStreamState* state, const ShaderExportOwnedHeapAllocation& heapAllocation);
+
 private:
     /// Map all segment agnostic data
     /// \param descriptors descriptors to be bound

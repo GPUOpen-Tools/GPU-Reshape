@@ -191,6 +191,23 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         parameter.constant._register = bindingInfo.global.eventConstantBaseRegister;
         parameter.constant.dwordCount = 1u;
     }
+
+    // Get shader data
+    IL::ShaderDataMap& shaderDataMap = table.dxilModule->GetProgram()->GetShaderDataMap();
+
+    // All program bindings
+    for (auto it = shaderDataMap.begin(); it != shaderDataMap.end(); it++) {
+        if (!(it->type & ShaderDataType::BindingMask)) {
+            continue;
+        }
+        
+        RootParameter& parameter = parameters.emplace_back(allocators);
+        parameter.type = it->bufferBinding.isWritable ? DXBCRootSignatureParameterType::UAV : DXBCRootSignatureParameterType::SRV;
+        parameter.visibility = DXBCRootSignatureVisibility::All;
+        parameter.parameter1.space = bindingInfo.bindings.space;
+        parameter.parameter1._register = bindingInfo.bindings.shaderBindingResourceBaseRegister;
+        parameter.parameter1.flags = 0x0;
+    }
 }
 
 void DXBCPhysicalBlockRootSignature::Compile() {

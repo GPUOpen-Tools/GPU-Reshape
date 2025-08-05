@@ -40,6 +40,7 @@
 // Std
 #include <vector>
 #include <mutex>
+#include <map>
 
 // Forward declarations
 struct DeviceState;
@@ -76,8 +77,15 @@ public:
     /// \return given allocation
     D3D12MA::Allocation* GetMappingAllocation(ShaderDataMappingID rid);
 
+    /// Get the root index of a program binding
+    /// @param programID program
+    /// @param rid data id of the binding
+    /// @return root index
+    uint32_t GetBindingRootIndex(ShaderProgramID programID, ShaderDataID rid);
+
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info, const char* name) override;
+    ShaderDataID CreateBufferBinding(const ShaderProgramID& program, const ShaderDataBufferBindingInfo& info) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;
     ShaderDataID CreateDescriptorData(const ShaderDataDescriptorInfo &info) override;
     void *Map(ShaderDataID rid) override;
@@ -87,6 +95,7 @@ public:
     void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
     void EnumerateShader(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
+    void Enumerate(ShaderProgramID programID, uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
     ShaderDataCapabilityTable GetCapabilityTable() override;
 
 private:
@@ -104,6 +113,11 @@ private:
     struct MappingEntry {
         /// Underlying allocation
         D3D12MA::Allocation* allocation;
+    };
+
+    struct ProgramEntry {
+        /// All RID's of this program
+        std::vector<ShaderDataID> shaderDataIDs;
     };
 
 private:
@@ -129,6 +143,9 @@ private:
 
     /// Linear resources
     Vector<ResourceEntry> resources;
+
+    /// All program bindings
+    std::map<ShaderProgramID, ProgramEntry> programs;
 
 private:
     /// Free indices for mapping allocations

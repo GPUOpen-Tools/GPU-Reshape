@@ -868,3 +868,15 @@ void FeatureHook_CopyTiles::operator()(CommandListState *object, CommandContext 
     hook.Invoke(context, srcInfo, dstInfo);
 #endif // 0
 }
+
+void FeatureHook_ExecuteIndirect::operator()(CommandListState *object, CommandContext *context, ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset, ResourceState* DestArgumentResourceState) const {
+    CommandSignatureState* commandSignature = GetState(pCommandSignature);
+
+    // Invoke hook
+    hook.Invoke(
+        context,
+        GetResourceInfoFor(GetState(commandSignature->deviceCommandAllocation)),
+        GetResourceInfoFor(GetState(pArgumentBuffer)),
+        GetResourceInfoFor(DestArgumentResourceState)
+    );
+}

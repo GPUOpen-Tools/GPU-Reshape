@@ -4233,14 +4233,11 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::Switch: {
                     auto _instr = instr->As<IL::SwitchInstruction>();
 
-                    // TODO: New switch statements
-                    uint64_t type = record.ops ? record.ops[0] : 0;
-
                     // Prepare record
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstSwitch);
                     record.opCount = 3 + 2 * _instr->cases.count;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-                    record.ops[0] = type;
+                    record.ops[0] = table.type.typeMap.GetType(program.GetTypeMap().GetType(_instr->value));
                     record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
                     record.ops[2] = branchMappings.at(_instr->_default);
 
@@ -6008,6 +6005,7 @@ void DXILPhysicalBlockFunction::CreateHandles(const DXCompileJob &job, struct LL
     CreateEventHandle(job, block);
     CreateConstantHandle(job, block);
     CreateShaderDataHandle(job, block);
+    CreateShaderBindingDataHandle(job, block);
 }
 
 void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXCompileJob &job, struct LLVMBlock *block) {
@@ -6310,6 +6308,44 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXCompileJob &job, 
             DXILShaderResourceClass::UAVs,
             table.bindingInfo.global.shaderDataHandleId + registerOffset,
             table.bindingInfo.bindingInfo.global.shaderResourceBaseRegister + registerOffset
+        );
+
+        // Next
+        registerOffset++;
+    }
+}
+
+void DXILPhysicalBlockFunction::CreateShaderBindingDataHandle(const DXCompileJob &job, struct LLVMBlock *block) {
+    IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
+
+    // Current offset
+    uint32_t registerOffset = 0;
+
+    // Per-class offsets
+    uint32_t bindingHandleOffsets[static_cast<uint32_t>(DXILShaderResourceClass::Count)]{};
+
+    // Create a handle per resource
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (!(info.type & ShaderDataType::BindingMask)) {
+            continue;
+        }
+
+        // Get variable
+        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+
+        // Get the target class
+        DXILShaderResourceClass targetClass = info.bufferBinding.isWritable ? DXILShaderResourceClass::UAVs : DXILShaderResourceClass::SRVs;
+
+        // Offsets are always allocated in-class
+        uint32_t inClassOffset = bindingHandleOffsets[static_cast<uint32_t>(targetClass)]++;
+
+        // Create handle
+        CreateUniversalHandle(
+            block,
+            variable->id,
+            targetClass,
+            table.bindingInfo.bindings.shaderDataBindingHandleIds[static_cast<uint32_t>(targetClass)] + inClassOffset,
+            table.bindingInfo.bindingInfo.bindings.shaderBindingResourceBaseRegister + registerOffset
         );
 
         // Next

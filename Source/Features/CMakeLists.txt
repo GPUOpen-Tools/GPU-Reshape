@@ -37,6 +37,7 @@ add_subdirectory(Initialization)
 add_subdirectory(Loop)
 add_subdirectory(Waterfall)
 add_subdirectory(Debug)
+add_subdirectory(DeviceCommands)
 
 # Experimental plugins
 if (${ENABLE_EXPERIMENTAL})

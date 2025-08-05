@@ -607,7 +607,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 // Fill cases
                 for (uint32_t i = 0; i < caseCount; i++) {
                     IL::SwitchCase _case;
-                    _case.literal = ctx++;
+                    _case.literal = program.GetConstants().UInt(ctx++)->id;
                     _case.branch = ctx++;
                     instr->cases[i] = _case;
                 }
@@ -2270,7 +2270,11 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
                 for (uint32_t i = 0; i < _switch->cases.count; i++) {
                     const IL::SwitchCase& _case = _switch->cases[i];
-                    spv[3 + i * 2] = _case.literal;
+                    
+                    const IL::Constant* literal = program.GetConstants().GetConstant(_case.literal);
+                    ASSERT(literal && literal->Is<IL::IntConstant>(), "All literals must be constant");
+                    
+                    spv[3 + i * 2] = static_cast<uint32_t>(literal->As<IL::IntConstant>()->value);
                     spv[4 + i * 2] = _case.branch;
                 }
                 break;

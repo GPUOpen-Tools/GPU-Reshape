@@ -60,6 +60,15 @@ struct RootRegisterBindingInfo {
         /// Space index
         uint32_t space{~0u};
         
+        /// Shader binding resource register
+        uint32_t shaderBindingResourceBaseRegister{~0u};
+        uint32_t shaderBindingResourceCount{~0u};
+    } bindings;
+
+    struct {
+        /// Space index
+        uint32_t space{~0u};
+        
         /// Descriptor constant register
         uint32_t descriptorConstantBaseRegister{~0u};
     } local;

@@ -32,7 +32,7 @@
 #include <Backends/DX12/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
-#include <Backends/DX12/Allocation/DeviceAllocator.h>
+#include <Backends/DX12/Translation.h>
 #include <Backends/DX12/RenderPass.h>
 #include <Backends/DX12/Table.Gen.h>
 
@@ -78,11 +78,17 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 state.shaderProgramID = cmd->id;
 
                 // Set pipeline
-                commandList->SetComputeRootSignature(device->shaderProgramHost->GetSignature());
+                commandList->SetComputeRootSignature(device->shaderProgramHost->GetSignature(cmd->id));
                 commandList->SetPipelineState(device->shaderProgramHost->GetPipeline(cmd->id));
 
-                // Bind global shader export
-                device->exportStreamer->BindShaderExport(streamState, 0u, PipelineType::Compute, commandList);
+                // Get the number of bindings
+                uint32_t bindingCount = 0;
+                device->shaderDataHost->Enumerate(state.shaderProgramID, &bindingCount, nullptr, ShaderDataType::BindingMask);
+
+                // If there's no local bindings, bind the *current* shader export
+                if (!bindingCount) {
+                    device->exportStreamer->BindShaderExport(streamState, 0u, PipelineType::Compute, commandList);
+                }
                 break;
             }
             case CommandType::SetEventData: {
@@ -139,6 +145,23 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 barrier.Transition.StateAfter = readState;
                 barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
                 commandList->ResourceBarrier(1u, &barrier);
+                break;
+            }
+            case CommandType::SetResource: {
+                auto *cmd = command.As<SetResourceCommand>();
+
+                // Get the root index
+                uint32_t bindingIndex = device->shaderDataHost->GetBindingRootIndex(state.shaderProgramID, cmd->id);
+
+                // Lazy allocate
+                if (bindingIndex >= state.shaderProgramBindings.Size()) {
+                    state.shaderProgramBindings.Resize(bindingIndex + 1);
+                }
+
+                // Set binding
+                state.shaderProgramBindings[bindingIndex] = UserBinding {
+                    .resource = device->physicalResourceIdentifierMap.GetState(cmd->puid)
+                };
                 break;
             }
             case CommandType::StageBuffer: {
@@ -289,6 +312,83 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
             case CommandType::Dispatch: {
                 auto* cmd = command.As<DispatchCommand>();
 
+                // Any resources to set?
+                if (state.shaderProgramBindings.Size()) {
+                    // Update state
+                    state.reconstructionFlags |= ReconstructionFlag::Heap;
+
+                    // Number of bindings
+                    uint32_t bindingCount = 0;
+                    device->shaderDataHost->Enumerate(state.shaderProgramID, &bindingCount, nullptr, ShaderDataType::BindingMask);
+
+                    // Get all program bindings
+                    std::vector<ShaderDataInfo> bindings(bindingCount);
+                    device->shaderDataHost->Enumerate(state.shaderProgramID, &bindingCount, bindings.data(), ShaderDataType::BindingMask);
+
+                    // We're expecting them all to be bound
+                    ASSERT(bindingCount == state.shaderProgramBindings.Size(), "Unexpected binding count");
+
+                    // Allocate both the user bindings + shader export
+                    ShaderExportOwnedHeapAllocation heapAllocation = streamState->heapAllocator.Allocate(
+                        device,
+                        bindingCount + device->exportStreamer->GetShaderExportDescriptorCount()
+                    );
+
+                    // Switch to the shared heap
+                    commandList->SetDescriptorHeaps(1u, &heapAllocation.heap);
+
+                    // Create all descriptors
+                    for (size_t i = 0; i < bindingCount; i++) {
+                        UserBinding &binding = state.shaderProgramBindings[i];
+
+                        // Shader wise data info
+                        const ShaderDataInfo& dataInfo = bindings[i];
+
+                        // UAV or SRV?
+                        if (dataInfo.bufferBinding.isWritable) {
+                            D3D12_UNORDERED_ACCESS_VIEW_DESC view{};
+                            view.Format = Translate(dataInfo.bufferBinding.format);
+                            view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+                            view.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+                            view.Buffer.FirstElement = 0;
+                            view.Buffer.NumElements = static_cast<UINT>(binding.resource->desc.Width / Backend::IL::GetSize(dataInfo.bufferBinding.format));
+                
+                            // Create descriptor
+                            device->object->CreateUnorderedAccessView(
+                                binding.resource->object, nullptr,
+                                &view,
+                                heapAllocation.CPU(static_cast<uint32_t>(i))
+                            );
+                        } else {
+                            D3D12_SHADER_RESOURCE_VIEW_DESC view{};
+                            view.Format = Translate(dataInfo.bufferBinding.format);
+                            view.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+                            view.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                            view.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+                            view.Buffer.FirstElement = 0;
+                            view.Buffer.StructureByteStride = 0;
+                            view.Buffer.NumElements = static_cast<UINT>(binding.resource->desc.Width / Backend::IL::GetSize(dataInfo.bufferBinding.format));
+                
+                            // Create descriptor
+                            device->object->CreateShaderResourceView(
+                                binding.resource->object,
+                                &view,
+                                heapAllocation.CPU(static_cast<uint32_t>(i))
+                            );
+                        }
+                    }
+
+                    // Create the shader export handle in the shared allocation
+                    device->exportStreamer->CreateExternalShaderExport(streamState, heapAllocation.Advance(bindingCount));
+
+                    // Bind tables
+                    commandList->SetComputeRootDescriptorTable(0, heapAllocation.GPU(0));
+                    commandList->SetComputeRootDescriptorTable(1, heapAllocation.GPU(bindingCount));
+
+                    // Clear last bindings
+                    state.shaderProgramBindings.Clear();
+                }
+
                 // Invoke
                 commandList->Dispatch(
                     cmd->groupCountX,
@@ -305,6 +405,9 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
             }
         }
     }
+
+    // Cleanup
+    state.shaderProgramBindings.Clear();
     
     // Reconstruct user state
     ReconstructState(device, commandList, streamState, state.reconstructionFlags);

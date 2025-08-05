@@ -52,6 +52,7 @@ namespace Hooks {
     using DrawIndexedInstanced = Delegate<void(CommandContext* context, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)>;
     using Dispatch = Delegate<void(CommandContext* context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ)>;
     using DispatchMesh = Delegate<void(CommandContext* context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ)>;
+    using DeviceCommand = Delegate<void(CommandContext *context, const ResourceInfo& deviceSignature, const ResourceInfo& sourceCommand, const ResourceInfo& destCommand)>;
 
     /// Resource
     using CreateResource = Delegate<void(const ResourceCreateInfo& info)>;
@@ -87,6 +88,7 @@ public:
     Hooks::DrawIndexedInstanced drawIndexedInstanced;
     Hooks::Dispatch dispatch;
     Hooks::DispatchMesh dispatchMesh;
+    Hooks::DeviceCommand deviceCommand;
 
     /// Resource
     Hooks::CreateResource createResource;

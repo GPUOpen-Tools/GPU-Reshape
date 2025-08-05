@@ -34,6 +34,7 @@
 #include <Backend/FeatureHookTable.h>
 
 // Forward declarations
+struct ResourceState;
 struct CommandListState;
 
 struct FeatureHook_DrawInstanced : TFeatureHook<Hooks::DrawInstanced> {
@@ -114,4 +115,8 @@ struct FeatureHook_OMSetRenderTargets : TFeatureHook<Hooks::BeginRenderPass> {
 
 struct FeatureHook_CopyTiles : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandListState *object, CommandContext *context, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags) const;
+};
+
+struct FeatureHook_ExecuteIndirect : TFeatureHook<Hooks::DeviceCommand> {
+    void operator()(CommandListState *object, CommandContext *context, ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset, ResourceState* DestArgumentResourceState) const;
 };
