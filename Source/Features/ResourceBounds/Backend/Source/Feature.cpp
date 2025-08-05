@@ -35,7 +35,8 @@
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 #include <Backend/IL/InstructionValueCommon.h>
-#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
@@ -257,6 +258,11 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     break;
                 }
             }
+        }
+
+        // Write traceback data
+        if (config.traceback) {
+            IL::AppendTracebackChunk<ResourceIndexOutOfBoundsMessage>(msg, oob);
         }
 
         // Export the message

@@ -33,7 +33,8 @@
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
-#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
@@ -179,6 +180,11 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
         if (config.detail && resource != IL::InvalidID) {
             msg.chunks |= UnstableExportMessage::Chunk::Detail;
             msg.detail.token = IL::ResourceTokenEmitter(oob, resource).GetPackedToken();
+        }
+            
+        // Write traceback data
+        if (config.traceback) {
+            IL::AppendTracebackChunk<UnstableExportMessage>(msg, oob);
         }
 
         // Export the message

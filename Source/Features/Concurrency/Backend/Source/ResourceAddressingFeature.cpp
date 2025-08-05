@@ -34,7 +34,8 @@
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 #include <Backend/CommandContext.h>
-#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
@@ -226,6 +227,11 @@ void ResourceAddressingConcurrencyFeature::Inject(IL::Program &program, const Me
             msg.detail.coordinate[2] = zero;
             msg.detail.mip = zero;
             msg.detail.byteOffset = zero;
+        }
+            
+        // Write traceback data
+        if (config.traceback) {
+            IL::AppendTracebackChunk<ResourceRaceConditionMessage>(msg, oob);
         }
         
         // Export the message

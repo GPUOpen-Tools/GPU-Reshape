@@ -33,6 +33,7 @@
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/IL/ResourceTokenType.h>
 #include <Backend/CommandContext.h>
 #include <Backend/IL/BasicBlockFlags.h>
@@ -191,6 +192,11 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
         if (config.detail) {
             msg.chunks |= DescriptorMismatchMessage::Chunk::Detail;
             msg.detail.token = packedToken;
+        }
+            
+        // Write traceback data
+        if (config.traceback) {
+            IL::AppendTracebackChunk<DescriptorMismatchMessage>(msg, mismatch);
         }
         
         // Export the message

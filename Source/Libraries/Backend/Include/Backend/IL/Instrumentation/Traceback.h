@@ -27,13 +27,19 @@
 #pragma once
 
 // Backend
-#include <Schemas/Instrumentation.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
-/// Collapse operator
-inline SetInstrumentationConfigMessage& operator|=(SetInstrumentationConfigMessage& lhs, const SetInstrumentationConfigMessage& rhs) {
-    lhs.safeGuard |= rhs.safeGuard;
-    lhs.detail |= rhs.detail;
-    lhs.validationCoverage |= rhs.validationCoverage;
-    lhs.traceback |= rhs.traceback;
-    return lhs;
+namespace IL {
+    /// Write the traceback chunk
+    /// @param message message to write chunk to
+    /// @param emitter emitter to use
+    template<typename T, typename E>
+    static void AppendTracebackChunk(typename T::ShaderExport& message, Emitter<E>& emitter) {
+        message.chunks |= T::Chunk::Traceback;
+        
+        // TODO: Need to merge the debug branch for proper tracebacks
+        message.traceback.kernelX = emitter.UInt32(64);
+        message.traceback.kernelY = emitter.UInt32(64);
+        message.traceback.kernelZ = emitter.UInt32(64);
+    }
 }

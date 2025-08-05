@@ -39,7 +39,8 @@
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/Scheduler/SchedulerPrimitiveEvent.h>
 #include <Backend/IL/Analysis/StructuralUserAnalysis.h>
-#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Addressing
@@ -368,6 +369,11 @@ void TexelAddressingConcurrencyFeature::Inject(IL::Program &program, const Messa
                 msg.detail.byteOffset = texelProperties.resourceTexelCount;
 #endif // TEXEL_ADDRESSING_ENABLE_FENCING
 #endif // CONCURRENCY_ENABLE_VALIDATION
+            }
+            
+            // Write traceback data
+            if (config.traceback) {
+                IL::AppendTracebackChunk<ResourceRaceConditionMessage>(msg, unsafe);
             }
             
             // Export the message

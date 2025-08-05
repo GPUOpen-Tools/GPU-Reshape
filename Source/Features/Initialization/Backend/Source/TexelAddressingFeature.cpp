@@ -55,7 +55,8 @@
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/SubmissionContext.h>
 #include <Backend/Scheduler/SchedulerTileMapping.h>
-#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
@@ -412,6 +413,11 @@ void TexelAddressingInitializationFeature::Inject(IL::Program &program, const Me
                 msg.detail.coordinate[2] = texelProperties.address.z;
                 msg.detail.byteOffset = texelProperties.offset;
                 msg.detail.mip = texelProperties.address.mip;
+            }
+            
+            // Write traceback data
+            if (config.traceback) {
+                IL::AppendTracebackChunk<UninitializedResourceMessage>(msg, mismatch);
             }
             
             // Export the message

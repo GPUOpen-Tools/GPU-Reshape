@@ -46,7 +46,8 @@
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/SubmissionContext.h>
-#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
@@ -306,6 +307,11 @@ void ResourceAddressingInitializationFeature::Inject(IL::Program &program, const
             msg.detail.coordinate[2] = zero;
             msg.detail.mip = zero;
             msg.detail.byteOffset = zero;
+        }
+            
+        // Write traceback data
+        if (config.traceback) {
+            IL::AppendTracebackChunk<UninitializedResourceMessage>(msg, mismatch);
         }
         
         // Export the message

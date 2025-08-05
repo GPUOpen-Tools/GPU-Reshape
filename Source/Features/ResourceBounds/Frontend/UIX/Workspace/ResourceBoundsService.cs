@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
@@ -159,19 +160,10 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
                 }
 
-                // Detailed?
-                if (message.HasChunk(ResourceIndexOutOfBoundsMessage.Chunk.Detail))
+                // Formatted?
+                // TODO: Optimize the hell out of this, current version is not good enough
+                if (message.IsChunked())
                 {
-                    ResourceIndexOutOfBoundsMessage.DetailChunk detailChunk = message.GetDetailChunk();
-
-                    // To token
-                    var token = new ResourceToken()
-                    {
-                        Token = detailChunk.token
-                    };
-
-                    // TODO: Optimize the hell out of this, current version is not good enough
-
                     // Get detailed view model
                     if (!_reducedDetails.TryGetValue(message.Key, out ResourceValidationDetailViewModel? detailViewModel))
                     {
@@ -194,23 +186,56 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                         _reducedDetails.Add(message.Key, detailViewModel);
                     }
 
-                    // Try to find resource
-                    Resource resource = _versioningService?.GetResource(token.PUID, streams.VersionID) ?? new Resource()
-                    {
-                        PUID = token.PUID,
-                        Version = streams.VersionID,
-                        Name = $"#{token.PUID}",
-                        IsUnknown = true
-                    };
+                    // Formatted message
+                    StringBuilder builder = new();
+                    builder.Append("Out of bounds");
                     
-                    // Get resource
-                    ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
+                    // Destination resource
+                    Resource resource;
 
-                    // Read coordinate
-                    uint[] coordinate = detailChunk.coordinate;
-                    
-                    // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance($"Out of bounds at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}");
+                    // Handle detail
+                    if (message.HasChunk(ResourceIndexOutOfBoundsMessage.Chunk.Detail))
+                    {
+                        ResourceIndexOutOfBoundsMessage.DetailChunk detailChunk = message.GetDetailChunk();
+                        
+                        // Unpack token
+                        ResourceToken token = new()
+                        {
+                            Token = detailChunk.token
+                        };
+                        
+                        // Try to find resource
+                        resource = _versioningService?.GetResource(token.PUID, streams.VersionID) ?? new Resource()
+                        {
+                            PUID = token.PUID,
+                            Version = streams.VersionID,
+                            Name = $"#{token.PUID}",
+                            IsUnknown = true
+                        };
+                        
+                        // Append coordinates
+                        uint[] coordinate = detailChunk.coordinate;
+                        builder.Append($" at coordinates [{coordinate[0]}, {coordinate[1]}, {coordinate[2]}]");
+                    }
+                    else
+                    {
+                        resource = new Resource()
+                        {
+                            Name = "Unknown",
+                            IsUnknown = true
+                        };
+                    }
+
+                    // Handle traceback
+                    if (message.HasChunk(ResourceIndexOutOfBoundsMessage.Chunk.Traceback))
+                    {
+                        ResourceIndexOutOfBoundsMessage.TracebackChunk tracebackChunk = message.GetTracebackChunk();
+                        builder.Append($" at thread [{tracebackChunk.kernelX}, {tracebackChunk.kernelY}, {tracebackChunk.kernelZ}]");
+                    }
+
+                    // Append message on resource
+                    ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
+                    resourceValidationObject.AddUniqueInstance(builder.ToString());
                 }
             }
             

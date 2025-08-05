@@ -35,7 +35,8 @@
 #include <Backend/IL/Analysis/SimulationAnalysis.h>
 #include <Backend/IL/Analysis/DivergencePropagator.h>
 #include <Backend/IL/Analysis/InterproceduralSimulationAnalysis.h>
-#include <Backend/IL/Data/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/ValidationCoverage.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/ShaderData/ShaderDataValidationCoverage.h>
 
 // Generated schema
@@ -301,6 +302,11 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
             msg.sguid = emitter.UInt32(sguid);
             msg.pad = emitter.UInt32(0);
             emitter.Export(divergentResourceExportID, msg);
+            
+            // Write traceback data
+            if (config.traceback) {
+                IL::AppendTracebackChunk<DivergentResourceIndexingMessage>(msg, emitter);
+            }
 
             // Branch back
             emitter.Branch(resumeBlock);

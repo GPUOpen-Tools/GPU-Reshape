@@ -41,6 +41,15 @@ bool ShaderExportGenerator::Generate(Schema &schema, Language language, SchemaSt
             // Attributes
             sguid.attributes.Add("bits", std::to_string(kShaderSGUIDBitCount));
         }
+
+        // Append traceback if requested
+        if (!message.attributes.GetBool("no-traceback")) {
+            Chunk &chunk = message.chunks.emplace_back();
+            chunk.name = "Traceback";
+            chunk.fields.emplace_back(Field { .name = "kernelX", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "kernelY", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "kernelZ", .type = "uint32" });
+        }
     }
 
     // Include emitter
@@ -277,6 +286,11 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
                     std::cerr << "Malformed command in line: " << message.line << ", type " << field.type << " not supported for chunk writes" << std::endl;
                     return false;
                 }
+            }
+            
+            // Dangling dword? (must be aligned)
+            if (bitOffset == 32) {
+                out.types << "\t\t\t\toffset++;\n";
             }
 
             // Next!

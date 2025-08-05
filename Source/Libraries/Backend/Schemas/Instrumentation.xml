@@ -41,6 +41,7 @@
         <field name="validationCoverage" type="bool"/>
         <field name="safeGuard" type="bool"/>
         <field name="detail" type="bool"/>
+        <field name="traceback" type="bool"/>
     </message>
 
     <message name="InstrumentationVersion">

@@ -37,6 +37,7 @@
 #include <Backend/CommandContext.h>
 #include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
 #include <Backend/IL/Analysis/CFG/LoopAnalysis.h>
+#include <Backend/IL/Instrumentation/Traceback.h>
 #include <Backend/ShaderData/ShaderDataDescriptorInfo.h>
 #include <Backend/Command/CommandBuilder.h>
 #include <Backend/Scheduler/IScheduler.h>
@@ -333,6 +334,11 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                     msg.detail.functionIterationCount = counter;
                 }
             
+                // Write traceback data
+                if (config.traceback) {
+                    IL::AppendTracebackChunk<LoopTerminationMessage>(msg, term);
+                }
+            
                 term.Export(exportID, msg);
 
                 // Expected function type
@@ -436,6 +442,11 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                     if (config.detail) {
                         msg.chunks |= LoopTerminationMessage::Chunk::Detail;
                         msg.detail.functionIterationCount = counter;
+                    }
+            
+                    // Write traceback data
+                    if (config.traceback) {
+                        IL::AppendTracebackChunk<LoopTerminationMessage>(msg, term);
                     }
                     
                     term.Export(exportID, msg);
