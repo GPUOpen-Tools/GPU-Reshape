@@ -114,11 +114,11 @@ bool ShaderProgramHost::InstallPrograms() {
         
         // Get number of bindings
         uint32_t bindingsCount;
-        shaderDataHost->Enumerate(entry.id, &bindingsCount, nullptr, ShaderDataType::BindingMask);
+        shaderDataHost->EnumerateProgram(entry.id, &bindingsCount, nullptr, ShaderDataType::BindingMask);
 
         // Get bindings
         std::vector<ShaderDataInfo> bindings(bindingsCount);
-        shaderDataHost->Enumerate(entry.id, &bindingsCount, bindings.data(), ShaderDataType::BindingMask);
+        shaderDataHost->EnumerateProgram(entry.id, &bindingsCount, bindings.data(), ShaderDataType::BindingMask);
         
         // Any bindings?
         if (bindingsCount) {

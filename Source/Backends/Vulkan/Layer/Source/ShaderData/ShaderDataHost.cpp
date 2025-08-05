@@ -420,7 +420,7 @@ void ShaderDataHost::EnumerateShader(uint32_t *count, ShaderDataInfo *out, Shade
     }
 }
 
-void ShaderDataHost::Enumerate(ShaderProgramID programID, uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
+void ShaderDataHost::EnumerateProgram(ShaderProgramID programID, uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
     std::lock_guard guard(mutex);
 
     // Find the program

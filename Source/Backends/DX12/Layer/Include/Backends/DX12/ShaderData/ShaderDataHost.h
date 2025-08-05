@@ -95,7 +95,7 @@ public:
     void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
     void EnumerateShader(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
-    void Enumerate(ShaderProgramID programID, uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
+    void EnumerateProgram(ShaderProgramID programID, uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
     ShaderDataCapabilityTable GetCapabilityTable() override;
 
 private:

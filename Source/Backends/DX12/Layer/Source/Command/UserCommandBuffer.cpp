@@ -83,7 +83,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
 
                 // Get the number of bindings
                 uint32_t bindingCount = 0;
-                device->shaderDataHost->Enumerate(state.shaderProgramID, &bindingCount, nullptr, ShaderDataType::BindingMask);
+                device->shaderDataHost->EnumerateProgram(state.shaderProgramID, &bindingCount, nullptr, ShaderDataType::BindingMask);
 
                 // If there's no local bindings, bind the *current* shader export
                 if (!bindingCount) {
@@ -319,11 +319,11 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
 
                     // Number of bindings
                     uint32_t bindingCount = 0;
-                    device->shaderDataHost->Enumerate(state.shaderProgramID, &bindingCount, nullptr, ShaderDataType::BindingMask);
+                    device->shaderDataHost->EnumerateProgram(state.shaderProgramID, &bindingCount, nullptr, ShaderDataType::BindingMask);
 
                     // Get all program bindings
                     std::vector<ShaderDataInfo> bindings(bindingCount);
-                    device->shaderDataHost->Enumerate(state.shaderProgramID, &bindingCount, bindings.data(), ShaderDataType::BindingMask);
+                    device->shaderDataHost->EnumerateProgram(state.shaderProgramID, &bindingCount, bindings.data(), ShaderDataType::BindingMask);
 
                     // We're expecting them all to be bound
                     ASSERT(bindingCount == state.shaderProgramBindings.Size(), "Unexpected binding count");

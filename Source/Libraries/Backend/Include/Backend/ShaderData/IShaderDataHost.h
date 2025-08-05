@@ -107,7 +107,7 @@ public:
     /// \param count if [out] is null, filled with the number of resources
     /// \param out if not null, filled with all resources up to [count]
     /// \param mask the descriptor mask
-    virtual void Enumerate(ShaderProgramID programID, uint32_t* count, ShaderDataInfo* out, ShaderDataTypeSet mask) = 0;
+    virtual void EnumerateProgram(ShaderProgramID programID, uint32_t* count, ShaderDataInfo* out, ShaderDataTypeSet mask) = 0;
 
     /// Get the target capabilities
     /// \return capability table
