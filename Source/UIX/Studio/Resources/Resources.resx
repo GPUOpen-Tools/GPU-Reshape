@@ -195,7 +195,7 @@ Do you consent to this?</value>
         <value>Basic block graph (GRIL)</value>
     </data>
     <data name="Launch_Coverage" xml:space="preserve">
-        <value>Enables coverage reporting, affects performance, catches more issues but limits streaming per shader location</value>
+        <value>Enables coverage reporting, affects performance, reports each issue exactly once before moving on to the next</value>
     </data>
     <data name="Status_Active" xml:space="preserve">
         <value>Recently in-use</value>

@@ -86,7 +86,7 @@ namespace UIX.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Instrumenting for initialization after the workspace has been created will result in false positives, to avoid this, launch with initialization instead.
+        ///   Looks up a localized string similar to Instrumenting for initialization after the app has been launched will result in false positives, to avoid this, launch through GPU Reshape instead.
         /// </summary>
         internal static string Initialization_Warning_Content {
             get {
