@@ -103,7 +103,7 @@ enum class DXBCPSVBindInfoKind : uint32_t {
     FeedbackTexture2DArray = 18
 };
 
-enum class DXBCShaderFeature {
+enum class DXBCShaderFeature : uint64_t {
     UseDouble = 1 << 0,
     ComputeShadersPlusRawAndStructuredBuffersViaShader4X = 1 << 1,
     UAVsAtEveryStage = 1 << 2,

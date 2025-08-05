@@ -24,10 +24,29 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-namespace Studio.Models.Workspace
+using System;
+using System.Globalization;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
+
+namespace Studio.ValueConverters
 {
-    public class WorkspacePropertyCollection
+    public class ImageAspectRatioConverter : IValueConverter
     {
-        
+        /// <summary>
+        /// Convert the value
+        /// </summary>
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return value is true ? Stretch.Uniform : Stretch.Fill;
+        }
+
+        /// <summary>
+        /// Convert the value back
+        /// </summary>
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

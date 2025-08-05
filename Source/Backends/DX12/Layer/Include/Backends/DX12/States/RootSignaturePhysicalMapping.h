@@ -30,6 +30,7 @@
 #include <Backends/DX12/Config.h>
 #include <Backends/DX12/States/RootParameterVisibility.h>
 #include <Backends/DX12/States/RootSignatureVisibilityClass.h>
+#include <Backends/DX12/Resource/DescriptorDataControl.h>
 
 struct RootSignaturePhysicalMapping {
     /// Signature hash
@@ -46,4 +47,7 @@ struct RootSignaturePhysicalMapping {
 
     /// All register binding classes
     RootSignatureVisibilityClass visibility[static_cast<uint32_t>(RootParameterVisibility::Count)];
+
+    /// Data control for this root signature
+    DescriptorDataControl descriptorDataControl;
 };

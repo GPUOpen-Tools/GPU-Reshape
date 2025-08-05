@@ -143,7 +143,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnAbout()
         {
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(new AboutViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenDialogFor(new AboutViewModel());
         }
 
         /// <summary>

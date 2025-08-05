@@ -30,6 +30,28 @@
 #include <Backend/IL/MetadataType.h>
 
 namespace IL {
+    enum class KernelType {
+        None,
+        Vertex,
+        Geometry,
+        Hull,
+        Domain,
+        Amplification,
+        Mesh,
+        Pixel,
+        RayGen,
+        RayMiss,
+        RayHit,
+        Compute,
+        Lib
+    };
+    
+    struct KernelTypeMetadata {
+        static constexpr MetadataType kID = MetadataType::KernelType;
+        
+        KernelType type{KernelType::None};
+    };
+    
     struct KernelWorkgroupSizeMetadata {
         static constexpr MetadataType kID = MetadataType::KernelWorkgroupSize;
 

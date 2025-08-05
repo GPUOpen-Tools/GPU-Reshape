@@ -27,10 +27,11 @@
 #pragma once
 
 // Backend
-#include "Type.h"
-#include "ID.h"
-#include "CapabilityTable.h"
-#include "ResourceTokenMetadataField.h"
+#include <Backend/IL/Type.h>
+#include <Backend/IL/ID.h>
+#include <Backend/IL/CapabilityTable.h>
+#include <Backend/IL/ResourceTokenMetadataField.h>
+#include <Backend/IL/Execution/ExecutionInfo.h>
 
 // Common
 #include <Common/Containers/LinearBlockAllocator.h>
@@ -198,6 +199,25 @@ namespace Backend::IL {
             // Create inbuilt
             return inbuilt.resourceToken = FindTypeOrAdd(decl);
         }
+        
+        /// Get the inbuilt execution info type
+        const StructType* GetExecutionInfo() {
+            if (inbuilt.executionInfo) {
+                return inbuilt.executionInfo;
+            }
+
+            // Filled with dwords
+            const IntType *uint32 = FindTypeOrAdd(IntType{ .bitWidth = 32, .signedness = false });
+
+            // Create struct declaration, one dword per field
+            StructType decl;
+            for (uint32_t i = 0; i < kExecutionInfoDWordCount; i++) {
+                decl.memberTypes.push_back(uint32);
+            }
+
+            // Must match ExecutionInfo
+            return inbuilt.executionInfo = FindTypeOrAdd(decl);
+        }
 
     private:
         /// Allocate a new type
@@ -269,6 +289,7 @@ namespace Backend::IL {
         /// Inbuilt types
         struct InbuiltTypes {
             const StructType* resourceToken{nullptr};
+            const StructType* executionInfo{nullptr};
         } inbuilt;
 
         /// Declaration order

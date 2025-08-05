@@ -186,7 +186,7 @@ ShaderExportStreamInfo ShaderExportStreamAllocator::AllocateStreamInfo(const Sha
     bufferDesc.SampleDesc.Count = 1;
 
     // Create allocation
-    info.allocation = deviceAllocator->AllocateMirror(bufferDesc, AllocationResidency::Host);
+    info.allocation = deviceAllocator->AllocateMirror(bufferDesc, AllocationResidency::HostVisible);
 
 #ifndef NDEBUG
     info.allocation.device.resource->SetName(L"StreamInfoDevice");

@@ -174,6 +174,10 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     /// Pre-populated proxies
     ID3D12GraphicsCommandListFeatureProxies commandListProxies;
 
+    /// A rolling execution counter, wrap arounds are expected
+    /// TOOD[dbg]: Let's avoid polluting the shared state
+    std::atomic<uint32_t> rollingExecutionUID{0};
+
     /// Shared logging buffer
     LogBuffer logBuffer;
 

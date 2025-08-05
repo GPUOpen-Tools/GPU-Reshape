@@ -25,6 +25,7 @@
 // 
 
 #include <Backends/DX12/Device.h>
+#include <Backends/DX12/DeviceStateVote.h>
 #include <Backends/DX12/Resource.h>
 #include <Backends/DX12/Fence.h>
 #include <Backends/DX12/RootSignature.h>
@@ -136,11 +137,11 @@ static void CreateEventRemappingTable(DeviceState* state) {
 
     // Pool feature count
     uint32_t dataCount;
-    state->shaderDataHost->Enumerate(&dataCount, nullptr, ShaderDataType::Event);
+    state->shaderDataHost->EnumerateShader(&dataCount, nullptr, ShaderDataType::Event);
 
     // Pool features
     data.resize(dataCount);
-    state->shaderDataHost->Enumerate(&dataCount, data.data(), ShaderDataType::Event);
+    state->shaderDataHost->EnumerateShader(&dataCount, data.data(), ShaderDataType::Event);
 
     // Current offset
     uint32_t offset = 0;
@@ -273,6 +274,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
         // Try to get the vendor
         state->vendor = GetVendor(dxgiAdapter);
+
+        // Register the state voter
+        state->registry.AddNew<DeviceStateVote>(state);
         
         // Set stride bounds
         state->cpuHeapTable.SetStrideBound(state->object);
@@ -892,6 +896,11 @@ void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
         device->exportStreamer->Process(queueState);
     } else {
         device->exportStreamer->Process();
+    }
+    
+    // Invoke feature tables
+    for (const FeatureHookTable& table : device->featureHookTables) {
+        table.syncPoint.TryInvoke();
     }
 
     // Commit bridge

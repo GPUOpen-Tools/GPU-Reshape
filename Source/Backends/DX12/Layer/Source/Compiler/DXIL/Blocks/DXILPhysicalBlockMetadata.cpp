@@ -30,10 +30,12 @@
 #include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILConstant.h>
+#include <Backends/DX12/Resource/DescriptorDataControl.h>
 
 // Backend
 #include <Backend/IL/TypeSize.h>
 #include <Backend/IL/Metadata/KernelMetadata.h>
+#include <Backend/IL/Execution/ExecutionInfo.h>
 
 // Common
 #include <Common/Sink.h>
@@ -215,6 +217,43 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
                 // TODO[rt]: This is not really correct, we should assign the ids after ParseModuleFunction so it's source mapped!
                 entryPoint.id = program.GetIdentifierMap().AllocID();
                 program.SetEntryPoint(entryPoint.id);
+
+                // Translate kernel type
+                IL::KernelType kernelType = IL::KernelType::None;
+                switch (shadingModel._class) {
+                    case DXILShadingModelClass::CS:
+                        kernelType = IL::KernelType::Compute;
+                        break;
+                    case DXILShadingModelClass::VS:
+                        kernelType = IL::KernelType::Vertex;
+                        break;
+                    case DXILShadingModelClass::PS:
+                        kernelType = IL::KernelType::Pixel;
+                        break;
+                    case DXILShadingModelClass::GS:
+                        kernelType = IL::KernelType::Geometry;
+                        break;
+                    case DXILShadingModelClass::HS:
+                        kernelType = IL::KernelType::Hull;
+                        break;
+                    case DXILShadingModelClass::DS:
+                        kernelType = IL::KernelType::Domain;
+                        break;
+                    case DXILShadingModelClass::AS:
+                        kernelType = IL::KernelType::Amplification;
+                        break;
+                    case DXILShadingModelClass::MS:
+                        kernelType = IL::KernelType::Mesh;
+                        break;
+                    case DXILShadingModelClass::Lib:
+                        kernelType = IL::KernelType::Lib;
+                        break;
+                }
+
+                // Add kernel type md
+                program.GetMetadataMap().AddMetadata(entryPoint.id, IL::KernelTypeMetadata {
+                    .type = kernelType
+                });
 
                 // Extended metadata kv pairs?
                 if (list.Op(4)) {
@@ -1459,6 +1498,10 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
 }
 
 void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) {
+    // Max control structure size
+    uint32_t maxControlDWords = job.instrumentationKey.physicalMapping->descriptorDataControl.dwordCount;
+    ASSERT(maxControlDWords >= job.instrumentationKey.physicalMapping->rootDWordCount + DescriptorDataHeaderDWordCount, "Unexpected control dword count");
+    
     // i32
     const Backend::IL::Type *i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true});
     const Backend::IL::Type *i32x4 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{.containedType=i32, .dimension=4});
@@ -1469,7 +1512,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
             // [i32 x 4]
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType {
                 .elementType = i32x4,
-                .count = (job.instrumentationKey.physicalMapping->rootDWordCount + 3) / 4u
+                .count = (maxControlDWords + 3) / 4u
             })
         }
     }, "CBufferDescriptorData");

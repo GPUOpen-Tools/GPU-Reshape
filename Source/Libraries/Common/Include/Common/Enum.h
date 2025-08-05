@@ -28,25 +28,26 @@
 
 // Std
 #include <cstdint>
+#include <type_traits>
 
 /// Bit value
 #define BIT(X) (1 << X)
 
-template<typename T>
+template<typename T, typename U = std::underlying_type_t<T>>
 struct TBitSet {
     TBitSet() : value(0) {
 
     }
 
-    explicit TBitSet(uint64_t value) : value(value) {
+    explicit TBitSet(U value) : value(value) {
 
     }
 
-    TBitSet(T value) : value(static_cast<uint64_t>(value)) {
+    TBitSet(T value) : value(static_cast<U>(value)) {
 
     }
 
-    uint64_t value;
+    U value;
 };
 
 /// Declare a bit set

@@ -32,6 +32,9 @@
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 
+// Backend
+#include <Backend/IL/Execution/ExecutionInfo.h>
+
 // Common
 #include <Common/Hash.h>
 
@@ -163,7 +166,7 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
 
         // Get number of resources
         uint32_t resourceCount{0};
-        state->shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
+        state->shaderDataHost->EnumerateShader(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
 
         // Set base register for shader exports
         bindingInfo.global.shaderResourceBaseRegister = registerOffset;
@@ -304,6 +307,33 @@ static void CombineHash(uint64_t& hash, D3D12_STATIC_SAMPLER_DESC1 root) {
     CombineHash(hash, root.RegisterSpace);
     CombineHash(hash, root.ShaderVisibility);
     CombineHash(hash, root.Flags);
+}
+
+static void AlignDataControlRow4(DescriptorDataControl& control) {
+    if (uint32_t pending = control.dwordCount % 4; pending > 0) {
+        control.dwordCount += 4 - pending;
+    }
+}
+
+static DescriptorDataControl GetDescriptorDataControl(RootSignaturePhysicalMapping* mapping) {
+    DescriptorDataControl control{};
+
+    // Always starts with the header
+    control.dwordCount += sizeof(DescriptorDataHeader);
+
+    // Append PRM data, always appears without an indirection data the control header
+    control.dwordCount += mapping->rootDWordCount;
+
+    // Append execution info, indirect
+    AlignDataControlRow4(control);
+    {
+        ASSERT(control.dwordCount % 4 == 0, "Unaligned execution header");
+        control.header.executionRowOffset = control.dwordCount / 4;
+        control.dwordCount += kExecutionInfoDWordCount;
+    }
+
+    // OK
+    return control;
 }
 
 template<typename T, typename U>
@@ -504,6 +534,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
     mapping->rootDWordCount = rootDWordOffset;
     mapping->rootDescriptorDWordCount = rootDescriptorDWordOffset;
     
+    // Set data control
+    mapping->descriptorDataControl = GetDescriptorDataControl(mapping);
+    
     // OK
     return mapping;
 }
@@ -614,7 +647,7 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
 
         // Get number of events
         uint32_t eventCount{0};
-        state->shaderDataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
+        state->shaderDataHost->EnumerateShader(&eventCount, nullptr, ShaderDataType::Event);
 
         // Event constant parameter
         Parameter& eventParameter = parameters[source.NumParameters + 2u] = {};

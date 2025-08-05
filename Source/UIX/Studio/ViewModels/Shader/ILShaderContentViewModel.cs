@@ -46,6 +46,11 @@ namespace Studio.ViewModels.Shader
         /// The owning navigation context
         /// </summary>
         public INavigationContext? NavigationContext { get; set; }
+
+        /// <summary>
+        /// The target shader
+        /// </summary>
+        public Workspace.Objects.ShaderViewModel? ShaderViewModel { get; set; }
         
         /// <summary>
         /// Given descriptor
@@ -58,7 +63,7 @@ namespace Studio.ViewModels.Shader
                 NavigationLocation = value?.StartupLocation;
             }
         }
-        
+
         /// <summary>
         /// View icon
         /// </summary>
@@ -226,7 +231,7 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
-        /// Transform a shader location line
+        /// Transform a shader location
         /// </summary>
         public int TransformLine(ShaderLocation shaderLocation)
         {
@@ -236,7 +241,24 @@ namespace Studio.ViewModels.Shader
             }
             
             // Transform instruction indices to line from assembler
-            return (int)Assembler.GetMapping(shaderLocation.BasicBlockId, shaderLocation.InstructionIndex).Line;
+            return (int)Assembler.GetLineMapping(shaderLocation.BasicBlockId, shaderLocation.InstructionIndex).Line;
+        }
+
+        /// <summary>
+        /// Transform a shader location line
+        /// </summary>
+        public AssembledInstructionMapping TransformInstruction(int line)
+        {
+            if (Assembler == null)
+            {
+                throw new Exception("Transformation without an assembler");
+            }
+            
+            // Transform instruction indices to line from assembler
+            return Assembler.GetInstructionMapping(new AssembledLineMapping()
+            {
+                Line = (uint)line
+            });
         }
 
         /// <summary>

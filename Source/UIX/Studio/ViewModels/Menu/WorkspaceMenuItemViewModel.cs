@@ -117,7 +117,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnLaunchApplication()
         {
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(new LaunchViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenDialogFor(new LaunchViewModel());
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnCreateConnection()
         {
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(new ConnectViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenDialogFor(new ConnectViewModel());
         }
 
         /// <summary>

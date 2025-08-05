@@ -60,7 +60,7 @@ namespace Studio.ViewModels.Contexts
         private void OnInvoked(IPipelineCollectionViewModel collection)
         {
             // Open window
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(new PipelineFilterViewModel()
+            ServiceRegistry.Get<IWindowService>()?.OpenDialogFor(new PipelineFilterViewModel()
             {
                 PipelineCollectionViewModel = collection
             });

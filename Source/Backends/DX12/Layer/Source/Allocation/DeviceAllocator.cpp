@@ -83,7 +83,19 @@ Allocation DeviceAllocator::Allocate(const D3D12_RESOURCE_DESC& desc, Allocation
             state = D3D12_RESOURCE_STATE_COMMON;
             break;
         }
-        case AllocationResidency::Host:
+        case AllocationResidency::HostUpload: {
+            allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+            state = D3D12_RESOURCE_STATE_COMMON;
+            break;
+        }
+        case AllocationResidency::HostReadback: {
+            allocDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+            state = D3D12_RESOURCE_STATE_COMMON;
+
+            // Filter out for mirrors
+            filteredDesc.Flags &= ~D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            break;
+        }
         case AllocationResidency::HostVisible: {
             allocDesc.HeapType = D3D12_HEAP_TYPE_CUSTOM;
             state = D3D12_RESOURCE_STATE_COPY_DEST;
@@ -118,11 +130,12 @@ MirrorAllocation DeviceAllocator::AllocateMirror(const D3D12_RESOURCE_DESC& desc
     switch (residency) {
         case AllocationResidency::Device: {
             allocation.device = Allocate(desc, AllocationResidency::Device);
-            allocation.host = Allocate(desc, AllocationResidency::Host);
+            allocation.host = Allocate(desc, AllocationResidency::HostReadback);
             break;
         }
-        case AllocationResidency::Host: {
-            allocation.device = Allocate(desc, AllocationResidency::Host);
+        case AllocationResidency::HostUpload:
+        case AllocationResidency::HostReadback: {
+            allocation.device = Allocate(desc, residency);
             allocation.host = allocation.device;
             break;
         }

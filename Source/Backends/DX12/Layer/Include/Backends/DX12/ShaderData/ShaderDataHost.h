@@ -81,11 +81,12 @@ public:
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;
     ShaderDataID CreateDescriptorData(const ShaderDataDescriptorInfo &info) override;
     void *Map(ShaderDataID rid) override;
+    void Unmap(ShaderDataID rid, void *mapped) override;
     ShaderDataMappingID CreateMapping(ShaderDataID data, uint64_t tileCount) override;
     void DestroyMapping(ShaderDataMappingID mid) override;
     void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
-    void Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
+    void EnumerateShader(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
     ShaderDataCapabilityTable GetCapabilityTable() override;
 
 private:
@@ -95,6 +96,9 @@ private:
 
         /// Creation info
         ShaderDataInfo info;
+
+        /// Is this a host resource?
+        bool isHost = false;
     };
 
     struct MappingEntry {

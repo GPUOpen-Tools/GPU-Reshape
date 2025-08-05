@@ -38,6 +38,7 @@
 
     <ItemGroup>
       <PackageReference Include="Avalonia" Version="11.1.1" />
+      <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.0.1" />
       <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.1" />
       <PackageReference Include="Avalonia.Controls.PanAndZoom" Version="11.1.0.1" />
       <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.10" />
@@ -106,6 +107,10 @@
         <DesignTime>True</DesignTime>
         <AutoGen>True</AutoGen>
         <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
+      <Compile Update="Views\Controls\LocatorViewHost.axaml.cs">
+        <DependentUpon>LocatorViewHost.axaml</DependentUpon>
+        <SubType>Code</SubType>
       </Compile>
     </ItemGroup>
 

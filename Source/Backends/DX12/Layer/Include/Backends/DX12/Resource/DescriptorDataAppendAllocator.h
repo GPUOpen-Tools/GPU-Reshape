@@ -72,17 +72,17 @@ public:
     }
 
     /// Begin a new segment
-    /// \param rootCount number of root parameters
-    void BeginSegment(uint32_t rootCount, bool migrateData) {
-        migrateLastSegment = migrateData && mappedSegmentLength == rootCount;
-        pendingRootCount = rootCount;
+    /// \param dwordCount number of dword parameters
+    void BeginSegment(uint32_t dwordCount, bool migrateData) {
+        migrateLastSegment = migrateData && mappedSegmentLength == dwordCount;
+        pendingDWordCount = dwordCount;
         pendingRoll = true;
     }
 
-    /// Set a root value
-    /// \param offset current root offset
+    /// Set a dword value
+    /// \param offset current dword offset
     /// \param debugBindMask the binding index to be used, only for debugging
-    /// \param value value at root offset
+    /// \param value value at dword offset
     void Set(uint32_t offset, uint32_t debugBindMask, uint32_t value) {
         if (pendingRoll) {
             RollChunk();
@@ -96,10 +96,10 @@ public:
         mapped[mappedOffset + offset] = value;
     }
 
-    /// Set a root value
-    /// \param offset current root offset
+    /// Set a dword value
+    /// \param offset current dword offset
     /// \param debugBindMask the binding index to be used, only for debugging
-    /// \param value value at root offset, must be dword aligned, all dwords are inserted linearly
+    /// \param value value at dword offset, must be dword aligned, all dwords are inserted linearly
     template<typename T>
     void Set(uint32_t offset, uint32_t debugBindMask, const T& value) {
         if (pendingRoll) {
@@ -203,7 +203,7 @@ private:
 #endif // NDEBUG
 
         // Out of memory?
-        if (nextMappedOffset + pendingRootCount >= chunkSize) {
+        if (nextMappedOffset + pendingDWordCount >= chunkSize) {
             // Copy last chunk if migration is requested
             uint32_t* lastChunkDwords = ALLOCA_ARRAY(uint32_t, mappedSegmentLength);
             if (migrateLastSegment) {
@@ -219,7 +219,7 @@ private:
 
             // Migrate last segment?
             if (migrateLastSegment) {
-                ASSERT(pendingRootCount == lastSegmentLength, "Requested migration with mismatched root counts");
+                ASSERT(pendingDWordCount == lastSegmentLength, "Requested migration with mismatched dword counts");
                 std::memcpy(mapped, lastChunkDwords, sizeof(uint32_t) * lastSegmentLength);
 
 #ifndef NDEBUG
@@ -228,7 +228,7 @@ private:
             }
         } else {
             // Migrate last segment?
-            if (mappedSegmentLength == pendingRootCount && migrateLastSegment) {
+            if (mappedSegmentLength == pendingDWordCount && migrateLastSegment) {
                 std::memcpy(mapped + nextMappedOffset, mapped + mappedOffset, sizeof(uint32_t) * mappedSegmentLength);
 
 #ifndef NDEBUG
@@ -241,7 +241,7 @@ private:
         }
 
         // Set next roll length
-        mappedSegmentLength = pendingRootCount;
+        mappedSegmentLength = pendingDWordCount;
         pendingRoll = false;
         migrateLastSegment = false;
     }
@@ -279,7 +279,7 @@ private:
 
         // Allocate buffer data on host, let the drivers handle page swapping
         DescriptorDataSegmentEntry segmentEntry;
-        segmentEntry.allocation = allocator->Allocate(desc, AllocationResidency::Host);
+        segmentEntry.allocation = allocator->Allocate(desc, AllocationResidency::HostUpload);
         SetChunk(segmentEntry);
 
 #ifndef NDEBUG
@@ -302,8 +302,8 @@ private:
     /// Total chunk size
     size_t chunkSize{0};
 
-    /// Root count requested for the next roll
-    uint32_t pendingRootCount{0};
+    /// DWord count requested for the next roll
+    uint32_t pendingDWordCount{0};
 
     /// Any pending roll?
     bool pendingRoll{true};

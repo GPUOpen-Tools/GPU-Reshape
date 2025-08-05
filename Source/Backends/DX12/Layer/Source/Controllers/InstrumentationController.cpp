@@ -1102,7 +1102,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Commit all pending entries
     for (Batch::CommitEntry entry : batch->commitEntries) {
-        if (auto pipeline = entry.state->GetInstrument(entry.combinedHash)) {
+        if (PipelineInstrument *pipeline = entry.state->GetInstrument(entry.combinedHash)) {
             // If a state object, replace the patch table
             if (auto* stateObject = static_cast<StateObjectState*>(entry.state); entry.state->type == PipelineType::StateObject) {
                 stateObject->hotSwapPatchTable.store(stateObject->GetPatch(entry.combinedHash));

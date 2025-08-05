@@ -1,0 +1,58 @@
+using System;
+using Message.CLR;
+
+namespace GRS.Features.Debug.UIX.ViewModels.Processor;
+
+public class StructuredBreakpointProcessorViewModel : IBreakpointProcessorViewModel
+{
+    /// <summary>
+    /// Process a breakpoint stream, this happens on a separate thread
+    /// Must not interact with the UI thread
+    /// </summary>
+    /// <returns>optional payload data</returns>
+    public unsafe object? Process(DebugBreakpointStreamMessage message)
+    {
+        var data = new uint[message.data.Count];
+        
+        // Lifetime is owned by the stream, so copy it over
+        // Really, we shouldn't have to do this, the processing should happen entirely async
+        fixed (uint* dest = data)
+        {
+            Buffer.MemoryCopy(message.data.GetDataStart(), dest, (int)message.data.Count, (int)message.data.Count);
+        }
+        
+        return new Payload()
+        {
+            Flat = message.Flat,
+            Data = data
+        };
+    }
+
+    /// <summary>
+    /// Install the payload on the UI thread
+    /// </summary>
+    public void Install(IBreakpointDisplayViewModel displayViewModel, object payload)
+    {
+        var typed = (Payload)payload;
+        
+        // Assign contents
+        if (displayViewModel is StructuredBreakpointDisplayViewModel imageDisplayViewModel)
+        {
+            imageDisplayViewModel.FlatInfo = typed.Flat;
+            imageDisplayViewModel.DWords = typed.Data;
+        }
+    }
+
+    private struct Payload
+    {
+        /// <summary>
+        /// Flat streaming info
+        /// </summary>
+        public DebugBreakpointStreamMessage.FlatInfo Flat;
+        
+        /// <summary>
+        /// Owned data
+        /// </summary>
+        public uint[] Data;
+    }
+}

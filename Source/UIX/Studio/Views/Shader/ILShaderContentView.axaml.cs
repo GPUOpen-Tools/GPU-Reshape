@@ -26,30 +26,21 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reactive;
 using System.Reactive.Disposables;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Markup.Xaml;
 using AvaloniaEdit.TextMate;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.Utils.Workspace;
 using Runtime.ViewModels.IL;
-using Runtime.ViewModels.Shader;
 using Studio.Extensions;
 using Studio.Models.Instrumentation;
 using Studio.Models.Workspace.Objects;
+using Studio.Services;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.Views.Editor;
-using TextMateSharp.Grammars;
-using ShaderViewModel = Studio.ViewModels.Documents.ShaderViewModel;
 
 namespace Studio.Views.Shader
 {
@@ -106,6 +97,9 @@ namespace Studio.Views.Shader
                 .CastNullable<ILShaderContentViewModel>()
                 .Subscribe(ilViewModel =>
             {
+                // Install the extensions
+                ServiceRegistry.Get<IEditorService>()?.InstallView(ilViewModel, Editor);
+                
                 // Update services
                 _validationTextMarkerService.ShaderContentViewModel = ilViewModel;
                 _validationBackgroundRenderer.ShaderContentViewModel = ilViewModel;
@@ -204,7 +198,7 @@ namespace Studio.Views.Shader
         private void UpdateNavigationLocation(ILShaderContentViewModel ilViewModel, NavigationLocation location)
         {
             // Get assembled mapping
-            AssembledMapping? mapping = ilViewModel.Assembler?.GetMapping(location.Location.BasicBlockId, location.Location.InstructionIndex);
+            AssembledLineMapping? mapping = ilViewModel.Assembler?.GetLineMapping(location.Location.BasicBlockId, location.Location.InstructionIndex);
             if (mapping == null)
             {
                 return;

@@ -258,6 +258,23 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 }
                 break;
             }
+            case CommandType::CopyBuffer: {
+                auto* cmd = command.As<CopyBufferCommand>();
+
+                // Get the data allocations
+                Allocation source = device->shaderDataHost->GetResourceAllocation(cmd->source);
+                Allocation dest = device->shaderDataHost->GetResourceAllocation(cmd->dest);
+                
+                // Copy resource
+                commandList->CopyBufferRegion(
+                    dest.resource,
+                    cmd->destOffset,
+                    source.resource,
+                    cmd->sourceOffset,
+                    cmd->byteCount
+                );
+                break;
+            }
             case CommandType::Discard: {
                 auto* cmd = command.As<DiscardCommand>();
 

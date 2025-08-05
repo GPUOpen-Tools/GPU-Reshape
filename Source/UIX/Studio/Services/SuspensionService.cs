@@ -214,6 +214,12 @@ namespace Studio.Services
                         }
                         else
                         {
+                            // Convert from cold type
+                            if (value?.GetType() != info.PropertyType)
+                            {
+                                value = Convert.ChangeType(value, info.PropertyType);
+                            }
+                            
                             // Assume assignable
                             info.SetValue(notify, value);
                         }

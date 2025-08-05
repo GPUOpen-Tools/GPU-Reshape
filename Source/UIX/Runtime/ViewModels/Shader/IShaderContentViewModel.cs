@@ -27,8 +27,8 @@
 using System.Windows.Input;
 using Avalonia.Media;
 using Runtime.ViewModels.Traits;
-using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Documents;
+using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader
@@ -54,6 +54,11 @@ namespace Studio.ViewModels.Shader
         /// Workspace within this overview
         /// </summary>
         public IPropertyViewModel? PropertyCollection { get; set; }
+
+        /// <summary>
+        /// Shader view model of the content
+        /// </summary>
+        public ShaderViewModel? ShaderViewModel { get; set; }
 
         /// <summary>
         /// Selection command

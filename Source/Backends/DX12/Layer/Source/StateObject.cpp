@@ -149,7 +149,7 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
     tableDesc.MipLevels = 1;
     tableDesc.SampleDesc.Quality = 0;
     tableDesc.SampleDesc.Count = 1;
-    state->identifierTable->tableAllocation = table.state->deviceAllocator->Allocate(tableDesc, AllocationResidency::Host);
+    state->identifierTable->tableAllocation = table.state->deviceAllocator->Allocate(tableDesc, AllocationResidency::HostUpload);
 
     // Create linear list
     D3D12_RESOURCE_DESC listDesc{};
@@ -163,7 +163,7 @@ static void CreateStateObjectIdentifierTable(const DeviceTable& table, StateObje
     listDesc.MipLevels = 1;
     listDesc.SampleDesc.Quality = 0;
     listDesc.SampleDesc.Count = 1;
-    state->identifierTable->listAllocation = table.state->deviceAllocator->Allocate(listDesc, AllocationResidency::Host);
+    state->identifierTable->listAllocation = table.state->deviceAllocator->Allocate(listDesc, AllocationResidency::HostUpload);
 
     // Map table
     D3D12_RANGE tableRange;
@@ -330,7 +330,7 @@ StateObjectShaderIdentifierPatch* CreateStateObjectShaderIdentifierPatch(StateOb
     listDesc.MipLevels = 1;
     listDesc.SampleDesc.Quality = 0;
     listDesc.SampleDesc.Count = 1;
-    patch->listAllocation = table.state->deviceAllocator->Allocate(listDesc, AllocationResidency::Host);
+    patch->listAllocation = table.state->deviceAllocator->Allocate(listDesc, AllocationResidency::HostUpload);
 
     // Map it
     D3D12_RANGE tableRange;

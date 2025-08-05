@@ -51,6 +51,7 @@
 
 // Backend
 #include <Backend/SubmissionContext.h>
+#include <Backend/IL/Execution/ExecutionInfo.h>
 #include <Backend/IFeature.h>
 
 static D3D12_COMMAND_LIST_TYPE GetEmulatedCommandListType(D3D12_COMMAND_LIST_TYPE type) {
@@ -422,7 +423,7 @@ HRESULT HookID3D12CommandAllocatorReset(ID3D12CommandAllocator *_this) {
     return table.next->Reset();
 }
 
-static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState) {
+static PipelineInstrument *GetHotSwapPipeline(ID3D12PipelineState *initialState) {
     if (!initialState) {
         return nullptr;
     }
@@ -434,14 +435,10 @@ static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState
     }
 
     // Available hot swap?
-    if (ID3D12PipelineState *hotSwap = static_cast<ID3D12PipelineState*>(state->hotSwapObject.load())) {
-        return hotSwap;
-    }
-
-    return nullptr;
+    return state->hotSwapObject.load();
 }
 
-static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12CommandAllocator* allocator, ID3D12PipelineState* initialState, ID3D12PipelineState* hotSwap, bool isHotSwap) {
+static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12CommandAllocator* allocator, PipelineState* initialState, ID3D12PipelineState* pipelineObject, PipelineInstrument* instrument) {
     auto allocatorTable = GetTable(allocator);
 
     // Either the state must be zero, or an allocator already owns it
@@ -481,7 +478,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
 
     // Inform the streamer of a new pipeline
     if (initialState) {
-        device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), hotSwap, isHotSwap, state->object);
+        device->exportStreamer->BindPipeline(state->streamState, initialState, pipelineObject, instrument, state->object);
     }
 
     // Copy proxy table
@@ -503,7 +500,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     }
 }
 
-HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandList, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, ID3D12PipelineState *initialState, ID3D12PipelineState* hotSwap, bool opened, const IID &riid, void **pCommandList) {
+HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandList, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, PipelineState *initialState, ID3D12PipelineState* pipelineObject, PipelineInstrument* instrument, bool opened, const IID &riid, void **pCommandList) {
     auto table = GetTable(device);
 
     // Create state
@@ -525,7 +522,7 @@ HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandL
 
         // Handle sub-systems
         if (opened) {
-            BeginCommandList(table.state, state, allocator, initialState, hotSwap, hotSwap != nullptr);
+            BeginCommandList(table.state, state, allocator, initialState, pipelineObject, instrument);
         }
     }
 
@@ -546,16 +543,19 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
     table.state->instrumentationController->ConditionalWaitForCompletion();
 
     // Get hot swap
-    ID3D12PipelineState *hotSwap = GetHotSwapPipeline(initialState);
+    PipelineInstrument *instrument = GetHotSwapPipeline(initialState);
+
+    // Active pipeline
+    ID3D12PipelineState* pipelineObject = instrument ? static_cast<ID3D12PipelineState*>(instrument->object) : Next(initialState);
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateCommandList(table.next, nodeMask, GetEmulatedCommandListType(type), Next(allocator), hotSwap ? hotSwap : Next(initialState), __uuidof(ID3D12CommandList), reinterpret_cast<void **>(&commandList));
+    HRESULT hr = table.bottom->next_CreateCommandList(table.next, nodeMask, GetEmulatedCommandListType(type), Next(allocator), pipelineObject, __uuidof(ID3D12CommandList), reinterpret_cast<void **>(&commandList));
     if (FAILED(hr)) {
         return hr;
     }
 
     // Create state
-    return CreateCommandListState(device, commandList, type, allocator, initialState, hotSwap, true, riid, pCommandList);
+    return CreateCommandListState(device, commandList, type, allocator, GetState(initialState), pipelineObject, instrument, true, riid, pCommandList);
 }
 
 HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_LIST_FLAGS flags, const IID &riid, void **pCommandList) {
@@ -574,7 +574,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *device, UINT nod
     }
 
     // Create state
-    return CreateCommandListState(device, commandList, type, nullptr, nullptr, nullptr, false, riid, pCommandList);
+    return CreateCommandListState(device, commandList, type, nullptr, nullptr, nullptr, nullptr, false, riid, pCommandList);
 }
 
 HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12CommandAllocator *allocator, ID3D12PipelineState *state) {
@@ -587,16 +587,19 @@ HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12Command
     device.state->instrumentationController->ConditionalWaitForCompletion();
 
     // Get hot swap
-    ID3D12PipelineState *hotSwap = GetHotSwapPipeline(state);
+    PipelineInstrument *instrument = GetHotSwapPipeline(state);
+
+    // Assigned object
+    ID3D12PipelineState* pipelineObject = instrument ? static_cast<ID3D12PipelineState*>(instrument->object) : Next(state);
 
     // Pass down callchain
-    HRESULT result = table.bottom->next_Reset(table.next, Next(allocator), hotSwap ? hotSwap : Next(state));
+    HRESULT result = table.bottom->next_Reset(table.next, Next(allocator), pipelineObject);
     if (FAILED(result)) {
         return result;
     }
 
     // Handle sub-systems
-    BeginCommandList(device.state, table.state, allocator, state, hotSwap, hotSwap != nullptr);
+    BeginCommandList(device.state, table.state, allocator, GetState(state), pipelineObject, instrument);
 
     // OK
     return S_OK;
@@ -1244,6 +1247,27 @@ void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandLis
     ReconstructState(device, commandList, streamState, flags);
 }
 
+static ExecutionInfo GetBaseExecutionInfo(CommandListState* state) {
+    DeviceState* device = GetState(state->parent);
+
+    // Default info
+    ExecutionInfo info{};
+
+    // Allocate the identifier, we never want zero as that's reserved
+    do {
+        info.rollingExecutionUID = device->rollingExecutionUID++;
+    } while (!info.rollingExecutionUID);
+
+    // Pipeline is optional
+    info.pipelineUID = state->streamState->pipeline ? static_cast<uint32_t>(state->streamState->pipeline->uid) : 0;
+
+    // Scope is not implemented yet
+    info.scopeUID = 0;
+
+    // OK
+    return info;
+}
+
 void CommitGraphics(DeviceState* device, CommandListState* list) {
     // Commit all commands prior to binding
     CommitCommands(list);
@@ -1296,12 +1320,31 @@ void CommitCompute(DeviceState* device, CommandListState* list) {
     }
 }
 
+static bool UsesExecutionInfo(CommandListState* state) {
+    // No instrument, no execution info
+    if (!state->streamState->pipelineInstrument) {
+        return false;
+    }
+
+    // Check if any shader in the pipeline uses execution info
+    return state->streamState->pipelineInstrument->featureTable.executionInfo;
+}
+
 void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList* list, UINT VertexCountPerInstance, UINT InstanceCount, UINT StartVertexLocation, UINT StartInstanceLocation) {
     auto table = GetTable(list);
 
     // Get device
     auto device = GetTable(table.state->parent);
 
+    // Append execution info, if used
+    if (UsesExecutionInfo(table.state)) {
+        ExecutionInfo info = GetBaseExecutionInfo(table.state);
+        info.executionFlags = ExecutionFlag::TypeDraw;
+        info.draw.vertexCount = VertexCountPerInstance;
+        info.draw.indexCount = 0;
+        device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(device.state, table.state);
 
@@ -1315,6 +1358,15 @@ void WINAPI HookID3D12CommandListDrawIndexedInstanced(ID3D12CommandList* list, U
     // Get device
     auto device = GetTable(table.state->parent);
 
+    // Append execution info, if used
+    if (UsesExecutionInfo(table.state)) {
+        ExecutionInfo info = GetBaseExecutionInfo(table.state);
+        info.executionFlags = ExecutionFlag::TypeDraw;
+        info.draw.vertexCount = 9;
+        info.draw.indexCount = IndexCountPerInstance;
+        device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Graphics, info);
+    }
+
     // Commit all pending graphics
     CommitGraphics(device.state, table.state);
 
@@ -1327,6 +1379,16 @@ void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList* list, UINT ThreadGr
 
     // Get device
     auto device = GetTable(table.state->parent);
+    
+    // Append execution info, if used
+    if (UsesExecutionInfo(table.state)) {
+        ExecutionInfo info = GetBaseExecutionInfo(table.state);
+        info.executionFlags = ExecutionFlag::TypeDispatch;
+        info.dispatch.groupCountX = ThreadGroupCountX;
+        info.dispatch.groupCountY = ThreadGroupCountY;
+        info.dispatch.groupCountZ = ThreadGroupCountZ;
+        device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Compute, info);
+    }
 
     // Commit all pending compute
     CommitCompute(device.state, table.state);
@@ -1340,6 +1402,13 @@ void WINAPI HookID3D12CommandListDispatchMesh(ID3D12CommandList* list, UINT Thre
 
     // Get device
     auto device = GetTable(table.state->parent);
+    
+    // Append execution info, if used
+    if (UsesExecutionInfo(table.state)) {
+        ExecutionInfo info = GetBaseExecutionInfo(table.state);
+        info.executionFlags = ExecutionFlag::TypeDraw;
+        device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Graphics, info);
+    }
 
     // Commit all pending graphics
     CommitGraphics(device.state, table.state);
@@ -1408,6 +1477,39 @@ void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12
 
     // Get signature
     auto signatureTable = GetTable(pCommandSignature);
+
+    // Append execution info, if used
+    // TODO[dbg]: The execution info has to be filled in GPU-side, we can't know the payloads here
+    if (UsesExecutionInfo(table.state)) {
+        ExecutionInfo info = GetBaseExecutionInfo(table.state);
+        info.executionFlags = ExecutionFlag::TypeIndirect;
+        
+        switch (table.state->streamState->pipeline->type) {
+            default:
+                ASSERT(false, "Unexpected state");
+                break;
+            case PipelineType::Graphics:
+                info.executionFlags |= ExecutionFlag::TypeDraw;
+                break;
+            case PipelineType::Compute:
+                info.executionFlags |= ExecutionFlag::TypeDispatch;
+                break;
+            case PipelineType::StateObject:
+                // TODO[dbg]: Won't hold true with WG
+                info.executionFlags |= ExecutionFlag::TypeRaytracing;
+                break;
+        }
+        
+        // Set compute info if needed
+        if (signatureTable.state->activeTypes & PipelineType::Compute) {
+            device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Compute, info);
+        }
+
+        // Set graphics info if needed
+        if (signatureTable.state->activeTypes & PipelineType::Graphics) {
+            device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Graphics, info);
+        }
+    }
 
     // State object (raytracing) EI's require patching
     if (signatureTable.state->activeTypes & PipelineType::StateObject) {
@@ -1510,24 +1612,27 @@ void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D1
     ASSERT(pipelineState->type == PipelineType::Graphics || pipelineState->type == PipelineType::Compute, "Unexpected pipeline state");
     
     // Get hot swap
-    auto *hotSwap = static_cast<ID3D12PipelineState*>(pipelineState->hotSwapObject.load());
+    PipelineInstrument *instrument = pipelineState->hotSwapObject.load();
 
     // Conditionally wait for instrumentation if the pipeline has an outstanding request
-    if (!hotSwap && pipelineState->HasInstrumentationRequest()) {
+    if (!instrument && pipelineState->HasInstrumentationRequest()) {
         device.state->instrumentationController->ConditionalWaitForCompletion();
 
         // Load new hot-object
-        hotSwap = static_cast<ID3D12PipelineState *>(pipelineState->hotSwapObject.load());
+        instrument = pipelineState->hotSwapObject.load();
     }
+
+    // Active pipeline
+    ID3D12PipelineState* pipelineObject = instrument ? static_cast<ID3D12PipelineState*>(instrument->object) : Next(pipeline);
 
     // Update last used
     pipelineState->lastUsedTimestampNS.store(device.state->syncPointActionThread.GetLastTimeSinceEpochNS(), std::memory_order::relaxed);
 
     // Pass down callchain
-    table.bottom->next_SetPipelineState(table.next, hotSwap ? hotSwap : Next(pipeline));
+    table.bottom->next_SetPipelineState(table.next, pipelineObject);
 
     // Inform the streamer of a new pipeline
-    device.state->exportStreamer->BindPipeline(table.state->streamState, pipelineState, hotSwap, hotSwap != nullptr, table.state->object);
+    device.state->exportStreamer->BindPipeline(table.state->streamState, pipelineState, pipelineObject, instrument, table.state->object);
 }
 
 void WINAPI HookID3D12CommandListSetPipelineState1(ID3D12CommandList *list, ID3D12StateObject *stateObject) {
@@ -1541,24 +1646,27 @@ void WINAPI HookID3D12CommandListSetPipelineState1(ID3D12CommandList *list, ID3D
     ASSERT(stateObjectState->type == PipelineType::StateObject, "Unexpected state object state");
     
     // Get hot swap
-    auto *hotSwap = static_cast<ID3D12StateObject*>(stateObjectState->hotSwapObject.load());
+    PipelineInstrument *instrument = stateObjectState->hotSwapObject.load();
 
     // Conditionally wait for instrumentation if the pipeline has an outstanding request
-    if (!hotSwap && stateObjectState->HasInstrumentationRequest()) {
+    if (!instrument && stateObjectState->HasInstrumentationRequest()) {
         device.state->instrumentationController->ConditionalWaitForCompletion();
 
         // Load new hot-object
-        hotSwap = static_cast<ID3D12StateObject *>(stateObjectState->hotSwapObject.load());
+        instrument = stateObjectState->hotSwapObject.load();
     }
+
+    // Active pipeline
+    ID3D12StateObject* pipelineObject = instrument ? static_cast<ID3D12StateObject*>(instrument->object) : Next(stateObject);
 
     // Update last used
     stateObjectState->lastUsedTimestampNS.store(device.state->syncPointActionThread.GetLastTimeSinceEpochNS(), std::memory_order::relaxed);
 
     // Pass down callchain
-    table.bottom->next_SetPipelineState1(table.next, hotSwap ? hotSwap : Next(stateObject));
+    table.bottom->next_SetPipelineState1(table.next, pipelineObject);
 
     // Inform the streamer of a new pipeline
-    device.state->exportStreamer->BindPipeline(table.state->streamState, stateObjectState, hotSwap, hotSwap != nullptr, table.state->object);
+    device.state->exportStreamer->BindPipeline(table.state->streamState, stateObjectState, pipelineObject, instrument, table.state->object);
 }
 
 AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences) {

@@ -109,7 +109,7 @@ namespace Studio.ViewModels.Menu
         /// </summary>
         private void OnSettings()
         {
-            ServiceRegistry.Get<IWindowService>()?.OpenFor(new SettingsViewModel());
+            ServiceRegistry.Get<IWindowService>()?.OpenDialogFor(new SettingsViewModel());
         }
 
         /// <summary>

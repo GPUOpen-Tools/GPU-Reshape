@@ -64,11 +64,11 @@ bool ShaderExportDescriptorAllocator::Install() {
 
     // Get the number of resources
     uint32_t dataResourceBound;
-    dataHost->Enumerate(&dataResourceBound, nullptr, ShaderDataType::DescriptorMask);
+    dataHost->EnumerateShader(&dataResourceBound, nullptr, ShaderDataType::DescriptorMask);
 
     // Get all resources
     dataResources.resize(dataResourceBound);
-    dataHost->Enumerate(&dataResourceBound, dataResources.data(), ShaderDataType::DescriptorMask);
+    dataHost->EnumerateShader(&dataResourceBound, dataResources.data(), ShaderDataType::DescriptorMask);
 
     // Descriptors for writing
     TrivialStackVector<VkDescriptorSetLayoutBinding, 16u> bindings(allocators);

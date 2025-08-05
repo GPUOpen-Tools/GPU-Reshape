@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,36 +24,14 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using Avalonia;
-using ReactiveUI;
-using Splat;
-using Studio.Services;
-using Studio.Views.Controls;
+#pragma once
 
-namespace Studio.Views
-{
-    public class ViewLocator : IViewLocator
-    {
-        public IViewFor? DefaultView;
-        
-        public IViewFor? ResolveView<T>(T viewModel, string? contract = null)
-        {
-            if (viewModel == null)
-            {
-                return null;
-            }
-            
-            // Attempt to instantiate
-            IViewFor? view = ServiceRegistry.Get<ILocatorService>()?.InstantiateDerived<IViewFor>(viewModel);
-            if (view == null)
-            {
-                return null;
-            }
+// Common
+#include <Common/Enum.h>
 
-            // OK
-            view.ViewModel = viewModel;
-            return view;
-        }
-    }
-}
+enum class ShaderExportStreamType {
+    Input = BIT(0),
+    Output = BIT(1),
+};
+
+BIT_SET(ShaderExportStreamType);

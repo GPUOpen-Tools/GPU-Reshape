@@ -25,6 +25,7 @@
 // 
 
 #include <Backends/Vulkan/Device.h>
+#include <Backends/Vulkan/DeviceStateVote.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Instance.h>
@@ -184,11 +185,11 @@ static void CreateEventRemappingTable(DeviceDispatchTable* table) {
 
     // Pool feature count
     uint32_t dataCount;
-    table->dataHost->Enumerate(&dataCount, nullptr, ShaderDataType::Event);
+    table->dataHost->EnumerateShader(&dataCount, nullptr, ShaderDataType::Event);
 
     // Pool features
     data.resize(dataCount);
-    table->dataHost->Enumerate(&dataCount, data.data(), ShaderDataType::Event);
+    table->dataHost->EnumerateShader(&dataCount, data.data(), ShaderDataType::Event);
 
     // Current offset
     uint32_t offset = 0;
@@ -321,6 +322,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Try to get the vendor
     table->vendor = GetVendor(table->physicalDeviceProperties.properties.vendorID);
+
+    // Register the state voter
+    table->registry.AddNew<DeviceStateVote>(table);
 
     // Create a deep copy
     table->createInfo.DeepCopy(table->allocators, *pCreateInfo);
@@ -610,6 +614,11 @@ void BridgeDeviceSyncPoint(DeviceDispatchTable *table, ShaderExportQueueState* q
         table->exportStreamer->Process();
     }
 
+    // Invoke feature tables
+    for (const FeatureHookTable& featureTable : table->featureHookTables) {
+        featureTable.syncPoint.TryInvoke();
+    }
+    
     // Update the environment?
     if (table->environmentUpdateAction.Step()) {
         table->parent->environment.Update(GetEnvironmentDeviceInfo(table));

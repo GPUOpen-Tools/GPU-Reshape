@@ -26,23 +26,36 @@
 
 #pragma once
 
+// Backend
+#include <Backend/IL/ID.h>
+
+// Common
+#include <Common/Assert.h>
+
 namespace IL {
     template<typename T>
     struct ShaderStruct {
         ShaderStruct(IL::ID data) : data(data) {
-        
+            
         }
 
         /// Get a value within the struct
         /// Must be dword aligned
         /// \param emitter instruction emitter to use
+        /// \param dwordOffset optional, additional dword offset
         /// \return dword value
         template<auto M, typename E>
-        IL::ID Get(E& emitter) {
+        IL::ID Get(E& emitter, uint32_t dwordOffset = 0) {
+            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(DWordOffset<M>() + dwordOffset)->id);
+        }
+
+        /// Get the dword offset of a member
+        template<auto M>
+        uint32_t DWordOffset() {
             static T dummy;
             size_t offset = reinterpret_cast<size_t>(&(dummy.*M)) - reinterpret_cast<size_t>(&dummy);
             ASSERT(offset % sizeof(uint32_t) == 0, "Non-dword aligned offset");
-            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(offset / sizeof(uint32_t))->id);
+            return static_cast<uint32_t>(offset / sizeof(uint32_t));
         }
 
     private:

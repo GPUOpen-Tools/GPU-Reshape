@@ -47,6 +47,14 @@ struct DXStream {
 
     }
 
+    /// Default constructors
+    DXStream(const DXStream& other) = default;
+    DXStream(DXStream&& other) = default;
+
+    /// Default assignment
+    DXStream& operator=(const DXStream& other) = default;
+    DXStream& operator=(DXStream&& other) = default;
+
     /// Append a chunk of data
     /// \param ptr the data
     /// \param wordCount the word count of [ptr]

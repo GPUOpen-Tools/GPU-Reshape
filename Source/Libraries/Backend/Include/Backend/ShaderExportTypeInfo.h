@@ -26,6 +26,9 @@
 
 #pragma once
 
+// Backend
+#include <Backend/ShaderExportStreamType.h>
+
 // Message
 #include <Message/Message.h>
 
@@ -47,8 +50,17 @@ struct ShaderExportTypeInfo {
         return info;
     }
 
+    /// Expected schema
     MessageSchema messageSchema{};
+
+    /// Is the SGUID excluded?
     bool noSGUID{false};
+
+    /// Is this a structured type?
     bool structured{false};
+
+    ShaderExportStreamTypeSet streamType = ShaderExportStreamType::Output;
+
+    /// Size of the resulting type
     size_t typeSize{0};
 };

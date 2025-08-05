@@ -120,8 +120,13 @@ namespace IL {
             /// Comparison
             bool operator!=(const Iterator &other) const {
                 Validate();
-
                 return ptr != other.ptr;
+            }
+
+            /// Comparison
+            bool operator==(const Iterator &other) const {
+                Validate();
+                return ptr == other.ptr;
             }
 
             /// Get the instruction
@@ -322,8 +327,13 @@ namespace IL {
             /// Comparison
             bool operator!=(const ConstIterator &other) const {
                 Validate();
-
                 return ptr != other.ptr;
+            }
+
+            /// Comparison
+            bool operator==(const ConstIterator &other) const {
+                Validate();
+                return ptr == other.ptr;
             }
 
             /// Get the instruction
@@ -513,6 +523,16 @@ namespace IL {
         /// \return true if present
         bool HasFlag(BasicBlockFlag value) const {
             return flags & value;
+        }
+
+        /// Set the name of this block
+        void SetName(const char* value) {
+            name = value;
+        }
+
+        /// Get the name of this block
+        const char* GetName() const {
+            return name;
         }
 
         /// Append an instruction
@@ -1004,6 +1024,9 @@ namespace IL {
 
         /// Relocation block allocator
         RelocationAllocator relocationAllocator;
+
+        /// Name of this block
+        const char* name{nullptr};
 
         /// Function this block exists in
         Function* function{nullptr};

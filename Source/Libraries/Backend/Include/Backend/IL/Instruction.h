@@ -270,6 +270,10 @@ namespace IL {
         ID resource;
     };
 
+    struct ExecutionInfoInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::ExecutionInfo;
+    };
+
     struct SampleTextureInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::SampleTexture;
 
@@ -947,6 +951,8 @@ namespace IL {
                 return sizeof(ResourceSizeInstruction);
             case OpCode::ResourceToken:
                 return sizeof(ResourceTokenInstruction);
+            case OpCode::ExecutionInfo:
+                return sizeof(ExecutionInfoInstruction);
             case OpCode::Switch:
                 return static_cast<const SwitchInstruction*>(instruction)->GetSize();
             case OpCode::Phi:

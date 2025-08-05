@@ -227,6 +227,7 @@ add_library(
     Layer/Source/DeviceDispatchTable.cpp
     Layer/Source/InstanceDispatchTable.cpp
     Layer/Source/Device.cpp
+    Layer/Source/DeviceStateVote.cpp
     Layer/Source/Instance.cpp
     Layer/Source/CommandBuffer.cpp
     Layer/Source/Raytracing.cpp

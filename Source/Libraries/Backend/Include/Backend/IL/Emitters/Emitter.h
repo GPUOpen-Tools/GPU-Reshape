@@ -354,6 +354,19 @@ namespace IL {
             return Op(instr);
         }
 
+        /// Get the execution info of the current invocation
+        /// \return instruction reference
+        BasicBlock::TypedIterator <ExecutionInfoInstruction> ExecutionInfo() {
+            // Mark feature
+            program->GetFeatureTable().executionInfo = true;
+            
+            ExecutionInfoInstruction instr{};
+            instr.opCode = OpCode::ExecutionInfo;
+            instr.source = source;
+            instr.result = map->AllocID();
+            return Op(instr);
+        }
+
         /// Binary add two values
         /// \param lhs lhs operand
         /// \param rhs rhs operand

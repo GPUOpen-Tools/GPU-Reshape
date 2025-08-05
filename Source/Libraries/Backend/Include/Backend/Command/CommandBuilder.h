@@ -130,6 +130,22 @@ struct CommandBuilder {
         buffer.Add(UAVBarrierCommand{});
     }
 
+    /// Copy a buffer region
+    /// @param sourceID source buffer
+    /// @param sourceOffset start offset into source
+    /// @param destID destination buffer
+    /// @param destOffset start offset into destination
+    /// @param byteCount number of bytes to copy
+    void CopyBuffer(ShaderDataID sourceID, uint64_t sourceOffset, ShaderDataID destID, uint64_t destOffset, uint64_t byteCount) {
+        buffer.Add(CopyBufferCommand {
+            .source = sourceID,
+            .sourceOffset = sourceOffset,
+            .dest = destID,
+            .destOffset = destOffset,
+            .byteCount = byteCount
+        });
+    }
+
 private:
     CommandBuffer& buffer;
 };

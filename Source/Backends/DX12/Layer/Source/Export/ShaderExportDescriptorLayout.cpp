@@ -59,7 +59,7 @@ void ShaderExportDescriptorLayout::Install(DeviceState *device) {
 
     // Number of resources
     uint32_t resourceCount;
-    device->shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
+    device->shaderDataHost->EnumerateShader(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
 
     // Shader Datas, each take a slot
     shaderDataOffset = descriptorOffset;

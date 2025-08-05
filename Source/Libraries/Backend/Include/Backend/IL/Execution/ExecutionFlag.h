@@ -24,13 +24,23 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-namespace Runtime.ViewModels.IL
-{
-    public struct AssembledMapping
-    {
-        /// <summary>
-        /// Assembled line of this mapping
-        /// </summary>
-        public uint Line;
-    }
-}
+#pragma once
+
+// Common
+#include <Common/Enum.h>
+
+enum class ExecutionFlag : uint32_t {
+    /// This is a general draw execution
+    TypeDraw = BIT(0),
+
+    /// This is a general dispatch execution
+    TypeDispatch = BIT(1),
+
+    /// This is a general raytracing execution
+    TypeRaytracing = BIT(2),
+
+    /// The execution is indirect in nature
+    TypeIndirect = BIT(3),
+};
+
+BIT_SET(ExecutionFlag);

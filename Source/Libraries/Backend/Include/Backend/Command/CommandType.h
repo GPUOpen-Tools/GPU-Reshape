@@ -37,6 +37,7 @@ enum class CommandType {
     /// Resources
     StageBuffer,
     ClearBuffer,
+    CopyBuffer,
     Discard,
 
     /// Invokes

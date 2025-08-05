@@ -41,6 +41,11 @@ namespace Studio.Models.IL
         public uint ID = uint.MaxValue;
 
         /// <summary>
+        /// Code offset of this instruction
+        /// </summary>
+        public uint CodeOffset = uint.MaxValue;
+
+        /// <summary>
         /// Type of this instruction
         /// </summary>
         public Type? Type;

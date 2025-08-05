@@ -153,6 +153,9 @@ namespace IL {
 
         /// Resource queries
         ResourceToken,
-        ResourceSize
+        ResourceSize,
+
+        /// Execution queries
+        ExecutionInfo
     };
 }

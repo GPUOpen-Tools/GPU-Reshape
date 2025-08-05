@@ -52,6 +52,9 @@ public class ServiceProvider
 
         // Hosts all settings objects
         ServiceRegistry.Add<ISettingsService>(new SettingsService());
+
+        // Hosts all settings objects
+        ServiceRegistry.Add<IEditorService>(new EditorService());
     }
 
     /// <summary>

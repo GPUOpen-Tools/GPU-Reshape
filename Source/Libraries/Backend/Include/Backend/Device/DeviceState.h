@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,31 +24,39 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.Models.Workspace.Objects;
-using Studio.ViewModels.Workspace.Objects;
+#pragma once
 
-namespace Studio.ViewModels.Shader
-{
-    public interface ITextualShaderContentViewModel : IShaderContentViewModel
-    {
-        /// <summary>
-        /// The current selected object
-        /// </summary>
-        public ValidationObject? SelectedValidationObject { get; set; }
-        
-        /// <summary>
-        /// Is the overlay visible?
-        /// </summary>
-        public bool IsOverlayVisible();
-        
-        /// <summary>
-        /// Is a validation object visible?
-        /// </summary>
-        public bool IsObjectVisible(ValidationObject validationObject);
+// Std
+#include <cstdint>
+#include <algorithm>
 
-        /// <summary>
-        /// Transform a shader location line
-        /// </summary>
-        public int TransformLine(ShaderLocation shaderLocation);
+enum class DeviceStateType {
+    None,
+    Pooling,
+    Count
+};
+
+struct DeviceStatePooling {
+    static constexpr DeviceStateType kType = DeviceStateType::Pooling;
+
+    /// Collapse this state
+    DeviceStatePooling& operator|=(const DeviceStatePooling& rhs) {
+        intervalMS = std::min(intervalMS, rhs.intervalMS);
+        return *this;
     }
-}
+
+    /// Internval between each pool
+    uint32_t intervalMS = 16;
+};
+
+struct DeviceStateVariant {
+    DeviceStateVariant() {
+        type = DeviceStateType::None;
+    }
+
+    /// All possible states
+    union {
+        DeviceStateType type;
+        DeviceStatePooling pooling;
+    };
+};

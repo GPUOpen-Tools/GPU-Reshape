@@ -30,6 +30,7 @@
 #include <Backends/DX12/InstrumentationInfo.h>
 #include <Backends/DX12/States/ShaderStateKey.h>
 #include <Backends/DX12/States/ShaderInstrumentationKey.h>
+#include <Backends/DX12/States/ShaderInstrument.h>
 #include <Backends/DX12/Compiler/DXStream.h>
 
 // Common
@@ -51,14 +52,14 @@ struct ShaderState : public ReferenceObject {
     void ReleaseHost() override;
 
     /// Add an instrument to this shader
-    /// \param featureBitSet the enabled feature set
-    /// \param byteCode the byteCode in question
-    void AddInstrument(const ShaderInstrumentationKey& instrumentationKey, const DXStream& instrument);
+    /// \param instrumentationKey the enabled feature set
+    /// \param instrument the instrument object
+    void AddInstrument(const ShaderInstrumentationKey& instrumentationKey, ShaderInstrument* instrument);
 
     /// Get an instrument
-    /// \param featureBitSet the enabled feature set
+    /// \param instrumentationKey the enabled feature set
     /// \return nullptr if not found
-    D3D12_SHADER_BYTECODE GetInstrument(const ShaderInstrumentationKey& instrumentationKey);
+    ShaderInstrument* GetInstrument(const ShaderInstrumentationKey& instrumentationKey);
 
     /// Check if instrument is present
     /// \param featureBitSet the enabled feature set
@@ -96,7 +97,7 @@ struct ShaderState : public ReferenceObject {
 
     /// Instrumented objects lookup
     /// TODO: How do we manage lifetimes here?
-    std::map<ShaderInstrumentationKey, DXStream> instrumentObjects;
+    std::map<ShaderInstrumentationKey, ShaderInstrument*> instrumentObjects;
 
     /// Parsing module
     ///   ! May not be indexed yet, indexing occurs during instrumentation.

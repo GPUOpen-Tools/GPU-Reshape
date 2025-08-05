@@ -37,6 +37,7 @@
 #include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Resource/VirtualResourceMapping.h>
 #include <Backends/DX12/Resource/DescriptorData.h>
+#include <Backends/DX12/Resource/DescriptorDataControl.h>
 
 // Backend
 #include <Backend/IL/TypeCommon.h>
@@ -48,6 +49,7 @@
 #include <Backend/IL/Type.h>
 #include <Backend/IL/ResourceTokenType.h>
 #include <Backend/IL/TypeSize.h>
+#include <Backend/IL/Execution/ExecutionInfo.h>
 
 // Common
 #include <Common/Sink.h>
@@ -1866,7 +1868,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             instr.buffer = resource;
             instr.index = coordinate;
             instr.offset = offset;
-            instr.mask = IL::ComponentMaskSet(mask);
+            instr.mask = IL::ComponentMaskSet(static_cast<uint8_t>(mask));
             instr.alignment = static_cast<uint32_t>(alignment);
             basicBlock->Append(instr);
             return true;
@@ -2347,7 +2349,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 _instr->buffer = resource;
                 _instr->index = coordinate;
                 _instr->value = svoxValue;
-                _instr->mask = IL::ComponentMaskSet(mask);
+                _instr->mask = IL::ComponentMaskSet(static_cast<uint8_t>(mask));
                 _instr->offset = offset;
                 break;
             }
@@ -2398,7 +2400,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 _instr->index = coordinate;
                 _instr->value = svoxValue;
                 _instr->offset = offset;
-                _instr->mask = IL::ComponentMaskSet(mask);
+                _instr->mask = IL::ComponentMaskSet(static_cast<uint8_t>(mask));
                 _instr->alignment = static_cast<uint32_t>(alignment);
                 break;
             }
@@ -2620,7 +2622,7 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 _instr->texture = resource;
                 _instr->index = svoxCoordinate;
                 _instr->texel = svoxValue;
-                _instr->mask = IL::ComponentMaskSet(mask);
+                _instr->mask = IL::ComponentMaskSet(static_cast<uint8_t>(mask));
                 break;
             }
         }
@@ -3970,6 +3972,9 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::ThreadId))->id);
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(i)->id);
                                 block->AddRecord(CompileIntrinsicCall(threadIds[i], intrinsic, 2, ops));
+
+                                // Set type for svox
+                                program.GetTypeMap().SetType(threadIds[0], program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{}));
                             }
 
                             // Create svox
@@ -4454,6 +4459,11 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                 case IL::OpCode::ResourceToken: {
                     CompileResourceTokenInstruction(job, block, source, instr->As<IL::ResourceTokenInstruction>());
+                    break;
+                }
+
+                case IL::OpCode::ExecutionInfo: {
+                    CompileExecutionInfoInstruction(job, block, source, instr->As<IL::ExecutionInfoInstruction>());
                     break;
                 }
 
@@ -6660,6 +6670,16 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     auto tokenMetadataStruct = program.GetTypeMap().GetResourceToken();
     table.type.typeMap.GetType(tokenMetadataStruct);
 
+    // General data offset
+    uint32_t controlDataDWord;
+    if (userMapping.physicalMapping == job.instrumentationKey.physicalMapping) {
+        // Follows a control structure
+        controlDataDWord = DescriptorDataHeaderDWordCount + userMapping.source->dwordOffset;
+    } else {
+        // No control structure
+        controlDataDWord = userMapping.source->dwordOffset;
+    }
+
     // All dwords
     TrivialStackVector<uint32_t, kMetadataDWordCount> metadataMap;
     
@@ -6696,7 +6716,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     if (userMapping.source)
     {
         // The row offset of the root parameter
-        const uint32_t rowOffset = userMapping.source->dwordOffset / 4u;
+        const uint32_t rowOffset = controlDataDWord / 4u;
 
         // Number of rows needed, if part of an indirection, just one element
         uint32_t rowCount = 1u;
@@ -6705,7 +6725,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         if (userMapping.source->isRootResourceParameter) {
             // Determine the number of rows needed
             // Since the base dword offset may not be 0 for a given row, account for the intra row offset too
-            const uint32_t texelOffset = userMapping.source->dwordOffset % 4u;
+            const uint32_t texelOffset = controlDataDWord % 4u;
             rowCount = (kMetadataDWordCount + texelOffset + 3) / 4;
         }
 
@@ -6765,7 +6785,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         ASSERT(userMapping.dynamicOffset == IL::InvalidID, "Dynamic offset on inline root parameter");
 
         // Offset within the row
-        uint32_t dwordOffset = userMapping.source->dwordOffset % 4u;
+        uint32_t dwordOffset = controlDataDWord % 4u;
 
         // Extract respective value (uint4)
         for (uint32_t i = 0; i < kMetadataDWordCount; i++) {
@@ -6877,7 +6897,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 recordExtract.opCount = 2;
                 recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
                 recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyRows[0]);
-                recordExtract.ops[1] = userMapping.source->dwordOffset % 4u;
+                recordExtract.ops[1] = controlDataDWord % 4u;
                 block->AddRecord(recordExtract);
             }
         
@@ -7086,6 +7106,133 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
 
     // Allocate struct
     table.idRemapper.SetUserRedirect(_instr->result, AllocateSVOStructSequential(tokenMetadataStruct, metadataMap.Data(), kMetadataDWordCount));
+}
+
+void DXILPhysicalBlockFunction::CompileExecutionInfoInstruction(const DXCompileJob &job, LLVMBlock *block, const Vector<LLVMRecord> &vector, const IL::ExecutionInfoInstruction *_instr) {
+    // TODO[dbg]: Constants are horrible!
+    IL::ID executionControlDWordOffset = LoadDataControlDWord(job, block, 0);
+    
+    // All cbuffer rows, not all components may be used
+    constexpr uint32_t kRowCount = (kExecutionInfoDWordCount + 3) / 4;
+    TrivialStackVector<uint32_t, kRowCount> legacyRows;
+
+    // Load all rows
+    for (uint32_t i = 0; i < kRowCount; i++) {
+        // Allocate
+        uint32_t rowOffset = program.GetIdentifierMap().AllocID();
+        uint32_t legacyLoad = program.GetIdentifierMap().AllocID();
+
+        // ExecutionRowOffset + i
+        {
+            LLVMRecord addRecord;
+            addRecord.SetUser(true, ~0u, rowOffset);
+            addRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+            addRecord.opCount = 3u;
+            addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+            addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(executionControlDWordOffset);
+            addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(i)->id);
+            addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
+            block->AddRecord(addRecord);
+        }
+        
+        // Get intrinsic
+        const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCBufferLoadLegacyI32);
+
+        /*
+          *  ; overloads: SM5.1: f32|i32|f64,  future SM: possibly deprecated
+          *    %dx.types.CBufRet.f32 = type { float, float, float, float }
+          *    declare %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(
+          *       i32,                  ; opcode
+          *       %dx.types.Handle,     ; resource handle
+          *       i32)                  ; 0-based row index (row = 16-byte DXBC register)
+          */
+
+        uint64_t ops[3];
+
+        ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
+        )->id);
+
+        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(descriptorHandle);
+        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(rowOffset);
+
+        // Invoke
+        block->AddRecord(CompileIntrinsicCall(legacyLoad, intrinsic, 3, ops));
+        legacyRows.Add(legacyLoad);
+    }
+    
+    // Use shared representation
+    auto infoStruct = program.GetTypeMap().GetExecutionInfo();
+    table.type.typeMap.GetType(infoStruct);
+
+    // All dwords
+    TrivialStackVector<uint32_t, kExecutionInfoDWordCount> dwords;
+
+    // Extract respective value (uint4)
+    for (uint32_t i = 0; i < kExecutionInfoDWordCount; i++) {
+        uint32_t fieldId = program.GetIdentifierMap().AllocID();
+        
+        LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+        recordExtract.SetUser(true, ~0u, fieldId);
+        recordExtract.opCount = 2;
+        recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyRows[i / 4]);
+        recordExtract.ops[1] = i % 4u;
+        block->AddRecord(recordExtract);
+        dwords.Add(fieldId);
+    }
+    
+    // Allocate struct
+    table.idRemapper.SetUserRedirect(_instr->result, AllocateSVOStructSequential(infoStruct, dwords.Data(), kExecutionInfoDWordCount));
+}
+
+IL::ID DXILPhysicalBlockFunction::LoadDataControlDWord(const DXCompileJob &job, LLVMBlock *block, uint32_t DWordIndex) {
+    IL::ID load = program.GetIdentifierMap().AllocID();
+    IL::ID fieldId = program.GetIdentifierMap().AllocID();
+    
+    /*
+      *  ; overloads: SM5.1: f32|i32|f64,  future SM: possibly deprecated
+      *    %dx.types.CBufRet.f32 = type { float, float, float, float }
+      *    declare %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(
+      *       i32,                  ; opcode
+      *       %dx.types.Handle,     ; resource handle
+      *       i32)                  ; 0-based row index (row = 16-byte DXBC register)
+      */
+
+    uint64_t ops[3];
+
+    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
+    )->id);
+
+    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(descriptorHandle);
+
+    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+        Backend::IL::IntConstant{.value = static_cast<int64_t>(DWordIndex / 4)}
+    )->id);
+
+    // Extract the dword row
+    block->AddRecord(CompileIntrinsicCall(
+        load,
+        table.intrinsics.GetIntrinsic(Intrinsics::DxOpCBufferLoadLegacyI32),
+        3,
+        ops
+    ));
+
+    // Extract the dword column
+    LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+    recordExtract.SetUser(true, ~0u, fieldId);
+    recordExtract.opCount = 2;
+    recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+    recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(load);
+    recordExtract.ops[1] = DWordIndex % 4u;
+    block->AddRecord(recordExtract);
+
+    // OK
+    return fieldId;
 }
 
 void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const IL::ExportInstruction *_instr) {

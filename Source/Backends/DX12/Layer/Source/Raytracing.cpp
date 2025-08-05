@@ -464,7 +464,7 @@ void HookID3D12CommandListDispatchRays(ID3D12GraphicsCommandList4* list, const D
 
     // Patch all relevant records
     D3D12_DISPATCH_RAYS_DESC patched;
-    if (table.state->streamState->isInstrumented) {
+    if (table.state->streamState->pipelineInstrument) {
         patched = PatchShaderRecords(device, table.state, *pDesc);
 
         // Reconstruct the previous command state
@@ -497,7 +497,7 @@ void HookID3D12CommandListExecuteIndirectRaytracing(ID3D12CommandList *list, ID3
     uint64_t patchedOffset = 0;
 
     // Instrumented?
-    if (table.state->streamState->isInstrumented) {
+    if (table.state->streamState->pipelineInstrument) {
         // We can't determine the actual resources used in the EI, so we can't do any kind of barrier tracking
         // to determine invalidation. So, always patch.
         patched = PatchShaderRecordsImmediateIndirect(

@@ -26,6 +26,8 @@
 
 using System;
 using System.Collections.Generic;
+using Studio.Extensions;
+using Studio.Views;
 
 namespace Studio.Services
 {
@@ -70,25 +72,35 @@ namespace Studio.Services
         /// </summary>
         /// <param name="type">source type</param>
         /// <param name="derived">derived type</param>
-        public void AddDerived(Type type, Type derived)
+        /// <param name="viewType">type of the view</param>
+        public void AddDerived(Type type, Type derived, ViewType viewType = ViewType.Primary)
         {
-            _locators.Add(type, derived);
+            _types.GetOrAddDefault(viewType).Locators.Add(type, derived);
         }
 
         /// <summary>
         /// Get the derived type
         /// </summary>
         /// <param name="type">source type</param>
+        /// <param name="viewType">type of the view</param>
         /// <returns></returns>
-        public Type? GetDerived(Type type)
+        public Type? GetDerived(Type type, ViewType viewType)
         {
-            _locators.TryGetValue(type, out Type? derived);
+            _types.GetOrAddDefault(viewType).Locators.TryGetValue(type, out Type? derived);
             return derived;
+        }
+
+        /// <summary>
+        /// Bucket for a type
+        /// </summary>
+        private class TypeBucket
+        {
+            public Dictionary<Type, Type> Locators = new();
         }
 
         /// <summary>
         /// Internal lookup
         /// </summary>
-        private Dictionary<Type, Type> _locators = new();
+        private Dictionary<ViewType, TypeBucket> _types = new();
     }
 }

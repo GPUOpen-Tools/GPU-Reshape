@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -22,25 +22,23 @@
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
 // FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-// 
+//
 
-using System;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
-using ReactiveUI;
-using Studio.ViewModels.Controls;
+#include <Backends/DX12/DeviceStateVote.h>
+#include <Backends/DX12/States/DeviceState.h>
 
-namespace Studio.Views.Controls
-{
-    public partial class LocatorViewHost : UserControl
-    {
-        public LocatorViewHost()
-        {
-            InitializeComponent();
+DeviceStateVote::DeviceStateVote(DeviceState *deviceState) : deviceState(deviceState) {
+    
+}
 
-            // Set locator
-            ViewHost.ViewLocator = new ViewLocator();
+void DeviceStateVote::OnStateChanged(DeviceStateType type) {
+    switch (type) {
+        default:
+            break;
+        case DeviceStateType::Pooling: {
+            auto state = GetOrDefault<DeviceStatePooling>();
+            deviceState->syncPointActionThread.SetInterval(std::chrono::milliseconds(state.intervalMS));
+            break;
         }
     }
 }

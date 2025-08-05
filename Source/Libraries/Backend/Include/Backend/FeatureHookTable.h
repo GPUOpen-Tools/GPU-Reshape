@@ -74,6 +74,9 @@ namespace Hooks {
     using PreSubmit = Delegate<void(SubmissionContext& submission, const CommandContextHandle *contexts, uint32_t contextCount)>;
     using PostSubmit = Delegate<void(const CommandContextHandle *contexts, uint32_t contextCount)>;
     using Join = Delegate<void(CommandContextHandle contextHandle)>;
+
+    /// General
+    using SyncPoint = Delegate<void()>;
 }
 
 /// Contains the required hooks for a given feature
@@ -106,4 +109,7 @@ public:
     Hooks::PreSubmit preSubmit;
     Hooks::PostSubmit postSubmit;
     Hooks::Join join;
+
+    /// General
+    Hooks::SyncPoint syncPoint;
 };

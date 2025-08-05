@@ -200,7 +200,28 @@ private:
         LLVMRecord record(LLVMConstantRecord::Float);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
-        record.OpBitWrite(0, constant->value);
+
+        // Handle bit-width
+        auto* type = constant->type->Cast<Backend::IL::FPType>();
+        switch (type->bitWidth) {
+            default: {
+                ASSERT(false, "Invalid float bit-width");
+                break;
+            }
+            case 16: {
+                ASSERT(false, "Not implemented");
+                break;
+            }
+            case 32: {
+                record.OpBitWrite(0, static_cast<float>(constant->value));
+                break;
+            }
+            case 64: {
+                record.OpBitWrite(0, constant->value);
+                break;
+            }
+        }
+        
         return Emit(constant, record);
     }
 

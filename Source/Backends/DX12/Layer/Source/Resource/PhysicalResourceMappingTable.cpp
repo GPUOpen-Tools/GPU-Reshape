@@ -73,7 +73,7 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
 #if USE_MIRROR
     allocation = allocator->AllocateMirror(desc);
 #else // USE_MIRROR
-    allocation = allocator->AllocateMirror(desc, AllocationResidency::Host);
+    allocation = allocator->AllocateMirror(desc, AllocationResidency::HostUpload);
 #endif // USE_MIRROR
 
 #ifndef NDEBUG

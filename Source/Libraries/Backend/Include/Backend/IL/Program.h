@@ -36,6 +36,7 @@
 #include <Backend/IL/CapabilityTable.h>
 #include <Backend/IL/MetadataMap.h>
 #include <Backend/IL/Analysis/AnalysisMap.h>
+#include <Backend/IL/FeatureTable.h>
 
 // Std
 #include <list>
@@ -75,6 +76,7 @@ namespace IL {
 
             // Copy immutable
             program->capabilityTable = capabilityTable;
+            program->featureTable = featureTable;
             program->entryPoint = entryPoint;
 
             // Copy all functions and their basic blocks
@@ -135,6 +137,11 @@ namespace IL {
             return capabilityTable;
         }
 
+        /// Get the feature table
+        FeatureTable& GetFeatureTable() {
+            return featureTable;
+        }
+
         /// Get the metadata map
         MetadataMap& GetMetadataMap() {
             return metadataMap;
@@ -190,6 +197,11 @@ namespace IL {
             return capabilityTable;
         }
 
+        /// Get the feature table
+        const FeatureTable& GetFeatureTable() const {
+            return featureTable;
+        }
+
         /// Get the metadata map
         const MetadataMap& GetMetadataMap() const {
             return metadataMap;
@@ -228,6 +240,9 @@ namespace IL {
 
         /// The capability table
         CapabilityTable capabilityTable;
+
+        /// The feature table
+        FeatureTable featureTable;
 
         /// The metadata map
         MetadataMap metadataMap;
