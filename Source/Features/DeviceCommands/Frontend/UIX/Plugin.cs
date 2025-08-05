@@ -56,15 +56,6 @@ namespace GRS.Features.DeviceCommands.UIX
             
             // Add workspace extension
             workspaceService?.Extensions.Add(this);
-            
-            // Add workspace configuration
-            workspaceService?.GetConfiguration<IBasicConfigurationViewModel>()?.Configurations.Add(new BaseConfigurationViewModel<DeviceCommandsPropertyViewModel>()
-            {
-                Name = Resources.Workspace_Configuration_DeviceCommands_Name,
-                Description = Resources.Workspace_Configuration_DeviceCommands_Description,
-                Flags = WorkspaceConfigurationFlag.CanDetail,
-                FeatureName = "Device Commands"
-            });
 
             // OK
             return true;
