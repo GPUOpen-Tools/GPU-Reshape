@@ -7,6 +7,8 @@ Pending work post consolidation into ~raytracing.
 - Implement SyncPoint hook types
 - Implement KernelTypeMetadata
 - Implement ExecutionInfo overall
+- Implement DeviceCommandEmitter
+- Implement DispatchIndirect hook
 
 ### [F] Debug
 - Optional left margins for breakpoints
