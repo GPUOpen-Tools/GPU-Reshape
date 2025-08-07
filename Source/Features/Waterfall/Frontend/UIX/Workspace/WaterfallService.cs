@@ -34,6 +34,7 @@ using Studio.ViewModels.Workspace;
 using Message.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
+using Runtime.Threading;
 using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Instrumentation;
@@ -303,6 +304,18 @@ namespace GRS.Features.Waterfall.UIX.Workspace
                     // Append message on resource
                     ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
                     resourceValidationObject.AddUniqueInstance(builder.ToString());
+                }
+            }
+            
+            // Update counts on main thread
+            foreach (var kv in enqueued)
+            {
+                if (_reducedMessages.TryGetValue(kv.Key, out ValidationObject? value))
+                {
+                    if (kv.Value > 0)
+                    {
+                        ValidationMergePumpBus.Increment(value, kv.Value);
+                    }
                 }
             }
         }

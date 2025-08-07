@@ -33,6 +33,7 @@ using Studio.ViewModels.Workspace;
 using Message.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
+using Runtime.Threading;
 using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Instrumentation;
@@ -104,43 +105,34 @@ namespace GRS.Features.Loop.UIX.Workspace
             var view = new ChunkedMessageView<LoopTerminationMessage>(streams);
 
             // Latent update set
-            var lookup = new Dictionary<uint, LoopTerminationMessage>();
             var enqueued = new Dictionary<uint, uint>();
-
-            // Consume all messages
-            foreach (LoopTerminationMessage message in view)
+            
+            // Preallocate initial latents
+            foreach (var kv in _reducedMessages)
             {
-                if (enqueued.TryGetValue(message.sguid, out uint enqueuedCount))
-                {
-                    enqueued[message.sguid] = enqueuedCount + 1;
-                }
-                else
-                {
-                    lookup.Add(message.sguid, message);
-                    enqueued.Add(message.sguid, 1);
-                }
+                enqueued.Add(kv.Key, 0);
             }
 
-            foreach (var kv in enqueued)
+            foreach (LoopTerminationMessage message in view)
             {
-                // Add to reduced set
-                if (_reducedMessages.ContainsKey(kv.Key))
+                // Add to latent set
+                if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
                 {
-                    Dispatcher.UIThread.InvokeAsync(() => { _reducedMessages[kv.Key].Count += kv.Value; });
+                    enqueued[message.Key] = enqueuedCount + 1u;
                 }
                 else
                 {
-                    // Get from key
-                    var message = lookup[kv.Key];
-
                     // Create object
                     var validationObject = new ValidationObject()
                     {
                         Traits = ValidationTraits.NoDetail,
                         Severity = ValidationSeverity.Error,
                         Content = "Loop timeout",
-                        Count = kv.Value
+                        Count = 1u,
                     };
+                    
+                    // Register with latent
+                    enqueued.Add(message.Key, 1u);
 
                     // Shader view model injection
                     validationObject.WhenAnyValue(x => x.Segment).WhereNotNull().Subscribe(x =>
@@ -161,52 +153,70 @@ namespace GRS.Features.Loop.UIX.Workspace
                     _shaderMappingService?.EnqueueMessage(validationObject, message.sguid);
 
                     // Insert lookup
-                    _reducedMessages.Add(kv.Key, validationObject);
-                    
-                    // Formatted?
-                    // TODO: Optimize the hell out of this, current version is not good enough
-                    if (message.IsChunked())
-                    {
-                        // Get detailed view model
-                        if (!_reducedDetails.TryGetValue(message.sguid, out GenericValidationDetailViewModel? detailViewModel))
-                        {
-                            // Create the missing detail view model
-                            detailViewModel = new GenericValidationDetailViewModel();
-                        
-                            // Assign on UI thread
-                            Dispatcher.UIThread.InvokeAsync(() =>
-                            {
-                                validationObject.DetailViewModel = detailViewModel;
-                            });
-                        
-                            // Add lookup
-                            _reducedDetails.Add(message.Key, detailViewModel);
-                        }
-
-                        // Formatted message
-                        StringBuilder builder = new();
-                        builder.Append($"Exceeded function-local iteration limit for queue submission");
-                        
-                        // Detailed?
-                        if (message.HasChunk(LoopTerminationMessage.Chunk.Detail))
-                        {
-                            LoopTerminationMessage.DetailChunk detailChunk = message.GetDetailChunk();
-                            builder.Append($", terminated this function at {detailChunk.functionIterationCount} iterations");
-                        }
-                        
-                        // Handle traceback
-                        if (message.HasChunk(LoopTerminationMessage.Chunk.Traceback))
-                        {
-                            LoopTerminationMessage.TracebackChunk tracebackChunk = message.GetTracebackChunk();
-                            builder.Append($" at {TracebackUtils.Format(ViewModel, tracebackChunk.GetModel())}");
-                        }
-
-                        // Compose message
-                        detailViewModel.AddUniqueInstance(builder.ToString());
-                    }
+                    _reducedMessages.Add(message.Key, validationObject);
 
                     // Add to UI visible collection
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
+                }
+                    
+                // Formatted?
+                // TODO: Optimize the hell out of this, current version is not good enough
+                if (message.IsChunked())
+                {
+                    // Get detailed view model
+                    if (!_reducedDetails.TryGetValue(message.sguid, out GenericValidationDetailViewModel? detailViewModel))
+                    {
+                        // Not found, find the object
+                        if (!_reducedMessages.TryGetValue(message.sguid, out ValidationObject? validationObject))
+                        {
+                            continue;
+                        }
+
+                        // Create the missing detail view model
+                        detailViewModel = new GenericValidationDetailViewModel();
+                    
+                        // Assign on UI thread
+                        Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            validationObject.DetailViewModel = detailViewModel;
+                        });
+                    
+                        // Add lookup
+                        _reducedDetails.Add(message.Key, detailViewModel);
+                    }
+
+                    // Formatted message
+                    StringBuilder builder = new();
+                    builder.Append($"Exceeded function-local iteration limit for queue submission");
+                    
+                    // Detailed?
+                    if (message.HasChunk(LoopTerminationMessage.Chunk.Detail))
+                    {
+                        LoopTerminationMessage.DetailChunk detailChunk = message.GetDetailChunk();
+                        builder.Append($", terminated this function at {detailChunk.functionIterationCount} iterations");
+                    }
+                    
+                    // Handle traceback
+                    if (message.HasChunk(LoopTerminationMessage.Chunk.Traceback))
+                    {
+                        LoopTerminationMessage.TracebackChunk tracebackChunk = message.GetTracebackChunk();
+                        builder.Append($" at {TracebackUtils.Format(ViewModel, tracebackChunk.GetModel())}");
+                    }
+
+                    // Compose message
+                    detailViewModel.AddUniqueInstance(builder.ToString());
+                }
+            }
+            
+            // Update counts on main thread
+            foreach (var kv in enqueued)
+            {
+                if (_reducedMessages.TryGetValue(kv.Key, out ValidationObject? value))
+                {
+                    if (kv.Value > 0)
+                    {
+                        ValidationMergePumpBus.Increment(value, kv.Value);
+                    }
                 }
             }
         }
