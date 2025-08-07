@@ -203,7 +203,7 @@ namespace Studio.Views.Shader
             }
 
             // Check if there's any detailed info at all
-            if (!ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
+            if (vm.DetailViewModel == null && !ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
             {
                 vm.DetailViewModel = new NoDetailViewModel()
                 {

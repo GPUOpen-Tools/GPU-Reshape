@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
@@ -33,6 +34,7 @@ using Message.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
+using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
@@ -157,17 +159,10 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
                 }
 
-                // Detailed?
-                if (message.HasChunk(ResourceRaceConditionMessage.Chunk.Detail))
+                // Formatted?
+                // TODO: Optimize the hell out of this, current version is not good enough
+                if (message.IsChunked())
                 {
-                    ResourceRaceConditionMessage.DetailChunk detailChunk = message.GetDetailChunk();
-
-                    // To token
-                    var token = new ResourceToken()
-                    {
-                        Token = detailChunk.token
-                    };
-
                     // Get detailed view model
                     if (!_reducedDetails.TryGetValue(message.sguid, out ResourceValidationDetailViewModel? detailViewModel))
                     {
@@ -190,23 +185,58 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                         _reducedDetails.Add(message.sguid, detailViewModel);
                     }
 
-                    // Try to find resource
-                    Resource resource = _versioningService?.GetResource(token.PUID, streams.VersionID) ?? new Resource()
-                    {
-                        PUID = token.PUID,
-                        Version = streams.VersionID,
-                        Name = $"#{token.PUID}",
-                        IsUnknown = true
-                    };
+                    // Formatted message
+                    StringBuilder builder = new();
+                    builder.Append("Potential race condition detected");
                     
-                    // Get resource
-                    ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
+                    // Destination resource
+                    Resource resource;
 
-                    // Read coordinate
-                    uint[] coordinate = detailChunk.coordinate;
+                    // Detailed?
+                    if (message.HasChunk(ResourceRaceConditionMessage.Chunk.Detail))
+                    {
+                        ResourceRaceConditionMessage.DetailChunk detailChunk = message.GetDetailChunk();
+
+                        // To token
+                        ResourceToken token = new()
+                        {
+                            Token = detailChunk.token
+                        };
+
+                        // Try to find resource
+                        resource = _versioningService?.GetResource(token.PUID, streams.VersionID) ?? new Resource()
+                        {
+                            PUID = token.PUID,
+                            Version = streams.VersionID,
+                            Name = $"#{token.PUID}",
+                            IsUnknown = true
+                        };
                     
-                    // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance($"Potential race condition detected at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}, byteOffset:{detailChunk.byteOffset}");
+                        // Read coordinate
+                        uint[] coordinate = detailChunk.coordinate;
+                    
+                        // Compose detailed message
+                        builder.Append($" at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}, byteOffset:{detailChunk.byteOffset}");
+                    }
+                    else
+                    {
+                        resource = new Resource()
+                        {
+                            Name = "Unknown",
+                            IsUnknown = true
+                        };
+                    }
+
+                    // Handle traceback
+                    if (message.HasChunk(ResourceRaceConditionMessage.Chunk.Traceback))
+                    {
+                        ResourceRaceConditionMessage.TracebackChunk tracebackChunk = message.GetTracebackChunk();
+                        builder.Append($" at {TracebackUtils.Format(ViewModel, tracebackChunk.GetModel())}");
+                    }
+
+                    // Append message on resource
+                    ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
+                    resourceValidationObject.AddUniqueInstance(builder.ToString());
                 }
             }
             

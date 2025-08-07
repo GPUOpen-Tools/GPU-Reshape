@@ -119,7 +119,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         public void Commit(InstrumentationState state)
         {
             // Reduce stream size if not needed
-            if (!_safeGuard && !_detail && !_coverage)
+            if (!_safeGuard && !_detail && !_coverage && !_traceback)
             {
                 return;
             }

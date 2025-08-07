@@ -26,13 +26,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
-using Bridge.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
+using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
@@ -162,11 +163,10 @@ namespace GRS.Features.Loop.UIX.Workspace
                     // Insert lookup
                     _reducedMessages.Add(kv.Key, validationObject);
                     
-                    // Detailed?
-                    if (message.HasChunk(LoopTerminationMessage.Chunk.Detail))
+                    // Formatted?
+                    // TODO: Optimize the hell out of this, current version is not good enough
+                    if (message.IsChunked())
                     {
-                        LoopTerminationMessage.DetailChunk detailChunk = message.GetDetailChunk();
-                        
                         // Get detailed view model
                         if (!_reducedDetails.TryGetValue(message.sguid, out GenericValidationDetailViewModel? detailViewModel))
                         {
@@ -182,9 +182,27 @@ namespace GRS.Features.Loop.UIX.Workspace
                             // Add lookup
                             _reducedDetails.Add(message.Key, detailViewModel);
                         }
+
+                        // Formatted message
+                        StringBuilder builder = new();
+                        builder.Append($"Exceeded function-local iteration limit for queue submission");
                         
+                        // Detailed?
+                        if (message.HasChunk(LoopTerminationMessage.Chunk.Detail))
+                        {
+                            LoopTerminationMessage.DetailChunk detailChunk = message.GetDetailChunk();
+                            builder.Append($", terminated this function at {detailChunk.functionIterationCount} iterations");
+                        }
+                        
+                        // Handle traceback
+                        if (message.HasChunk(LoopTerminationMessage.Chunk.Traceback))
+                        {
+                            LoopTerminationMessage.TracebackChunk tracebackChunk = message.GetTracebackChunk();
+                            builder.Append($" at {TracebackUtils.Format(ViewModel, tracebackChunk.GetModel())}");
+                        }
+
                         // Compose message
-                        detailViewModel.AddUniqueInstance($"Exceeded function-local iteration limit for queue submission, terminated this function at {detailChunk.functionIterationCount} iterations");
+                        detailViewModel.AddUniqueInstance(builder.ToString());
                     }
 
                     // Add to UI visible collection
