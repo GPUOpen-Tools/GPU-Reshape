@@ -27,6 +27,8 @@
 #pragma once
 
 // Backend
+#include <Backend/IL/Metadata/KernelMetadata.h>
+#include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Emitters/Emitter.h>
 
 namespace IL {
@@ -35,11 +37,37 @@ namespace IL {
     /// @param emitter emitter to use
     template<typename T, typename E>
     static void AppendTracebackChunk(typename T::ShaderExport& message, Emitter<E>& emitter) {
+        Program *program = emitter.GetProgram();
+
+        // Mark chunk as resident
         message.chunks |= T::Chunk::Traceback;
-        
-        // TODO: Need to merge the debug branch for proper tracebacks
-        message.traceback.kernelX = emitter.UInt32(64);
-        message.traceback.kernelY = emitter.UInt32(64);
-        message.traceback.kernelZ = emitter.UInt32(64);
+
+        // Get the current execution
+        ShaderStruct<ExecutionInfo> execution(emitter.ExecutionInfo());
+
+        // Kernel info
+        message.traceback.executionFlag = execution.Get<&ExecutionInfo::executionFlags>(emitter);
+        message.traceback.pipelineUid = execution.Get<&ExecutionInfo::pipelineUID>(emitter);
+        message.traceback.scopeUid = execution.Get<&ExecutionInfo::scopeUID>(emitter);
+        message.traceback.queueUid = execution.Get<&ExecutionInfo::queueUID>(emitter);
+
+        // Group counts
+        message.traceback.kernelLaunchX = execution.Get<&ExecutionInfo::dispatch>(emitter, 0);
+        message.traceback.kernelLaunchY = execution.Get<&ExecutionInfo::dispatch>(emitter, 1);
+        message.traceback.kernelLaunchZ = execution.Get<&ExecutionInfo::dispatch>(emitter, 2);
+
+        // Thread indices
+        auto* kernelTypeMd = program->GetMetadataMap().GetMetadata<KernelTypeMetadata>(program->GetEntryPoint()->GetID());
+        if (kernelTypeMd && kernelTypeMd->type == KernelType::Compute) {
+            ID threadId = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
+            message.traceback.threadX = emitter.Extract(threadId, emitter.UInt32(0));
+            message.traceback.threadY = emitter.Extract(threadId, emitter.UInt32(1));
+            message.traceback.threadZ = emitter.Extract(threadId, emitter.UInt32(2));
+        } else {
+            // TODO: Need vs, ps, etc. support
+            message.traceback.threadX = emitter.UInt32(0);
+            message.traceback.threadY = emitter.UInt32(0);
+            message.traceback.threadZ = emitter.UInt32(0);
+        }
     }
 }

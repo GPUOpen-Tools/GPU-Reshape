@@ -38,6 +38,7 @@ Project_AddDotNetEx(
         Source/MessageSchema.cs
         Source/MessageSubStream.cs
         Source/ByteSpan.cs
+        Source/Models.cs
 		${GeneratedSchemaCS}
     ASSEMBLIES
         System

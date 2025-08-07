@@ -46,9 +46,35 @@ bool ShaderExportGenerator::Generate(Schema &schema, Language language, SchemaSt
         if (!message.attributes.GetBool("no-traceback")) {
             Chunk &chunk = message.chunks.emplace_back();
             chunk.name = "Traceback";
-            chunk.fields.emplace_back(Field { .name = "kernelX", .type = "uint32" });
-            chunk.fields.emplace_back(Field { .name = "kernelY", .type = "uint32" });
-            chunk.fields.emplace_back(Field { .name = "kernelZ", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "executionFlag", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "pipelineUid", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "scopeUid", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "queueUid", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "kernelLaunchX", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "kernelLaunchY", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "kernelLaunchZ", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "threadX", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "threadY", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "threadZ", .type = "uint32" });
+
+            // Add helper for model translation
+            chunk.extraCS << "\t\t\tpublic Traceback GetModel() {\n";
+            chunk.extraCS << "\t\t\t\treturn new Traceback() {\n";
+
+            // Translate each field
+            for (const Field& value: chunk.fields) {
+                chunk.extraCS << "\t\t\t\t\t" << value.name << " = ";
+
+                if (value.name == "executionFlag") {
+                    chunk.extraCS << "(ExecutionFlag)";
+                }
+                
+                chunk.extraCS << value.name << ",\n";
+            }
+
+            // Close helper
+            chunk.extraCS << "\t\t\t\t};\n";
+            chunk.extraCS << "\t\t\t}\n";
         }
     }
 

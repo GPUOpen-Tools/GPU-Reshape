@@ -872,6 +872,9 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
                 }
             }
 
+            // Append extra data
+            out.chunks << chunk.extraCS.str();
+
             // Internal memory
             out.chunks << "\t\t\tprivate ByteSpan _memory;\n";
 

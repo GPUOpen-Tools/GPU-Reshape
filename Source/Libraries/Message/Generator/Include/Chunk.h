@@ -31,6 +31,7 @@
 #include "Field.h"
 
 // Std
+#include <sstream>
 #include <vector>
 
 /// Single message type
@@ -43,6 +44,9 @@ struct Chunk {
 
     /// All fields of this chunk
     std::vector<Field> fields;
+
+    /// Extra generated contents (C#)
+    std::stringstream extraCS;
 
     /// Source line
     uint32_t line;

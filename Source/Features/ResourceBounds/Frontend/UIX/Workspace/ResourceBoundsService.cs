@@ -34,6 +34,7 @@ using Message.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
+using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.IL;
 using Studio.Models.Instrumentation;
@@ -230,7 +231,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     if (message.HasChunk(ResourceIndexOutOfBoundsMessage.Chunk.Traceback))
                     {
                         ResourceIndexOutOfBoundsMessage.TracebackChunk tracebackChunk = message.GetTracebackChunk();
-                        builder.Append($" at thread [{tracebackChunk.kernelX}, {tracebackChunk.kernelY}, {tracebackChunk.kernelZ}]");
+                        builder.Append($" at {TracebackUtils.Format(ViewModel, tracebackChunk.GetModel())}");
                     }
 
                     // Append message on resource
