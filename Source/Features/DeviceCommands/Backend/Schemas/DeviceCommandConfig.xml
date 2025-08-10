@@ -29,6 +29,6 @@
 
 <schema>
     <message name="SetDeviceCommandInstrumentationConfig">
-        <field name="dispatchGroupLimit" type="uint32"/>
+        <field name="dispatchGroupLimit" type="uint32" value="32000000"/>
     </message>
 </schema>
