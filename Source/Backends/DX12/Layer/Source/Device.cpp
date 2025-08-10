@@ -80,6 +80,7 @@
 #include <Common/IComponentTemplate.h>
 #include <Common/GlobalUID.h>
 #include <Common/IntervalActionThread.h>
+#include <Common/CrashHandler.h>
 #include <Common/FileSystem.h>
 
 // Detour
@@ -207,6 +208,11 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     const D3D12GPUOpenSDKRuntime& sdk,
     const D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO* info
 ) {
+    // Add crash handler for debugging
+#ifndef NDEBUG
+    SetDebugCrashHandler();
+#endif // NDEBUG
+    
     // Set allocators
 #if !defined(NDEBUG)
     Allocators allocators = trackedAllocator.GetAllocators();

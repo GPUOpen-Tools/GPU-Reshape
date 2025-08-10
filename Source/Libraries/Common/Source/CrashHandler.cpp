@@ -37,8 +37,8 @@
 #       include <iostream>
 #       include <Windows.h>
 #       include <dbghelp.h>
-#   endif
-#endif
+#   endif // NDEBUG
+#endif // _WIN32
 
 #ifdef WIN32_EXCEPTION_HANDLER
 static LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo) {
@@ -162,10 +162,22 @@ static LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo) 
 #endif
 
 void SetDebugCrashHandler() {
+    // Global lock
+    static std::mutex GLock;
+    std::lock_guard guard(GLock);
+
+    // Set up once
+    static bool GAcquired = false;
+    if (GAcquired) {
+        return;
+    }
+    
     // Platform handler
 #ifdef WIN32_EXCEPTION_HANDLER
     if (!IsDebuggerPresent()) {
         SetUnhandledExceptionFilter(TopLevelExceptionHandler);
     }
-#endif
+#endif // WIN32_EXCEPTION_HANDLER
+
+    GAcquired = true;
 }

@@ -116,7 +116,7 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     // Add crash handler for debugging
 #ifndef NDEBUG
     SetDebugCrashHandler();
-#endif
+#endif // NDEBUG
 
     auto chainInfo = static_cast<VkLayerInstanceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
