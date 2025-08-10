@@ -459,6 +459,9 @@ target_link_libraries(
     # d3d12
     d3d12.lib
     dxgi.lib
+
+    # Win32
+    $<$<PLATFORM_ID:Windows>:Dbghelp>
     
     # Generated source
 )
