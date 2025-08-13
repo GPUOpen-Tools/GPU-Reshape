@@ -229,6 +229,25 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                 );
                 break;
             }
+            case CommandType::CopyBuffer: {
+                auto* cmd = command.As<CopyBufferCommand>();
+
+                // Get the data buffer
+                VkBuffer sourceBuffer = device->dataHost->GetResourceBuffer(cmd->source);
+                VkBuffer destBuffer   = device->dataHost->GetResourceBuffer(cmd->dest);
+
+                VkBufferCopy copyRegion{};
+                copyRegion.srcOffset = cmd->sourceOffset;
+                copyRegion.dstOffset = cmd->destOffset;
+                copyRegion.size = cmd->byteCount;
+
+                device->commandBufferDispatchTable.next_vkCmdCopyBuffer(
+                    commandBuffer,
+                    sourceBuffer, destBuffer,
+                    1u, &copyRegion
+                );
+                break;
+            }
             case CommandType::Dispatch: {
                 auto* cmd = command.As<DispatchCommand>();
 
