@@ -103,10 +103,10 @@ void CommandValidationProgram::Inject(IL::Program &program) {
     ComRef deviceCommandFormat = registry->Get<IL::IDeviceCommandFormat>();
 
     // Create the blocks
-    IL::BasicBlock* loopHeader    = entryPoint->GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* loopBody      = entryPoint->GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* continueBlock = entryPoint->GetBasicBlocks().AllocBlock();
-    IL::BasicBlock* exitBlock     = entryPoint->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock* loopHeader    = entryPoint->GetBasicBlocks().AllocBlock("L::Header");
+    IL::BasicBlock* loopBody      = entryPoint->GetBasicBlocks().AllocBlock("L::Body");
+    IL::BasicBlock* continueBlock = entryPoint->GetBasicBlocks().AllocBlock("L::Continue");
+    IL::BasicBlock* exitBlock     = entryPoint->GetBasicBlocks().AllocBlock("Exit");
 
     // Split off into the exit block
     entryBlock->Split(exitBlock, entryBlock->GetTerminator());
@@ -150,15 +150,17 @@ void CommandValidationProgram::Inject(IL::Program &program) {
 
     // Loop Body
     {
-        IL::Emitter loopEmitter(program, *loopBody);
 
+        IL::BasicBlock* switchMerge = entryPoint->GetBasicBlocks().AllocBlock("S::Merge");
+        
         // All command type cases
         TrivialStackVector<IL::SwitchCase, 4u> cases;
-
+        
         // Dispatch Command
         {
-            IL::BasicBlock* caseEntryBlock      = entryPoint->GetBasicBlocks().AllocBlock();
-            IL::BasicBlock* invalidPayloadBlock = entryPoint->GetBasicBlocks().AllocBlock();
+            IL::BasicBlock* caseEntryBlock      = entryPoint->GetBasicBlocks().AllocBlock("S::CaseEntry");
+            IL::BasicBlock* caseMergeBlock      = entryPoint->GetBasicBlocks().AllocBlock("S::CaseMerge");
+            IL::BasicBlock* invalidPayloadBlock = entryPoint->GetBasicBlocks().AllocBlock("S::Default");
 
             // Case entry block
             {
@@ -168,7 +170,7 @@ void CommandValidationProgram::Inject(IL::Program &program) {
                 IL::DeviceCommandDispatchPayload payload = commandEmitter->LoadDispatchPayload(caseEntryEmitter, caseEntryEmitter.Load(commandIndex));
 
                 // Get the current limit
-                IL::ID limit = data.Get<&CommandValidationData::dispatchGroupLimit>(entryEmitter);
+                IL::ID limit = data.Get<&CommandValidationData::dispatchGroupLimit>(caseEntryEmitter);
                 
                 // Validate dispatch group sizes
                 IL::ID isUnsafe = caseEntryEmitter.GreaterThanEqual(payload.groupCountX, limit);
@@ -179,8 +181,8 @@ void CommandValidationProgram::Inject(IL::Program &program) {
                 caseEntryEmitter.BranchConditional(
                     isUnsafe,
                     invalidPayloadBlock,
-                    continueBlock,
-                    IL::ControlFlow::Selection(continueBlock)
+                    caseMergeBlock,
+                    IL::ControlFlow::Selection(caseMergeBlock)
                 );
             }
 
@@ -189,7 +191,7 @@ void CommandValidationProgram::Inject(IL::Program &program) {
                 IL::Emitter invalidEmitter(program, *invalidPayloadBlock);
 
                 // Safeguard the invalid payload (x -> 0)
-                commandEmitter->StorePayload(invalidEmitter, loopEmitter.Load(commandIndex), 0, invalidEmitter.UInt32(0));
+                commandEmitter->StorePayload(invalidEmitter, invalidEmitter.Load(commandIndex), 0, invalidEmitter.UInt32(0));
                 
                 // Export the message
                 DeviceCommandInvalidArgumentMessage::ShaderExport msg;
@@ -197,25 +199,41 @@ void CommandValidationProgram::Inject(IL::Program &program) {
                 invalidEmitter.Export(exportID, msg);
 
                 // Merge
-                invalidEmitter.Branch(continueBlock);
+                invalidEmitter.Branch(caseMergeBlock);
+            }
+
+            // Case merge
+            {
+                IL::Emitter mergeEmitter(program, *caseMergeBlock);
+                mergeEmitter.Branch(switchMerge);
             }
 
             // Add switch case
             cases.Add(IL::SwitchCase {
-                .literal = loopEmitter.UInt32(static_cast<uint32_t>(IL::DeviceCommandType::Dispatch)),
+                .literal = program.GetConstants().UInt(static_cast<uint32_t>(IL::DeviceCommandType::Dispatch))->id,
                 .branch = caseEntryBlock->GetID()
             });
         }
 
-        // Get the type of the command
-        IL::ID type = commandEmitter->LoadType(loopEmitter, loopEmitter.Load(commandIndex));
+        {
+            IL::Emitter loopEmitter(program, *loopBody);
+        
+            // Get the type of the command
+            IL::ID type = commandEmitter->LoadType(loopEmitter, loopEmitter.Load(commandIndex));
 
-        // Switch on the type
-        loopEmitter.Switch(
-            type, continueBlock,
-             static_cast<uint32_t>(cases.Size()), cases.Data(),
-             IL::ControlFlow::Selection(continueBlock)
-        );
+            // Switch on the type
+            loopEmitter.Switch(
+                type, switchMerge,
+                 static_cast<uint32_t>(cases.Size()), cases.Data(),
+                 IL::ControlFlow::Selection(switchMerge)
+            );
+        }
+
+        // Merge back to the loop continue block
+        {
+            IL::Emitter mergeEmitter(program, *switchMerge);
+            mergeEmitter.Branch(continueBlock);
+        }
     }
 
     // Loop Continue
