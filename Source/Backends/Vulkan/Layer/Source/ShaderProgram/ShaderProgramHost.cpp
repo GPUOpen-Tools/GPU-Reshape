@@ -31,6 +31,7 @@
 #include <Backends/Vulkan/Modules/InbuiltTemplateModuleVulkan.h>
 #include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/IL/DeviceCommandEmitter.h>
 
 // Backend
 #include <Backend/ShaderProgram/IShaderProgram.h>
@@ -56,6 +57,9 @@ bool ShaderProgramHost::Install() {
 
     // Optional debug
     debug = registry->Get<ShaderCompilerDebug>();
+
+    // Install general command format
+    registry->AddNew<DeviceCommandFormat>();
 
     // OK
     return true;
@@ -85,6 +89,14 @@ bool ShaderProgramHost::InstallPrograms() {
         if (!entry.program) {
             continue;
         }
+        
+        // Get number of bindings
+        uint32_t bindingsCount;
+        shaderDataHost->EnumerateProgram(entry.id, &bindingsCount, nullptr, ShaderDataType::BindingMask);
+
+        // Get bindings
+        std::vector<ShaderDataInfo> bindings(bindingsCount);
+        shaderDataHost->EnumerateProgram(entry.id, &bindingsCount, bindings.data(), ShaderDataType::BindingMask);
 
         // Copy the template module
         entry.module = templateModule->Copy();
@@ -97,6 +109,11 @@ bool ShaderProgramHost::InstallPrograms() {
             shaderDataMap.Add(info);
         }
 
+        // Add bindings
+        for (const ShaderDataInfo& info : bindings) {
+            shaderDataMap.Add(info);
+        }
+
         // Finally, inject the host program8
         entry.program->Inject(*entry.module->GetProgram());
 
@@ -104,6 +121,9 @@ bool ShaderProgramHost::InstallPrograms() {
         SpvJob spvJob{};
         spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
         spvJob.requiresUserDescriptorMapping = false;
+        // TODO: Magic constants
+        spvJob.instrumentationKey.global.descriptorSet = 0;
+        spvJob.instrumentationKey.bindings.descriptorSet = 1;
 
         if (!entry.module->Recompile(
             reinterpret_cast<const uint32_t*>(kSPIRVInbuiltTemplateModuleVulkan),
@@ -150,15 +170,50 @@ bool ShaderProgramHost::InstallPrograms() {
             return false;
         }
 
-        // Get shared layout
-        VkDescriptorSetLayout layout = shaderExportDescriptorAllocator->GetLayout();
+        // All layouts
+        TrivialStackVector<VkDescriptorSetLayout, 2u> layouts;
+        layouts.Add(shaderExportDescriptorAllocator->GetLayout());
+
+        // Any bindings?
+        if (bindingsCount) {
+            TrivialStackVector<VkDescriptorSetLayoutBinding, 16u> setBindings;
+
+            // Populate all bindings
+            for (uint32_t i = 0; i < bindingsCount; i++) {
+                const ShaderDataInfo& binding = bindings[i];
+                setBindings.Add(VkDescriptorSetLayoutBinding {
+                    .binding = i,
+                    .descriptorType = binding.bufferBinding.isWritable ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+                    .descriptorCount = 1,
+                    .stageFlags = VK_SHADER_STAGE_ALL
+                });
+            }
+            
+            VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+            setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(setBindings.Size());
+            setLayoutCreateInfo.pBindings = setBindings.Data();
+
+            // Create the set layout
+            if (VkResult result = table->next_vkCreateDescriptorSetLayout(
+                table->object,
+                &setLayoutCreateInfo,
+                nullptr,
+                &entry.descriptorSetLayout
+            ); result != VK_SUCCESS) {
+                return false;
+            }
+
+            // Append
+            layouts.Add(entry.descriptorSetLayout);
+        }
 
         // Setup pipeline layout
         VkPipelineLayoutCreateInfo layoutCreateInfo{};
         layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        layoutCreateInfo.setLayoutCount = 1;
-        layoutCreateInfo.pSetLayouts = &layout;
-
+        layoutCreateInfo.setLayoutCount = static_cast<uint32_t>(layouts.Size());
+        layoutCreateInfo.pSetLayouts = layouts.Data();
+        
         VkPushConstantRange range;
         range.offset = 0u;
         range.size = eventCount * sizeof(uint32_t);
@@ -226,6 +281,7 @@ ShaderProgramID ShaderProgramHost::Register(const ComRef<IShaderProgram> &progra
     // Populate entry
     ProgramEntry& entry = programs[id];
     entry.program = program;
+    entry.id = id;
 
     // OK
     return id;

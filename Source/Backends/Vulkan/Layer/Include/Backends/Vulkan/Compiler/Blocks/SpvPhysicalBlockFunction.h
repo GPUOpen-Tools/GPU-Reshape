@@ -164,6 +164,10 @@ private:
     /// \param job parent job
     void CreateDataResourceMap(const SpvJob& job);
 
+    /// Create the binding data map
+    /// \param job parent job
+    void CreateDataBindingMap(const SpvJob& job);
+
     /// Create the user fed data map
     /// \param job parent job
     void CreateDataConstantMap(const SpvJob& job, SpvStream& stream, SpvIdMap& idMap);

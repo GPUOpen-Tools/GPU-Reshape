@@ -331,7 +331,7 @@ D3D12MA::Allocation * ShaderDataHost::GetMappingAllocation(ShaderDataMappingID m
     return entry.allocation;
 }
 
-uint32_t ShaderDataHost::GetBindingRootIndex(ShaderProgramID programID, ShaderDataID rid) {
+uint32_t ShaderDataHost::GetBindingIndex(ShaderProgramID programID, ShaderDataID rid) {
     std::lock_guard guard(mutex);
 
     // Get program

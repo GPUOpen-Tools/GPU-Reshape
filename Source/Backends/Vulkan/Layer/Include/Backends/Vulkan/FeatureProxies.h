@@ -35,6 +35,7 @@
 
 // Forward declarations
 struct CommandBufferObject;
+struct BufferState;
 
 struct FeatureHook_vkCmdDraw : TFeatureHook<Hooks::DrawInstanced> {
     void operator()(CommandBufferObject* object, CommandContext* context, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) const {
@@ -137,3 +138,15 @@ struct FeatureHook_vkCmdEndRendering : TFeatureHook<Hooks::EndRenderPass> {
 };
 
 using FeatureHook_vkCmdEndRenderingKHR = FeatureHook_vkCmdEndRendering;
+
+struct FeatureHook_vkCmdIndirect : TFeatureHook<Hooks::DeviceCommand> {
+    void operator()(CommandBufferObject *object, CommandContext *context, BufferState* source, BufferState* signature, BufferState* dest) const;
+};
+
+using FeatureHook_vkCmdDispatchIndirect = FeatureHook_vkCmdIndirect;
+using FeatureHook_vkCmdDrawIndirect = FeatureHook_vkCmdIndirect;
+using FeatureHook_vkCmdDrawIndexedIndirect = FeatureHook_vkCmdIndirect;
+using FeatureHook_vkCmdDrawIndirectCount = FeatureHook_vkCmdIndirect;
+using FeatureHook_vkCmdDrawIndexedIndirectCount = FeatureHook_vkCmdIndirect;
+using FeatureHook_vkCmdDrawMeshTasksIndirectEXT = FeatureHook_vkCmdIndirect;
+using FeatureHook_vkCmdDrawMeshTasksIndirectCountEXT = FeatureHook_vkCmdIndirect;

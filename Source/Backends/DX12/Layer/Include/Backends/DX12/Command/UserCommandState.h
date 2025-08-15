@@ -48,7 +48,7 @@ struct UserCommandState {
     ReconstructionFlagSet reconstructionFlags{0};
 
     /// Bound shader program
-    ShaderProgramID shaderProgramID;
+    ShaderProgramID shaderProgramID{InvalidShaderProgramID};
 
     /// All program bindings
     TrivialStackVector<UserBinding, 4u> shaderProgramBindings;

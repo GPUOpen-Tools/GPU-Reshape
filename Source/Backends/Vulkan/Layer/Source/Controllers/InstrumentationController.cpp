@@ -916,7 +916,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             // Create the instrumentation key
             ShaderModuleInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
-            instrumentationKey.pipelineLayoutUserSlots = pipelineLayoutUserSlots;
+            instrumentationKey.global.descriptorSet = pipelineLayoutUserSlots;
             instrumentationKey.pipelineLayoutDataPCOffset = pipelineLayoutDataPCOffset;
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
             instrumentationKey.pipelineLayoutPRMTPCOffset = pipelineLayoutPRMTPCOffset;
@@ -926,7 +926,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             // Combine hashes
             instrumentationKey.combinedHash = dependentObject->instrumentationInfo.specializationHash;
             CombineHash(instrumentationKey.combinedHash, state->instrumentationInfo.specializationHash);
-            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutUserSlots);
+            CombineHash(instrumentationKey.combinedHash, pipelineLayoutUserSlots);
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutDataPCOffset);
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutPRMTPCOffset);
@@ -1157,7 +1157,7 @@ void InstrumentationController::CommitOpaquePipelines(DispatcherBucket* bucket, 
 
         // Compose keys
         for (auto&& kv : rejectedKeys) {
-            keyMessage << "\tObject " << kv.first << " [" << kv.second.featureBitSet << "] with " << kv.second.pipelineLayoutUserSlots << " user slots\n";
+            keyMessage << "\tObject " << kv.first << " [" << kv.second.featureBitSet << "] with " << kv.second.global.descriptorSet << " user slots\n";
         }
 
         // Submit

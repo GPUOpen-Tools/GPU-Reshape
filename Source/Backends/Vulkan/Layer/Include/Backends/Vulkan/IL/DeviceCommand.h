@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,54 +26,23 @@
 
 #pragma once
 
-// Layer
-#include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
-#include <Backends/Vulkan/States/DeviceMemoryTag.h>
-#include <Backends/Vulkan/States/ResourceState.h>
+// Backend
+#include <Backend/IL/DeviceCommand.h>
 
 // Std
 #include <cstdint>
 
-// Forward declarations
-struct DeviceDispatchTable;
-
-struct ImageState  : public ResourceState {
-    /// Backwards reference
-    DeviceDispatchTable* table;
-
-    /// User Image
-    VkImage object{VK_NULL_HANDLE};
-
-    /// Allocated mapping
-    VirtualResourceMapping virtualMappingTemplate;
-
-    /// Creation info
-    VkImageCreateInfo createInfo;
-
-    /// Optional, owner of this image, f.x. a swapchain
-    uint64_t owningHandle{0u};
-
-    /// Bound memory tag
-    DeviceMemoryTag memoryTag;
-
-    /// Optional, debug name
-    char* debugName{nullptr};
-
-    /// Unique identifier, unique for the type
-    uint64_t uid;
+struct DeviceCommandSignatureHeader {
+    // Vulkan device commands are handled one at a time
+    IL::DeviceCommandType type;
 };
 
-struct ImageViewState {
-    /// Backwards reference
-    ImageState* parent;
-
-    /// User Image
-    VkImageView object{VK_NULL_HANDLE};
-
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
-
-    /// Unique identifier, unique for the type
-    uint64_t uid;
+struct DeviceCommandEntry {
+    union {
+        struct {
+            uint32_t groupCountX;
+            uint32_t groupCountY;
+            uint32_t groupCountZ;
+        } dispatch;
+    };
 };

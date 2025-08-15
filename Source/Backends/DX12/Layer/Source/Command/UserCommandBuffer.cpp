@@ -151,7 +151,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 auto *cmd = command.As<SetResourceCommand>();
 
                 // Get the root index
-                uint32_t bindingIndex = device->shaderDataHost->GetBindingRootIndex(state.shaderProgramID, cmd->id);
+                uint32_t bindingIndex = device->shaderDataHost->GetBindingIndex(state.shaderProgramID, cmd->id);
 
                 // Lazy allocate
                 if (bindingIndex >= state.shaderProgramBindings.Size()) {

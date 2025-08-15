@@ -59,6 +59,9 @@ struct GeneratorInfo {
 
     /// Hooked commands, context sensitive
     std::set<std::string> hooks;
+    
+    /// Manual proxy commands, context sensitive
+    std::set<std::string> manualProxies;
 };
 
 namespace Generators {

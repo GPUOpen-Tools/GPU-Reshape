@@ -99,7 +99,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSwapchainKHR(VkDevice device, const 
 
             // Create mapping template
             imageState->virtualMappingTemplate.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-            imageState->virtualMappingTemplate.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+            imageState->virtualMappingTemplate.token.puid = table->physicalResourceIdentifierMap.AllocatePUID(imageState);
             imageState->virtualMappingTemplate.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->imageFormat));
             imageState->virtualMappingTemplate.token.formatSize = GetFormatByteSize(pCreateInfo->imageFormat);
             imageState->virtualMappingTemplate.token.width = pCreateInfo->imageExtent.width;

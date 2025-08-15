@@ -51,6 +51,7 @@ int main(int argc, char *const argv[]) {
     program.add_argument("-gentype").help("The generation type, one of [commandbuffer, commandbufferdispatchtable, deepcopyobjects]").required();
     program.add_argument("-whitelist").help("Whitelist a callback").default_value(std::string(""));
     program.add_argument("-hook").help("All feature hooks").default_value(std::string(""));
+    program.add_argument("-manualproxy").help("All manual proxy hooks").default_value(std::string(""));
     program.add_argument("-object").help("All generator objects").default_value(std::string(""));
     program.add_argument("-o").help("Output of the generated file").required();
 
@@ -72,6 +73,7 @@ int main(int argc, char *const argv[]) {
     auto &&whitelist = program.get<std::string>("-whitelist");
     auto &&object = program.get<std::string>("-object");
     auto &&hooks = program.get<std::string>("-hook");
+    auto &&manualProxies = program.get<std::string>("-manualproxy");
 
     // Generator information
     GeneratorInfo generatorInfo{};
@@ -115,6 +117,14 @@ int main(int argc, char *const argv[]) {
         std::string substr;
         getline(hookStream, substr, ',' );
         generatorInfo.hooks.insert(substr);
+    }
+
+    // Parse manual proxies
+    std::stringstream manualStream(manualProxies);
+    while(manualStream.good()) {
+        std::string substr;
+        getline(manualStream, substr, ',' );
+        generatorInfo.manualProxies.insert(substr);
     }
 
     // Attempt to open the specification xml

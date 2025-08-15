@@ -1309,6 +1309,7 @@ void SpvPhysicalBlockFunction::CompileControlStructure(const SpvJob &job, const 
 bool SpvPhysicalBlockFunction::Compile(const SpvJob& job, SpvIdMap &idMap) {
     // Create data associations
     CreateDataResourceMap(job);
+    CreateDataBindingMap(job);
 
     // Create push constant data block
     table.typeConstantVariable.CreatePushConstantBlock(job);
@@ -3109,7 +3110,7 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
         SpvInstruction &spvCounterSet = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
         spvCounterSet[1] = variable->id;
         spvCounterSet[2] = SpvDecorationDescriptorSet;
-        spvCounterSet[3] = job.instrumentationKey.pipelineLayoutUserSlots;
+        spvCounterSet[3] = job.instrumentationKey.global.descriptorSet;
 
         // Binding
         SpvInstruction &spvCounterBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
@@ -3122,6 +3123,66 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
 
         // Next!
         shaderDataOffset++;
+    }
+}
+
+void SpvPhysicalBlockFunction::CreateDataBindingMap(const SpvJob &job) {
+    // Get data map
+    IL::ShaderDataMap& shaderDataMap = program.GetShaderDataMap();
+
+    // Get IL map
+    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+
+    // Current offset
+    uint32_t bindingOffset = 0;
+
+    // Emit all bindings
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (!(info.type & ShaderDataType::BindingMask)) {
+            continue;
+        }
+
+        // Get variable
+        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+
+        // Variables always pointer to
+        const auto* pointerType = variable->type->As<Backend::IL::PointerType>();
+
+        // Only buffers supported for now
+        ASSERT(info.type == ShaderDataType::BufferBinding, "Only buffers are implemented for now");
+
+        // RWBuffer<uint>*
+        auto* bufferPtrType = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
+            .pointee =  pointerType->pointee->As<Backend::IL::BufferType>(),
+            .addressSpace = Backend::IL::AddressSpace::Resource,
+        });
+
+        // SpvIds
+        SpvId bufferPtrTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(bufferPtrType);
+
+        // Counter
+        SpvInstruction &spvCounterVar = table.typeConstantVariable.block->stream.Allocate(SpvOpVariable, 4);
+        spvCounterVar[1] = bufferPtrTypeId;
+        spvCounterVar[2] = variable->id;
+        spvCounterVar[3] = SpvStorageClassUniformConstant;
+
+        // Descriptor set
+        SpvInstruction &spvCounterSet = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
+        spvCounterSet[1] = variable->id;
+        spvCounterSet[2] = SpvDecorationDescriptorSet;
+        spvCounterSet[3] = job.instrumentationKey.bindings.descriptorSet;
+
+        // Binding
+        SpvInstruction &spvCounterBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
+        spvCounterBinding[1] = variable->id;
+        spvCounterBinding[2] = SpvDecorationBinding;
+        spvCounterBinding[3] = bindingOffset;
+
+        // Add to all entry points
+        table.entryPoint.AddInterface(SpvStorageClassUniformConstant, variable->id);
+
+        // Next!
+        bindingOffset++;
     }
 }
 

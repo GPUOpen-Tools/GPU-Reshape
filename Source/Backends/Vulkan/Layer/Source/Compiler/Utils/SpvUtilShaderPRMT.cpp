@@ -91,7 +91,7 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
     SpvInstruction &spvCounterSet = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
     spvCounterSet[1] = prmTableId;
     spvCounterSet[2] = SpvDecorationDescriptorSet;
-    spvCounterSet[3] = job.instrumentationKey.pipelineLayoutUserSlots;
+    spvCounterSet[3] = job.instrumentationKey.global.descriptorSet;
 
     // Binding
     SpvInstruction &spvCounterBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);

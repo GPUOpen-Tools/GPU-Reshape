@@ -32,10 +32,24 @@
 // Backend
 #include <Backend/ShaderProgram/ShaderProgram.h>
 
+// Common
+#include <Common/Containers/TrivialStackVector.h>
+
+// Forward declarations
+struct ResourceState;
+
+struct UserBinding {
+    /// Resource to be bound
+    ResourceState* resource{nullptr};
+};
+
 struct UserCommandState {
     /// Current reconstruction state
     ReconstructionFlagSet reconstructionFlags{0};
 
     /// Bound shader program
-    ShaderProgramID shaderProgramID;
+    ShaderProgramID shaderProgramID{InvalidShaderProgramID};
+
+    /// All program bindings
+    TrivialStackVector<UserBinding, 4u> shaderProgramBindings;
 };

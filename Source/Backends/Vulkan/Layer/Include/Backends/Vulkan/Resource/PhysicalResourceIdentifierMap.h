@@ -36,20 +36,39 @@
 #include <mutex>
 #include <vector>
 
+// Forward declarations
+struct ResourceState;
+
 struct PhysicalResourceIdentifierMap {
+    PhysicalResourceIdentifierMap() {
+        states.resize(1u << IL::kResourceTokenPUIDBitCount);
+    }
+    
     /// Allocate a new PUID
     /// \return
-    uint32_t AllocatePUID() {
+    uint32_t AllocatePUID(ResourceState* state) {
         std::lock_guard guard(mutex);
         
         if (freePUIDs.empty()) {
             ASSERT(puidHead < IL::kResourceTokenPUIDInvalidStart, "Exceeded maximum resource count");
+            states[puidHead] = state;
             return puidHead++;
         }
 
         uint32_t puid = freePUIDs.back();
         freePUIDs.pop_back();
+        
+        // Keep track of state
+        states[puid] = state;
         return puid;
+    }
+
+    /// Get the resource state
+    /// \param puid owning puid
+    /// \return resource state
+    ResourceState* GetState(uint32_t puid) {
+        std::lock_guard guard(mutex);
+        return states[puid];
     }
 
     /// Free a puid
@@ -57,6 +76,7 @@ struct PhysicalResourceIdentifierMap {
     void FreePUID(uint32_t puid) {
         std::lock_guard guard(mutex);
         freePUIDs.push_back(puid);
+        states[puid] = nullptr;
     }
 
 private:
@@ -65,6 +85,9 @@ private:
     
     /// Current head counter
     uint32_t puidHead{IL::kResourceTokenPUIDReservedCount};
+
+    /// All states
+    std::vector<ResourceState*> states;
 
     /// All free indices
     std::vector<uint32_t> freePUIDs;

@@ -203,7 +203,7 @@ bool ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 
     // Pre-injection
     for (size_t i = 0; i < shaderFeatures.size(); i++) {
-        if (!(job.info.instrumentationKey.featureBitSet & (1ull << i))) {
+        if (!(job.info.instrumentationKey.featureBitSet & (1ull << i)) || !shaderFeatures[i]) {
             continue;
         }
 
@@ -213,7 +213,7 @@ bool ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 
     // Pass through all features
     for (size_t i = 0; i < shaderFeatures.size(); i++) {
-        if (!(job.info.instrumentationKey.featureBitSet & (1ull << i))) {
+        if (!(job.info.instrumentationKey.featureBitSet & (1ull << i)) || !shaderFeatures[i]) {
             continue;
         }
 

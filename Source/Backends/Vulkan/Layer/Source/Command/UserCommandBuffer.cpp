@@ -35,6 +35,8 @@
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/CommandBuffer.h>
+#include <Backends/Vulkan/States/BufferState.h>
+#include <Backends/Vulkan/States/ResourceState.h>
 
 void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
     UserCommandState state;
@@ -248,9 +250,108 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                 );
                 break;
             }
+            case CommandType::SetResource: {
+                auto *cmd = command.As<SetResourceCommand>();
+
+                // Get the binding index
+                uint32_t bindingIndex = device->dataHost->GetBindingIndex(state.shaderProgramID, cmd->id);
+
+                // Lazy allocate
+                if (bindingIndex >= state.shaderProgramBindings.Size()) {
+                    state.shaderProgramBindings.Resize(bindingIndex + 1);
+                }
+
+                // Set binding
+                state.shaderProgramBindings[bindingIndex] = UserBinding {
+                    .resource = device->physicalResourceIdentifierMap.GetState(cmd->puid)
+                };
+                break;
+            }
             case CommandType::Dispatch: {
                 auto* cmd = command.As<DispatchCommand>();
 
+                // Any resources to set?
+                if (state.shaderProgramBindings.Size()) {
+                    // Number of bindings
+                    uint32_t bindingCount = 0;
+                    device->dataHost->EnumerateProgram(state.shaderProgramID, &bindingCount, nullptr, ShaderDataType::BindingMask);
+
+                    // Get all program bindings
+                    std::vector<ShaderDataInfo> bindings(bindingCount);
+                    device->dataHost->EnumerateProgram(state.shaderProgramID, &bindingCount, bindings.data(), ShaderDataType::BindingMask);
+
+                    // We're expecting them all to be bound
+                    ASSERT(bindingCount == state.shaderProgramBindings.Size(), "Unexpected binding count");
+
+                    // Allocate the descriptor set dynamically
+                    VkDescriptorSet allocation = streamState->freeDescriptorAllocator.Allocate(device->shaderProgramHost->GetDescriptorSetLayout(state.shaderProgramID));
+                    {
+                        TrivialStackVector<VkWriteDescriptorSet, 4u> vkWriteDescriptorSet;
+
+                        // Populate all bindings
+                        for (size_t i = 0; i < bindingCount; i++) {
+                            UserBinding &binding = state.shaderProgramBindings[i];
+
+                            // Shader wise data info
+                            const ShaderDataInfo& dataInfo = bindings[i];
+
+                            // Only buffers are supported for now
+                            auto* buffer = static_cast<BufferState*>(binding.resource);
+                            ASSERT(binding.resource->type == ResourceStateType::Buffer, "Invalid resource type");
+
+                            // Lazily create a view for it
+                            // TODO: Formats?
+                            if (!buffer->bindingView) {
+                                VkBufferViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
+                                viewInfo.buffer = buffer->object;
+                                viewInfo.format = VK_FORMAT_R32_UINT;
+                                viewInfo.range = VK_WHOLE_SIZE;
+                                device->next_vkCreateBufferView(device->object, &viewInfo, nullptr, &buffer->bindingView);
+                            }
+                            
+                            // Storage?
+                            if (dataInfo.bufferBinding.isWritable) {
+                                vkWriteDescriptorSet.Add(VkWriteDescriptorSet {
+                                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                    .dstSet = allocation,
+                                    .dstBinding = static_cast<uint32_t>(i),
+                                    .descriptorCount = 1,
+                                    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+                                    .pTexelBufferView = &buffer->bindingView
+                                });
+                            } else {
+                                vkWriteDescriptorSet.Add(VkWriteDescriptorSet {
+                                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                    .dstSet = allocation,
+                                    .dstBinding = static_cast<uint32_t>(i),
+                                    .descriptorCount = 1,
+                                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+                                    .pTexelBufferView = &buffer->bindingView
+                                });
+                            }
+                        }
+
+                        // Finally, update the descriptor set
+                        device->next_vkUpdateDescriptorSets(
+                            device->object,
+                            static_cast<uint32_t>(vkWriteDescriptorSet.Size()), vkWriteDescriptorSet.Data(),
+                            0u, nullptr
+                        );
+                    }
+
+                    // Bind the set
+                    device->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
+                        commandBuffer,
+                        VK_PIPELINE_BIND_POINT_COMPUTE,
+                        device->shaderProgramHost->GetPipelineLayout(state.shaderProgramID),
+                        1, 1, &allocation,
+                        0, nullptr
+                    );
+
+                    // Clear last bindings
+                    state.shaderProgramBindings.Clear();
+                }
+                
                 // Invoke program
                 device->commandBufferDispatchTable.next_vkCmdDispatch(
                     commandBuffer,

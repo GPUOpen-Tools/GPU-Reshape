@@ -98,6 +98,13 @@ set(
     vkCmdEndRendering
     vkCmdEndRenderingKHR
     vkCmdDrawMeshTasksEXT
+    vkCmdDispatchIndirect
+    vkCmdDrawIndexedIndirect
+    vkCmdDrawIndexedIndirectCount
+    vkCmdDrawIndirect
+    vkCmdDrawIndirectCount
+    vkCmdDrawMeshTasksIndirectEXT
+    vkCmdDrawMeshTasksIndirectCountEXT
 )
 
 # White list
@@ -136,10 +143,22 @@ set(
     vkCmdDrawMeshTasksIndirectCountEXT
     vkCmdTraceRaysKHR
 )
+# Generated hooks
+set(
+    VkManualProxies
+    vkCmdDispatchIndirect
+    vkCmdDrawIndexedIndirect
+    vkCmdDrawIndexedIndirectCount
+    vkCmdDrawIndirect
+    vkCmdDrawIndirectCount
+    vkCmdDrawMeshTasksIndirectEXT
+    vkCmdDrawMeshTasksIndirectCountEXT
+)
 
 # Join lists
 list(JOIN VkHooks "," VkHooksJoin)
 list(JOIN VkWhitelist "," VkWhitelistJoin)
+list(JOIN VkManualProxies "," VkManualProxiesJoin)
 
 # Object list
 set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkInstanceCreateInfo,VkDeviceCreateInfo,VkPipelineShaderStageCreateInfo,VkRenderPassCreateInfo2,VkRenderPassBeginInfo,VkDescriptorUpdateTemplateCreateInfo,VkDescriptorSetLayoutCreateInfo,VkRayTracingShaderGroupCreateInfoKHR,VkRayTracingPipelineCreateInfoKHR)
@@ -184,6 +203,7 @@ add_custom_command(
         -gentype commandbufferdispatchtable
         -o Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
         -hook ${VkHooksJoin}
+        -manualproxy ${VkManualProxiesJoin}
         -whitelist ${VkWhitelistJoin}
 )
 
@@ -199,6 +219,7 @@ add_custom_command(
         -gentype commandbuffer
         -o Layer/Source/CommandBuffer.Gen.cpp
         -hook ${VkHooksJoin}
+        -manualproxy ${VkManualProxiesJoin}
         -whitelist ${VkWhitelistJoin}
 )
 
@@ -283,6 +304,7 @@ add_library(
     Layer/Source/Memory.cpp
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp
+    Layer/Source/IL/DeviceCommandEmitter.cpp
     Layer/Source/Debug.cpp
 
     # VMA implementation

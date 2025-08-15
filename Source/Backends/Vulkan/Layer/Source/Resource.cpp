@@ -52,6 +52,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     VkBufferCreateInfo createInfo = *pCreateInfo;
     createInfo.pQueueFamilyIndices = queueFamilies;
 
+    // TODO: This is a hack, really, we should always allow for TRANSFER unconditionally, then migrate as needed
+    if (createInfo.usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) {
+        createInfo.usage |= VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    }
+
     // Pass down callchain
     VkResult result = table->next_vkCreateBuffer(device, &createInfo, pAllocator, pBuffer);
     if (result != VK_SUCCESS) {
@@ -60,13 +65,14 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
 
     // Create state
     auto state = new(table->allocators) BufferState;
+    state->type = ResourceStateType::Buffer;
     state->object = *pBuffer;
     state->table = table;
     state->createInfo = *pCreateInfo;
 
     // Create mapping template
     state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
-    state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+    state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID(state);
     state->virtualMapping.token.formatId = static_cast<uint32_t>(Backend::IL::Format::None);
     state->virtualMapping.token.formatSize = 0;
     state->virtualMapping.token.width = static_cast<uint32_t>(pCreateInfo->size);
@@ -157,6 +163,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
 
     // Create state
     auto state = new(table->allocators) ImageState;
+    state->type = ResourceStateType::Image;
     state->object = *pImage;
     state->table = table;
     state->createInfo = *pCreateInfo;
@@ -166,7 +173,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
 
     // Create mapping template
     state->virtualMappingTemplate.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-    state->virtualMappingTemplate.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+    state->virtualMappingTemplate.token.puid = table->physicalResourceIdentifierMap.AllocatePUID(state);
     state->virtualMappingTemplate.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
     state->virtualMappingTemplate.token.formatSize = GetFormatByteSize(pCreateInfo->format);
     state->virtualMappingTemplate.token.width = pCreateInfo->extent.width;
@@ -250,7 +257,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSampler(VkDevice device, const VkSam
 
     // Create mapping template
     state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
-    state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+    state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID(nullptr);
 
     // Store lookup
     table->states_sampler.Add(*pSampler, state);

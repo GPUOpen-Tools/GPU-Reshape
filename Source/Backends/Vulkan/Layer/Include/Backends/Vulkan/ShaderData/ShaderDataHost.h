@@ -77,6 +77,12 @@ public:
     /// \param rid resource identifier
     /// \return given allocation
     VmaAllocation GetMappingAllocation(ShaderDataMappingID rid);
+
+    /// Get the index of a program binding
+    /// @param programID program
+    /// @param rid data id of the binding
+    /// @return index
+    uint32_t GetBindingIndex(ShaderProgramID programID, ShaderDataID rid);
     
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info, const char* name) override;

@@ -226,7 +226,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         hooks << ") {\n";
 
         // Hooked?
-        if (info.hooks.count(name)) {
+        if (info.hooks.count(name) && !info.manualProxies.count(name)) {
             hooks << "\tif (ApplyFeatureHook<FeatureHook_" << name << ">(\n";
             hooks << "\t\t" << wrappedObject << ",\n";
             hooks << "\t\t&" << wrappedObject << "->userContext,\n";

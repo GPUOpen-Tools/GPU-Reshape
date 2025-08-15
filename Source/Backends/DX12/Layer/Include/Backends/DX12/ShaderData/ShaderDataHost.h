@@ -81,7 +81,7 @@ public:
     /// @param programID program
     /// @param rid data id of the binding
     /// @return root index
-    uint32_t GetBindingRootIndex(ShaderProgramID programID, ShaderDataID rid);
+    uint32_t GetBindingIndex(ShaderProgramID programID, ShaderDataID rid);
 
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info, const char* name) override;

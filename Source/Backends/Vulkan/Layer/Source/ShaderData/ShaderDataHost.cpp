@@ -347,6 +347,24 @@ void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t le
     deviceAllocator->FlushMappedRange(entry.allocation, offset, length);
 }
 
+uint32_t ShaderDataHost::GetBindingIndex(ShaderProgramID programID, ShaderDataID rid) {
+    std::lock_guard guard(mutex);
+
+    // Get program
+    ASSERT(programs.contains(programID), "Program not registered");
+    ProgramEntry& program = programs[programID];
+
+    // Find the index of the RID
+    for (uint32_t i = 0; i < program.shaderDataIDs.size(); i++) {
+        if (program.shaderDataIDs[i] == rid) {
+            return i;
+        }
+    }
+
+    ASSERT(false, "Shader data not registered");
+    return InvalidShaderDataID;
+}
+
 VkBuffer ShaderDataHost::GetResourceBuffer(ShaderDataID rid) {
     std::lock_guard guard(mutex);
     uint32_t index = indices[rid];

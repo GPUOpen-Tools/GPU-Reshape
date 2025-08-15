@@ -99,7 +99,7 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     SpvInstruction &spvCounterSet = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
     spvCounterSet[1] = counterId;
     spvCounterSet[2] = SpvDecorationDescriptorSet;
-    spvCounterSet[3] = job.instrumentationKey.pipelineLayoutUserSlots;
+    spvCounterSet[3] = job.instrumentationKey.global.descriptorSet;
 
     // Binding
     SpvInstruction &spvCounterBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
@@ -111,7 +111,7 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     SpvInstruction &spvStreamSet = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
     spvStreamSet[1] = streamId;
     spvStreamSet[2] = SpvDecorationDescriptorSet;
-    spvStreamSet[3] = job.instrumentationKey.pipelineLayoutUserSlots;
+    spvStreamSet[3] = job.instrumentationKey.global.descriptorSet;
 
     // Binding
     SpvInstruction &spvStreamBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);

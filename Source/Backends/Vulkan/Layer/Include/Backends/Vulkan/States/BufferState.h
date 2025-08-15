@@ -30,6 +30,7 @@
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
 #include <Backends/Vulkan/States/DeviceMemoryTag.h>
+#include <Backends/Vulkan/States/ResourceState.h>
 
 // Common
 #include "Common/Containers/ReferenceObject.h"
@@ -41,12 +42,15 @@
 // Forward declarations
 struct DeviceDispatchTable;
 
-struct BufferState {
+struct BufferState : public ResourceState {
     /// Backwards reference
     DeviceDispatchTable* table;
 
     /// User buffer
     VkBuffer object{VK_NULL_HANDLE};
+
+    /// Optional, binding view for programs
+    VkBufferView bindingView{VK_NULL_HANDLE};
 
     /// Allocated mapping
     VirtualResourceMapping virtualMapping;

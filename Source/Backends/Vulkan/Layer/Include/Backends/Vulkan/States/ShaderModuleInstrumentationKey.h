@@ -46,8 +46,15 @@ struct ShaderModuleInstrumentationKey {
         return combinedHash != 0ull;
     }
 
-    /// Number of pipeline layout user bound descriptor sets
-    uint32_t pipelineLayoutUserSlots{0};
+    /// The global shader export set
+    struct {
+        uint32_t descriptorSet{0};
+    } global;
+
+    /// The local binding set
+    struct {
+        uint32_t descriptorSet{0};
+    } bindings;
 
     /// Data push constant offset after the user PC data
     uint32_t pipelineLayoutDataPCOffset{0};

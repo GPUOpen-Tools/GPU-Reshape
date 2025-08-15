@@ -30,6 +30,7 @@
 #include <Backends/Vulkan/States/BufferState.h>
 #include <Backends/Vulkan/Export/StreamState.h>
 #include <Backends/Vulkan/States/ImageState.h>
+#include <Backends/Vulkan/IL/DeviceCommand.h>
 
 // Backend
 #include <Backend/Command/AttachmentInfo.h>
@@ -832,4 +833,26 @@ void FeatureHook_vkCmdBeginRendering::operator()(CommandBufferObject *object, Co
 
 void FeatureHook_vkCmdEndRendering::operator()(CommandBufferObject *object, CommandContext *context) const {
     hook.Invoke(context);
+}
+
+void FeatureHook_vkCmdIndirect::operator()(CommandBufferObject *object, CommandContext *context, BufferState* source, BufferState* signature, BufferState* dest) const {    // Get states
+    // Invoke hook
+    hook.Invoke(
+        context,
+        ResourceInfo::Buffer(signature->virtualMapping.token, BufferDescriptor {
+            .offset = 0,
+            .width = sizeof(DeviceCommandSignatureHeader),
+            .uid = signature->uid
+        }),
+        ResourceInfo::Buffer(source->virtualMapping.token, BufferDescriptor {
+            .offset = 0,
+            .width = sizeof(DeviceCommandEntry),
+            .uid = source->uid
+        }),
+        ResourceInfo::Buffer(dest->virtualMapping.token, BufferDescriptor {
+            .offset = 0,
+            .width = sizeof(DeviceCommandEntry),
+            .uid = dest->uid
+        })
+    );
 }

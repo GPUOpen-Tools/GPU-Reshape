@@ -59,13 +59,18 @@ public:
     void Deregister(ShaderProgramID program) override;
 
     /// Get the pipeline layout of a program
-    VkPipelineLayout GetPipelineLayout(ShaderProgramID id) {
+    VkPipelineLayout GetPipelineLayout(ShaderProgramID id) const {
         return programs[id].layout;
     }
 
     /// Get the pipeline of a program
-    VkPipeline GetPipeline(ShaderProgramID id) {
+    VkPipeline GetPipeline(ShaderProgramID id) const {
         return programs[id].pipeline;
+    }
+
+    /// Get the set layout of a program
+    VkDescriptorSetLayout GetDescriptorSetLayout(ShaderProgramID id) const {
+        return programs[id].descriptorSetLayout;
     }
 
 private:
@@ -76,6 +81,9 @@ private:
         /// Program shader module
         VkShaderModule shaderModule{VK_NULL_HANDLE};
 
+        /// Assigned binding set layout
+        VkDescriptorSetLayout descriptorSetLayout{VK_NULL_HANDLE};
+
         /// Program layout
         VkPipelineLayout layout{VK_NULL_HANDLE};
 
@@ -84,6 +92,9 @@ private:
 
         /// Source program
         ComRef<IShaderProgram> program;
+
+        /// Id of this program
+        ShaderProgramID id;
     };
 
     /// All programs, may contain empty slots

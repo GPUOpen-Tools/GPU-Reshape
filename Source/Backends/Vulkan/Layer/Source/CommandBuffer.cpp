@@ -36,6 +36,8 @@
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/Command/ReconstructionFlag.h>
 #include <Backends/Vulkan/States/RenderPassState.h>
+#include <Backends/Vulkan/IL/DeviceCommand.h>
+#include <Backends/Vulkan/States/BufferState.h>
 
 // Backend
 #include <Backends/Vulkan/Command/UserCommandBuffer.h>
@@ -135,6 +137,23 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureHooks_vkCmdEndRenderingKHR[i] = hookTable.endRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR |= (1ull << i);
         }
+
+        if (hookTable.deviceCommand.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdDispatchIndirect[i] = hookTable.deviceCommand;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatchIndirect |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdDispatchIndirect[i] = hookTable.deviceCommand;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatchIndirect |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdDrawIndirect[i] = hookTable.deviceCommand;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndirect |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdDrawIndexedIndirect[i] = hookTable.deviceCommand;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexedIndirect |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdDrawIndirectCount[i] = hookTable.deviceCommand;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndirectCount |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdDrawIndexedIndirectCount[i] = hookTable.deviceCommand;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexedIndirectCount |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdDrawMeshTasksIndirectEXT[i] = hookTable.deviceCommand;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawMeshTasksIndirectEXT |= (1ull << i);
+        }
     }
 }
 
@@ -166,6 +185,13 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRendering = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRendering & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdDrawMeshTasksEXT = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawMeshTasksEXT & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDispatchIndirect = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatchIndirect & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDrawIndirect = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndirect & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDrawIndexedIndirect = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexedIndirect & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDrawIndirectCount = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndirectCount & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDrawIndexedIndirectCount = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexedIndirectCount & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDrawMeshTasksIndirectEXT = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawMeshTasksIndirectEXT & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDrawMeshTasksIndirectCountEXT = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawMeshTasksIndirectCountEXT & featureSet;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool) {
@@ -495,9 +521,134 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchBase(CommandBufferObject *commandBu
     commandBuffer->dispatchTable.next_vkCmdDispatchBase(commandBuffer->object, baseCountX, baseCountY, baseCountZ, groupCountX, groupCountY, groupCountZ);
 }
 
+static VkBuffer CreateAndApplyIndirectProxy(CommandBufferObject *commandBuffer, IL::DeviceCommandType type, VkBuffer buffer, VkDeviceSize offset, uint32_t argumentLength) {
+    BufferState* source = commandBuffer->table->states_buffer.Get(buffer);
+
+    // Allocate header
+    ShaderExportConstantAllocation headerAllocation = commandBuffer->streamState->constantAllocator.Allocate(
+        commandBuffer->table,
+        sizeof(DeviceCommandSignatureHeader)
+    );
+
+    // Allocate the actual command
+    ShaderExportDeviceAllocation commandAllocation = commandBuffer->streamState->deviceAllocator.Allocate(
+        commandBuffer->table,
+        sizeof(DeviceCommandEntry)
+    );
+
+    // Write header host data
+    auto header = static_cast<DeviceCommandSignatureHeader*>(headerAllocation.staging);
+    header->type = type;
+
+    // Setup the signature state
+    BufferState signatureState = {
+        .object = headerAllocation.buffer,
+        .virtualMapping = {
+            .token = {
+                .puid = commandBuffer->table->physicalResourceIdentifierMap.AllocatePUID(&signatureState)
+            }
+        }
+    };
+
+    // Setup the command state
+    BufferState destState = {
+        .object = commandAllocation.buffer,
+        .virtualMapping = {
+            .token = {
+                .puid = commandBuffer->table->physicalResourceIdentifierMap.AllocatePUID(&destState)
+            }
+        }
+    };
+
+    // Mark both as buffers
+    signatureState.type = ResourceStateType::Buffer;
+    destState.type      = ResourceStateType::Buffer;
+
+    // Wait for host and indirect reads
+    VkMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(
+        commandBuffer->object,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0x0,
+        1, &barrier,
+        0, nullptr,
+        0, nullptr
+    );
+
+    // Copy over the previous device commands
+    VkBufferCopy copy{};
+    copy.dstOffset = 0;
+    copy.srcOffset = offset;
+    copy.size = argumentLength;
+    commandBuffer->dispatchTable.next_vkCmdCopyBuffer(
+        commandBuffer->object,
+        buffer, commandAllocation.buffer,
+        1u, &copy
+    );
+
+    // Wait for the transfer
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(
+        commandBuffer->object,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0x0,
+        1, &barrier,
+        0, nullptr,
+        0, nullptr
+    );
+
+    // Invoke proxies
+    if (ApplyFeatureHook<FeatureHook_vkCmdDispatchIndirect>(
+        commandBuffer,
+        &commandBuffer->userContext,
+        commandBuffer->dispatchTable.featureBitSet_vkCmdDispatchIndirect,
+        commandBuffer->dispatchTable.featureHooks_vkCmdDispatchIndirect,
+        source, &signatureState, &destState
+    )) {
+        // Commit all pending compute
+        CommitCompute(commandBuffer);
+    }
+
+    // Transition new device allocation over to indirect
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+    commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(
+        commandBuffer->object,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        0x0,
+        1, &barrier,
+        0, nullptr,
+        0, nullptr
+    );
+
+    // Free optional view
+    if (signatureState.bindingView) {
+        commandBuffer->table->next_vkDestroyBufferView(commandBuffer->table->object, signatureState.bindingView, nullptr);
+    }
+
+    // Free optional view
+    if (destState.bindingView) {
+        commandBuffer->table->next_vkDestroyBufferView(commandBuffer->table->object, destState.bindingView, nullptr);
+    }
+
+    // Free the transient PUID's
+    commandBuffer->table->physicalResourceIdentifierMap.FreePUID(signatureState.virtualMapping.token.puid);
+    commandBuffer->table->physicalResourceIdentifierMap.FreePUID(destState.virtualMapping.token.puid);
+
+    // OK
+    return commandAllocation.buffer;
+}
+
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchIndirect(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset) {
-    // Commit all pending compute
-    CommitCompute(commandBuffer);
+    // If there's a proxy, we need to create the destination arguments
+    if (commandBuffer->dispatchTable.featureBitSet_vkCmdDispatchIndirect) {
+        buffer = CreateAndApplyIndirectProxy(commandBuffer, IL::DeviceCommandType::Dispatch, buffer, offset, sizeof(uint32_t) * 3u);
+        offset = 0;
+    }
 
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdDispatchIndirect(commandBuffer->object, buffer, offset);
