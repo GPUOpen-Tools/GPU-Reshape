@@ -47,6 +47,58 @@ void SpvPhysicalBlockEntryPoint::Parse() {
                 entryPoint.id = ctx++;
                 program.SetEntryPoint(entryPoint.id);
 
+                // Translate kernel type
+                IL::KernelType kernelType;
+                switch (entryPoint.executionModel) {
+                    default:
+                        kernelType = IL::KernelType::None;
+                        break;
+                    case SpvExecutionModelVertex:
+                        kernelType = IL::KernelType::Vertex;
+                        break;
+                    case SpvExecutionModelTessellationControl:
+                        kernelType = IL::KernelType::Hull;
+                        break;
+                    case SpvExecutionModelTessellationEvaluation:
+                        kernelType = IL::KernelType::Domain;
+                        break;
+                    case SpvExecutionModelGeometry:
+                        kernelType = IL::KernelType::Geometry;
+                        break;
+                    case SpvExecutionModelFragment:
+                        kernelType = IL::KernelType::Pixel;
+                        break;
+                    case SpvExecutionModelGLCompute:
+                    case SpvExecutionModelKernel:
+                    case SpvExecutionModelTaskNV:
+                    case SpvExecutionModelTaskEXT:
+                        // TODO: Too general
+                        kernelType = IL::KernelType::Compute;
+                        break;
+                    case SpvExecutionModelMeshNV:
+                    case SpvExecutionModelMeshEXT:
+                        kernelType = IL::KernelType::Mesh;
+                        break;
+                    case SpvExecutionModelRayGenerationKHR:
+                        kernelType = IL::KernelType::RayGen;
+                        break;
+                    case SpvExecutionModelIntersectionKHR:
+                    case SpvExecutionModelAnyHitKHR:
+                    case SpvExecutionModelClosestHitKHR:
+                    case SpvExecutionModelCallableKHR:
+                        // TODO: Too general
+                        kernelType = IL::KernelType::RayHit;
+                        break;
+                    case SpvExecutionModelMissKHR:
+                        kernelType = IL::KernelType::RayMiss;
+                        break;
+                }
+                
+                // Add kernel type md
+                program.GetMetadataMap().AddMetadata(entryPoint.id, IL::KernelTypeMetadata {
+                    .type = kernelType
+                });
+
                 // Parse name
                 auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
                 size_t length = std::strlen(ptr);
