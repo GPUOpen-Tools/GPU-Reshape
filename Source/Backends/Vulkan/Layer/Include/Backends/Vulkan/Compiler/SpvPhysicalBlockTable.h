@@ -36,6 +36,7 @@
 #include "Blocks/SpvPhysicalBlockEntryPoint.h"
 #include "Utils/SpvUtilShaderExport.h"
 #include "Utils/SpvUtilShaderPRMT.h"
+#include "Utils/SpvUtilShaderExecution.h"
 #include "Utils/SpvUtilShaderDescriptorConstantData.h"
 #include "Utils/SpvUtilShaderConstantData.h"
 #include "Utils/SpvUtilShaderDebug.h"
@@ -88,6 +89,7 @@ struct SpvPhysicalBlockTable {
     /// Utilities
     SpvUtilShaderExport shaderExport;
     SpvUtilShaderPRMT shaderPRMT;
+    SpvUtilShaderExecution shaderExecution;
     SpvUtilShaderDescriptorConstantData shaderDescriptorConstantData;
     SpvUtilShaderConstantData shaderConstantData;
     SpvUtilShaderDebug shaderDebug;

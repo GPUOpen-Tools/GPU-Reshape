@@ -158,12 +158,17 @@ void PipelineCompiler::WorkerRaytracing(void *data) {
     destroy(job, allocators);
 }
 
-bool PipelineCompiler::SetShaderModuleObject(VkPipelineShaderStageCreateInfo &createInfo, ShaderModuleState *state, const ShaderModuleInstrumentationKey &key) {
+bool PipelineCompiler::SetShaderModuleObject(VkPipelineShaderStageCreateInfo &createInfo, ShaderModuleState *state, const ShaderModuleInstrumentationKey &key, IL::FeatureTable& combinedFeatureTable) {
     // If there's an instrumentation key, a module must have been created
     if (key) {
-        createInfo.pNext = nullptr;
-        createInfo.module = state->GetInstrument(key);
-        return createInfo.module != nullptr;
+        // Instruments are optional
+        if (ShaderModuleInstrument *instrument = state->GetInstrument(key)) {
+            combinedFeatureTable |= instrument->featureTable;
+            
+            createInfo.pNext = nullptr;
+            createInfo.module = instrument->object;
+            return createInfo.module != nullptr;
+        }
     }
 
     // If there's a default object, use that
@@ -256,7 +261,14 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             // Fill pipelines
             for (uint32_t libraryIndex = 0; libraryIndex < libraryCreateInfo->libraryCount; libraryIndex++) {
                 PipelineState *libraryState = state->pipelineLibraries[libraryIndex];
-                libraryStates[libraryIndex] = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+
+                // Get instrument
+                PipelineInstrument *instrument = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+                ASSERT(instrument, "Unexpected state");
+
+                // Combine and set
+                job.combinedFeatureTable |= instrument->featureTable;
+                libraryStates[libraryIndex] = instrument->object;
                 
                 // Validate
                 if (!libraryStates[libraryIndex]) {
@@ -275,7 +287,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             std::memcpy(&stageInfos[shaderIndex], &createInfo.pStages[shaderIndex], sizeof(VkPipelineShaderStageCreateInfo));
 
             // Try to set shader object
-            if (!SetShaderModuleObject(stageInfos[shaderIndex], shaderState, job.shaderModuleInstrumentationKeys[shaderIndex])) {
+            if (!SetShaderModuleObject(stageInfos[shaderIndex], shaderState, job.shaderModuleInstrumentationKeys[shaderIndex], job.combinedFeatureTable)) {
                 scope.Add(DiagnosticType::PipelineMissingShaderKey);
                 anyMissingKeys = true;
             }
@@ -332,8 +344,13 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         PipelineJob &job = batch.jobs[jobIndices[i]];
         PipelineState *state = job.state;
 
+        // Create instrument
+        auto* instrument = new (allocators) PipelineInstrument;
+        instrument->object = pipelines[i];
+        instrument->featureTable = job.combinedFeatureTable;
+
         // Set the instrument for the given hash
-        state->AddInstrument(job.combinedHash, pipelines[i]);
+        state->AddInstrument(job.combinedHash, instrument);
     }
 
     // Free keys
@@ -416,7 +433,14 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
             // Fill pipelines
             for (uint32_t libraryIndex = 0; libraryIndex < libraryCreateInfo->libraryCount; libraryIndex++) {
                 PipelineState *libraryState = state->pipelineLibraries[libraryIndex];
-                libraryStates[libraryIndex] = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+
+                // Get instrument
+                PipelineInstrument *instrument = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+                ASSERT(instrument, "Unexpected state");
+
+                // Combine and set
+                job.combinedFeatureTable |= instrument->featureTable;
+                libraryStates[libraryIndex] = instrument->object;
                 
                 // Validate
                 if (!libraryStates[libraryIndex]) {
@@ -434,7 +458,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         ShaderModuleState *shaderState = state->ownedShaderModules[0];
 
         // Assign instrumented version
-        if (!SetShaderModuleObject(createInfo.stage, shaderState, job.shaderModuleInstrumentationKeys[0])) {
+        if (!SetShaderModuleObject(createInfo.stage, shaderState, job.shaderModuleInstrumentationKeys[0], job.combinedFeatureTable)) {
             scope.Add(DiagnosticType::PipelineMissingShaderKey);
         }
 
@@ -477,8 +501,13 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         PipelineJob &job = batch.jobs[jobIndices[i]];
         PipelineState *state = job.state;
 
+        // Create instrument
+        auto* instrument = new (allocators) PipelineInstrument;
+        instrument->object = pipelines[i];
+        instrument->featureTable = job.combinedFeatureTable;
+        
         // Set the instrument for the given hash
-        state->AddInstrument(job.combinedHash, pipelines[i]);
+        state->AddInstrument(job.combinedHash, instrument);
     }
 
     // Free bit sets
@@ -564,7 +593,14 @@ void PipelineCompiler::CompileRaytracing(const PipelineJobBatch &batch) {
             // Fill pipelines
             for (uint32_t libraryIndex = 0; libraryIndex < libraryCreateInfo->libraryCount; libraryIndex++) {
                 PipelineState *libraryState = state->pipelineLibraries[libraryIndex];
-                libraryStates[libraryIndex] = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+
+                // Get instrument
+                PipelineInstrument *instrument = libraryState->GetInstrument(job.pipelineLibraryInstrumentationKeys[libraryIndex]);
+                ASSERT(instrument, "Unexpected state");
+
+                // Combine and set
+                job.combinedFeatureTable |= instrument->featureTable;
+                libraryStates[libraryIndex] = instrument->object;
                 
                 // Validate
                 if (!libraryStates[libraryIndex]) {
@@ -583,7 +619,7 @@ void PipelineCompiler::CompileRaytracing(const PipelineJobBatch &batch) {
             std::memcpy(&stageInfos[shaderIndex], &createInfo.pStages[shaderIndex], sizeof(VkPipelineShaderStageCreateInfo));
 
             // Try to set shader object
-            if (!SetShaderModuleObject(stageInfos[shaderIndex], shaderState, job.shaderModuleInstrumentationKeys[shaderIndex])) {
+            if (!SetShaderModuleObject(stageInfos[shaderIndex], shaderState, job.shaderModuleInstrumentationKeys[shaderIndex], job.combinedFeatureTable)) {
                 scope.Add(DiagnosticType::PipelineMissingShaderKey);
                 anyMissingKeys = true;
             }
@@ -629,8 +665,13 @@ void PipelineCompiler::CompileRaytracing(const PipelineJobBatch &batch) {
         // Compile and add new patch
         state->AddPatch(job.combinedHash, CreateRaytracingShaderIdentifierPatch(table, state, pipelines[i]));
 
+        // Create instrument
+        auto* instrument = new (allocators) PipelineInstrument;
+        instrument->object = pipelines[i];
+        instrument->featureTable = job.combinedFeatureTable;
+        
         // Set the instrument for the given hash
-        state->AddInstrument(job.combinedHash, pipelines[i]);
+        state->AddInstrument(job.combinedHash, instrument);
     }
 
     // Free bit sets

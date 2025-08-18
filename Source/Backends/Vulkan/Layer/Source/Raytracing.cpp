@@ -274,10 +274,19 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdTraceRaysKHR(CommandBufferObject* commandBu
     info.callableShaderBindingTable = *pCallableShaderBindingTable;
 
     // If instrumented, get the patched identifiers
-    if (bindPoint.isInstrumented) {
+    if (bindPoint.pipelineInstrument) {
         info = PatchRaytracingIdentifiersImmediate(commandBuffer, info);
     }
 
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Raytracing)) {
+        ExecutionInfo execInfo = GetBaseExecutionInfo(commandBuffer, PipelineType::Raytracing);
+        execInfo.executionFlags = ExecutionFlag::TypeRaytracing;
+        execInfo.draw.vertexCount = 0;
+        execInfo.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Raytracing, execInfo);
+    }
+    
     // Commit all commands
     CommitRaytracing(commandBuffer);
     

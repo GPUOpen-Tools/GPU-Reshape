@@ -90,17 +90,17 @@ public:
     }
 
     /// Begin a new segment
-    /// \param rootCount number of root parameters
-    void BeginSegment(uint32_t rootCount, bool migrateData) {
+    /// \param dwordCount number of dword parameters
+    void BeginSegment(uint32_t dwordCount, bool migrateData) {
         migrateLastSegment = migrateData;
-        pendingRootCount = rootCount;
+        pendingDwordCount = dwordCount;
         pendingRoll = true;
     }
 
-    /// Set a root value
+    /// Set a dword value
     /// \param commandBuffer upload command buffer
-    /// \param offset current root offset
-    /// \param value value at root offset
+    /// \param offset current dword offset
+    /// \param value value at dword offset
     void Set(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t value) {
         if (pendingRoll) {
             RollChunk(commandBuffer);
@@ -110,13 +110,28 @@ public:
         mapped[mappedOffset + offset] = value;
     }
 
-    /// Set a root value
+    /// Set a dword value
     /// \param commandBuffer upload command buffer
-    /// \param offset current root offset
-    /// \param value value at root offset
-    void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value) {
+    /// \param offset current dword offset
+    /// \param value value at dword offset
+    template<typename T>
+    void Set(VkCommandBuffer commandBuffer, uint32_t offset, const T& value) {
+        if (pendingRoll) {
+            RollChunk(commandBuffer);
+        }
+
+        ASSERT(offset + sizeof(value) / sizeof(uint32_t) <= mappedSegmentLength, "Out of bounds descriptor segment offset");
+        std::memcpy(mapped + mappedOffset + offset, &value, sizeof(value));
+    }
+
+    /// Set a dword value
+    /// \param commandBuffer upload command buffer
+    /// \param offset current dword offset
+    /// \param value value at dword offset
+    template<typename T>
+    void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, const T& value) {
         // Begin a new segment if the previous does not suffice, may be allocated dynamically 
-        if (offset >= mappedSegmentLength || (pendingRoll && allocationSize >= pendingRootCount)) {
+        if (offset >= mappedSegmentLength || (pendingRoll && allocationSize >= pendingDwordCount)) {
             ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
             BeginSegment(allocationSize, mappedSegmentLength == allocationSize);
         }
@@ -126,8 +141,16 @@ public:
             RollChunk(commandBuffer);
         }
 
-        ASSERT(offset < mappedSegmentLength, "Chunk allocation failed");
-        mapped[mappedOffset + offset] = value;
+        ASSERT(offset + sizeof(value) / sizeof(uint32_t) <= mappedSegmentLength, "Chunk allocation failed");
+        std::memcpy(mapped + mappedOffset + offset, &value, sizeof(value));
+    }
+
+    /// Set a dword value
+    /// \param commandBuffer upload command buffer
+    /// \param offset current dword offset
+    /// \param value value at dword offset
+    void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value) {
+        SetOrAllocate<uint32_t>(commandBuffer, offset, allocationSize, value);
     }
     
     /// Manually roll the chunk
@@ -195,7 +218,7 @@ private:
         uint64_t nextMappedOffset = mappedOffset + mappedSegmentLength;
 
         // Out of memory?
-        if (nextMappedOffset + pendingRootCount >= chunkSize) {
+        if (nextMappedOffset + pendingDwordCount >= chunkSize) {
             // Copy last chunk if migration is requested
             uint32_t* lastChunkDwords = ALLOCA_ARRAY(uint32_t, mappedSegmentLength);
             if (migrateLastSegment) {
@@ -214,13 +237,13 @@ private:
 
             // Migrate last segment?
             if (migrateLastSegment) {
-                size_t count = std::min<size_t>(pendingRootCount, lastSegmentLength);
+                size_t count = std::min<size_t>(pendingDwordCount, lastSegmentLength);
                 std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * count);
             }
         } else {
             // Migrate last segment?
             if (migrateLastSegment) {
-                size_t count = std::min<size_t>(pendingRootCount, mappedSegmentLength);
+                size_t count = std::min<size_t>(pendingDwordCount, mappedSegmentLength);
                 std::memcpy(mapped + nextMappedOffset, mapped + mappedOffset, sizeof(uint32_t) * count);
             }
             
@@ -229,7 +252,7 @@ private:
         }
 
         // Set next roll length
-        mappedSegmentLength = pendingRootCount;
+        mappedSegmentLength = pendingDwordCount;
         pendingRoll = false;
         migrateLastSegment = false;
     }
@@ -294,8 +317,8 @@ private:
     /// Device chunk size limit
     size_t maxChunkSize{0};
 
-    /// Root count requested for the next roll
-    uint32_t pendingRootCount{0};
+    /// Dword count requested for the next roll
+    uint32_t pendingDwordCount{0};
 
     /// Any pending roll?
     bool pendingRoll{true};

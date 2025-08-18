@@ -31,6 +31,7 @@
 #include <Backends/Vulkan/InstrumentationInfo.h>
 #include <Backends/Vulkan/States/PipelineType.h>
 #include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
+#include <Backends/Vulkan/States/PipelineInstrument.h>
 
 // Common
 #include <Common/Containers/ReferenceObject.h>
@@ -61,10 +62,10 @@ struct PipelineState : public ReferenceObject {
 
     /// Add an instrument to this module
     /// \param hash the pipeline hash
-    /// \param pipeline the pipeline in question
-    void AddInstrument(uint64_t hash, VkPipeline pipeline) {
+    /// \param instrument the instrument in question
+    void AddInstrument(uint64_t hash, PipelineInstrument* instrument) {
         std::lock_guard lock(mutex);
-        instrumentObjects[hash] = pipeline;
+        instrumentObjects[hash] = instrument;
     }
 
     /// Reserve an instrument to be added later, defaults to nullptr
@@ -98,10 +99,10 @@ struct PipelineState : public ReferenceObject {
     /// Get an instrument
     /// \param hash the pipeline hash
     /// \return nullptr if not found
-    VkPipeline GetInstrument(uint64_t hash) {
+    PipelineInstrument* GetInstrument(uint64_t hash) {
         // Default object?
         if (hash == kDefaultPipelineStateHash) {
-            return object;
+            return nullptr;
         }
         
         std::lock_guard lock(mutex);
@@ -153,7 +154,7 @@ struct PipelineState : public ReferenceObject {
     bool isLibrary{false};
 
     /// Replaced pipeline object, fx. instrumented version
-    std::atomic<VkPipeline> hotSwapObject{VK_NULL_HANDLE};
+    std::atomic<PipelineInstrument*> hotSwapObject{};
 
     /// Fully relaxed last-used timestamp
     std::atomic<uint64_t> lastUsedTimestampNS{0};
@@ -188,7 +189,7 @@ struct PipelineState : public ReferenceObject {
 
     /// Instrumented objects lookup
     /// TODO: How do we manage lifetimes here?
-    std::map<uint64_t, VkPipeline> instrumentObjects;
+    std::map<uint64_t, PipelineInstrument*> instrumentObjects;
 
     /// Module specific lock
     std::mutex mutex;

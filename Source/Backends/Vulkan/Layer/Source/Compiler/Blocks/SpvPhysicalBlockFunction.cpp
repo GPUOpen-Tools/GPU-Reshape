@@ -2420,6 +2420,11 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 table.shaderPRMT.GetToken(job, stream, fn.GetID(), idMap.Get(token->resource), token->result);
                 break;
             }
+            case IL::OpCode::ExecutionInfo: {
+                auto *token = instr.As<IL::ExecutionInfoInstruction>();
+                table.shaderExecution.GetInfo(job, stream, token->result);
+                break;
+            }
             case IL::OpCode::Alloca: {
                 // Alloca's handled in function header
                 break;

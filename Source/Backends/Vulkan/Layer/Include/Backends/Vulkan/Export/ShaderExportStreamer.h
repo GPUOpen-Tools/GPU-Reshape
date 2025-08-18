@@ -55,6 +55,7 @@ struct FenceState;
 struct QueueState;
 struct CommandBufferObject;
 struct DescriptorSetState;
+struct ExecutionInfo;
 class IBridge;
 
 class ShaderExportStreamer : public TComponent<ShaderExportStreamer> {
@@ -126,9 +127,9 @@ public:
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param object the backend state being bound
-    /// \param instrumented true if an instrumented pipeline has been bound
+    /// \param instrument the pipeline instrument, optional
     /// \param commandBuffer the command buffer
-    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, VkPipeline object, bool instrumented, VkCommandBuffer commandBuffer);
+    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, VkPipeline object, PipelineInstrument* instrument, VkCommandBuffer commandBuffer);
 
     /// Invoked during descriptor binding
     /// \param state the stream state
@@ -163,6 +164,13 @@ public:
     /// \param segment the segment to be mapped to
     void MapSegment(ShaderExportStreamState* state, ShaderExportStreamSegment* segment);
 
+    /// Set the execution info
+    /// @param state the stream state
+    /// @param commandBuffer the target command buffer
+    /// @param type the pipeline type to bind for
+    /// @param executionInfo the execution info to set
+    void SetExecutionInfo(ShaderExportStreamState* state, VkCommandBuffer commandBuffer, PipelineType type, const ExecutionInfo& executionInfo);
+    
     /// Commit all data
     /// \param state state to be committed to
     /// \param bindPoint destination binding point

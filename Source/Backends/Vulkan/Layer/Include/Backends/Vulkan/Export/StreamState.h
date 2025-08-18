@@ -93,8 +93,8 @@ struct ShaderExportPipelineBindState {
     /// Currently bound vk object
     VkPipeline pipelineObject{VK_NULL_HANDLE};
 
-    /// Is the current pipeline instrumented?
-    bool isInstrumented{false};
+    /// Current pipeline instrument, null if not instrumented
+    PipelineInstrument* pipelineInstrument{nullptr};
 
     /// The descriptor info, may not be mapped
     ShaderExportSegmentDescriptorAllocation currentSegment{};

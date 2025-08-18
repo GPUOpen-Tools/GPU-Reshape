@@ -30,6 +30,7 @@
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/InstrumentationInfo.h>
 #include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
+#include <Backends/Vulkan/States/ShaderModuleInstrument.h>
 
 // Common
 #include <Common/Containers/ReferenceObject.h>
@@ -55,21 +56,21 @@ struct ShaderModuleState : public ReferenceObject {
     void ReleaseHost() override;
 
     /// Add an instrument to this module
-    /// \param featureBitSet the enabled feature set
-    /// \param module the module in question
-    void AddInstrument(const ShaderModuleInstrumentationKey& key, VkShaderModule module) {
+    /// \param key the instrumentation key
+    /// \param instrument the instrument in question
+    void AddInstrument(const ShaderModuleInstrumentationKey& key, ShaderModuleInstrument* instrument) {
         ASSERT(key.featureBitSet, "Invalid instrument addition");
 
         std::lock_guard lock(mutex);
-        instrumentObjects[key] = module;
+        instrumentObjects[key] = instrument;
     }
 
     /// Get an instrument
-    /// \param featureBitSet the enabled feature set
+    /// \param key the instrumentation key
     /// \return nullptr if not found
-    VkShaderModule GetInstrument(const ShaderModuleInstrumentationKey& key) {
+    ShaderModuleInstrument* GetInstrument(const ShaderModuleInstrumentationKey& key) {
         if (!key.featureBitSet) {
-            return object; 
+            return nullptr; 
         }
 
         // Instrumented request
@@ -83,7 +84,7 @@ struct ShaderModuleState : public ReferenceObject {
     }
 
     /// Check if instrument is present
-    /// \param featureBitSet the enabled feature set
+    /// \param key the instrumentation key
     /// \return false if not found
     bool HasInstrument(const ShaderModuleInstrumentationKey& key) {
         if (!key.featureBitSet) {
@@ -144,7 +145,7 @@ struct ShaderModuleState : public ReferenceObject {
 
     /// Instrumented objects lookup
     /// TODO: How do we manage lifetimes here?
-    std::map<ShaderModuleInstrumentationKey, VkShaderModule> instrumentObjects;
+    std::map<ShaderModuleInstrumentationKey, ShaderModuleInstrument*> instrumentObjects;
 
     /// Optional debug name
     char* debugName{nullptr};

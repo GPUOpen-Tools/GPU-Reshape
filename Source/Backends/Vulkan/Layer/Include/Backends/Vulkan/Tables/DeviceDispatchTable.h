@@ -327,6 +327,10 @@ struct DeviceDispatchTable {
 
     /// Sorted virtual address table
     ResourceVirtualAddressTable virtualAddressTable;
+    
+    /// A rolling execution counter, wrap arounds are expected
+    /// TOOD[dbg]: Let's avoid polluting the shared state
+    std::atomic<uint32_t> rollingExecutionUID{0};
 
     /// Internal programs
     Programs* programs{nullptr};

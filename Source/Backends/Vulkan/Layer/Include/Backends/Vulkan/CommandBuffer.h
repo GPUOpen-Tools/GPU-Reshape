@@ -33,6 +33,9 @@
 #include <Backends/Vulkan/Command/ReconstructionFlag.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 
+// Backend
+#include <Backend/IL/Execution/ExecutionInfo.h>
+
 // Forward declarations
 struct ShaderExportDeviceAllocation;
 
@@ -44,6 +47,17 @@ void CreateDeviceCommandProxies(DeviceDispatchTable* table);
 /// \param table
 /// \param featureSet
 void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable* table, uint64_t featureSet);
+
+/// Check if execution info is enabled
+/// @param object current command object state
+/// @param type pipeline type to check
+bool UsesExecutionInfo(CommandBufferObject* object, PipelineType type);
+
+/// Get the basic execution info for the bound pipeline
+/// @param object current command object state
+/// @param type pipeline type to check
+/// @return info
+ExecutionInfo GetBaseExecutionInfo(CommandBufferObject* object, PipelineType type);
 
 /// Add a new debug stream to the streamer
 /// @param commandBuffer command buffer to stage the stream from

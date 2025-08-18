@@ -477,7 +477,8 @@ PipelineState::~PipelineState() {
 
     // Release all instrumented objects
     for (auto&& kv : instrumentObjects) {
-        table->next_vkDestroyPipeline(table->object, kv.second, nullptr);
+        table->next_vkDestroyPipeline(table->object, kv.second->object, nullptr);
+        destroy(kv.second, table->allocators);
     }
 
     // Release all dependencies to the shader modules

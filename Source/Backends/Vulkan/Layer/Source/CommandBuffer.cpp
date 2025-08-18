@@ -38,9 +38,10 @@
 #include <Backends/Vulkan/States/RenderPassState.h>
 #include <Backends/Vulkan/IL/DeviceCommand.h>
 #include <Backends/Vulkan/States/BufferState.h>
+#include <Backends/Vulkan/Command/UserCommandBuffer.h>
 
 // Backend
-#include <Backends/Vulkan/Command/UserCommandBuffer.h>
+#include <Backend/IL/Execution/ExecutionInfo.h>
 #include <Backend/IFeature.h>
 
 // Common
@@ -357,7 +358,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
     PipelineState *state = commandBuffer->table->states_pipeline.Get(pipeline);
 
     // Attempt to load the hot swapped object
-    VkPipeline hotSwapObject = state->hotSwapObject.load();
+    PipelineInstrument* hotSwapObject = state->hotSwapObject.load();
 
     // Conditionally wait for instrumentation if the pipeline has an outstanding request
     if (!hotSwapObject && state->HasInstrumentationRequest()) {
@@ -369,7 +370,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
     
     // Replace the bound pipeline by the hot one
     if (hotSwapObject) {
-        pipeline = hotSwapObject;
+        pipeline = hotSwapObject->object;
     }
 
     // Update last used
@@ -379,10 +380,20 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
     commandBuffer->dispatchTable.next_vkCmdBindPipeline(commandBuffer->object, pipelineBindPoint, pipeline);
 
     // Migrate environments
-    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, pipeline, hotSwapObject != nullptr, commandBuffer->object);
+    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, pipeline, hotSwapObject, commandBuffer->object);
 
     // Update context
     commandBuffer->context.pipeline = state;
+}
+
+ExecutionInfo GetBaseExecutionInfo(CommandBufferObject* object, PipelineType type) {
+    const ShaderExportPipelineBindState& bindState = object->streamState->pipelineBindPoints[static_cast<uint32_t>(type)];
+    
+    ExecutionInfo info{};
+    info.rollingExecutionUID = object->table->rollingExecutionUID++;
+    info.pipelineUID = bindState.pipeline ? static_cast<uint32_t>(bindState.pipeline->uid) : 0;
+    info.scopeUID = 0;
+    return info;
 }
 
 static void CommitCompute(CommandBufferObject* commandBuffer) {
@@ -449,7 +460,28 @@ static void CommitGraphics(CommandBufferObject* commandBuffer) {
     }
 }
 
+bool UsesExecutionInfo(CommandBufferObject* object, PipelineType type) {
+    const ShaderExportPipelineBindState& bindState = object->streamState->pipelineBindPoints[static_cast<uint32_t>(type)];
+    
+    // No instrument, no execution info
+    if (!bindState.pipelineInstrument) {
+        return false;
+    }
+
+    // Check if any shader in the pipeline uses execution info
+    return bindState.pipelineInstrument->featureTable.executionInfo;
+}
+
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDraw(CommandBufferObject *commandBuffer, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw;
+        info.draw.vertexCount = vertexCount;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 
@@ -458,6 +490,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDraw(CommandBufferObject *commandBuffer, ui
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexed(CommandBufferObject *commandBuffer, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = indexCount;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 
@@ -466,6 +507,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexed(CommandBufferObject *commandBuf
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndirect(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 
@@ -474,6 +524,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndirect(CommandBufferObject *commandBu
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexedIndirect(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 
@@ -482,6 +541,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexedIndirect(CommandBufferObject *co
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatch(CommandBufferObject *commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Compute)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Compute);
+        info.executionFlags = ExecutionFlag::TypeDispatch;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Compute, info);
+    }
+    
     // Commit all pending compute
     CommitCompute(commandBuffer);
 
@@ -490,6 +558,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatch(CommandBufferObject *commandBuffer
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksEXT(CommandBufferObject* commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 
@@ -498,6 +575,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksEXT(CommandBufferObject* comma
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 
@@ -506,6 +592,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectEXT(CommandBufferObjec
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectCountEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 
@@ -514,6 +609,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectCountEXT(CommandBuffer
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchBase(CommandBufferObject *commandBuffer, uint32_t baseCountX, uint32_t baseCountY, uint32_t baseCountZ, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Compute)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Compute);
+        info.executionFlags = ExecutionFlag::TypeDispatch;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Compute, info);
+    }
+    
     // Commit all pending compute
     CommitCompute(commandBuffer);
 
@@ -644,6 +748,15 @@ static VkBuffer CreateAndApplyIndirectProxy(CommandBufferObject *commandBuffer, 
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchIndirect(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Compute)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Compute);
+        info.executionFlags = ExecutionFlag::TypeDispatch | ExecutionFlag::TypeIndirect;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Compute, info);
+    }
+    
     // If there's a proxy, we need to create the destination arguments
     if (commandBuffer->dispatchTable.featureBitSet_vkCmdDispatchIndirect) {
         buffer = CreateAndApplyIndirectProxy(commandBuffer, IL::DeviceCommandType::Dispatch, buffer, offset, sizeof(uint32_t) * 3u);
@@ -655,6 +768,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchIndirect(CommandBufferObject *comma
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndirectCount(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 
@@ -663,6 +785,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndirectCount(CommandBufferObject *comm
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexedIndirectCount(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride) {
+    // Append execution info, if used
+    if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
+        ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
+        info.executionFlags = ExecutionFlag::TypeDraw;
+        info.draw.vertexCount = 0;
+        info.draw.indexCount = 0;
+        commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
+    }
+    
     // Commit all pending graphics
     CommitGraphics(commandBuffer);
 

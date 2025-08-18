@@ -26,17 +26,35 @@
 
 #pragma once
 
-// Layer
-#include <Backends/Vulkan/Resource/DescriptorDataControl.h>
-#include <Backends/Vulkan/States/DescriptorLayoutPhysicalMapping.h>
+// Std
+#include <cstdint>
 
-struct PipelineLayoutPhysicalMapping {
-    /// Mapping hash
-    uint64_t layoutHash{0};
-
-    /// All laid out descriptor sets
-    std::vector<DescriptorLayoutPhysicalMapping> descriptorSets;
+struct DescriptorDataHeader {
+    uint32_t GetExecutionDWordOffset() const {
+        // Rows are stored as uint4's
+        return executionRowOffset * 4;
+    }
     
-    /// Data control for this root signature
-    DescriptorDataControl descriptorDataControl;
+    /// PRM offsets always start at base, without exception
+    /// This also avoids a dependent scalar lookup
+    /// uint32_t prmOffset = sizeof(DescriptorDataHeader);
+
+    /// Execution info offset
+    uint32_t executionRowOffset = 0;
+};
+
+/// Number of dwords per header
+static constexpr uint32_t DescriptorDataHeaderDWordCount = sizeof(DescriptorDataHeader) / sizeof(uint32_t);
+
+struct DescriptorDataControl {
+    /// Get the root dword offset
+    static uint32_t GetRootDWordOffset(uint32_t rootDWord) {
+        return DescriptorDataHeaderDWordCount + rootDWord;
+    }
+    
+    /// Shader visible header
+    DescriptorDataHeader header;
+
+    /// Total number of dwords
+    uint32_t dwordCount = 0;
 };

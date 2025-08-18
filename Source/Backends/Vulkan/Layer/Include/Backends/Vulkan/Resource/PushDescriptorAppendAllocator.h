@@ -154,12 +154,12 @@ public:
 
                 // Descriptor offsets
                 const uint32_t descriptorDataDWordOffset = static_cast<uint32_t>(set * kDescriptorDataDWordCount);
-                const uint32_t descriptorDataDWordBound  = currentLayoutState->boundUserDescriptorStates * kDescriptorDataDWordCount;
+                const uint32_t descriptorDataDWordBound  = DescriptorDataHeaderDWordCount + currentLayoutState->boundUserDescriptorStates * kDescriptorDataDWordCount;
 
                 // Submit offsets to the data append allocator
                 PhysicalResourceMappingTableSegment segmentShader = table->prmTable->GetSegmentShader(entry.segmentId);
-                dataAllocator->SetOrAllocate(commandBuffer, descriptorDataDWordOffset + kDescriptorDataLengthDWord, descriptorDataDWordBound, segmentShader.length);
-                dataAllocator->Set(commandBuffer, descriptorDataDWordOffset + kDescriptorDataOffsetDWord, segmentShader.offset);
+                dataAllocator->SetOrAllocate(commandBuffer, DescriptorDataControl::GetRootDWordOffset(descriptorDataDWordOffset + kDescriptorDataLengthDWord), descriptorDataDWordBound, segmentShader.length);
+                dataAllocator->Set(commandBuffer, DescriptorDataControl::GetRootDWordOffset(descriptorDataDWordOffset + kDescriptorDataOffsetDWord), segmentShader.offset);
             }
 
             // Mark as pending roll, the data from here on is considered immutable

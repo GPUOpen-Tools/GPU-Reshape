@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -27,16 +27,15 @@
 #pragma once
 
 // Layer
-#include <Backends/Vulkan/Resource/DescriptorDataControl.h>
-#include <Backends/Vulkan/States/DescriptorLayoutPhysicalMapping.h>
+#include <Backends/Vulkan/Vulkan.h>
 
-struct PipelineLayoutPhysicalMapping {
-    /// Mapping hash
-    uint64_t layoutHash{0};
+// Backend
+#include <Backend/IL/FeatureTable.h>
 
-    /// All laid out descriptor sets
-    std::vector<DescriptorLayoutPhysicalMapping> descriptorSets;
-    
-    /// Data control for this root signature
-    DescriptorDataControl descriptorDataControl;
+struct ShaderModuleInstrument {
+    /// The instrumented object
+    VkShaderModule object{VK_NULL_HANDLE};
+
+    /// The instrumented feature table
+    IL::FeatureTable featureTable;
 };

@@ -30,43 +30,31 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockScan.h>
 
 // Backend
-#include <Backend/IL/Source.h>
-#include <Backend/IL/Type.h>
 #include <Backend/IL/Program.h>
+#include <Backend/IL/ID.h>
 
 // Forward declarations
 struct SpvJob;
 struct SpvPhysicalBlockTable;
 
 /// Shader PRMT utilities
-struct SpvUtilShaderDescriptorConstantData {
-    SpvUtilShaderDescriptorConstantData(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable& table);
+struct SpvUtilShaderExecution {
+    SpvUtilShaderExecution(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable& table);
 
     /// Compile the records
     /// \param job source job being compiled against
     void CompileRecords(const SpvJob &job);
 
-    /// Get a PRM descriptor dword
+    /// Get the execution info
+    /// \param job source job
     /// \param stream the current spirv stream
-    /// \param offset the element wise offset
-    /// \param index the dword index
-    IL::ID GetPRMDescriptorData(SpvStream& stream, IL::ID offset, uint32_t index);
-
-    /// Get a descriptor dword
-    /// \param stream the current spirv stream
-    /// \param offset the element wise offset
-    IL::ID GetDescriptorData(SpvStream& stream, IL::ID offset);
+    /// \param result output result
+    void GetInfo(const SpvJob& job, SpvStream& stream, IL::ID result);
 
     /// Copy to a new block
     /// \param remote the new block table
-    /// \param out the destination shader block
-    void CopyTo(SpvPhysicalBlockTable& remote, SpvUtilShaderDescriptorConstantData& out);
-
-    /// Set the push constant identifier
-    /// \param id given id
-    void SetPCID(IL::ID id) {
-        pcId = id;
-    }
+    /// \param out the destination execution info
+    void CopyTo(SpvPhysicalBlockTable& remote, SpvUtilShaderExecution& out);
 
 private:
     /// Shared allocators
@@ -77,10 +65,4 @@ private:
 
     /// Parent table
     SpvPhysicalBlockTable& table;
-
-    /// Spv identifiers
-    uint32_t descriptorConstantId{0};
-
-    /// Push constant offset identifier
-    IL::ID pcId{IL::InvalidID};
 };

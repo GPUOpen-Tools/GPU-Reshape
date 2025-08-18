@@ -253,10 +253,11 @@ bool ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     }
 
     // Resulting module
-    VkShaderModule instrument;
+    auto* instrument = new (allocators) ShaderModuleInstrument();
+    instrument->featureTable = module->GetProgram()->GetFeatureTable();
 
     // Attempt to compile the program
-    VkResult result = job.table->next_vkCreateShaderModule(job.table->object, &createInfo, nullptr, &instrument);
+    VkResult result = job.table->next_vkCreateShaderModule(job.table->object, &createInfo, nullptr, &instrument->object);
     if (result != VK_SUCCESS) {
         scope.Add(DiagnosticType::ShaderCreationFailed);
         ++job.info.diagnostic->failedJobs;

@@ -86,7 +86,8 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyShaderModule(VkDevice device, VkShaderM
 ShaderModuleState::~ShaderModuleState() {
     // Release instrumented modules
     for (auto&& kv : instrumentObjects) {
-        table->next_vkDestroyShaderModule(table->object, kv.second, nullptr);
+        table->next_vkDestroyShaderModule(table->object, kv.second->object, nullptr);
+        destroy(kv.second, table->allocators);
     }
 
     // Release spirv module

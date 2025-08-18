@@ -43,11 +43,17 @@ struct DispatcherBucket;
 struct DeviceDispatchTable;
 
 struct PipelineJob {
+    /// State we're instrumenting for
     PipelineState* state{ nullptr };
 
+    /// All instrumentation keys
     /// TODO: Stack fallback
     uint64_t* pipelineLibraryInstrumentationKeys{nullptr};
     ShaderModuleInstrumentationKey* shaderModuleInstrumentationKeys{nullptr};
+
+    /// Feature table of the job
+    /// Populated by the job
+    IL::FeatureTable combinedFeatureTable;
 
     /// Pipeline specific hash
     uint64_t combinedHash{ 0 };
@@ -100,7 +106,7 @@ protected:
     /// \param state the proxy state object
     /// \param key the instrumentation key to query
     /// \return success state
-    bool SetShaderModuleObject(VkPipelineShaderStageCreateInfo &createInfo, ShaderModuleState *state, const ShaderModuleInstrumentationKey &key);
+    bool SetShaderModuleObject(VkPipelineShaderStageCreateInfo &createInfo, ShaderModuleState *state, const ShaderModuleInstrumentationKey &key, IL::FeatureTable& combinedFeatureTable);
 
 private:
     DeviceDispatchTable* table{nullptr};

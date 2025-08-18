@@ -45,6 +45,9 @@
 #include <Backends/Vulkan/Resource/PushDescriptorAppendAllocator.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTablePersistentVersion.h>
 
+// Backend
+#include <Backend/IL/Execution/ExecutionInfo.h>
+
 // Bridge
 #include <Bridge/IBridge.h>
 
@@ -234,7 +237,7 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
         bindState.deviceDescriptorOverwriteMask = 0x0;
         bindState.pipeline = nullptr;
         bindState.pipelineObject = nullptr;
-        bindState.isInstrumented = false;
+        bindState.pipelineInstrument = nullptr;
     }
 
     // Reset render pass state
@@ -372,7 +375,7 @@ void ShaderExportStreamer::EndCommandBuffer(ShaderExportStreamState* state, VkCo
     }
 }
 
-void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, VkPipeline object, bool instrumented, VkCommandBuffer commandBuffer) {
+void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, VkPipeline object, PipelineInstrument* instrument, VkCommandBuffer commandBuffer) {
     // Get bind state
     ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipeline->type)];
 
@@ -382,7 +385,10 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
     // Needs reconstruction of the descriptor segment?
     if (pipeline != bindState.pipeline || pipeline->layout->compatabilityHash != bindState.pipeline->layout->compatabilityHash) {
         // Begin new descriptor segment
-        bindState.descriptorDataAllocator->BeginSegment(pipeline->layout->boundUserDescriptorStates * kDescriptorDataDWordCount, false);
+        bindState.descriptorDataAllocator->BeginSegment(pipeline->layout->physicalMapping.descriptorDataControl.dwordCount, false);
+
+        // Set the control header
+        bindState.descriptorDataAllocator->Set(commandBuffer, 0, pipeline->layout->physicalMapping.descriptorDataControl);
 
         // Setup new segment
         for (size_t i = 0; i < pipeline->layout->compatabilityHashes.size(); i++) {
@@ -398,7 +404,7 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
 
             // Mismatched compatability?
             if (pipeline->layout->compatabilityHashes[i] != descriptorState.compatabilityHash) {
-                bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDWordOffset + kDescriptorDataOffsetDWord, 0x0);
+                bindState.descriptorDataAllocator->Set(commandBuffer, DescriptorDataControl::GetRootDWordOffset(descriptorDWordOffset + kDescriptorDataOffsetDWord), 0x0);
                 continue;
             }
         
@@ -409,8 +415,8 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
             PhysicalResourceMappingTableSegment segment = table->prmTable->GetSegmentShader(persistentState->segmentID);
 
             // Set offset and length
-            bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDWordOffset + kDescriptorDataOffsetDWord, segment.offset);
-            bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDWordOffset + kDescriptorDataLengthDWord, segment.length);
+            bindState.descriptorDataAllocator->Set(commandBuffer, DescriptorDataControl::GetRootDWordOffset(descriptorDWordOffset + kDescriptorDataOffsetDWord), segment.offset);
+            bindState.descriptorDataAllocator->Set(commandBuffer, DescriptorDataControl::GetRootDWordOffset(descriptorDWordOffset + kDescriptorDataLengthDWord), segment.length);
         }
 
         // As the bindings have been (potentially) invalidated, we must roll the chunk
@@ -420,10 +426,10 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
     // State tracking
     bindState.pipeline = pipeline;
     bindState.pipelineObject = object;
-    bindState.isInstrumented = instrumented;
+    bindState.pipelineInstrument = instrument;
 
     // Ensure the shader export states are bound
-    if (instrumented) {
+    if (instrument) {
         // Set export set
         BindShaderExport(state, pipeline, commandBuffer);
     }
@@ -506,6 +512,18 @@ void ShaderExportStreamer::ProcessStreamDebug(ShaderExportStreamState* state) {
 }
 #endif // NDEBUG
 
+void ShaderExportStreamer::SetExecutionInfo(ShaderExportStreamState *state, VkCommandBuffer commandBuffer, PipelineType type, const ExecutionInfo &executionInfo) {
+    ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(type)];
+
+    // Append the execution info data
+    bindState.descriptorDataAllocator->SetOrAllocate(
+        commandBuffer,
+        bindState.pipeline->layout->physicalMapping.descriptorDataControl.header.GetExecutionDWordOffset(),
+        bindState.pipeline->layout->physicalMapping.descriptorDataControl.dwordCount,
+        executionInfo
+    );
+}
+
 void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBindPoint bindPoint, VkCommandBuffer commandBuffer) {
     // Translate the bind point
     PipelineType pipelineType = Translate(bindPoint);
@@ -578,7 +596,7 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.pipeline->layout->boundUserDescriptorStates * kDescriptorDataDWordCount, true);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.pipeline->layout->physicalMapping.descriptorDataControl.dwordCount, true);
 }
 
 void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState *state, const PipelineState *pipeline, VkCommandBuffer commandBuffer) {
@@ -1070,12 +1088,12 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
 
         // Descriptor data
         const uint32_t descriptorDataDWordOffset = slot * kDescriptorDataDWordCount;
-        const uint32_t descriptorDataDWordBound  = layoutState->boundUserDescriptorStates * kDescriptorDataDWordCount;
+        const uint32_t descriptorDataDWordBound  = DescriptorDataHeaderDWordCount + layoutState->boundUserDescriptorStates * kDescriptorDataDWordCount;
 
         // Set the shader PRMT offset, roll the chunk if needed (only initial set needs to roll)
         PhysicalResourceMappingTableSegment segment = table->prmTable->GetSegmentShader(persistentState->segmentID);
-        bindState.descriptorDataAllocator->SetOrAllocate(commandBuffer, descriptorDataDWordOffset + kDescriptorDataLengthDWord, descriptorDataDWordBound, segment.length);
-        bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDataDWordOffset + kDescriptorDataOffsetDWord, segment.offset);
+        bindState.descriptorDataAllocator->SetOrAllocate(commandBuffer, DescriptorDataControl::GetRootDWordOffset(descriptorDataDWordOffset + kDescriptorDataLengthDWord), descriptorDataDWordBound, segment.length);
+        bindState.descriptorDataAllocator->Set(commandBuffer, DescriptorDataControl::GetRootDWordOffset(descriptorDataDWordOffset + kDescriptorDataOffsetDWord), segment.offset);
 
         // Number of dynamic counts for this slot
         uint32_t slotDynamicCount = layoutState->descriptorDynamicOffsets.at(slot);
