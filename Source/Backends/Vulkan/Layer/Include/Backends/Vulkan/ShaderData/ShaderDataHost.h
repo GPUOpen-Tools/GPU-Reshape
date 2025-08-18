@@ -113,6 +113,9 @@ private:
 
         /// Top information
         ShaderDataInfo info;
+
+        /// Is this a host resource?
+        bool isHost = false;
     };
 
     struct MappingEntry {

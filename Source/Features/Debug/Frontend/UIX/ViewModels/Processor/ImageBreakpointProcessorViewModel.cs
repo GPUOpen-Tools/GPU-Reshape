@@ -29,6 +29,12 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 bitmapFormat = PixelFormat.Rgba8888;
                 break;
         }
+
+        // Ignore empty images
+        if (message.dataStaticWidth == 0 || message.dataStaticHeight == 0)
+        {
+            return null;
+        }
         
         return new WriteableBitmap(
             bitmapFormat, AlphaFormat.Opaque,
