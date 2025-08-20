@@ -518,9 +518,10 @@ void ShaderExportStreamer::SetExecutionInfo(ShaderExportStreamState *state, VkCo
     // Append the execution info data
     bindState.descriptorDataAllocator->SetOrAllocate(
         commandBuffer,
-        bindState.pipeline->layout->physicalMapping.descriptorDataControl.header.GetExecutionDWordOffset(),
+        bindState.pipeline->layout->physicalMapping.descriptorDataControl.header.executionDWordOffset,
         bindState.pipeline->layout->physicalMapping.descriptorDataControl.dwordCount,
-        executionInfo
+        executionInfo,
+        true
     );
 }
 

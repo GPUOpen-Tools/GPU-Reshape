@@ -492,7 +492,7 @@ static DescriptorDataControl GetDescriptorDataControl(uint32_t boundUserDescript
     AlignDataControlRow4(control);
     {
         ASSERT(control.dwordCount % 4 == 0, "Unaligned execution header");
-        control.header.executionRowOffset = control.dwordCount / 4;
+        control.header.executionDWordOffset = control.dwordCount;
         control.dwordCount += kExecutionInfoDWordCount;
     }
 

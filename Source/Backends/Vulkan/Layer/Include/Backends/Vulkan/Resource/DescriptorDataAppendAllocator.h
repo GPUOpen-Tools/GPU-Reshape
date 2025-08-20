@@ -129,11 +129,11 @@ public:
     /// \param offset current dword offset
     /// \param value value at dword offset
     template<typename T>
-    void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, const T& value) {
+    void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, const T& value, bool migrateByDefault = false) {
         // Begin a new segment if the previous does not suffice, may be allocated dynamically 
         if (offset >= mappedSegmentLength || (pendingRoll && allocationSize >= pendingDwordCount)) {
             ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
-            BeginSegment(allocationSize, mappedSegmentLength == allocationSize);
+            BeginSegment(allocationSize, migrateByDefault || mappedSegmentLength == allocationSize);
         }
 
         // Roll! D2! (Never played DnD, sorry)
@@ -149,8 +149,8 @@ public:
     /// \param commandBuffer upload command buffer
     /// \param offset current dword offset
     /// \param value value at dword offset
-    void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value) {
-        SetOrAllocate<uint32_t>(commandBuffer, offset, allocationSize, value);
+    void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value, bool migrateByDefault = false) {
+        SetOrAllocate<uint32_t>(commandBuffer, offset, allocationSize, value, migrateByDefault);
     }
     
     /// Manually roll the chunk

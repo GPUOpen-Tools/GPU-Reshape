@@ -72,7 +72,7 @@ void DeviceAllocator::Install(DeviceDispatchTable *table) {
     allocatorInfo.device = table->object;
     allocatorInfo.pVulkanFunctions = &vkFunctions;
 
-    // If the app uses device a ddresses, we need to be able to address the underlying blocks as such
+    // If the app uses device addresses, we need to be able to address the underlying blocks as such
     if (table->next_vkGetBufferDeviceAddress) {
         allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     }

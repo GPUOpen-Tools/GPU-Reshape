@@ -30,17 +30,12 @@
 #include <cstdint>
 
 struct DescriptorDataHeader {
-    uint32_t GetExecutionDWordOffset() const {
-        // Rows are stored as uint4's
-        return executionRowOffset * 4;
-    }
-    
     /// PRM offsets always start at base, without exception
     /// This also avoids a dependent scalar lookup
     /// uint32_t prmOffset = sizeof(DescriptorDataHeader);
 
     /// Execution info offset
-    uint32_t executionRowOffset = 0;
+    uint32_t executionDWordOffset = 0;
 };
 
 /// Number of dwords per header
