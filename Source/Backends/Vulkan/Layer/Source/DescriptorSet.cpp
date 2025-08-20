@@ -650,9 +650,6 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     // Inherit compatability hash
     state->physicalMapping.layoutHash = state->compatabilityHash;
 
-    // Setup the data control
-    state->physicalMapping.descriptorDataControl = GetDescriptorDataControl(state->boundUserDescriptorStates);
-
     // External user
     state->AddUser();
 
@@ -665,6 +662,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     state->dataPushConstantOffset = dataPushConstantOffset;
     state->dataPushConstantLength = dataPushConstantLength;
     state->pushConstantRangeMask  = pushConstantRangeMask;
+
+    // Setup the data control
+    state->physicalMapping.descriptorDataControl = GetDescriptorDataControl(state->boundUserDescriptorStates);
 
     // Store lookup
     table->states_pipelineLayout.Add(*pPipelineLayout, state);
