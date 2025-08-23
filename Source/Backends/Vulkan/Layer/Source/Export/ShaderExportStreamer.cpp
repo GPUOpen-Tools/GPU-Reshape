@@ -388,7 +388,7 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
         bindState.descriptorDataAllocator->BeginSegment(pipeline->layout->physicalMapping.descriptorDataControl.dwordCount, false);
 
         // Set the control header
-        bindState.descriptorDataAllocator->Set(commandBuffer, 0, pipeline->layout->physicalMapping.descriptorDataControl);
+        bindState.descriptorDataAllocator->Set(commandBuffer, 0, pipeline->layout->physicalMapping.descriptorDataControl.header);
 
         // Setup new segment
         for (size_t i = 0; i < pipeline->layout->compatabilityHashes.size(); i++) {
