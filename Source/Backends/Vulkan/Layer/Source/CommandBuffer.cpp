@@ -555,8 +555,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatch(CommandBufferObject *commandBuffer
     if (UsesExecutionInfo(commandBuffer, PipelineType::Compute)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Compute);
         info.executionFlags = ExecutionFlag::TypeDispatch;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.dispatch.groupCountX = groupCountX;
+        info.dispatch.groupCountY = groupCountY;
+        info.dispatch.groupCountZ = groupCountZ;
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Compute, info);
     }
     
@@ -623,8 +624,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchBase(CommandBufferObject *commandBu
     if (UsesExecutionInfo(commandBuffer, PipelineType::Compute)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Compute);
         info.executionFlags = ExecutionFlag::TypeDispatch;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.dispatch.groupCountX = groupCountX;
+        info.dispatch.groupCountY = groupCountY;
+        info.dispatch.groupCountZ = groupCountZ;
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Compute, info);
     }
     
