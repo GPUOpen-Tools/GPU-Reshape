@@ -30,5 +30,6 @@
 <schema>
     <shader-export name="BreakpointAcquisition" no-sguid="true" no-traceback="true">
         <field name="uid" type="uint32" bits="24"/>
+        <field name="magic" type="uint32" bits="8"/>
     </shader-export>
 </schema>

@@ -543,6 +543,8 @@ void DebugFeature::OnSyncPoint() {
 }
 
 void DebugFeature::OnBreakpointAcquired(const BreakpointAcquisitionMessage *acqMessage, CommandBuilder& builder) {
+    ASSERT(acqMessage->magic == 42, "Corrupt message");
+    
     // If it failed to resolve, it may have been removed
     if (Breakpoint *breakpoint = FindBreakpointNoLock(acqMessage->uid)) {
         ASSERT(!breakpoint->pendingCollection, "GPU double-signalled breakpoint for collection");
@@ -1136,6 +1138,7 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
             // Since streams are per-submission, this is entirely atomic and coherent
             BreakpointAcquisitionMessage::ShaderExport msg;
             msg.uid = exportEmitter.UInt32(breakpoint->uid);
+            msg.magic = exportEmitter.UInt32(42);
             exportEmitter.Export(exportID, msg);
 
             // Update the breakpoint header's device data layout
