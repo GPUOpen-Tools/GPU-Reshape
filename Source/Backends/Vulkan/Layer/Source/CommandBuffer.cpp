@@ -389,10 +389,20 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
 ExecutionInfo GetBaseExecutionInfo(CommandBufferObject* object, PipelineType type) {
     const ShaderExportPipelineBindState& bindState = object->streamState->pipelineBindPoints[static_cast<uint32_t>(type)];
     
+    // Default info
     ExecutionInfo info{};
-    info.rollingExecutionUID = object->table->rollingExecutionUID++;
+
+    // Allocate the identifier, we never want zero as that's reserved
+    do {
+        info.rollingExecutionUID = object->table->rollingExecutionUID++;
+    } while (!info.rollingExecutionUID);
+    
+    // Pipeline is optional
     info.pipelineUID = bindState.pipeline ? static_cast<uint32_t>(bindState.pipeline->uid) : 0;
+
+    // Scope is not implemented yet
     info.scopeUID = 0;
+    
     return info;
 }
 
