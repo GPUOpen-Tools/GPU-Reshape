@@ -6,6 +6,9 @@ using Message.CLR;
 using ReactiveUI;
 using Runtime.Utils.Workspace;
 using Studio.Models.Instrumentation;
+using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Services;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
 
@@ -39,7 +42,7 @@ public class LooseItemViewModel : ReactiveObject
             Items =
             [
                 new LooseTreeItemViewModel { Text = $"{TracebackUtils.Format(header.executionInfo.executionFlags)}" },
-                new LooseTreeItemViewModel { Text = $"Pipeline {header.executionInfo.pipelineUID}" },
+                GetPipelineItemViewModel(breakpointDisplayViewModel, header),
                 new LooseTreeItemViewModel { Text = $"Queue {header.executionInfo.queueUID}" },
                 new LooseTreeItemViewModel { Text = $"Scope {header.executionInfo.scopeUID}" }
             ]
@@ -105,5 +108,35 @@ public class LooseItemViewModel : ReactiveObject
             threadInfo,
             executionInfoItem
         ]);
+    }
+
+    /// <summary>
+    /// Get a bound pipeline name item
+    /// </summary>
+    private LooseTreeItemViewModel GetPipelineItemViewModel(LooseBreakpointDisplayViewModel breakpointDisplayViewModel, LooseBreakpointHeader header)
+    {
+        LooseTreeItemViewModel item = new() { Text = $"Pipeline {header.executionInfo.pipelineUID}" };
+
+        // If possible, bind the name
+        if (breakpointDisplayViewModel.ShaderProperty?.GetWorkspaceCollection() is { } workspaceCollection &&
+            workspaceCollection.GetProperty<IPipelineCollectionViewModel>() is { } collection &&
+            workspaceCollection.GetService<IPipelinePoolingService>() is { } pooling)
+        {
+            PipelineViewModel pipelineViewModel = collection.GetOrAddPipeline(header.executionInfo.pipelineUID);
+            
+            // Make sure it's pooling
+            pooling.EnqueuePipeline(pipelineViewModel);
+        
+            // Bind on changes
+            pipelineViewModel.WhenAnyValue(x => x.Name).Subscribe(name =>
+            {
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    item.Text = $"Pipeline {name}";
+                }
+            });
+        }
+
+        return item;
     }
 }

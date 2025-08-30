@@ -24,32 +24,31 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-
 using System;
-using Studio.ViewModels.Workspace.Objects;
 
-namespace Studio.ViewModels.Workspace.Properties
+namespace Studio.Models.Workspace.Objects
 {
-    public interface IPipelineCollectionViewModel : IPropertyViewModel
+    [Flags]
+    public enum AsyncObjectStatus
     {
         /// <summary>
-        /// Add a new pipeline to this collection
+        /// Pending pooling
         /// </summary>
-        /// <param name="pipelineViewModel"></param>
-        public void AddPipeline(PipelineViewModel pipelineViewModel);
-
+        Pending = 0,
+        
         /// <summary>
-        /// Get a pipeline from this collection
+        /// Given object could not be found on the target device
         /// </summary>
-        /// <param name="GUID"></param>
-        /// <returns>null if not found</returns>
-        public PipelineViewModel? GetPipeline(UInt64 GUID);
-
+        NotFound = 1 << 0,
+        
         /// <summary>
-        /// Get a pipeline from this collection, add if not found
+        /// Object has no debugging symbols, IL is available
         /// </summary>
-        /// <param name="GUID"></param>
-        /// <returns></returns>
-        public PipelineViewModel GetOrAddPipeline(UInt64 GUID);
+        NoDebugSymbols = 1 << 1,
+        
+        /// <summary>
+        /// Object has debugging symbols
+        /// </summary>
+        DebugSymbols = 1 << 2
     }
 }

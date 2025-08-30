@@ -243,11 +243,11 @@ namespace Studio.ViewModels.Documents
             _object.WhenAnyValue(x => x.AsyncStatus).Subscribe(x =>
             {
                 // Ready?
-                Ready = x != AsyncShaderStatus.Pending;
+                Ready = x != AsyncObjectStatus.Pending;
 
                 // Switch to IL content view if there's no debug symbols
                 // Or, if the startup location doesn't have a source mapping
-                if (x == AsyncShaderStatus.NoDebugSymbols || _descriptor?.StartupLocation?.Location.FileUID == ShaderLocation.InvalidFileUID)
+                if (x == AsyncObjectStatus.NoDebugSymbols || _descriptor?.StartupLocation?.Location.FileUID == ShaderLocation.InvalidFileUID)
                 {
                     SelectedShaderContentViewModel = ShaderContentViewModels.First(scvm => scvm is ILShaderContentViewModel);
                 }

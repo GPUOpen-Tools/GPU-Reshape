@@ -83,7 +83,7 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Current asynchronous status
         /// </summary>
-        public AsyncShaderStatus AsyncStatus
+        public AsyncObjectStatus AsyncStatus
         {
             get => _asyncStatus;
             set => this.RaiseAndSetIfChanged(ref _asyncStatus, value);
@@ -169,6 +169,6 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Internal asynchronous status
         /// </summary>
-        private AsyncShaderStatus _asyncStatus = AsyncShaderStatus.Pending;
+        private AsyncObjectStatus _asyncStatus = AsyncObjectStatus.Pending;
     }
 }

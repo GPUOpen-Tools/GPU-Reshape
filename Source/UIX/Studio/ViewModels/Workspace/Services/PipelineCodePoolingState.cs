@@ -26,29 +26,12 @@
 
 using System;
 
-namespace Studio.Models.Workspace.Objects
+namespace Studio.ViewModels.Workspace.Services
 {
     [Flags]
-    public enum AsyncShaderStatus
+    public enum PipelinePoolingState
     {
-        /// <summary>
-        /// Pending pooling
-        /// </summary>
-        Pending = 0,
-        
-        /// <summary>
-        /// Given shader could not be found on the target device
-        /// </summary>
-        NotFound = 1 << 0,
-        
-        /// <summary>
-        /// Shader has no debugging symbols, IL is available
-        /// </summary>
-        NoDebugSymbols = 1 << 1,
-        
-        /// <summary>
-        /// Shader has debugging symbols
-        /// </summary>
-        DebugSymbols = 1 << 2
+        None = 0,
+        Name = 1 << 0
     }
 }

@@ -144,11 +144,11 @@ namespace Studio.Views.Shader
                         // Bind status
                         _object.WhenAnyValue(o => o.AsyncStatus).Subscribe(status =>
                         {
-                            if (status.HasFlag(AsyncShaderStatus.NotFound))
+                            if (status.HasFlag(AsyncObjectStatus.NotFound))
                             {
                                 Editor.Text = Studio.Resources.Resources.Shader_NotFound;
                             }
-                            else if (status.HasFlag(AsyncShaderStatus.NoDebugSymbols))
+                            else if (status.HasFlag(AsyncObjectStatus.NoDebugSymbols))
                             {
                                 Editor.Text = Studio.Resources.Resources.Shader_NoDebugSymbols;
                             }

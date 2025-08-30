@@ -24,7 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Avalonia;
+using Avalonia.Threading;
 using DynamicData;
 using Studio.Models.Logging;
 using Studio.Services;
@@ -59,7 +59,17 @@ namespace Studio
         /// <param name="message"></param>
         public static void Info(string message)
         {
-            Add(LogSeverity.Info, message);
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                Add(LogSeverity.Info, message);
+            }
+            else
+            {
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    Add(LogSeverity.Info, message);
+                });
+            }
         }
 
         /// <summary>
@@ -68,7 +78,17 @@ namespace Studio
         /// <param name="message"></param>
         public static void Warning(string message)
         {
-            Add(LogSeverity.Warning, message);
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                Add(LogSeverity.Warning, message);
+            }
+            else
+            {
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    Add(LogSeverity.Warning, message);
+                });
+            }
         }
 
         /// <summary>
@@ -77,7 +97,17 @@ namespace Studio
         /// <param name="message"></param>
         public static void Error(string message)
         {
-            Add(LogSeverity.Error, message);
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                Add(LogSeverity.Error, message);
+            }
+            else
+            {
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    Add(LogSeverity.Error, message);
+                });
+            }
         }
     }
 }

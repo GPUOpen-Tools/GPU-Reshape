@@ -83,24 +83,24 @@ namespace Studio.ViewModels.Workspace.Services
                             }
 
                             // Final status
-                            AsyncShaderStatus status;
+                            AsyncObjectStatus status;
                             
                             // Failed to find?
                             if (shaderCode.found == 0)
                             {
-                                status = AsyncShaderStatus.NotFound;
+                                status = AsyncObjectStatus.NotFound;
                             }
 
                             // Only native?
                             else if (shaderCode.native == 1 || shaderCode.fileCount == 0)
                             {
-                                status = AsyncShaderStatus.NoDebugSymbols;
+                                status = AsyncObjectStatus.NoDebugSymbols;
                             }
                             
                             // With debug symbols
                             else
                             {
-                                status = AsyncShaderStatus.DebugSymbols;
+                                status = AsyncObjectStatus.DebugSymbols;
                             }
                             
                             // Update status

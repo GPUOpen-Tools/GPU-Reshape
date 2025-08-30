@@ -24,32 +24,61 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-
 using System;
-using Studio.ViewModels.Workspace.Objects;
+using ReactiveUI;
+using Runtime.ViewModels.Traits;
+using Studio.Models.Workspace.Objects;
 
-namespace Studio.ViewModels.Workspace.Properties
+namespace Studio.ViewModels.Workspace.Objects
 {
-    public interface IPipelineCollectionViewModel : IPropertyViewModel
+    public class PipelineViewModel : ReactiveObject, ISerializable
     {
         /// <summary>
-        /// Add a new pipeline to this collection
+        /// Pipeline GUID
         /// </summary>
-        /// <param name="pipelineViewModel"></param>
-        public void AddPipeline(PipelineViewModel pipelineViewModel);
+        public UInt64 GUID { get; set; }
 
         /// <summary>
-        /// Get a pipeline from this collection
+        /// Contents of this pipeline
         /// </summary>
-        /// <param name="GUID"></param>
-        /// <returns>null if not found</returns>
-        public PipelineViewModel? GetPipeline(UInt64 GUID);
+        public string Name
+        {
+            get => _name;
+            set => this.RaiseAndSetIfChanged(ref _name, value);
+        }
 
         /// <summary>
-        /// Get a pipeline from this collection, add if not found
+        /// Current asynchronous status
         /// </summary>
-        /// <param name="GUID"></param>
-        /// <returns></returns>
-        public PipelineViewModel GetOrAddPipeline(UInt64 GUID);
+        public AsyncObjectStatus AsyncStatus
+        {
+            get => _asyncStatus;
+            set => this.RaiseAndSetIfChanged(ref _asyncStatus, value);
+        }
+        
+        /// <summary>
+        /// Serialize this object
+        /// </summary>
+        public object Serialize()
+        {
+            SerializationMap map = new()
+            {
+                { "GUID", GUID },
+                { "Filename", Name },
+                { "AsyncStatus", Enum.GetName(AsyncStatus) }
+            };
+
+            return map;
+        }
+
+        /// <summary>
+        /// Internal filename
+        /// </summary>
+        private string _name = string.Empty;
+
+        /// <summary>
+        /// Internal asynchronous status
+        /// </summary>
+        private AsyncObjectStatus _asyncStatus = AsyncObjectStatus.Pending;
     }
 }

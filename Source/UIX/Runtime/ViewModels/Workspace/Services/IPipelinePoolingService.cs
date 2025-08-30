@@ -24,32 +24,14 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-
-using System;
-using Studio.ViewModels.Workspace.Objects;
-
-namespace Studio.ViewModels.Workspace.Properties
+namespace Studio.ViewModels.Workspace.Services
 {
-    public interface IPipelineCollectionViewModel : IPropertyViewModel
+    public interface IPipelinePoolingService : IPropertyService
     {
         /// <summary>
-        /// Add a new pipeline to this collection
+        /// Enqueue a pipeline for pooling
         /// </summary>
         /// <param name="pipelineViewModel"></param>
-        public void AddPipeline(PipelineViewModel pipelineViewModel);
-
-        /// <summary>
-        /// Get a pipeline from this collection
-        /// </summary>
-        /// <param name="GUID"></param>
-        /// <returns>null if not found</returns>
-        public PipelineViewModel? GetPipeline(UInt64 GUID);
-
-        /// <summary>
-        /// Get a pipeline from this collection, add if not found
-        /// </summary>
-        /// <param name="GUID"></param>
-        /// <returns></returns>
-        public PipelineViewModel GetOrAddPipeline(UInt64 GUID);
+        public void EnqueuePipeline(Objects.PipelineViewModel pipelineViewModel);
     }
 }

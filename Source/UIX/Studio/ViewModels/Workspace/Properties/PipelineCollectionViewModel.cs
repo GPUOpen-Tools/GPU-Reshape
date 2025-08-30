@@ -24,6 +24,9 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using DynamicData;
 using ReactiveUI;
 
@@ -55,6 +58,11 @@ namespace Studio.ViewModels.Workspace.Properties
         /// All services
         /// </summary>
         public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
+
+        /// <summary>
+        /// All pipelines within this collection
+        /// </summary>
+        public ObservableCollection<Objects.PipelineViewModel> Pipelines { get; } = new();
         
         /// <summary>
         /// View model associated with this property
@@ -71,10 +79,68 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Add a new pipeline to this collection
+        /// </summary>
+        /// <param name="pipelineViewModel"></param>
+        public void AddPipeline(Objects.PipelineViewModel pipelineViewModel)
+        {
+            // Flat view
+            Pipelines.Add(pipelineViewModel);
+            
+            // Create lookup
+            _pipelineModelGUID.Add(pipelineViewModel.GUID, pipelineViewModel);
+        }
+
+        /// <summary>
+        /// Get a pipeline from this collection
+        /// </summary>
+        /// <param name="GUID"></param>
+        /// <returns>null if not found</returns>
+        public Objects.PipelineViewModel? GetPipeline(UInt64 GUID)
+        {
+            _pipelineModelGUID.TryGetValue(GUID, out Objects.PipelineViewModel? pipelineViewModel);
+            return pipelineViewModel;
+        }
+
+        /// <summary>
+        /// Get a pipeline from this collection, add if not found
+        /// </summary>
+        /// <param name="GUID"></param>
+        /// <returns></returns>
+        public Objects.PipelineViewModel GetOrAddPipeline(UInt64 GUID)
+        {
+            Objects.PipelineViewModel? pipelineViewModel = GetPipeline(GUID);
+            
+            // Create if not found
+            if (pipelineViewModel == null)
+            {
+                pipelineViewModel = new Objects.PipelineViewModel()
+                {
+                    GUID = GUID
+                };
+                
+                // Append
+                AddPipeline(pipelineViewModel);
+            }
+
+            // OK
+            return pipelineViewModel;
+        }
+        
+        /// <summary>
         /// Invoked when a connection has changed
         /// </summary>
         private void OnConnectionChanged()
         {
+            // Set connection
+            _pipelinePoolingService.ConnectionViewModel = ConnectionViewModel;
+            
+            // Make visible
+            Parent?.Services.Add(_pipelinePoolingService);
+            
+            // Register internal listeners
+            _connectionViewModel?.Bridge?.Register(_pipelinePoolingService);
+
             CreateProperties();
         }
 
@@ -84,12 +150,26 @@ namespace Studio.ViewModels.Workspace.Properties
         private void CreateProperties()
         {
             Properties.Clear();
-
-            if (_connectionViewModel == null)
-            {
-                return;
-            }
         }
+
+        /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Deregister listeners
+            _connectionViewModel?.Bridge?.Deregister(_pipelinePoolingService);
+        }
+
+        /// <summary>
+        /// GUID to pipeline mappings
+        /// </summary>
+        private Dictionary<UInt64, Objects.PipelineViewModel> _pipelineModelGUID = new();
+
+        /// <summary>
+        /// Pooling listener
+        /// </summary>
+        private Services.PipelinePoolingService _pipelinePoolingService = new();
 
         /// <summary>
         /// Internal view model

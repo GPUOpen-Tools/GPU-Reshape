@@ -152,11 +152,6 @@ namespace Studio.ViewModels.Workspace.Properties
         private void CreateProperties()
         {
             Properties.Clear();
-
-            if (_connectionViewModel == null)
-            {
-                return;
-            }
         }
 
         /// <summary>
