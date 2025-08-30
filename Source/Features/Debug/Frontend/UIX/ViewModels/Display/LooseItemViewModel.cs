@@ -6,7 +6,6 @@ using GRS.Features.Debug.UIX.Models;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Utils.Workspace;
-using Studio.Models.Instrumentation;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
@@ -101,7 +100,7 @@ public class LooseItemViewModel : ReactiveObject
         }
         
         // Data span begin
-        Span<uint> dataDWordSpan = dwordSpan.Slice((int)ExecutionInfo.DWordCount);
+        Span<uint> dataDWordSpan = dwordSpan.Slice((int)LooseBreakpointHeader.DWordCount);
 
         // TODO: Actually interpret the data
         LooseTreeItemViewModel dataItem = new()

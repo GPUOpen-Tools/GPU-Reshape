@@ -969,6 +969,7 @@ static void GetBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter
     if (byteOffset % sizeof(uint32_t) == 0 && byteCount == sizeof(uint32_t)) {
         uint32_t dword = static_cast<uint32_t>(byteOffset / sizeof(uint32_t));
         dwords[dword] = value;
+        byteOffset += sizeof(uint32_t);
         return;
     }
 
