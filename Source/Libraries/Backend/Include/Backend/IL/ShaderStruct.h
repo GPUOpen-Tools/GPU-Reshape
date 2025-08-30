@@ -33,6 +33,21 @@
 #include <Common/Assert.h>
 
 namespace IL {
+    namespace Detail {
+        template<typename C, typename T>
+        static C ClassOfMemberType(T C::*);
+    }
+    
+    
+    /// Get the dword offset of a member
+    template<auto M>
+    uint32_t MemberDWordOffset() {
+        static decltype(Detail::ClassOfMemberType(std::declval<decltype(M)>())) dummy;
+        size_t offset = reinterpret_cast<size_t>(&(dummy.*M)) - reinterpret_cast<size_t>(&dummy);
+        ASSERT(offset % sizeof(uint32_t) == 0, "Non-dword aligned offset");
+        return static_cast<uint32_t>(offset / sizeof(uint32_t));
+    }
+    
     template<typename T>
     struct ShaderStruct {
         ShaderStruct(IL::ID data) : data(data) {
@@ -46,16 +61,16 @@ namespace IL {
         /// \return dword value
         template<auto M, typename E>
         IL::ID Get(E& emitter, uint32_t dwordOffset = 0) {
-            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(DWordOffset<M>() + dwordOffset)->id);
+            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(MemberDWordOffset<M>() + dwordOffset)->id);
         }
 
-        /// Get the dword offset of a member
-        template<auto M>
-        uint32_t DWordOffset() {
-            static T dummy;
-            size_t offset = reinterpret_cast<size_t>(&(dummy.*M)) - reinterpret_cast<size_t>(&dummy);
-            ASSERT(offset % sizeof(uint32_t) == 0, "Non-dword aligned offset");
-            return static_cast<uint32_t>(offset / sizeof(uint32_t));
+        /// Get a dword within the struct
+        /// \param emitter instruction emitter to use
+        /// \param dwordOffset dword offset
+        /// \return dword value
+        template<typename E>
+        IL::ID GetDWord(E& emitter, uint32_t dwordOffset = 0) {
+            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(dwordOffset)->id);
         }
 
     private:

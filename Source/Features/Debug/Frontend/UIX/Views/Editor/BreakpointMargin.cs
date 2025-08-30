@@ -1,27 +1,18 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Rendering;
-using GRS.Features.Debug.UIX.ViewModels;
-using Studio.Models.Workspace.Objects;
-using Studio.ViewModels.Shader;
+using GRS.Features.Debug.UIX.Models;
+using GRS.Features.Debug.UIX.ViewModels.Editor;
+using GRS.Features.Debug.UIX.ViewModels.Utils;
 
 namespace UIX.Views.Editor;
 
 public class BreakpointMargin : AbstractMargin
 {
-    /// <summary>
-    /// The textual view model
-    /// </summary>
-    public ITextualShaderContentViewModel ContentViewModel { get; set; }
-    
-    /// <summary>
-    /// The target collection
-    /// </summary>
-    public ShaderBreakpointCollectionViewModel CollectionViewModel { get; set; }
-    
     /// <summary>
     /// Constructor
     /// </summary>
@@ -56,7 +47,7 @@ public class BreakpointMargin : AbstractMargin
             int lineNumberBase1 = visualLine.FirstDocumentLine.LineNumber;
 
             // Has an assigned breakpoint?
-            if (CollectionViewModel.Breakpoints.FirstOrDefault(b => b.SourceBinding?.InstructionLine == lineNumberBase1 - 1) is { } breakpoint)
+            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(b => b.SourceBinding?.InstructionLine == lineNumberBase1 - 1) is { } breakpoint)
             {
                 // Draw breakpoint
                 context.FillRectangle(
@@ -75,7 +66,7 @@ public class BreakpointMargin : AbstractMargin
             }
 
             // Breakpoint preview
-            if (_previewLine != null && _previewLine.Value == lineNumberBase1)
+            if (_previewLineBase1 != null && _previewLineBase1.Value == lineNumberBase1)
             {
                 context.FillRectangle(
                     _breakpointPreviewBrush,
@@ -99,14 +90,44 @@ public class BreakpointMargin : AbstractMargin
         // On a valid line? Set preview line
         if (TextView.GetVisualLineFromVisualTop(TextView.ScrollOffset.Y + e.GetPosition(this).Y) is {} visualLine)
         {
-            _previewLine = visualLine.FirstDocumentLine.LineNumber;
+            _previewLineBase1  = visualLine.FirstDocumentLine.LineNumber;
+            VM.LineNumberBase0 = (int)(_previewLineBase1 - 1);
+            
+            // Assign highlighted breakpoint
+            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => x.SourceBinding?.InstructionLine == VM.LineNumberBase0) is { } breakpoint)
+            {
+                VM.HighlightedBreakpointViewModel = breakpoint;
+            }
         }
         else
         {
-            _previewLine = null;
+            _previewLineBase1 = null;
+            VM.LineNumberBase0 = 0;
+            VM.HighlightedBreakpointViewModel = null;
         }
 
         InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Invoked on presses
+    /// </summary>
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(this);
+
+        // Place breakpoint
+        if (point.Properties.IsLeftButtonPressed)
+        {
+             _mode = PlacementMode.New;
+            e.Handled = true;
+        }
+
+        // Otherwise pass down
+        if (!e.Handled)
+        {
+            base.OnPointerPressed(e);
+        }
     }
 
     /// <summary>
@@ -114,6 +135,13 @@ public class BreakpointMargin : AbstractMargin
     /// </summary>
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
+        // Pass down if not our event
+        if (_mode == PlacementMode.None)
+        {
+            base.OnPointerReleased(e);
+            return;
+        }
+        
         // Over a valid line?
         if (TextView.GetVisualLineFromVisualTop(TextView.ScrollOffset.Y + e.GetPosition(this).Y) is not { } visualLine)
         {
@@ -122,31 +150,37 @@ public class BreakpointMargin : AbstractMargin
 
         int lineBase0 = visualLine.FirstDocumentLine.LineNumber - 1;
 
-        // If there's a breakpoint, remove it
-        if (CollectionViewModel.Breakpoints.FirstOrDefault(x => x.SourceBinding?.InstructionLine == lineBase0) is { } breakpoint)
+        // Handle mode
+        switch (_mode)
         {
-            CollectionViewModel.Breakpoints.Remove(breakpoint);
+            case PlacementMode.New:
+                HandleNewBreakpoint(lineBase0);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        _mode = PlacementMode.None;
+    }
+
+    /// <summary>
+    /// Invoked on breakpoint requests
+    /// </summary>
+    private void HandleNewBreakpoint(int lineBase0)
+    {
+        // If there's a breakpoint, remove it
+        if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => x.SourceBinding?.InstructionLine == lineBase0) is { } breakpoint)
+        {
+            VM.CollectionViewModel.Breakpoints.Remove(breakpoint);
         }
         else
         {
-            // Find the instruction representing the current line
-            AssembledInstructionMapping mapping = ContentViewModel.TransformInstruction(lineBase0);
-            
-            // None found, add it
-            CollectionViewModel.Breakpoints.Add(new BreakpointViewModel
-            {
-                ShaderProperty = CollectionViewModel.ShaderProperty,
-                SourceBinding = new SourceBinding
-                {
-                    InstructionLine = lineBase0,
-                    InstructionCodeOffset = mapping.CodeOffset
-                }
-            });
+            BreakpointUtils.AddBreakpoint(VM.CollectionViewModel, VM.ContentViewModel, lineBase0, BreakpointCaptureMode.FirstEvent);
         }
 
         InvalidateVisual();
     }
-    
+
     /// <summary>
     /// Get the control measure
     /// </summary>
@@ -156,13 +190,32 @@ public class BreakpointMargin : AbstractMargin
     }
 
     /// <summary>
+    /// Mode types
+    /// </summary>
+    private enum PlacementMode
+    {
+        None,
+        New
+    }
+    
+    /// <summary>
+    /// Current placement mode
+    /// </summary>
+    private PlacementMode _mode = PlacementMode.None;
+
+    /// <summary>
     /// TODO: Expose styles per plugin
     /// </summary>
     private readonly IBrush _breakpointBrush = Brush.Parse("#DB5C5C");
     private readonly IBrush _breakpointPreviewBrush = Brush.Parse("#653939");
 
     /// <summary>
+    /// View model helper
+    /// </summary>
+    private BreakpointMarginViewModel VM => (BreakpointMarginViewModel)DataContext!;
+
+    /// <summary>
     /// Current preview line
     /// </summary>
-    private int? _previewLine;
+    private int? _previewLineBase1;
 }

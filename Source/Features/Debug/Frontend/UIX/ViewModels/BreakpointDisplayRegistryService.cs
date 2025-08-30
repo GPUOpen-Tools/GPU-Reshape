@@ -40,6 +40,18 @@ public class BreakpointDisplayRegistryService
                 [
                     typeof(StructuredBreakpointProcessorViewModel)
                 ]
+            },
+            
+            // Loose display
+            new BreakpointDisplayArchetypeViewModel
+            {
+                Name = "Loose",
+                Archetype = typeof(LooseBreakpointDisplayViewModel),
+                Selector = new LooseBreakpointDisplaySelectorViewModel(),
+                ProcessorArchetypes = 
+                [
+                    typeof(LooseBreakpointProcessorViewModel)
+                ]
             }
         ]);
     }

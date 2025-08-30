@@ -3,6 +3,7 @@
 // Backend
 #include <Backend/IL/Format.h>
 #include <Backend/IL/Type.h>
+#include <Backend/IL/Execution/ExecutionInfo.h>
 
 // Common
 #include <Common/Enum.h>
@@ -24,6 +25,14 @@ enum class BreakpointCompression {
     FPUnorm8888
 };
 
+enum class BreakpointCaptureMode {
+    /// Capture the first event only
+    FirstEvent,
+
+    /// Capture all events
+    AllEvents
+};
+
 BIT_SET(BreakpointFlag);
 
 enum class BreakpointDataOrder {
@@ -34,13 +43,26 @@ enum class BreakpointDataOrder {
     Static,
 
     /// Dynamic ordering
-    Dynamic
+    Dynamic,
+
+    /// Loose ordering
+    Loose,
 };
 
 struct BreakpointDynamicHeader {
     /// Thread index that exported the data
     /// Given that we know the dimensionality of the data, we can infer it from the linear index
     uint32_t thread;
+};
+
+struct BreakpointLooseHeader {
+    /// Executing data
+    ExecutionInfo info;
+
+    /// Thread indices
+    uint32_t threadX;
+    uint32_t threadY;
+    uint32_t threadZ;
 };
 
 struct BreakpointDataHostLayout {
@@ -102,8 +124,9 @@ struct BreakpointPatchData {
 };
 
 /// Number of dwords
-static constexpr uint32_t BreakpointHeaderDWordCount = sizeof(BreakpointHeader) / sizeof(uint32_t);
-static constexpr uint32_t BreakpointDynamicHeaderDWordCount = sizeof(BreakpointDynamicHeader) / sizeof(uint32_t);
+static constexpr uint32_t BreakpointHeaderDWordCount          = sizeof(BreakpointHeader) / sizeof(uint32_t);
+static constexpr uint32_t BreakpointDynamicHeaderDWordCount   = sizeof(BreakpointDynamicHeader) / sizeof(uint32_t);
+static constexpr uint32_t BreakpointLooseHeaderDWordCount     = sizeof(BreakpointLooseHeader) / sizeof(uint32_t);
 static constexpr uint32_t BreakpointStreamingHeaderDWordCount = sizeof(BreakpointHeader) / sizeof(uint32_t);
 
 /// Validation

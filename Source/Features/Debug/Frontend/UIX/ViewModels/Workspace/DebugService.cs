@@ -111,6 +111,12 @@ namespace GRS.Features.Debug.UIX.Workspace
                 {
                     continue;
                 }
+
+                // Skip if paused
+                if (breakpointViewModel.Paused)
+                {
+                    continue;
+                }
                 
                 // Do we have a processor?
                 if (breakpointViewModel.GetOrCreateProcessor(message, out IDisposable? processorCommit) is not { } processorViewModel)

@@ -116,6 +116,14 @@
         <DependentUpon>StructuredBreakpointDisplayView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Display\LooseBreakpointDisplayConfigView.axaml.cs">
+        <DependentUpon>LooseBreakpointDisplayConfigView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Display\LooseBreakpointDisplayView.axaml.cs">
+        <DependentUpon>LooseBreakpointDisplayView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>

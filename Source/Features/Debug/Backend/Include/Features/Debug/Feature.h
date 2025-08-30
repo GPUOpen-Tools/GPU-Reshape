@@ -131,6 +131,9 @@ private:
         /// Host layout, determined at compile time
         BreakpointDataHostLayout hostLayout{};
 
+        /// Registered capture mode
+        BreakpointCaptureMode captureMode{};
+
         /// Allocated stream size
         uint64_t streamSize = 0;
 
@@ -163,13 +166,21 @@ private:
         /// The assigned export order
         IL::ID exportOrder{IL::InvalidID};
 
-        /// The statically computed ordering dimensions
-        IL::ID staticOrderWidth{IL::InvalidID};
-        IL::ID staticOrderHeight{IL::InvalidID};
-        IL::ID staticOrderDepth{IL::InvalidID};
+        /// Capture mode data
+        union {
+            struct {
+                /// The statically computed ordering dimensions
+                IL::ID staticOrderWidth;
+                IL::ID staticOrderHeight;
+                IL::ID staticOrderDepth;
+                
+                /// The total number of streamed dwords
+                IL::ID dwordStreamCount;
 
-        /// The total number of streamed dwords
-        IL::ID dwordStreamCount{IL::InvalidID};
+                /// Is this a dynamic export?
+                IL::ID isDynamic;
+            } firstEvent;
+        };
 
         /// The header offset
         IL::ID headerOffset{IL::InvalidID};
@@ -179,9 +190,6 @@ private:
         
         /// The payload data dword offset
         IL::ID payloadDataOffset{IL::InvalidID};
-
-        /// Is this a dynamic export?
-        IL::ID isDynamic{IL::InvalidID};
     };
 
     struct PendingDestruction {
@@ -244,30 +252,53 @@ private:
     /// @param breakpointData device breakpoint data
     void StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData);
 
-    /// 
+    /// Get first event ordering
     /// @param context parent context
     /// @param emitter target emitter
     /// @param execution the current execution info
     /// @param breakpointHeader the breakpoint header state
     /// @param breakpoint host breakpoint data
     /// @param breakpointData device breakpoint data
-    void GetBreakpointOrdering(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<BreakpointHeader>& breakpointHeader, Breakpoint *breakpoint, BreakpointData& breakpointData);
+    void GetBreakpointOrderingFirstEvent(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<BreakpointHeader>& breakpointHeader, Breakpoint *breakpoint, BreakpointData& breakpointData);
 
-    /// Acquire a breakpoint
+    /// Acquire a first event breakpoint
     /// @param it instruction being instrumented
     /// @param breakpointBlock the breakpoint interrupt block
     /// @param breakpoint breakpoint data
     /// @param breakpointData
     /// @return next instruction iterator
-    IL::BasicBlock* AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    IL::BasicBlock* AcquireBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
     
-    /// Acquire and allocate any appropriate ordering
+    /// Acquire and allocate first event ordering
     /// @param it instruction being instrumented
     /// @param breakpointBlock the breakpoint interrupt block
     /// @param breakpoint breakpoint data
     /// @param breakpointData
     /// @return next instruction iterator
-    IL::BasicBlock* AcquireAndAllocateBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    IL::BasicBlock* AcquireAndAllocateBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    
+    /// Acquire and allocate all event ordering
+    /// @param it instruction being instrumented
+    /// @param breakpointBlock the breakpoint interrupt block
+    /// @param breakpoint breakpoint data
+    /// @param breakpointData
+    /// @return next instruction iterator
+    IL::BasicBlock* AcquireAndAllocateBreakpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+
+    /// Check if we can collect any breakpoint data
+    /// @param breakpoint target breakpoint
+    bool CanCollectBreakpoint(const Breakpoint& breakpoint);
+
+    /// Check if a breakpoint header has any valid data for collection
+    /// @param breakpoint target breakpoint
+    /// @param header mapped header
+    bool HasBreakpointStreambackData(const Breakpoint& breakpoint, const BreakpointHeader* header);
+
+    /// Get the actual breakpoint streaming size
+    /// @param breakpoint target breakpoint
+    /// @param header mapped header
+    /// @return stream byte size
+    uint64_t GetBreakpointStreamRequestSize(const Breakpoint& breakpoint, const BreakpointHeader* header);
 
 private:
     /// Create the payload for a given breakpoint

@@ -31,6 +31,7 @@ using AvaloniaEdit.Rendering;
 using DynamicData;
 using GRS.Features.Debug.UIX.Settings;
 using GRS.Features.Debug.UIX.ViewModels;
+using GRS.Features.Debug.UIX.ViewModels.Editor;
 using GRS.Features.Debug.UIX.Workspace;
 using Runtime.Models.Objects;
 using Runtime.ViewModels.Traits;
@@ -89,6 +90,13 @@ namespace GRS.Features.Debug.UIX
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayConfigView), ViewType.Config);
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(StructuredBreakpointDisplayViewModel), typeof(StructuredBreakpointDisplayView));
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(StructuredBreakpointDisplayViewModel), typeof(StructuredBreakpointDisplayConfigView), ViewType.Config);
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(LooseBreakpointDisplayViewModel), typeof(LooseBreakpointDisplayView));
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(LooseBreakpointDisplayViewModel), typeof(LooseBreakpointDisplayConfigView), ViewType.Config);
+
+            // Register context actions
+            ServiceRegistry.Get<IContextMenuService>()?.ViewModels.AddRange([
+                new BreakpointContextViewModel()
+            ]);
 
             // OK
             return true;
@@ -184,8 +192,12 @@ namespace GRS.Features.Debug.UIX
             // Add breakpoint margin
             textEditor.TextArea.LeftMargins.Insert(0, new BreakpointMargin
             {
-                ContentViewModel = textualShaderViewModel,
-                CollectionViewModel = service
+                ContextMenu = textEditor.ContextMenu,
+                DataContext = new BreakpointMarginViewModel
+                {
+                    ContentViewModel = textualShaderViewModel,
+                    CollectionViewModel = service
+                }
             });
         }
 

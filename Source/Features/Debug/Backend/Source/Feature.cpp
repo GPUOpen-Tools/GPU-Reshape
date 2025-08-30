@@ -219,6 +219,7 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                     // Add breakpoint
                     Breakpoint& breakpoint = breakpoints.emplace_back();
                     breakpoint.uid = msg->uid;
+                    breakpoint.captureMode = static_cast<BreakpointCaptureMode>(msg->captureMode);
                     breakpoint.streamSize = msg->streamSize;
 
                     // Setup payload
@@ -448,6 +449,42 @@ bool DebugFeature::ThrottleController(RequestController &controller) {
     return true;
 }
 
+bool DebugFeature::CanCollectBreakpoint(const Breakpoint &breakpoint) {
+    switch (breakpoint.captureMode) {
+        default:
+            ASSERT(false, "Invalid capture mode");
+            return false;
+        case BreakpointCaptureMode::FirstEvent:
+            return breakpoint.pendingCollection;
+        case BreakpointCaptureMode::AllEvents:
+            return true;
+    }
+}
+
+bool DebugFeature::HasBreakpointStreambackData(const Breakpoint& breakpoint, const BreakpointHeader* header) {
+    switch (breakpoint.captureMode) {
+        default:
+            ASSERT(false, "Invalid capture mode");
+            return false;
+        case BreakpointCaptureMode::FirstEvent:
+            return true;
+        case BreakpointCaptureMode::AllEvents:
+            return header->dynamicCounter > 0;
+    }
+}
+
+uint64_t DebugFeature::GetBreakpointStreamRequestSize(const Breakpoint &breakpoint, const BreakpointHeader *header) {
+    switch (breakpoint.captureMode) {
+        default:
+            ASSERT(false, "Invalid capture mode");
+            return 0;
+        case BreakpointCaptureMode::FirstEvent:
+            return header->dwordStreamCount * sizeof(uint32_t);
+        case BreakpointCaptureMode::AllEvents:
+            return header->dynamicCounter * breakpoint.hostLayout.dataDWordStride;
+    }
+}
+
 void DebugFeature::OnSyncPoint() {
     std::lock_guard guard(mutex);
 
@@ -481,7 +518,8 @@ void DebugFeature::OnSyncPoint() {
     
     // Stream out the breakpoints separately
     for (Breakpoint& breakpoint : breakpoints) {
-        if (!breakpoint.pendingCollection) {
+        // Pending collection?
+        if (!CanCollectBreakpoint(breakpoint)) {
             continue;
         }
         
@@ -492,34 +530,37 @@ void DebugFeature::OnSyncPoint() {
         auto* header  = static_cast<BreakpointHeader*>(mapped);
         void* payload = header + 1;
 
-        // How much we actually need to stream
-        uint64_t requestedStreamSize = header->dwordStreamCount * sizeof(uint32_t);
-        uint64_t effectiveStreamSize = std::min(breakpoint.streamSize, requestedStreamSize);
+        // Do we have any data at all?
+        if (HasBreakpointStreambackData(breakpoint, header)) {
+            // How much we actually need to stream
+            uint64_t requestedStreamSize = GetBreakpointStreamRequestSize(breakpoint, header);
+            uint64_t effectiveStreamSize = std::min(breakpoint.streamSize, requestedStreamSize);
         
-        // Empty out last stream
-        MessageStreamView<DebugBreakpointStreamMessage> view(stream);
+            // Empty out last stream
+            MessageStreamView<DebugBreakpointStreamMessage> view(stream);
 
-        // Allocate breakpoint data
-        auto message = view.Add(DebugBreakpointStreamMessage::AllocationInfo {
-            .dataCount = effectiveStreamSize
-        });
+            // Allocate breakpoint data
+            auto message = view.Add(DebugBreakpointStreamMessage::AllocationInfo {
+                .dataCount = effectiveStreamSize
+            });
 
-        // TODO[dbg]: Can we somehow map this in-place? There's a lot of copies going on
-        std::memcpy(message->data.Get(), payload, effectiveStreamSize);
+            // TODO[dbg]: Can we somehow map this in-place? There's a lot of copies going on
+            std::memcpy(message->data.Get(), payload, effectiveStreamSize);
 
-        // Write out request data
-        message->request = ++defaultController.requestIndex;
-        message->uid = breakpoint.uid;
-        message->dataFormat = static_cast<uint32_t>(breakpoint.hostLayout.format);
-        message->dataTypeId = breakpoint.hostLayout.type ? breakpoint.hostLayout.type->id : IL::InvalidID;
-        message->dataCompression = static_cast<uint32_t>(breakpoint.hostLayout.compression);
-        message->dataDWordStride = breakpoint.hostLayout.dataDWordStride;
-        message->dataOrder = static_cast<uint32_t>(header->dataOrder);
-        message->dataStaticWidth = header->staticWidth;
-        message->dataStaticHeight = header->staticHeight;
-        message->dataStaticDepth = header->staticDepth;
-        message->dataDynamicCounter = header->dynamicCounter;
-        message->dataRequestStreamSize = static_cast<uint32_t>(requestedStreamSize);
+            // Write out request data
+            message->request = ++defaultController.requestIndex;
+            message->uid = breakpoint.uid;
+            message->dataFormat = static_cast<uint32_t>(breakpoint.hostLayout.format);
+            message->dataTypeId = breakpoint.hostLayout.type ? breakpoint.hostLayout.type->id : IL::InvalidID;
+            message->dataCompression = static_cast<uint32_t>(breakpoint.hostLayout.compression);
+            message->dataDWordStride = breakpoint.hostLayout.dataDWordStride;
+            message->dataOrder = static_cast<uint32_t>(header->dataOrder);
+            message->dataStaticWidth = header->staticWidth;
+            message->dataStaticHeight = header->staticHeight;
+            message->dataStaticDepth = header->staticDepth;
+            message->dataDynamicCounter = header->dynamicCounter;
+            message->dataRequestStreamSize = static_cast<uint32_t>(requestedStreamSize);
+        }
 
         // Done!
         shaderDataHost->Unmap(breakpoint.hostStreamingBuffer, mapped);
@@ -784,13 +825,13 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
     return true;
 }
 
-void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<BreakpointHeader>& breakpointHeader, Breakpoint *breakpoint, BreakpointData& breakpointData) {
+void DebugFeature::GetBreakpointOrderingFirstEvent(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<BreakpointHeader>& breakpointHeader, Breakpoint *breakpoint, BreakpointData& breakpointData) {
     auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.function.GetID());
 
     // Default init
-    breakpointData.staticOrderWidth = emitter.UInt32(0);
-    breakpointData.staticOrderHeight = emitter.UInt32(0);
-    breakpointData.staticOrderDepth = emitter.UInt32(0);
+    breakpointData.firstEvent.staticOrderWidth = emitter.UInt32(0);
+    breakpointData.firstEvent.staticOrderHeight = emitter.UInt32(0);
+    breakpointData.firstEvent.staticOrderDepth = emitter.UInt32(0);
 
     switch (kernelType->type) {
         default: {
@@ -807,22 +848,22 @@ void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Em
             IL::ID threadGroupsZ = execution.Get<&ExecutionInfo::dispatch>(emitter, 2);
 
             // Determine the thread counts
-            breakpointData.staticOrderWidth = emitter.Mul(threadGroupsX, emitter.UInt32(kernelWorkgroupSize->threadsX));
-            breakpointData.staticOrderHeight = emitter.Mul(threadGroupsY, emitter.UInt32(kernelWorkgroupSize->threadsY));
-            breakpointData.staticOrderDepth = emitter.Mul(threadGroupsZ, emitter.UInt32(kernelWorkgroupSize->threadsZ));
+            breakpointData.firstEvent.staticOrderWidth = emitter.Mul(threadGroupsX, emitter.UInt32(kernelWorkgroupSize->threadsX));
+            breakpointData.firstEvent.staticOrderHeight = emitter.Mul(threadGroupsY, emitter.UInt32(kernelWorkgroupSize->threadsY));
+            breakpointData.firstEvent.staticOrderDepth = emitter.Mul(threadGroupsZ, emitter.UInt32(kernelWorkgroupSize->threadsZ));
 
             // Determine the max number of dwords
-            breakpointData.dwordStreamCount = emitter.Mul(breakpointData.staticOrderWidth, emitter.Mul(breakpointData.staticOrderHeight, emitter.Mul(breakpointData.staticOrderDepth, dwordStride)));
+            breakpointData.firstEvent.dwordStreamCount = emitter.Mul(breakpointData.firstEvent.staticOrderWidth, emitter.Mul(breakpointData.firstEvent.staticOrderHeight, emitter.Mul(breakpointData.firstEvent.staticOrderDepth, dwordStride)));
 
             // Max number of dwords
             IL::ID payloadDWordCount = breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(emitter);
 
             /// Is this a dynamic payload?
-            breakpointData.isDynamic = emitter.GreaterThan(breakpointData.dwordStreamCount, payloadDWordCount);
+            breakpointData.firstEvent.isDynamic = emitter.GreaterThan(breakpointData.firstEvent.dwordStreamCount, payloadDWordCount);
 
             // Select dynamic if we exceed 
             breakpointData.orderType = emitter.Select(
-                breakpointData.isDynamic,
+                breakpointData.firstEvent.isDynamic,
                 emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic)),
                 emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Static))
             );
@@ -839,8 +880,8 @@ void DebugFeature::GetBreakpointOrdering(const IL::VisitContext &context, IL::Em
             IL::ID staticOrder;
             {
                 // z * w * h + y * w + x
-                staticOrder = emitter.Mul(z, emitter.Mul(breakpointData.staticOrderWidth, breakpointData.staticOrderHeight));
-                staticOrder = emitter.Add(staticOrder, emitter.Mul(y, breakpointData.staticOrderWidth));
+                staticOrder = emitter.Mul(z, emitter.Mul(breakpointData.firstEvent.staticOrderWidth, breakpointData.firstEvent.staticOrderHeight));
+                staticOrder = emitter.Add(staticOrder, emitter.Mul(y, breakpointData.firstEvent.staticOrderWidth));
                 staticOrder = emitter.Add(staticOrder, x);
             }
 
@@ -1030,7 +1071,18 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     IL::Emitter<>   emitter(context.program, *interruptBlock);
     
     // Acquire it logically before, to access some shared findings
-    IL::BasicBlock* resumeBlock = AcquireAndAllocateBreakpoint(context, it, interruptBlock, breakpoint, breakpointData);
+    IL::BasicBlock* resumeBlock;
+    switch (breakpoint->captureMode) {
+        default:
+            ASSERT(false, "Invalid capture mode");
+            break;
+        case BreakpointCaptureMode::FirstEvent:
+            resumeBlock = AcquireAndAllocateBreakpointFirstEvent(context, it, interruptBlock, breakpoint, breakpointData);
+            break;
+        case BreakpointCaptureMode::AllEvents:
+            resumeBlock = AcquireAndAllocateBreakpointAllEvents(context, it, interruptBlock, breakpoint, breakpointData);
+            break;
+    }
 
     // Store the breakpoint data
     StoreBreakpointData(context, emitter, resumeBlock->begin(), value, breakpoint, breakpointData);
@@ -1042,9 +1094,9 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     return resumeBlock->begin();
 }
 
-IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData) {
+IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData) {
     /**
-     * Basic optimized acquisition.
+     * First-event optimized acquisition.
      *
      * acq = (header.acquiredExecutionUID == rollingExecutionUID)
      * if (header.acquiredExecutionUID == 0) {
@@ -1092,7 +1144,7 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
     breakpointData.payloadOffset = breakpointHeader.Get<&BreakpointHeader::payloadDWordOffset>(headerEmitter);
 
     // Get the ordering, this is used by both the acquire header and export
-    GetBreakpointOrdering(context, headerEmitter, execution, breakpointHeader, breakpoint, breakpointData);
+    GetBreakpointOrderingFirstEvent(context, headerEmitter, execution, breakpointHeader, breakpoint, breakpointData);
 
     // Read the curent acquired UID
     // This is a regular buffer read, not atomic
@@ -1144,10 +1196,10 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
             // Update the breakpoint header's device data layout
             // Used on the host to resolve ordering
             breakpointHeader.Set<&BreakpointHeader::dataOrder>(exportEmitter, breakpointData.orderType);
-            breakpointHeader.Set<&BreakpointHeader::staticWidth>(exportEmitter, breakpointData.staticOrderWidth);
-            breakpointHeader.Set<&BreakpointHeader::staticHeight>(exportEmitter, breakpointData.staticOrderHeight);
-            breakpointHeader.Set<&BreakpointHeader::staticDepth>(exportEmitter, breakpointData.staticOrderDepth);
-            breakpointHeader.Set<&BreakpointHeader::dwordStreamCount>(exportEmitter, breakpointData.dwordStreamCount);
+            breakpointHeader.Set<&BreakpointHeader::staticWidth>(exportEmitter, breakpointData.firstEvent.staticOrderWidth);
+            breakpointHeader.Set<&BreakpointHeader::staticHeight>(exportEmitter, breakpointData.firstEvent.staticOrderHeight);
+            breakpointHeader.Set<&BreakpointHeader::staticDepth>(exportEmitter, breakpointData.firstEvent.staticOrderDepth);
+            breakpointHeader.Set<&BreakpointHeader::dwordStreamCount>(exportEmitter, breakpointData.firstEvent.dwordStreamCount);
 
             exportEmitter.Branch(exportMergeBlock);
         }
@@ -1179,7 +1231,7 @@ IL::BasicBlock* DebugFeature::AcquireBreakpoint(const IL::VisitContext &context,
     return resumeBlock;
 }
 
-IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
+IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
     /**
     * acq = acquire()
     * if (acq) {
@@ -1197,7 +1249,7 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpoint(const IL::VisitConte
     IL::BasicBlock* mergeBlock   = context.function.GetBasicBlocks().AllocBlock("Bk.Inject.Merge");
 
     // Acquire the breakpoint
-    IL::BasicBlock* resumeBlock = AcquireBreakpoint(context, it, headerBlock, breakpoint, breakpointData);
+    IL::BasicBlock* resumeBlock = AcquireBreakpointFirstEvent(context, it, headerBlock, breakpoint, breakpointData);
 
     // Header
     IL::ID staticPayloadDataOffset;
@@ -1210,7 +1262,7 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpoint(const IL::VisitConte
         // Offset by payload offset
         staticPayloadDataOffset = emitter.Add(breakpointData.payloadOffset, staticPayloadDataOffset);
         
-        emitter.BranchConditional(breakpointData.isDynamic, dynamicBlock, mergeBlock, IL::ControlFlow::Selection(mergeBlock));
+        emitter.BranchConditional(breakpointData.firstEvent.isDynamic, dynamicBlock, mergeBlock, IL::ControlFlow::Selection(mergeBlock));
     }
 
     // Dynamic Allocation
@@ -1269,6 +1321,89 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpoint(const IL::VisitConte
     return resumeBlock;
 }
 
+IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *interruptBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
+    // Allocate blocks
+    IL::BasicBlock* headerBlock = context.function.GetBasicBlocks().AllocBlock("Bk.Inject.Header");
+    IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock("Bk.Acquire.Resume");
+
+    // Split the iterator to resume
+    // Excluding the iterator itself, since we may want to reference the instruction results
+    it.block->Split(resumeBlock, std::next(it));
+    
+    // Immediately branch to the header
+    IL::Emitter(context.program, *it.block).Branch(headerBlock);
+    IL::Emitter<> emitter(context.program, *headerBlock);
+
+    // Get the header
+    IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.headerOffset);
+
+    // Find the relevant breakpoint
+    GetBreakpoint(emitter, breakpoint, breakpointData);
+
+    // Get payload offset
+    breakpointData.payloadOffset = breakpointHeader.Get<&BreakpointHeader::payloadDWordOffset>(emitter);
+    
+    // Get dynamic ordering
+    IL::ID order = breakpointHeader.AtomicAdd<&BreakpointHeader::dynamicCounter>(emitter, emitter.UInt32(1));
+
+    // Limit by available number of dwords
+    order = IL::ExtendedEmitter(emitter).Min(order, breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(emitter));
+
+    // Header offset within the payload
+    IL::ID headerDWordOffset = emitter.Mul(order, emitter.UInt32(breakpoint->hostLayout.dataDWordStride + BreakpointLooseHeaderDWordCount));
+
+    // Offset by payload offset
+    headerDWordOffset = emitter.Add(breakpointData.payloadOffset, headerDWordOffset);
+
+    // Store the dynamic header
+    IL::ID streamLoadID = emitter.Load(context.program.GetShaderDataMap().Get(streamBufferID)->id);
+
+    // Write out the loose header
+    {
+        // Get the current execution
+        IL::ShaderStruct<ExecutionInfo> execution(emitter.ExecutionInfo());
+
+        // Copy over the full execution info
+        for (uint32_t  i = 0; i < kExecutionInfoDWordCount; i++) {
+            emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(i)), execution.GetDWord(emitter, i));
+        }
+
+        // Local thread data
+        IL::ID threadX;
+        IL::ID threadY;
+        IL::ID threadZ;
+
+        // Get the thread indices
+        auto* kernelTypeMd = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.program.GetEntryPoint()->GetID());
+        if (kernelTypeMd && kernelTypeMd->type == IL::KernelType::Compute) {
+            IL::ID threadId = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
+            threadX = emitter.Extract(threadId, emitter.UInt32(0));
+            threadY = emitter.Extract(threadId, emitter.UInt32(1));
+            threadZ = emitter.Extract(threadId, emitter.UInt32(2));
+        } else {
+            // TODO: Need vs, ps, etc. support
+            threadX = emitter.UInt32(0);
+            threadY = emitter.UInt32(0);
+            threadZ = emitter.UInt32(0);
+        }
+
+        // Store the thread indices
+        emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&BreakpointLooseHeader::threadX>())), threadX);
+        emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&BreakpointLooseHeader::threadY>())), threadY);
+        emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&BreakpointLooseHeader::threadZ>())), threadZ);
+    }
+
+    // Start writing after the header
+    breakpointData.payloadDataOffset = emitter.Add(headerDWordOffset, emitter.UInt32(BreakpointLooseHeaderDWordCount));
+    breakpointData.exportOrder = order;
+
+    // To merge
+    emitter.Branch(interruptBlock);
+
+    // OK
+    return resumeBlock;
+}
+
 void DebugFeature::CreateAndUpdatePayload(Breakpoint &breakpoint) {
     // Allocate the underlying memory
     breakpoint.streamAllocation = buddyAllocator.Allocate(breakpoint.streamSize);
@@ -1276,6 +1411,15 @@ void DebugFeature::CreateAndUpdatePayload(Breakpoint &breakpoint) {
     // Setup the default header
     breakpoint.header.payloadDWordOffset = static_cast<uint32_t>(breakpoint.streamAllocation.offset / sizeof(uint32_t));
     breakpoint.header.payloadDWordCount  = static_cast<uint32_t>(breakpoint.streamSize / sizeof(uint32_t));
+
+    // Capture mode modifiers
+    switch (breakpoint.captureMode) {
+        default:
+            break;
+        case BreakpointCaptureMode::AllEvents:
+            breakpoint.header.dataOrder = BreakpointDataOrder::Loose;
+            break;
+    }
 
     // Map the relevant times for the range
     tileResidencyAllocator.Allocate(

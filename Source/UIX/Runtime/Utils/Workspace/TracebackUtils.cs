@@ -12,26 +12,7 @@ public static class TracebackUtils
     public static string Format(IWorkspaceViewModel _, Traceback traceback)
     {
         StringBuilder builder = new();
-
-        if (traceback.executionFlag.HasFlag(ExecutionFlag.Indirect))
-        {
-            builder.Append("Indirect ");
-        }
-
-        if (traceback.executionFlag == ExecutionFlag.Draw)
-        {
-            builder.Append("Draw");
-        }
-
-        if (traceback.executionFlag == ExecutionFlag.Dispatch)
-        {
-            builder.Append("Dispatch");
-        }
-
-        if (traceback.executionFlag == ExecutionFlag.Raytracing)
-        {
-            builder.Append("Raytracing");
-        }
+        builder.Append(Format(traceback.executionFlag));
 
         // TODO: Pipeline collection
         builder.Append($", Pipeline {traceback.pipelineUid}");
@@ -45,6 +26,36 @@ public static class TracebackUtils
             builder.Append($", Thread Groups [{traceback.kernelLaunchX}, {traceback.kernelLaunchY}, {traceback.kernelLaunchZ}]");
         }
 
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Format a traceback execution flag
+    /// </summary>
+    public static string Format(ExecutionFlag executionFlag)
+    {
+        StringBuilder builder = new();
+
+        if (executionFlag.HasFlag(ExecutionFlag.Indirect))
+        {
+            builder.Append("Indirect ");
+        }
+
+        if (executionFlag == ExecutionFlag.Draw)
+        {
+            builder.Append("Draw");
+        }
+
+        if (executionFlag == ExecutionFlag.Dispatch)
+        {
+            builder.Append("Dispatch");
+        }
+
+        if (executionFlag == ExecutionFlag.Raytracing)
+        {
+            builder.Append("Raytracing");
+        }
+        
         return builder.ToString();
     }
 }

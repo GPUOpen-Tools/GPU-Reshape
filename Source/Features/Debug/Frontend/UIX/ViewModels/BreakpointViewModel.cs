@@ -66,6 +66,15 @@ public class BreakpointViewModel : ReactiveObject
         get => _archetypeLocked;
         set => this.RaiseAndSetIfChanged(ref _archetypeLocked, value);
     }
+
+    /// <summary>
+    /// Is the collection paused?
+    /// </summary>
+    public bool Paused
+    {
+        get => _paused;
+        set => this.RaiseAndSetIfChanged(ref _paused, value);
+    }
     
     /// <summary>
     /// Shader property
@@ -80,6 +89,11 @@ public class BreakpointViewModel : ReactiveObject
         get => _sourceBinding;
         set => this.RaiseAndSetIfChanged(ref _sourceBinding, value);
     }
+
+    /// <summary>
+    /// Assigned capture mode
+    /// </summary>
+    public BreakpointCaptureMode CaptureMode { get; set; } = BreakpointCaptureMode.FirstEvent;
     
     /// <summary>
     /// Framerate of the streamed data
@@ -317,4 +331,9 @@ public class BreakpointViewModel : ReactiveObject
     /// Internal archetypes
     /// </summary>
     private BreakpointDisplayArchetypeViewModel[] _archetypes = [];
+
+    /// <summary>
+    /// Internal pause state
+    /// </summary>
+    private bool _paused = false;
 }

@@ -30,6 +30,7 @@ public class BreakpointRegistryService : IPropertyService
             var msg = bus.Add<RegisterDebugBreakpointMessage>();
             msg.uid = breakpointViewModel.UID;
             msg.streamSize = (uint)breakpointViewModel.StreamSize;
+            msg.captureMode = (uint)breakpointViewModel.CaptureMode;
         }
     }
     

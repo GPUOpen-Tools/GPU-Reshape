@@ -45,6 +45,7 @@
     <message name="RegisterDebugBreakpoint">
         <field name="uid" type="uint32"/>
         <field name="streamSize" type="uint32"/>
+        <field name="captureMode" type="uint32"/>
     </message>
 
     <message name="ReallocateDebugBreakpoint">

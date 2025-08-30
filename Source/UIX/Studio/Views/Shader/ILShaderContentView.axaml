@@ -59,6 +59,7 @@
             FontFamily="Consolas,Menlo,Monospace"
             Foreground="#D4D4D4"
             Background="{StaticResource TextBlockColor}"
+            ContextMenu="{StaticResource ReactiveContextMenu}"
             HorizontalScrollBarVisibility="Auto"
             VerticalScrollBarVisibility="Visible"
             FontWeight="Light"
