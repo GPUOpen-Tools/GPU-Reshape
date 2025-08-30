@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using DynamicData;
 using GRS.Features.Debug.UIX.Models;
@@ -6,6 +7,7 @@ using Message.CLR;
 using ReactiveUI;
 using Runtime.Utils.Workspace;
 using Studio.Models.Instrumentation;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Services;
@@ -18,6 +20,11 @@ public class LooseItemViewModel : ReactiveObject
     /// The tree structure
     /// </summary>
     public LooseTreeItemViewModel RootItemViewModel { get; set; } = new();
+
+    /// <summary>
+    /// All flattened items
+    /// </summary>
+    public ObservableCollection<LooseTreeItemViewModel> FlatItems { get; } = new();
     
     /// <summary>
     /// Virtual index of this item
@@ -43,8 +50,8 @@ public class LooseItemViewModel : ReactiveObject
             [
                 new LooseTreeItemViewModel { Text = $"{TracebackUtils.Format(header.executionInfo.executionFlags)}" },
                 GetPipelineItemViewModel(breakpointDisplayViewModel, header),
-                new LooseTreeItemViewModel { Text = $"Queue {header.executionInfo.queueUID}" },
-                new LooseTreeItemViewModel { Text = $"Scope {header.executionInfo.scopeUID}" }
+                new LooseTreeItemViewModel { Text = $"Queue : {header.executionInfo.queueUID}" },
+                new LooseTreeItemViewModel { Text = $"Scope : {header.executionInfo.scopeUID}" }
             ]
         };
 
@@ -61,16 +68,16 @@ public class LooseItemViewModel : ReactiveObject
                 Text = TracebackUtils.Format(header.executionInfo.executionFlags),
                 Items =
                 [
-                    new LooseTreeItemViewModel { Text = $"Group Count X {header.executionInfo.dispatchInfo.groupCountX}" },
-                    new LooseTreeItemViewModel { Text = $"Group Count Y {header.executionInfo.dispatchInfo.groupCountY}" },
-                    new LooseTreeItemViewModel { Text = $"Group Count Z {header.executionInfo.dispatchInfo.groupCountZ}" }
+                    new LooseTreeItemViewModel { Text = $"Group Count X : {header.executionInfo.dispatchInfo.groupCountX}" },
+                    new LooseTreeItemViewModel { Text = $"Group Count Y : {header.executionInfo.dispatchInfo.groupCountY}" },
+                    new LooseTreeItemViewModel { Text = $"Group Count Z : {header.executionInfo.dispatchInfo.groupCountZ}" }
                 ]
             });
 
             threadInfo.Items.AddRange([
-                new LooseTreeItemViewModel { Text = $"Thread X {header.threadX}" },
-                new LooseTreeItemViewModel { Text = $"Thread Y {header.threadY}" },
-                new LooseTreeItemViewModel { Text = $"Thread Z {header.threadZ}" }
+                new LooseTreeItemViewModel { Text = $"Thread X : {header.threadX}" },
+                new LooseTreeItemViewModel { Text = $"Thread Y : {header.threadY}" },
+                new LooseTreeItemViewModel { Text = $"Thread Z : {header.threadZ}" }
             ]);
         }
 
@@ -82,14 +89,14 @@ public class LooseItemViewModel : ReactiveObject
                 Text = TracebackUtils.Format(header.executionInfo.executionFlags),
                 Items =
                 [
-                    new LooseTreeItemViewModel { Text = $"Vertex Count {header.executionInfo.drawInfo.vertexCount}" },
-                    new LooseTreeItemViewModel { Text = $"Index Count {header.executionInfo.drawInfo.indexCount}" }
+                    new LooseTreeItemViewModel { Text = $"Vertex Count : {header.executionInfo.drawInfo.vertexCount}" },
+                    new LooseTreeItemViewModel { Text = $"Index Count  : {header.executionInfo.drawInfo.indexCount}" }
                 ]
             });
 
             threadInfo.Items.AddRange([
-                new LooseTreeItemViewModel { Text = $"Vertex Count {header.threadX}" },
-                new LooseTreeItemViewModel { Text = $"Index Count {header.threadY}" }
+                new LooseTreeItemViewModel { Text = $"Vertex Count : {header.threadX}" },
+                new LooseTreeItemViewModel { Text = $"Index Count  : {header.threadY}" }
             ]);
         }
         
@@ -108,6 +115,12 @@ public class LooseItemViewModel : ReactiveObject
             threadInfo,
             executionInfoItem
         ]);
+        
+        // Flatten them all
+        foreach (IObservableTreeItem observableTreeItem in RootItemViewModel.Items)
+        {
+            FlattenHierarchy((LooseTreeItemViewModel)observableTreeItem);
+        }
     }
 
     /// <summary>
@@ -115,7 +128,7 @@ public class LooseItemViewModel : ReactiveObject
     /// </summary>
     private LooseTreeItemViewModel GetPipelineItemViewModel(LooseBreakpointDisplayViewModel breakpointDisplayViewModel, LooseBreakpointHeader header)
     {
-        LooseTreeItemViewModel item = new() { Text = $"Pipeline {header.executionInfo.pipelineUID}" };
+        LooseTreeItemViewModel item = new() { Text = $"Pipeline : {header.executionInfo.pipelineUID}" };
 
         // If possible, bind the name
         if (breakpointDisplayViewModel.ShaderProperty?.GetWorkspaceCollection() is { } workspaceCollection &&
@@ -132,11 +145,33 @@ public class LooseItemViewModel : ReactiveObject
             {
                 if (!string.IsNullOrWhiteSpace(name))
                 {
-                    item.Text = $"Pipeline {name}";
+                    item.Text = $"Pipeline : {name}";
                 }
             });
         }
 
         return item;
+    }
+
+    /// <summary>
+    /// Flatten an item
+    /// </summary>
+    private void FlattenHierarchy(LooseTreeItemViewModel itemViewModel)
+    {
+        FlatItems.Add(itemViewModel);
+
+        if (itemViewModel.Items.Count == 0)
+        {
+            return;
+        }
+        
+        FlatItems.Add(new LooseTreeItemViewModel { Text = "{" });
+
+        foreach (IObservableTreeItem observableTreeItem in itemViewModel.Items)
+        {
+            FlattenHierarchy((LooseTreeItemViewModel)observableTreeItem);
+        }
+
+        FlatItems.Add(new LooseTreeItemViewModel { Text = "}" });
     }
 }

@@ -17,13 +17,5 @@ public partial class LooseBreakpointDisplayView : UserControl, IViewFor
     public LooseBreakpointDisplayView()
     {
         InitializeComponent();
-
-        this.WhenAnyValue(x => x.DataContext)
-            .CastNullable<LooseBreakpointDisplayViewModel>()
-            .Subscribe(viewModel =>
-            {
-                
-            }
-        );
     }
 }

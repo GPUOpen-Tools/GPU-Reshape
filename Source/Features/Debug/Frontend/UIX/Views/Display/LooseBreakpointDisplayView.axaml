@@ -11,7 +11,8 @@
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
     <Grid>
-        <ListBox ItemsSource="{Binding Items}">
+        <ListBox
+            ItemsSource="{Binding Items}">
             <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
                     <VirtualizingStackPanel Orientation="Vertical"/>
@@ -20,18 +21,48 @@
             
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:LooseItemViewModel">
-                    <TreeView ItemsSource="{Binding RootItemViewModel.Items}">
-                        <TreeView.Styles>
-                            <Style Selector="TreeViewItem">
-                                <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}"/>
-                            </Style>
-                        </TreeView.Styles>
-                        <TreeView.ItemTemplate>
-                            <TreeDataTemplate ItemsSource="{Binding (cvm:IObservableTreeItem).Items}">
-                                <TextBlock Text="{Binding Text }"/>
-                            </TreeDataTemplate>
-                        </TreeView.ItemTemplate>    
-                    </TreeView>
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Expand Button -->
+                        <Button 
+                            Classes="Icon"
+                            Margin="0 0 2 0">
+                            <PathIcon Margin="0 1 0 0" Data="{StaticResource MagnifyExpand}" Width="14" Height="14"/>
+                            
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <TreeView ItemsSource="{Binding RootItemViewModel.Items}">
+                                        <TreeView.Styles>
+                                            <Style Selector="TreeViewItem">
+                                                <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}"/>
+                                            </Style>
+                                        </TreeView.Styles>
+                                        <TreeView.ItemTemplate>
+                                            <TreeDataTemplate ItemsSource="{Binding (cvm:IObservableTreeItem).Items}">
+                                                <TextBlock Text="{Binding Text }"/>
+                                            </TreeDataTemplate>
+                                        </TreeView.ItemTemplate>    
+                                    </TreeView>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                        
+                        <!-- Flattened view -->
+                        <ItemsControl
+                            VerticalAlignment="Stretch"
+                            HorizontalAlignment="Right"
+                            ItemsSource="{Binding FlatItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="viewModels:LooseTreeItemViewModel">
+                                    <TextBlock Text="{Binding Text }"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="5" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>

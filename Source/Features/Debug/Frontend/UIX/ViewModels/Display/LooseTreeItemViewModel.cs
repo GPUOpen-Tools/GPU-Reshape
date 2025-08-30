@@ -15,7 +15,7 @@ public class LooseTreeItemViewModel : ReactiveObject, IObservableTreeItem
     /// <summary>
     /// Is this item expanded?
     /// </summary>
-    public bool IsExpanded { get; set; }
+    public bool IsExpanded { get; set; } = true;
     
     /// <summary>
     /// Assigned view model, optional
