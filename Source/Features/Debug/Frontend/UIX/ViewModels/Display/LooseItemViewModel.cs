@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
+using System.Text;
 using DynamicData;
 using GRS.Features.Debug.UIX.Models;
+using GRS.Features.Debug.UIX.ViewModels.Utils;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Utils.Workspace;
+using Studio.Models.IL;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Services;
+using Type = Studio.Models.IL.Type;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
 
@@ -103,10 +107,7 @@ public class LooseItemViewModel : ReactiveObject
         Span<uint> dataDWordSpan = dwordSpan.Slice((int)LooseBreakpointHeader.DWordCount);
 
         // TODO: Actually interpret the data
-        LooseTreeItemViewModel dataItem = new()
-        {
-            Text = $"{dataDWordSpan[0]}"
-        };
+        LooseTreeItemViewModel dataItem = GetValueItem(breakpointDisplayViewModel, header, dataDWordSpan, dwordOffset + LooseBreakpointHeader.DWordCount);
         
         // Add items
         RootItemViewModel.Items.AddRange([
@@ -120,6 +121,58 @@ public class LooseItemViewModel : ReactiveObject
         {
             FlattenHierarchy((LooseTreeItemViewModel)observableTreeItem);
         }
+    }
+
+    /// <summary>
+    /// Get a bound value item
+    /// </summary>
+    private LooseTreeItemViewModel GetValueItem(LooseBreakpointDisplayViewModel breakpointDisplayViewModel, LooseBreakpointHeader header, Span<uint> dataDWordSpan, uint dwordOffset)
+    {
+        StringBuilder rawBuffer = new();
+
+        // By default, format the raw data in hex
+        for (int i = 0; i < dataDWordSpan.Length; i++)
+        {
+            if (i != 0)
+            {
+                rawBuffer.Append(", ");
+            }
+            
+            rawBuffer.Append("0x");
+            rawBuffer.Append(dataDWordSpan[i].ToString("X"));
+        }
+        
+        LooseTreeItemViewModel item = new() { Text = $"Value : Raw [{rawBuffer}]" };
+
+        // If possible, bind the value deserialization to the given type id
+        if (breakpointDisplayViewModel.ShaderProperty?.GetWorkspaceCollection() is { } workspaceCollection &&
+            workspaceCollection.GetProperty<IShaderCollectionViewModel>() is { } collection &&
+            workspaceCollection.GetService<IShaderCodeService>() is { } pooling)
+        {
+            ShaderViewModel shaderViewModel = collection.GetOrAddShader(breakpointDisplayViewModel.ShaderProperty.Shader.GUID);
+            
+            // Make sure it's pooling
+            pooling.EnqueueShaderIL(shaderViewModel);
+
+            // Bind on changes
+            shaderViewModel.WhenAnyValue(x => x.Program).WhereNotNull().Subscribe(program =>
+            {
+                Type type = (Type)program.Lookup[breakpointDisplayViewModel.FlatInfo.dataTypeId];
+
+                // Due to Span GC rules, create it anew here
+                // The underlying memory is guaranteed to exist
+                Span<uint> dwordSpan = new(breakpointDisplayViewModel.DWords, (int)dwordOffset, (int)breakpointDisplayViewModel.FlatInfo.dataDWordStride);
+
+                // Just keep it under its own category
+                item.Text = "Value";
+                
+                // Format the bytes according to its type
+                Span<byte> dataSpan = MemoryMarshal.AsBytes(dwordSpan);
+                FormatValue(item, type, ref dataSpan);
+            });
+        }
+
+        return item;
     }
 
     /// <summary>
@@ -150,6 +203,106 @@ public class LooseItemViewModel : ReactiveObject
         }
 
         return item;
+    }
+
+    /// <summary>
+    /// Format an opaque value
+    /// </summary>
+    /// <param name="item">item to append to</param>
+    /// <param name="type">il type</param>
+    /// <param name="byteSpan">current byte span</param>
+    private void FormatValue(LooseTreeItemViewModel item, Type type, ref Span<byte> byteSpan)
+    {
+        switch (type.Kind)
+        {
+            default:
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = type.Kind.ToString() });
+                break;
+            }
+            case TypeKind.Bool:
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = TypeFormattingUtils.FormatBool((BoolType)type, ref byteSpan)});
+                break;
+            }
+            case TypeKind.Int:
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = TypeFormattingUtils.FormatInt((IntType)type, ref byteSpan)});
+                break;
+            }
+            case TypeKind.FP:
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = TypeFormattingUtils.FormatFP((FPType)type, ref byteSpan)});
+                break;
+            }
+            case TypeKind.Vector:
+            {
+                var typed = (VectorType)type;
+                
+                LooseTreeItemViewModel vectorType = new() { Text = "Vector" };
+
+                for (int i = 0; i < typed.Dimension; i++)
+                {
+                    FormatValue(vectorType, typed.ContainedType, ref byteSpan);
+                }
+
+                item.Items.Add(vectorType);
+                break;
+            }
+            case TypeKind.Array:
+            {
+                var typed = (ArrayType)type;
+                
+                LooseTreeItemViewModel arrayItem = new() { Text = "Array" };
+
+                for (int i = 0; i < typed.Count; i++)
+                {
+                    FormatValue(arrayItem, typed.ElementType, ref byteSpan);
+                }
+
+                item.Items.Add(arrayItem);
+                break;
+            }
+            case TypeKind.Matrix:
+            {
+                var typed = (MatrixType)type;
+                
+                LooseTreeItemViewModel matrixItem = new() { Text = "Matrix" };
+
+                for (int row = 0; row < typed.Rows; row++)
+                {
+                    LooseTreeItemViewModel rowItem = new() { Text = $"Row {row}" };
+                    
+                    for (int column = 0; column < typed.Columns; column++)
+                    {
+                        LooseTreeItemViewModel columnItem = new() { Text = $"Column {column}" };
+                        FormatValue(matrixItem, typed.ContainedType, ref byteSpan);
+                        rowItem.Items.Add(columnItem);
+                    }
+                    
+                    matrixItem.Items.Add(rowItem);
+                }
+
+                item.Items.Add(matrixItem);
+                break;
+            }
+            case TypeKind.Struct:
+            {
+                var typed = (StructType)type;
+                
+                LooseTreeItemViewModel structItem = new() { Text = "Struct" };
+
+                for (int i = 0; i < typed.MemberTypes.Length; i++)
+                {
+                    LooseTreeItemViewModel memberItem = new() { Text = $"Member {i}" };
+                    FormatValue(memberItem, typed.MemberTypes[i], ref byteSpan);
+                    structItem.Items.Add(memberItem);
+                }
+
+                item.Items.Add(structItem);
+                break;
+            }
+        }
     }
 
     /// <summary>
