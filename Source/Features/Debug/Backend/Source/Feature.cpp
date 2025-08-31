@@ -818,7 +818,7 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
         breakpoint->hostLayout.type = type;
 
         // TODO[dbg]: I guess we don't need to handle alignment?
-        breakpoint->hostLayout.dataDWordStride = static_cast<uint32_t>(GetPODNonAlignedTypeByteSize(type) / sizeof(uint32_t));
+        breakpoint->hostLayout.dataDWordStride = static_cast<uint32_t>((GetPODNonAlignedTypeByteSize(type) + sizeof(uint32_t) - 1) / sizeof(uint32_t));
     }
 
     // Host layout supported
