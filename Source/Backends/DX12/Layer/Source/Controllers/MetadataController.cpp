@@ -151,9 +151,13 @@ void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
     // Attempt to find shader with given UID
     PipelineState* pipeline = device->states_Pipelines.GetFromUID(message.pipelineUID);
 
-    // Determine name
     // TODO: Report back if it was found or not
-    const char* name = pipeline && pipeline->debugName ? pipeline->debugName : "Unknown";
+    if (!pipeline) {
+        return;
+    }
+    
+    // Determine name
+    const char* name = pipeline->debugName ? pipeline->debugName : "Unknown";
 
     // Push response
     auto&& file = view.Add<PipelineNameMessage>(PipelineNameMessage::AllocationInfo { .nameLength = static_cast<size_t>(std::strlen(name)) });
