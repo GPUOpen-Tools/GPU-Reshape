@@ -47,21 +47,7 @@
                         </Button>
                         
                         <!-- Flattened view -->
-                        <ItemsControl
-                            VerticalAlignment="Stretch"
-                            HorizontalAlignment="Right"
-                            ItemsSource="{Binding FlatItems}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="viewModels:LooseTreeItemViewModel">
-                                    <TextBlock Text="{Binding Text }"/>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="5" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                        <TextBlock Text="{Binding FlatString}"/>
                     </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>

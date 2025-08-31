@@ -27,7 +27,7 @@ public class LooseItemViewModel : ReactiveObject
     /// <summary>
     /// All flattened items
     /// </summary>
-    public ObservableCollection<LooseTreeItemViewModel> FlatItems { get; } = new();
+    public string FlatString { get; } = string.Empty;
     
     /// <summary>
     /// Virtual index of this item
@@ -117,10 +117,13 @@ public class LooseItemViewModel : ReactiveObject
         ]);
         
         // Flatten them all
+        StringBuilder builder = new();
         foreach (IObservableTreeItem observableTreeItem in RootItemViewModel.Items)
         {
-            FlattenHierarchy((LooseTreeItemViewModel)observableTreeItem);
+            FlattenHierarchy((LooseTreeItemViewModel)observableTreeItem, builder);
+            builder.Append(' ');
         }
+        FlatString = builder.ToString();
     }
 
     /// <summary>
@@ -308,22 +311,23 @@ public class LooseItemViewModel : ReactiveObject
     /// <summary>
     /// Flatten an item
     /// </summary>
-    private void FlattenHierarchy(LooseTreeItemViewModel itemViewModel)
+    private void FlattenHierarchy(LooseTreeItemViewModel itemViewModel, StringBuilder builder)
     {
-        FlatItems.Add(itemViewModel);
+        builder.Append(itemViewModel.Text);
 
         if (itemViewModel.Items.Count == 0)
         {
             return;
         }
         
-        FlatItems.Add(new LooseTreeItemViewModel { Text = "{" });
+        builder.Append(" { ");
 
         foreach (IObservableTreeItem observableTreeItem in itemViewModel.Items)
         {
-            FlattenHierarchy((LooseTreeItemViewModel)observableTreeItem);
+            FlattenHierarchy((LooseTreeItemViewModel)observableTreeItem, builder);
+            builder.Append(' ');
         }
 
-        FlatItems.Add(new LooseTreeItemViewModel { Text = "}" });
+        builder.Append(" } ");
     }
 }
