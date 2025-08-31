@@ -4,7 +4,8 @@ using Studio.Models.Instrumentation;
 namespace GRS.Features.Debug.UIX.Models;
 
 /// <summary>
-/// Mirror of Cxx Format, keep up to date
+/// Source Mirrors
+/// - Source/Features/Debug/Backend/Include/Features/Debug/BreakpointHeader.h
 /// </summary>
 
 [System.Flags]
@@ -49,4 +50,13 @@ public struct LooseBreakpointHeader
     
     [FieldOffset(48)]
     public uint threadZ;
+}
+
+[StructLayout(LayoutKind.Explicit, Size = 4, CharSet = CharSet.Ansi)]
+public struct DynamicBreakpointHeader
+{
+    public static uint DWordCount = (uint)(Marshal.SizeOf(typeof(DynamicBreakpointHeader)) / sizeof(uint));
+
+    [FieldOffset(0)]
+    public uint thread;
 }

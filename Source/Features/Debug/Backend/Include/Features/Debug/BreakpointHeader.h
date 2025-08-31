@@ -11,6 +11,11 @@
 // Std
 #include <cstdint>
 
+
+/**
+ * Source Mirrors
+ * - Source/Features/Debug/Frontend/UIX/Models/BreakpointHeader.cs
+ */
 enum class BreakpointFlag {
     None = 0,
 
