@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using System.Text;
 using DynamicData;
@@ -8,6 +7,7 @@ using GRS.Features.Debug.UIX.ViewModels.Utils;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Utils.Workspace;
+using Runtime.ViewModels.IL;
 using Studio.Models.IL;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace.Objects;
@@ -27,7 +27,11 @@ public class LooseItemViewModel : ReactiveObject
     /// <summary>
     /// All flattened items
     /// </summary>
-    public string FlatString { get; } = string.Empty;
+    public string FlatString
+    {
+        get => _flatString;
+        set => this.RaiseAndSetIfChanged(ref _flatString, value);
+    }
     
     /// <summary>
     /// Virtual index of this item
@@ -39,6 +43,8 @@ public class LooseItemViewModel : ReactiveObject
     /// </summary>
     public LooseItemViewModel(LooseBreakpointDisplayViewModel breakpointDisplayViewModel, uint dwordOffset)
     {
+        _reEntryState = true;
+        
         // Get export dword span
         Span<uint> dwordSpan = new(breakpointDisplayViewModel.DWords, (int)dwordOffset, (int)(LooseBreakpointHeader.DWordCount + breakpointDisplayViewModel.FlatInfo.dataDWordStride));
         
@@ -115,14 +121,33 @@ public class LooseItemViewModel : ReactiveObject
             threadInfo,
             executionInfoItem
         ]);
+
+        // Allow update based flattening
+        _reEntryState = false;
         
         // Flatten them all
+        Flatten();
+    }
+
+    /// <summary>
+    /// Flatten the hierarchy
+    /// </summary>
+    private void Flatten()
+    {
+        if (_reEntryState)
+        {
+            return;
+        }
+        
         StringBuilder builder = new();
+        
+        // Manually flatten first level
         foreach (IObservableTreeItem observableTreeItem in RootItemViewModel.Items)
         {
             FlattenHierarchy((LooseTreeItemViewModel)observableTreeItem, builder);
             builder.Append(' ');
         }
+        
         FlatString = builder.ToString();
     }
 
@@ -165,13 +190,17 @@ public class LooseItemViewModel : ReactiveObject
                 // Due to Span GC rules, create it anew here
                 // The underlying memory is guaranteed to exist
                 Span<uint> dwordSpan = new(breakpointDisplayViewModel.DWords, (int)dwordOffset, (int)breakpointDisplayViewModel.FlatInfo.dataDWordStride);
-
+                
                 // Just keep it under its own category
-                item.Text = "Value";
+                Assembler assembler = new(program);
+                item.Text = $"Value {assembler.AssembleInlineOperand(type.ID)} ";
                 
                 // Format the bytes according to its type
                 Span<byte> dataSpan = MemoryMarshal.AsBytes(dwordSpan);
-                FormatValue(item, type, ref dataSpan);
+                FormatValue(item, type, ref dataSpan, true);
+
+                // Update the flat string
+                Flatten();
             });
         }
 
@@ -201,6 +230,9 @@ public class LooseItemViewModel : ReactiveObject
                 if (!string.IsNullOrWhiteSpace(name))
                 {
                     item.Text = $"Pipeline : {name}";
+
+                    // Update the flat string
+                    Flatten();
                 }
             });
         }
@@ -214,7 +246,7 @@ public class LooseItemViewModel : ReactiveObject
     /// <param name="item">item to append to</param>
     /// <param name="type">il type</param>
     /// <param name="byteSpan">current byte span</param>
-    private void FormatValue(LooseTreeItemViewModel item, Type type, ref Span<byte> byteSpan)
+    private void FormatValue(LooseTreeItemViewModel item, Type type, ref Span<byte> byteSpan, bool isFirstItem)
     {
         switch (type.Kind)
         {
@@ -241,36 +273,47 @@ public class LooseItemViewModel : ReactiveObject
             case TypeKind.Vector:
             {
                 var typed = (VectorType)type;
-                
-                LooseTreeItemViewModel vectorType = new() { Text = "Vector" };
+
+                if (!isFirstItem)
+                {
+                    LooseTreeItemViewModel subType = new();
+                    item.Items.Add(subType);
+                    item = subType;
+                }
 
                 for (int i = 0; i < typed.Dimension; i++)
                 {
-                    FormatValue(vectorType, typed.ContainedType, ref byteSpan);
+                    FormatValue(item, typed.ContainedType, ref byteSpan, false);
                 }
-
-                item.Items.Add(vectorType);
                 break;
             }
             case TypeKind.Array:
             {
                 var typed = (ArrayType)type;
                 
-                LooseTreeItemViewModel arrayItem = new() { Text = "Array" };
+                if (!isFirstItem)
+                {
+                    LooseTreeItemViewModel subType = new();
+                    item.Items.Add(subType);
+                    item = subType;
+                }
 
                 for (int i = 0; i < typed.Count; i++)
                 {
-                    FormatValue(arrayItem, typed.ElementType, ref byteSpan);
+                    FormatValue(item, typed.ElementType, ref byteSpan, false);
                 }
-
-                item.Items.Add(arrayItem);
                 break;
             }
             case TypeKind.Matrix:
             {
                 var typed = (MatrixType)type;
                 
-                LooseTreeItemViewModel matrixItem = new() { Text = "Matrix" };
+                if (!isFirstItem)
+                {
+                    LooseTreeItemViewModel subType = new();
+                    item.Items.Add(subType);
+                    item = subType;
+                }
 
                 for (int row = 0; row < typed.Rows; row++)
                 {
@@ -278,31 +321,28 @@ public class LooseItemViewModel : ReactiveObject
                     
                     for (int column = 0; column < typed.Columns; column++)
                     {
-                        LooseTreeItemViewModel columnItem = new() { Text = $"Column {column}" };
-                        FormatValue(matrixItem, typed.ContainedType, ref byteSpan);
-                        rowItem.Items.Add(columnItem);
+                        FormatValue(rowItem, typed.ContainedType, ref byteSpan, false);
                     }
                     
-                    matrixItem.Items.Add(rowItem);
+                    item.Items.Add(rowItem);
                 }
-
-                item.Items.Add(matrixItem);
                 break;
             }
             case TypeKind.Struct:
             {
                 var typed = (StructType)type;
                 
-                LooseTreeItemViewModel structItem = new() { Text = "Struct" };
+                if (!isFirstItem)
+                {
+                    LooseTreeItemViewModel subType = new();
+                    item.Items.Add(subType);
+                    item = subType;
+                }
 
                 for (int i = 0; i < typed.MemberTypes.Length; i++)
                 {
-                    LooseTreeItemViewModel memberItem = new() { Text = $"Member {i}" };
-                    FormatValue(memberItem, typed.MemberTypes[i], ref byteSpan);
-                    structItem.Items.Add(memberItem);
+                    FormatValue(item, typed.MemberTypes[i], ref byteSpan, false);
                 }
-
-                item.Items.Add(structItem);
                 break;
             }
         }
@@ -330,4 +370,14 @@ public class LooseItemViewModel : ReactiveObject
 
         builder.Append(" } ");
     }
+
+    /// <summary>
+    /// Internal flat string
+    /// </summary>
+    private string _flatString;
+
+    /// <summary>
+    /// Re-entry check
+    /// </summary>
+    private bool _reEntryState = false;
 }
