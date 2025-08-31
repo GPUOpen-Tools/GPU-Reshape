@@ -103,7 +103,8 @@ public class LooseVirtualObservableCollection : IReadOnlyList<LooseItemViewModel
     {
         get
         {
-            return (int)BreakpointDisplayViewModel.FlatInfo.dataDynamicCounter;
+            uint maxItems = (uint)(BreakpointDisplayViewModel.DWords.Length / (LooseBreakpointHeader.DWordCount + BreakpointDisplayViewModel.FlatInfo.dataDWordStride));
+            return (int)Math.Min(maxItems, BreakpointDisplayViewModel.FlatInfo.dataDynamicCounter);
         }
     }
 
