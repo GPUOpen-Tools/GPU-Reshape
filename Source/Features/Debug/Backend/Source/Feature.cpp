@@ -1335,11 +1335,11 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
     IL::Emitter(context.program, *it.block).Branch(headerBlock);
     IL::Emitter<> emitter(context.program, *headerBlock);
 
-    // Get the header
-    IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.headerOffset);
-
     // Find the relevant breakpoint
     GetBreakpoint(emitter, breakpoint, breakpointData);
+
+    // Get the header
+    IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.headerOffset);
 
     // Get payload offset
     breakpointData.payloadOffset = breakpointHeader.Get<&BreakpointHeader::payloadDWordOffset>(emitter);
