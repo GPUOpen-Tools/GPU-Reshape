@@ -152,7 +152,8 @@ void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
     PipelineState* pipeline = device->states_Pipelines.GetFromUID(message.pipelineUID);
 
     // Determine name
-    const char* name = pipeline->debugName ? pipeline->debugName : "Unknown";
+    // TODO: Report back if it was found or not
+    const char* name = pipeline && pipeline->debugName ? pipeline->debugName : "Unknown";
 
     // Push response
     auto&& file = view.Add<PipelineNameMessage>(PipelineNameMessage::AllocationInfo { .nameLength = static_cast<size_t>(std::strlen(name)) });
