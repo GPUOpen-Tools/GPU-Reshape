@@ -111,7 +111,7 @@ namespace Studio.ViewModels.Workspace.Message
         /// <summary>
         /// Current severity mask
         /// </summary>
-        public ValidationSeverity Severity
+        public SourceObjectSeverity Severity
         {
             get => _severity;
             set
@@ -918,7 +918,7 @@ namespace Studio.ViewModels.Workspace.Message
         /// <summary>
         /// Internal severity mask
         /// </summary>
-        private ValidationSeverity _severity = ValidationSeverity.All;
+        private SourceObjectSeverity _severity = SourceObjectSeverity.All;
         
         /// <summary>
         /// Internal source

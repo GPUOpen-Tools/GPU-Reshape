@@ -33,7 +33,7 @@ using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class ResourceValidationDetailViewModel : ReactiveObject, IValidationDetailViewModel, ISerializable
+    public class ResourceValidationDetailViewModel : ReactiveObject, ISourceObjectDetailViewModel, ISerializable
     {
         /// <summary>
         /// Current selected resource

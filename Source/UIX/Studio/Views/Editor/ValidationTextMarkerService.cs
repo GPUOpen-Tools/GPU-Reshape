@@ -154,11 +154,11 @@ namespace Studio.Views.Editor
             
             switch (_object.Severity)
             {
-                case ValidationSeverity.Info:
+                case SourceObjectSeverity.Info:
                     return _validationBrushInfo;
-                case ValidationSeverity.Warning:
+                case SourceObjectSeverity.Warning:
                     return _validationBrushWarning;
-                case ValidationSeverity.Error:
+                case SourceObjectSeverity.Error:
                     return _validationBrushError;
                 default:
                     throw new ArgumentOutOfRangeException();

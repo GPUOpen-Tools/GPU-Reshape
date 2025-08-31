@@ -33,7 +33,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class MissingDetailViewModel : ReactiveObject, IValidationDetailViewModel
+    public class MissingDetailViewModel : ReactiveObject, ISourceObjectDetailViewModel
     {
         /// <summary>
         /// Workspace within this overview

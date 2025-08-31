@@ -25,6 +25,7 @@
 // 
 
 using Studio.Models.Workspace.Objects;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Shader
@@ -34,7 +35,12 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// The current selected object
         /// </summary>
-        public ValidationObject? SelectedValidationObject { get; set; }
+        public ITextualSourceObject? SelectedTextualSourceObject { get; set; }
+        
+        /// <summary>
+        /// Canvas view model
+        /// </summary>
+        public SourceObjectMarkerCanvasViewModel MarkerCanvasViewModel { get; }
         
         /// <summary>
         /// Is the overlay visible?
@@ -42,9 +48,9 @@ namespace Studio.ViewModels.Shader
         public bool IsOverlayVisible();
         
         /// <summary>
-        /// Is a validation object visible?
+        /// Is a source object visible?
         /// </summary>
-        public bool IsObjectVisible(ValidationObject validationObject);
+        public bool IsObjectVisible(ITextualSourceObject sourceObject);
 
         /// <summary>
         /// Transform a shader location

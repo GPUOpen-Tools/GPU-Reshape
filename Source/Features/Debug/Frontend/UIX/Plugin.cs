@@ -83,7 +83,7 @@ namespace GRS.Features.Debug.UIX
             
             // Add locators
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(DebugSettingViewModel), typeof(DebugSettingView));
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointViewModel), typeof(BreakpointWindow));
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointViewModel), typeof(BreakpointDisplayView));
             
             // Display locators
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayView));

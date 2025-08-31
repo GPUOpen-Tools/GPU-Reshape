@@ -1,0 +1,134 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2024 Advanced Micro Devices, Inc.,
+  Fatalist Development AB (Avalanche Studio Group),
+  and Miguel Petersen.
+  
+  All Rights Reserved.
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Studio.ViewModels.Controls"
+             xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
+             mc:Ignorable="d" d:DesignWidth="250" d:DesignHeight="75"
+             x:Class="Studio.Views.Controls.TextualSourceMarkerView"
+             x:DataType="vm:TextualSourceObjectMarkerViewModel"
+             HorizontalAlignment="Right"
+             VerticalAlignment="Top">
+    <UserControl.DataContext>
+        <vm:TextualSourceObjectMarkerViewModel/>
+    </UserControl.DataContext>
+    
+    <ItemsControl x:Name="ItemsControl" ItemsSource="{Binding CategoryObjects}">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="5"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TextualSourceObjectMarkerCategoryViewModel">
+                <StackPanel
+                    Orientation="Horizontal"
+                    VerticalAlignment="Stretch">
+                    <Border 
+                        Width="5"
+                        VerticalAlignment="Stretch"
+                        IsVisible="{Binding IsSelected}"
+                        Background="{StaticResource WarningDefaultColor}"/>
+                    <Button 
+                        x:Name="SourceObjectButton"
+                        Classes="SourceObject"
+                        Command="{Binding $parent[controls:TextualSourceMarkerView].((vm:TextualSourceObjectMarkerViewModel)DataContext).DetailCommand}"
+                        CommandParameter="{Binding SelectedObject}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Text="{Binding SelectedObject.Content, FallbackValue=Source Object Content}"/>
+                            <TextBlock
+                                Margin="5 0 0 0"
+                                IsVisible="{Binding SelectedObject.Count}"
+                                Text="{Binding SelectedObject.Count, FallbackValue=640000}"/>
+                        </StackPanel>
+                    </Button>
+                    
+                    <Button 
+                        x:Name="DropdownButton"
+                        IsVisible="{Binding IsFlyoutVisible, FallbackValue=True}"
+                        Background="{StaticResource InfoMediumBackground}"
+                        VerticalAlignment="Stretch" 
+                        Classes="NoPadding"
+                        BorderThickness="0"
+                        Margin="0 0 0 0"
+                        Height="17"
+                        Width="30">
+                        <StackPanel Orientation="Horizontal" Margin="5 0 5 0">
+                            <TextBlock 
+                                Text="{Binding Objects.Count, FallbackValue=0}"
+                                Margin="0 -2 0 0"
+                                VerticalAlignment="Center"/>
+                            
+                            <PathIcon
+                                Data="{StaticResource ChevronDown}" 
+                                Margin="5 1 0 0"
+                                Width="11" />
+                        </StackPanel>
+
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <ScrollViewer MaxHeight="150">
+                                    <ListBox 
+                                        Padding="0"
+                                        Margin="0"
+                                        BorderThickness="0"
+                                        SelectedItem="{Binding SelectedObject}"
+                                        ItemsSource="{Binding Objects}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="objects:ITextualSourceObject">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock
+                                                        Height="20"
+                                                        TextAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Text="{Binding Content, FallbackValue=Validation Content}"/>
+                                                    <TextBlock
+                                                        Height="20"
+                                                        TextAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Margin="5 0 0 0"
+                                                        Text="{Binding Count, FallbackValue=640000}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </ScrollViewer>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

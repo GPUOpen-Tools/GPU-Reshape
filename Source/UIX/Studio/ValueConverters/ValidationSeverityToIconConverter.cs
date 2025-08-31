@@ -41,13 +41,13 @@ namespace Studio.ValueConverters
         {
             if (targetType == typeof(Geometry))
             {
-                switch (value ?? ValidationSeverity.Info)
+                switch (value ?? SourceObjectSeverity.Info)
                 {
-                    case ValidationSeverity.Info:
+                    case SourceObjectSeverity.Info:
                         return ResourceLocator.GetIcon("Alert");
-                    case ValidationSeverity.Warning:
+                    case SourceObjectSeverity.Warning:
                         return ResourceLocator.GetIcon("Warning");
-                    case ValidationSeverity.Error:
+                    case SourceObjectSeverity.Error:
                         return ResourceLocator.GetIcon("AlertPentagon");
                     default:
                         return null;
@@ -57,15 +57,15 @@ namespace Studio.ValueConverters
             if (targetType == typeof(IBrush))
             {
                 Color color;
-                switch (value ?? ValidationSeverity.Info)
+                switch (value ?? SourceObjectSeverity.Info)
                 {
-                    case ValidationSeverity.Info:
+                    case SourceObjectSeverity.Info:
                         color = ResourceLocator.GetResource<Color>("SystemBaseHighColor");
                         break;
-                    case ValidationSeverity.Warning:
+                    case SourceObjectSeverity.Warning:
                         color =  ResourceLocator.GetResource<Color>("WarningDefaultColor");
                         break;
-                    case ValidationSeverity.Error:
+                    case SourceObjectSeverity.Error:
                         color = ResourceLocator.GetResource<Color>("ErrorDefaultColor");
                         break;
                     default:

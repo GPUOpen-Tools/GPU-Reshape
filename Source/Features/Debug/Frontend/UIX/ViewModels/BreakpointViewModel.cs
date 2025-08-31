@@ -6,13 +6,16 @@ using ReactiveUI;
 using GRS.Features.Debug.UIX.Settings;
 using GRS.Features.Debug.UIX.ViewModels.Processor;
 using Message.CLR;
-using Studio.ViewModels.Workspace.Properties.Instrumentation;
 using Studio.Services;
 using Studio;
+using Studio.Models.Workspace.Listeners;
+using Studio.ViewModels.Shader;
+using Studio.ViewModels.Workspace.Objects;
+using ShaderViewModel = Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderViewModel;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
 
-public class BreakpointViewModel : ReactiveObject
+public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
 {
     /// <summary>
     /// Currently assigned view model, owned by the archetype
@@ -22,6 +25,21 @@ public class BreakpointViewModel : ReactiveObject
         get => MonitorRead(() => _displayViewModel);
         set => MonitorWrite(() => this.RaiseAndSetIfChanged(ref _displayViewModel, value));
     }
+
+    /// <summary>
+    /// Owning shader content
+    /// </summary>
+    public required ITextualShaderContentViewModel ShaderContentViewModel { get; set; }
+    
+    /// <summary>
+    /// Source object of this breakpoint
+    /// </summary>
+    public BreakpointSourceObject TextualSourceObject { get; set; }
+    
+    /// <summary>
+    /// Locating source segment
+    /// </summary>
+    public ShaderSourceSegment ShaderSourceSegment { get; set; }
 
     /// <summary>
     /// Currently assigned processor, owned by the archetype

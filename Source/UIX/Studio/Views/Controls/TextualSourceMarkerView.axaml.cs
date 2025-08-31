@@ -24,39 +24,31 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
+using Avalonia.Controls;
 using ReactiveUI;
-using Studio.ViewModels.Workspace.Properties;
+using Studio.Extensions;
+using Studio.ViewModels.Controls;
 
-namespace Studio.ViewModels.Workspace.Objects
+namespace Studio.Views.Controls
 {
-    public class NoDetailViewModel : ReactiveObject, ISourceObjectDetailViewModel
+    public partial class TextualSourceMarkerView : UserControl
     {
         /// <summary>
-        /// Workspace within this overview
+        /// View model helper
         /// </summary>
-        public IPropertyViewModel? PropertyCollection
-        {
-            get => _propertyCollection;
-            set => this.RaiseAndSetIfChanged(ref _propertyCollection, value);
-        }
-
-        /// <summary>
-        /// Underlying object
-        /// </summary>
-        public ShaderViewModel? Object
-        {
-            get => _object;
-            set => this.RaiseAndSetIfChanged(ref _object, value);
-        }
+        public TextualSourceObjectMarkerViewModel ViewModel => (TextualSourceObjectMarkerViewModel)DataContext!;
         
-        /// <summary>
-        /// Internal object
-        /// </summary>
-        private ShaderViewModel? _object;
+        public TextualSourceMarkerView()
+        {
+            InitializeComponent();
 
-        /// <summary>
-        /// Underlying view model
-        /// </summary>
-        private IPropertyViewModel? _propertyCollection;
+            this.WhenAnyValue(x => x.DataContext)
+                .CastNullable<TextualSourceObjectMarkerViewModel>()
+                .Subscribe(x =>
+                {
+                    // Hide flyout on selection
+                });
+        }
     }
 }

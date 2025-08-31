@@ -163,7 +163,7 @@ namespace Studio.ViewModels.Workspace.Properties
             OpenShaderDocument = ReactiveCommand.Create<object>(OnOpenShaderDocument);
             ToggleHideMissingSymbols = ReactiveCommand.Create(OnToggleHideMissingSymbols);
             ToggleMode = ReactiveCommand.Create<HierarchicalMode>(OnToggleMode);
-            ToggleSeverity = ReactiveCommand.Create<ValidationSeverity>(OnToggleSeverity);
+            ToggleSeverity = ReactiveCommand.Create<SourceObjectSeverity>(OnToggleSeverity);
             Expand = ReactiveCommand.Create(OnExpand);
             Collapse = ReactiveCommand.Create(OnCollapse);
             Clear = ReactiveCommand.Create(OnClear);
@@ -180,7 +180,7 @@ namespace Studio.ViewModels.Workspace.Properties
                     new ValidationObject()
                     {
                         Content = "Failure A",
-                        Severity = ValidationSeverity.Info,
+                        Severity = SourceObjectSeverity.Info,
                         Count = 5,
                         Segment = new ShaderSourceSegment()
                         {
@@ -191,7 +191,7 @@ namespace Studio.ViewModels.Workspace.Properties
                     new ValidationObject()
                     {
                         Content = "Failure B - XXXXXXX",
-                        Severity = ValidationSeverity.Warning,
+                        Severity = SourceObjectSeverity.Warning,
                         Count = 10,
                         Segment = new ShaderSourceSegment()
                         {
@@ -202,7 +202,7 @@ namespace Studio.ViewModels.Workspace.Properties
                     new ValidationObject()
                     {
                         Content = "Failure C - YYYY",
-                        Severity = ValidationSeverity.Error,
+                        Severity = SourceObjectSeverity.Error,
                         Count = 5,
                         Segment = new ShaderSourceSegment()
                         {
@@ -225,7 +225,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// On severity toggles
         /// </summary>
-        private void OnToggleSeverity(ValidationSeverity severity)
+        private void OnToggleSeverity(SourceObjectSeverity severity)
         {
             HierarchicalMessageFilterViewModel.Severity ^= severity;
         }

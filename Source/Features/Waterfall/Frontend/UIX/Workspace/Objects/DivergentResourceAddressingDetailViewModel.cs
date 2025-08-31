@@ -29,7 +29,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace GRS.Features.ResourceBounds.UIX.Workspace.Objects
 {
-    public class DivergentResourceAddressingDetailViewModel : ReactiveObject, IValidationDetailViewModel
+    public class DivergentResourceAddressingDetailViewModel : ReactiveObject, ISourceObjectDetailViewModel
     {
         
     }

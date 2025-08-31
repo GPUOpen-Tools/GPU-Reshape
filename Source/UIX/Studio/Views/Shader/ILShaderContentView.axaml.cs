@@ -78,7 +78,6 @@ namespace Studio.Views.Shader
 
             // Configure marker canvas
             MarkerCanvas.TextView = Editor.TextArea.TextView;
-            MarkerCanvas.DetailCommand = ReactiveCommand.Create<ValidationObject>(OnDetailCommand);
 
             // Add renderers
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationBackgroundRenderer);
@@ -105,6 +104,12 @@ namespace Studio.Views.Shader
                 _validationBackgroundRenderer.ShaderContentViewModel = ilViewModel;
                 MarkerCanvas.ShaderContentViewModel = ilViewModel;
                 
+                // Bind detail
+                ilViewModel.MarkerCanvasViewModel.DetailCommand = ReactiveCommand.Create<ITextualSourceObject>(OnDetailCommand);
+
+                // Assign marker view model
+                MarkerCanvas.DataContext = ilViewModel.MarkerCanvasViewModel;
+                
                 // Bind assembled data
                 ilViewModel.WhenAnyValue(x => x.AssembledProgram).WhereNotNull().Subscribe(assembled =>
                 {
@@ -112,7 +117,7 @@ namespace Studio.Views.Shader
                     Editor.Text = assembled;
                     
                     // Push all pending objects
-                    _pendingAssembling.ForEach(OnValidationObjectAdded);
+                    _pendingAssembling.ForEach(x => OnValidationObjectAdded(ilViewModel, x));
                     _pendingAssembling.Clear();
 
                     // Bind navigation location
@@ -131,8 +136,8 @@ namespace Studio.Views.Shader
                     _object.ValidationObjects.ToObservableChangeSet()
                         .AsObservableList()
                         .Connect()
-                        .OnItemAdded(OnValidationObjectAdded)
-                        .OnItemRemoved(OnValidationObjectRemoved)
+                        .OnItemAdded(x => OnValidationObjectAdded(ilViewModel, x))
+                        .OnItemRemoved(x => OnValidationObjectRemoved(ilViewModel, x))
                         .Subscribe();
                     
                     // Bind status
@@ -146,7 +151,7 @@ namespace Studio.Views.Shader
                 });
                 
                 // Reset front state
-                ilViewModel.SelectedValidationObject = null;
+                ilViewModel.SelectedTextualSourceObject = null;
                 ilViewModel.DetailViewModel = null;
             });
         }
@@ -154,7 +159,7 @@ namespace Studio.Views.Shader
         /// <summary>
         /// Invoked on detailed requests
         /// </summary>
-        private void OnDetailCommand(ValidationObject validationObject)
+        private void OnDetailCommand(ITextualSourceObject sourceObject)
         {
             // Validation
             if (DataContext is not ILShaderContentViewModel
@@ -166,25 +171,31 @@ namespace Studio.Views.Shader
                 return;
             }
 
-            // Check if there's any detailed info at all
-            if (!ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
+            InstrumentationVersion? version = null;
+
+            // If validation, bind instrumentation
+            if (sourceObject is ValidationObject validationObject)
             {
-                vm.DetailViewModel = new NoDetailViewModel()
+                // Check if there's any detailed info at all
+                if (!ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
                 {
-                    Object = vm.Object,
-                    PropertyCollection = vm.PropertyCollection
-                };
-                return;
-            }
-            
-            // Ensure detailed collection has started
-            InstrumentationVersion version = ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
+                    vm.DetailViewModel = new NoDetailViewModel()
+                    {
+                        Object = vm.Object,
+                        PropertyCollection = vm.PropertyCollection
+                    };
+                    return;
+                }
                 
+                // Ensure detailed collection has started
+                version = ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
+            }
+
             // Set selection
-            vm.SelectedValidationObject = validationObject;
+            vm.SelectedTextualSourceObject = sourceObject;
             
             // Bind detail context
-            validationObject.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
+            sourceObject.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
             {
                 vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
@@ -205,7 +216,7 @@ namespace Studio.Views.Shader
             }
 
             // Update selected file
-            ilViewModel.SelectedValidationObject = location.Object;
+            ilViewModel.SelectedTextualSourceObject = location.Object;
                             
             // Scroll to target
             // TODO: 10 is a total guess, we need to derive it from the height, but that doesn't exist yet.
@@ -222,7 +233,7 @@ namespace Studio.Views.Shader
         /// Invoked on object added
         /// </summary>
         /// <param name="validationObject"></param>
-        private void OnValidationObjectAdded(ValidationObject validationObject)
+        private void OnValidationObjectAdded(ILShaderContentViewModel viewModel, ValidationObject validationObject)
         {
             // Pending assembling?
             if (DataContext is ILShaderContentViewModel { Assembler: null })
@@ -236,7 +247,7 @@ namespace Studio.Views.Shader
             _validationBackgroundRenderer.Add(validationObject);
             
             // Update canvas
-            MarkerCanvas.Add(validationObject);
+            viewModel.MarkerCanvasViewModel.SourceObjects.Add(validationObject);
             
             // Redraw for background update
             Editor.TextArea.TextView.Redraw();
@@ -246,14 +257,14 @@ namespace Studio.Views.Shader
         /// Invoked on object removed
         /// </summary>
         /// <param name="validationObject"></param>
-        private void OnValidationObjectRemoved(ValidationObject validationObject)
+        private void OnValidationObjectRemoved(ILShaderContentViewModel viewModel, ValidationObject validationObject)
         {
             // Update services
             _validationTextMarkerService.Remove(validationObject);
             _validationBackgroundRenderer.Remove(validationObject);
             
             // Update canvas
-            MarkerCanvas.Remove(validationObject);
+            viewModel.MarkerCanvasViewModel.SourceObjects.Remove(validationObject);
             
             // Redraw for background update
             Editor.TextArea.TextView.Redraw();

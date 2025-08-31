@@ -25,40 +25,51 @@
 // 
 
 using System;
-using Avalonia.Controls;
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
-using Studio.Extensions;
-using Studio.ViewModels.Controls;
+using Studio.ViewModels.Shader;
+using Studio.ViewModels.Workspace.Objects;
 
-namespace Studio.Views.Controls
+namespace Studio.ViewModels.Controls
 {
-    public partial class ValidationMarkerView : UserControl
+    public class TextualSourceObjectMarkerViewModel : ReactiveObject
     {
         /// <summary>
-        /// View model helper
+        /// Transformed source line
         /// </summary>
-        public ValidationMarkerViewModel ViewModel => (ValidationMarkerViewModel)DataContext!;
-        
-        public ValidationMarkerView()
-        {
-            InitializeComponent();
+        public int SourceLine { get; set; }
 
-            this.WhenAnyValue(x => x.DataContext)
-                .CastNullable<ValidationMarkerViewModel>()
-                .Subscribe(x =>
-                {
-                    // Bind detail click
-                    ValidationButton.Events().Click.Subscribe(_ =>
-                    {
-                        x.DetailCommand?.Execute(x.SelectedObject);
-                    });
-                    
-                    // Hide flyout on selection
-                    x.WhenAnyValue(y => y.SelectedObject).Subscribe(_ =>
-                    {
-                        DropdownButton.Flyout.Hide();
-                    });
-                });
+        /// <summary>
+        /// The textual view model
+        /// </summary>
+        public ITextualShaderContentViewModel? ShaderContentViewModel
+        {
+            get => _shaderContentViewModel;
+            set => this.RaiseAndSetIfChanged(ref _shaderContentViewModel, value);
         }
+
+        /// <summary>
+        /// The command to be invoked on details
+        /// </summary>
+        public ICommand? DetailCommand
+        {
+            get => _detailCommand;
+            set => this.RaiseAndSetIfChanged(ref _detailCommand, value);
+        }
+        
+        public ObservableCollection<TextualSourceObjectMarkerCategoryViewModel> CategoryObjects { get; } = new();
+
+        /// <summary>
+        /// Internal detail state
+        /// </summary>
+        private ICommand? _detailCommand;
+
+        /// <summary>
+        /// Internal content view model
+        /// </summary>
+        private ITextualShaderContentViewModel? _shaderContentViewModel;
     }
 }

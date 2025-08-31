@@ -24,20 +24,10 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-
-namespace Studio.Models.Workspace.Objects
+namespace Studio.ViewModels.Workspace.Objects
 {
-    [Flags]
-    public enum ValidationSeverity
+    public interface ISourceObjectDetailViewModel
     {
-        Info = 1,
-        Warning = 2,
-        Error = 4,
         
-        /// <summary>
-        /// All flags
-        /// </summary>
-        All = Info | Warning | Error
     }
 }

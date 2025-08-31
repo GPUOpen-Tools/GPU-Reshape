@@ -121,7 +121,7 @@ namespace GRS.Features.DeviceCommands.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Traits = _traits,
-                        Severity = ValidationSeverity.Error,
+                        Severity = SourceObjectSeverity.Error,
                         Content = "Device command generated invalid payload",
                         Count = 1u
                     };

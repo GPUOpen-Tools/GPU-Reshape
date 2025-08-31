@@ -26,10 +26,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Windows.Input;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using AvaloniaEdit.Rendering;
+using DynamicData;
+using DynamicData.Binding;
+using ReactiveUI;
+using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Shader;
@@ -37,7 +41,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.Views.Controls
 {
-    public partial class ValidationMarkerCanvas : UserControl
+    public partial class SourceObjectMarkerCanvas : UserControl
     {
         /// <summary>
         /// Text view the canvas tracks
@@ -53,11 +57,6 @@ namespace Studio.Views.Controls
         }
 
         /// <summary>
-        /// Detail command to propagate to the markers
-        /// </summary>
-        public ICommand? DetailCommand { get; set; }
-
-        /// <summary>
         /// Current content view model
         /// </summary>
         public ITextualShaderContentViewModel? ShaderContentViewModel { get; set; }
@@ -65,9 +64,24 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Constructor
         /// </summary>
-        public ValidationMarkerCanvas()
+        public SourceObjectMarkerCanvas()
         {
             InitializeComponent();
+
+            // Bind view model
+            this.WhenAnyValue(x => x.DataContext)
+                .CastNullable<SourceObjectMarkerCanvasViewModel>()
+                .WhereNotNull()
+                .Subscribe(vm =>
+                {
+                    // Bind all source objects
+                    vm.SourceObjects.ToObservableChangeSet()
+                        .AsObservableList()
+                        .Connect()
+                        .OnItemAdded(OnItemAdded)
+                        .OnItemRemoved(OnItemRemoved)
+                        .Subscribe();
+                });
         }
 
         /// <summary>
@@ -82,49 +96,52 @@ namespace Studio.Views.Controls
         }
 
         /// <summary>
-        /// Add a new validation object
+        /// Add a new source object
         /// </summary>
-        public void Add(ValidationObject validationObject)
+        private void OnItemAdded(ITextualSourceObject sourceObject)
         {
-            Add(new []{ validationObject });
+            OnItemAdded(new []{ sourceObject });
         }
 
         /// <summary>
-        /// Add a range of validation objects
+        /// Add a range of source objects
         /// </summary>
-        public void Add(IEnumerable<ValidationObject> objects)
+        private void OnItemAdded(IEnumerable<ITextualSourceObject> objects)
         {
             // All changed views
-            List<ValidationMarkerView> updatedViews = new();
+            List<TextualSourceMarkerView> updatedViews = new();
 
             // Process all objects
-            foreach (ValidationObject validationObject in objects)
+            foreach (ITextualSourceObject sourceObject in objects)
             {
                 // Ignore objects with no segments
-                if (validationObject.Segment == null)
+                if (sourceObject.Segment == null)
                 {
                     continue;
                 }
 
                 // Already mapped?
-                if (_viewLookup.ContainsKey(validationObject))
+                if (_viewLookup.ContainsKey(sourceObject))
                 {
                     return;
                 }
                 
                 // Get the owning marker view
-                ValidationMarkerView markerView = GetMarkerView(validationObject.Segment.Location);
+                TextualSourceMarkerView markerView = GetMarkerView(sourceObject.Segment.Location);
 
                 // Create association to the marker
-                _viewLookup.Add(validationObject, markerView);
+                _viewLookup.Add(sourceObject, markerView);
 
-                // Add validation boject
-                markerView.ViewModel.Objects.Add(validationObject);
+                // Find the category
+                TextualSourceObjectMarkerCategoryViewModel category = FindOrAddCategory(markerView, sourceObject.OverlayCategory);
+
+                // Add source object
+                category.Objects.Add(sourceObject);
 
                 // Set first selection if needed
-                if (markerView.ViewModel.SelectedObject == null)
+                if (category.SelectedObject == null)
                 {
-                    markerView.ViewModel.SelectedObject = validationObject;
+                    category.SelectedObject = sourceObject;
                 }
 
                 // Mark the marker as updated
@@ -139,48 +156,83 @@ namespace Studio.Views.Controls
         }
 
         /// <summary>
-        /// Remove a validation object
+        /// Try to find a category, or create it
         /// </summary>
-        public void Remove(ValidationObject validationObject)
+        private TextualSourceObjectMarkerCategoryViewModel FindOrAddCategory(TextualSourceMarkerView view, string category)
+        {
+            TextualSourceObjectMarkerCategoryViewModel? categoryViewModel = view.ViewModel.CategoryObjects.FirstOrDefault(x => x.Category == category);
+            if (categoryViewModel == null)
+            {
+                // Not found, create it
+                categoryViewModel = new TextualSourceObjectMarkerCategoryViewModel()
+                {
+                    Category = category,
+                    ShaderContentViewModel = view.ViewModel.ShaderContentViewModel
+                };
+                
+                view.ViewModel.CategoryObjects.Add(categoryViewModel);
+            }
+
+            return categoryViewModel;
+        }
+
+        /// <summary>
+        /// Remove a source object
+        /// </summary>
+        private void OnItemRemoved(ITextualSourceObject sourceObject)
         {
             // Ignore objects with no segments
-            if (validationObject.Segment == null)
+            if (sourceObject.Segment == null)
             {
                 return;
             }
             
             // Not part of any marker?
-            if (!_viewLookup.ContainsKey(validationObject))
+            if (!_viewLookup.ContainsKey(sourceObject))
             {
                 return;
             }
 
             // Get the marker view
-            ValidationMarkerView view = _viewLookup[validationObject];
+            TextualSourceMarkerView view = _viewLookup[sourceObject];
 
             // Remove the object association
-            _viewLookup.Remove(validationObject);
+            _viewLookup.Remove(sourceObject);
 
-            // Remove the validation object from its marker
-            view.ViewModel.Objects.Remove(validationObject);
+            // Must exist
+            if (view.ViewModel.CategoryObjects.FirstOrDefault(x => x.Category == sourceObject.OverlayCategory) is not { } categoryViewModel)
+            {
+                return;
+            }
+            
+            // Remove the source object from its marker
+            categoryViewModel.Objects.Remove(sourceObject);
+            
+            // Is the category empty?
+            if (categoryViewModel.Objects.Count == 0)
+            {
+                view.ViewModel.CategoryObjects.Remove(categoryViewModel);
+            }
+            else
+            {
+                // Invalidate selected object
+                if (categoryViewModel.SelectedObject == sourceObject)
+                {
+                    categoryViewModel.SelectedObject = categoryViewModel.Objects[0];
+                }
+            }
 
-            // No objects left?
-            if (view.ViewModel.Objects.Count == 0)
+            // No categories left?
+            if (view.ViewModel.CategoryObjects.Count == 0)
             {
                 // Remove marker entry
                 _markers.Remove(view);
                 
                 // Remove line lookup
-                _lineMarkers.Remove(GetMarkerKey(validationObject.Segment.Location.FileUID, view.ViewModel.SourceLine));
+                _lineMarkers.Remove(GetMarkerKey(sourceObject.Segment.Location.FileUID, view.ViewModel.SourceLine));
                 
                 // Remove the control
                 MarkerGrid.Children.Remove(view);
-            }
-            
-            // Invalidate selected object
-            if (view.ViewModel.SelectedObject == validationObject)
-            {
-                view.ViewModel.SelectedObject = view.ViewModel.Objects[0];
             }
         }
 
@@ -195,17 +247,17 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Update layouts for a set of views
         /// </summary>
-        public void UpdateLayout(IEnumerable<ValidationMarkerView> views)
+        public void UpdateLayout(IEnumerable<TextualSourceMarkerView> views)
         {
             // get current text view bounds
             int firstLine = TextView.GetDocumentLineByVisualTop(TextView.ScrollOffset.Y).LineNumber;
             int lastLine = TextView.GetDocumentLineByVisualTop(TextView.ScrollOffset.Y + TextView.Height).LineNumber;
             
             // Process all views
-            foreach (ValidationMarkerView view in views)
+            foreach (TextualSourceMarkerView view in views)
             {
                 // Get view model
-                var viewModel = (ValidationMarkerViewModel)view.DataContext!;
+                var viewModel = (TextualSourceObjectMarkerViewModel)view.DataContext!;
 
                 // Document line starts from 1
                 int documentLine = viewModel.SourceLine + 1;
@@ -217,8 +269,22 @@ namespace Studio.Views.Controls
                     continue;
                 }
                 
+                // Check if we have a single visible object
+                bool hasAnyVisibleObject = false;
+                foreach (TextualSourceObjectMarkerCategoryViewModel categoryViewModel in viewModel.CategoryObjects)
+                {
+                    foreach (ITextualSourceObject sourceObject in categoryViewModel.Objects)
+                    {
+                        if (ShaderContentViewModel?.IsObjectVisible(sourceObject) ?? false)
+                        {
+                            hasAnyVisibleObject = true;
+                            break;
+                        }
+                    }
+                }
+                
                 // View invalid or rejected by the content view model?
-                if (viewModel.Objects.Count == 0 || !(ShaderContentViewModel?.IsObjectVisible(viewModel.Objects[0]) ?? false))
+                if (!hasAnyVisibleObject)
                 {
                     view.IsVisible = false;
                     continue;
@@ -235,10 +301,10 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Update a single object
         /// </summary>
-        private void UpdateObject(ValidationMarkerView view)
+        private void UpdateObject(TextualSourceMarkerView view)
         {
             //Get view model
-            var viewModel = (ValidationMarkerViewModel)view.DataContext!;
+            var viewModel = (TextualSourceObjectMarkerViewModel)view.DataContext!;
             
             // Get the effective vertical offset
             double top = TextView.GetVisualTopByDocumentLine(viewModel.SourceLine + 1) - TextView.ScrollOffset.Y;
@@ -255,7 +321,7 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Get the marker view for a shader location
         /// </summary>
-        private ValidationMarkerView GetMarkerView(ShaderLocation location)
+        private TextualSourceMarkerView GetMarkerView(ShaderLocation location)
         {
             // Always operate on the transformed line
             int line = ShaderContentViewModel?.TransformLine(location) ?? 0;
@@ -267,15 +333,15 @@ namespace Studio.Views.Controls
             if (!_lineMarkers.ContainsKey(key))
             {
                 // Create marker view model
-                ValidationMarkerViewModel viewModel = new()
+                TextualSourceObjectMarkerViewModel viewModel = new()
                 {
                     SourceLine = line,
-                    DetailCommand = DetailCommand,
+                    DetailCommand = ((SourceObjectMarkerCanvasViewModel)DataContext!).DetailCommand,
                     ShaderContentViewModel = ShaderContentViewModel
                 };
 
                 // Create marker view
-                ValidationMarkerView view = new()
+                TextualSourceMarkerView view = new()
                 {
                     DataContext = viewModel,
                     MaxHeight = TextView.DefaultLineHeight
@@ -306,17 +372,17 @@ namespace Studio.Views.Controls
         /// <summary>
         /// All markers
         /// </summary>
-        private List<ValidationMarkerView> _markers = new();
+        private List<TextualSourceMarkerView> _markers = new();
 
         /// <summary>
         /// Keys to marker view associations
         /// </summary>
-        private Dictionary<UInt64, ValidationMarkerView> _lineMarkers = new();
+        private Dictionary<UInt64, TextualSourceMarkerView> _lineMarkers = new();
 
         /// <summary>
-        /// Validation objects to marker view associations
+        /// Source objects to marker view associations
         /// </summary>
-        private Dictionary<ValidationObject, ValidationMarkerView> _viewLookup = new();
+        private Dictionary<ITextualSourceObject, TextualSourceMarkerView> _viewLookup = new();
 
         /// <summary>
         /// Internal text view state

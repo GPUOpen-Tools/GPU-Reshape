@@ -104,7 +104,7 @@
                             
                             <MenuItem Header="-"/>
                             
-                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Info}">
+                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:SourceObjectSeverity.Info}">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <PathIcon 
@@ -113,14 +113,14 @@
                                             IsVisible="{
                                                 Binding HierarchicalMessageFilterViewModel.Severity,
                                                 Converter={StaticResource EnumFlagConverter},
-                                                ConverterParameter={x:Static objects:ValidationSeverity.Info} 
+                                                ConverterParameter={x:Static objects:SourceObjectSeverity.Info} 
                                             }" />
                                         <TextBlock Text="Show Info" Margin="5,0,0,0" />
                                     </StackPanel>
                                 </MenuItem.Header>
                             </MenuItem>
                             
-                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Warning}">
+                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:SourceObjectSeverity.Warning}">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <PathIcon 
@@ -129,14 +129,14 @@
                                             IsVisible="{
                                                 Binding HierarchicalMessageFilterViewModel.Severity,
                                                 Converter={StaticResource EnumFlagConverter},
-                                                ConverterParameter={x:Static objects:ValidationSeverity.Warning} 
+                                                ConverterParameter={x:Static objects:SourceObjectSeverity.Warning} 
                                             }" />
                                         <TextBlock Text="Show Warning" Margin="5,0,0,0" />
                                     </StackPanel>
                                 </MenuItem.Header>
                             </MenuItem>
                             
-                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:ValidationSeverity.Error}">
+                            <MenuItem Command="{Binding ToggleSeverity}" CommandParameter="{x:Static objects:SourceObjectSeverity.Error}">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <PathIcon 
@@ -145,7 +145,7 @@
                                             IsVisible="{
                                                 Binding HierarchicalMessageFilterViewModel.Severity,
                                                 Converter={StaticResource EnumFlagConverter},
-                                                ConverterParameter={x:Static objects:ValidationSeverity.Error} 
+                                                ConverterParameter={x:Static objects:SourceObjectSeverity.Error} 
                                             }" />
                                         <TextBlock Text="Show Error" Margin="5,0,0,0" />
                                     </StackPanel>

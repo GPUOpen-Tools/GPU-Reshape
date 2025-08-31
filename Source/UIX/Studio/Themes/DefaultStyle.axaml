@@ -36,6 +36,7 @@
         <!-- Custom dark style for GRS Studio -->
         
         <Color x:Key="BackgroundColor">#2B2B2B</Color>
+        <Color x:Key="InfoBackgroundColor">#FF323232</Color>
         <Color x:Key="BorderColor">#1D1D1D</Color>
         <Color x:Key="BorderColorHigh">#4A4D51</Color>
         <Color x:Key="BorderColorHigh2">#717478</Color>
@@ -241,7 +242,7 @@
     <StyleInclude Source="avares://GPUReshape/Themes/TreeDataGrid.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/ListBox.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/TreeView.axaml" />
-    <StyleInclude Source="avares://GPUReshape/Themes/ValidationButton.axaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/SourceObjectButton.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/ScrollBars.axaml" />
     
     <!-- Specialized docking -->

@@ -46,7 +46,7 @@ namespace Studio.ValueConverters
             }
 
             // Is detail?
-            return value is IValidationDetailViewModel;
+            return value is ISourceObjectDetailViewModel;
         }
 
         /// <summary>

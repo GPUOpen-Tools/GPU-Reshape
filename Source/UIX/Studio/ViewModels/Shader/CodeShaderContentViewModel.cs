@@ -38,6 +38,7 @@ using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
@@ -95,16 +96,16 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Currently selected validation object
         /// </summary>
-        public ValidationObject? SelectedValidationObject
+        public ITextualSourceObject? SelectedTextualSourceObject
         {
-            get => _selectedValidationObject;
-            set => this.RaiseAndSetIfChanged(ref _selectedValidationObject, value);
+            get => _selectedSourceObject;
+            set => this.RaiseAndSetIfChanged(ref _selectedSourceObject, value);
         }
 
         /// <summary>
         /// Current detail view model
         /// </summary>
-        public IValidationDetailViewModel? DetailViewModel
+        public ISourceObjectDetailViewModel? DetailViewModel
         {
             get => _detailViewModel;
             set => this.RaiseAndSetIfChanged(ref _detailViewModel, value);
@@ -161,6 +162,11 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// Marker canvas view model
+        /// </summary>
+        public SourceObjectMarkerCanvasViewModel MarkerCanvasViewModel { get; } = new();
+
+        /// <summary>
         /// Is the overlay visible?
         /// </summary>
         public bool IsOverlayVisible()
@@ -169,11 +175,11 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
-        /// Is a validation object visible?
+        /// Is an object object visible?
         /// </summary>
-        public bool IsObjectVisible(ValidationObject validationObject)
+        public bool IsObjectVisible(ITextualSourceObject sourceObject)
         {
-            return validationObject.Segment?.Location.FileUID == SelectedShaderFileViewModel?.UID;
+            return sourceObject.Segment?.Location.FileUID == SelectedShaderFileViewModel?.UID;
         }
 
         /// <summary>
@@ -242,7 +248,7 @@ namespace Studio.ViewModels.Shader
         private void OnShowInIL()
         {
             // Navigate to the currently selected validation object
-            NavigationContext?.Navigate(typeof(ILShaderContentViewModel), SelectedValidationObject?.Segment?.Location);
+            NavigationContext?.Navigate(typeof(ILShaderContentViewModel), SelectedTextualSourceObject?.Segment?.Location);
         }
 
         /// <summary>
@@ -299,11 +305,11 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Internal selections tate
         /// </summary>
-        private ValidationObject? _selectedValidationObject;
+        private ITextualSourceObject? _selectedSourceObject;
 
         /// <summary>
         /// Internal detail state
         /// </summary>
-        private IValidationDetailViewModel? _detailViewModel;
+        private ISourceObjectDetailViewModel? _detailViewModel;
     }
 }

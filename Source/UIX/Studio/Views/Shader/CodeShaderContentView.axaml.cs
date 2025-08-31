@@ -91,7 +91,6 @@ namespace Studio.Views.Shader
 
             // Configure marker canvas
             MarkerCanvas.TextView = Editor.TextArea.TextView;
-            MarkerCanvas.DetailCommand = ReactiveCommand.Create<ValidationObject>(OnDetailCommand);
 
             // Add renderers
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationBackgroundRenderer);
@@ -116,6 +115,12 @@ namespace Studio.Views.Shader
                     _validationTextMarkerService.ShaderContentViewModel = codeViewModel;
                     _validationBackgroundRenderer.ShaderContentViewModel = codeViewModel;
                     MarkerCanvas.ShaderContentViewModel = codeViewModel;
+                    
+                    // Bind detail
+                    codeViewModel.MarkerCanvasViewModel.DetailCommand = ReactiveCommand.Create<ITextualSourceObject>(OnDetailCommand);
+                    
+                    // Assign marker view model
+                    MarkerCanvas.DataContext = codeViewModel.MarkerCanvasViewModel;
 
                     // Bind object model
                     codeViewModel.WhenAnyValue(y => y.Object).WhereNotNull().Subscribe(_object =>
@@ -124,8 +129,8 @@ namespace Studio.Views.Shader
                         _object.ValidationObjects.ToObservableChangeSet()
                             .AsObservableList()
                             .Connect()
-                            .OnItemAdded(OnValidationObjectAdded)
-                            .OnItemRemoved(OnValidationObjectRemoved)
+                            .OnItemAdded(x => OnValidationObjectAdded(codeViewModel, x))
+                            .OnItemRemoved(x => OnValidationObjectRemoved(codeViewModel, x))
                             .Subscribe();
 
                         // Raise navigation changes on file additions
@@ -177,7 +182,7 @@ namespace Studio.Views.Shader
                         });
 
                     // Reset front state
-                    codeViewModel.SelectedValidationObject = null;
+                    codeViewModel.SelectedTextualSourceObject = null;
                     codeViewModel.DetailViewModel = null;
 
                     // Bind navigation location
@@ -190,7 +195,7 @@ namespace Studio.Views.Shader
         /// <summary>
         /// Invoked on detail requests
         /// </summary>
-        private void OnDetailCommand(ValidationObject validationObject)
+        private void OnDetailCommand(ITextualSourceObject sourceObject)
         {
             // Validation
             if (DataContext is not CodeShaderContentViewModel
@@ -202,25 +207,31 @@ namespace Studio.Views.Shader
                 return;
             }
 
-            // Check if there's any detailed info at all
-            if (vm.DetailViewModel == null && !ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
+            InstrumentationVersion? version = null;
+
+            // If validation, bind instrumentation
+            if (sourceObject is ValidationObject validationObject)
             {
-                vm.DetailViewModel = new NoDetailViewModel()
+                // Check if there's any detailed info at all
+                if (vm.DetailViewModel == null && !ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
                 {
-                    Object = vm.Object,
-                    PropertyCollection = vm.PropertyCollection
-                };
-                return;
+                    vm.DetailViewModel = new NoDetailViewModel()
+                    {
+                        Object = vm.Object,
+                        PropertyCollection = vm.PropertyCollection
+                    };
+                    return;
+                }
+            
+                // Ensure detailed collection has started
+                version = ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
             }
             
-            // Ensure detailed collection has started
-            InstrumentationVersion version = ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
-            
             // Set selection
-            vm.SelectedValidationObject = validationObject;
+            vm.SelectedTextualSourceObject = sourceObject;
             
             // Bind detail context
-            validationObject.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
+            sourceObject.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
             {
                 vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
@@ -242,7 +253,7 @@ namespace Studio.Views.Shader
 
             // Update selected file
             codeViewModel.SelectedShaderFileViewModel = fileViewModel;
-            codeViewModel.SelectedValidationObject = location.Object;
+            codeViewModel.SelectedTextualSourceObject = location.Object;
 
             // Scroll to target
             // TODO: 10 is a total guess, we need to derive it from the height, but that doesn't exist yet.
@@ -259,14 +270,14 @@ namespace Studio.Views.Shader
         /// Invoked on object added
         /// </summary>
         /// <param name="validationObject"></param>
-        private void OnValidationObjectAdded(ValidationObject validationObject)
+        private void OnValidationObjectAdded(CodeShaderContentViewModel viewModel, ValidationObject validationObject)
         {
             // Update services
             _validationTextMarkerService.Add(validationObject);
             _validationBackgroundRenderer.Add(validationObject);
             
             // Update canvas
-            MarkerCanvas.Add(validationObject);
+            viewModel.MarkerCanvasViewModel.SourceObjects.Add(validationObject);
             
             // Redraw for background update
             Editor.TextArea.TextView.Redraw();
@@ -276,14 +287,14 @@ namespace Studio.Views.Shader
         /// Invoked on object removed
         /// </summary>
         /// <param name="validationObject"></param>
-        private void OnValidationObjectRemoved(ValidationObject validationObject)
+        private void OnValidationObjectRemoved(CodeShaderContentViewModel viewModel, ValidationObject validationObject)
         {
             // Update services
             _validationTextMarkerService.Remove(validationObject);
             _validationBackgroundRenderer.Remove(validationObject);
             
             // Update canvas
-            MarkerCanvas.Remove(validationObject);
+            viewModel.MarkerCanvasViewModel.SourceObjects.Remove(validationObject);
             
             // Redraw for background update
             Editor.TextArea.TextView.Redraw();

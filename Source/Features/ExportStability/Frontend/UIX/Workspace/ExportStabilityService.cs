@@ -128,7 +128,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Traits = _traits,
-                        Severity = ValidationSeverity.Info,
+                        Severity = SourceObjectSeverity.Info,
                         Content = $"Exporting {(message.Flat.isNaN == 1 ? "NaN" : "Inf")}",
                         Count = 1u
                     };

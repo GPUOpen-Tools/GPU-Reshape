@@ -32,7 +32,7 @@ using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class ValidationObject : ReactiveObject, ISerializable
+    public class ValidationObject : ReactiveObject, ITextualSourceObject, ISerializable
     {
         /// <summary>
         /// Number of messages
@@ -46,7 +46,7 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Severity of this validation object
         /// </summary>
-        public ValidationSeverity Severity
+        public SourceObjectSeverity Severity
         {
             get => _severity;
             set => this.RaiseAndSetIfChanged(ref _severity, value);
@@ -71,7 +71,7 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Associated detail view model, optional
         /// </summary>
-        public IValidationDetailViewModel? DetailViewModel
+        public ISourceObjectDetailViewModel? DetailViewModel
         {
             get => _detailViewModel;
             set => this.RaiseAndSetIfChanged(ref _detailViewModel, value);
@@ -94,6 +94,11 @@ namespace Studio.ViewModels.Workspace.Objects
             get => _content;
             set => this.RaiseAndSetIfChanged(ref _content, value);
         }
+
+        /// <summary>
+        /// Assign to validation category
+        /// </summary>
+        public string OverlayCategory => "Validation";
 
         /// <summary>
         /// General contents
@@ -161,7 +166,7 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Internal detail view model
         /// </summary>
-        private IValidationDetailViewModel? _detailViewModel;
+        private ISourceObjectDetailViewModel? _detailViewModel;
 
         /// <summary>
         /// Internal traits
@@ -171,6 +176,6 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Internal severity, assume error
         /// </summary>
-        private ValidationSeverity _severity = ValidationSeverity.Error;
+        private SourceObjectSeverity _severity = SourceObjectSeverity.Error;
     }
 }

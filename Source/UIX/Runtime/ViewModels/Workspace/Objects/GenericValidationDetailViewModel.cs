@@ -32,7 +32,7 @@ using Runtime.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
-    public class GenericValidationDetailViewModel : ReactiveObject, IValidationDetailViewModel, ISerializable
+    public class GenericValidationDetailViewModel : ReactiveObject, ISourceObjectDetailViewModel, ISerializable
     {
         /// <summary>
         /// Is the collection paused?

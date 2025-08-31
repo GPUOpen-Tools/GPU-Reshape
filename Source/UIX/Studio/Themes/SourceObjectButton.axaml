@@ -32,17 +32,17 @@
         xmlns:valueConverters="clr-namespace:Studio.ValueConverters">
     <Design.PreviewWith>
         <Grid Width="200" Height="200">
-            <Button Classes="Validation" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Click me!" />
+            <Button Classes="SourceObject" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Click me!" />
         </Grid>
     </Design.PreviewWith>
     
     <Styles.Resources>
-        <valueConverters:ValidationSeverityConverter x:Key="ValidationSeverityConverter" />
+        <valueConverters:SourceObjectSeverityConverter x:Key="SourceObjectSeverityConverter" />
     </Styles.Resources>
     
-    <Style Selector="Button.Validation">
-        <Setter Property="Background" Value="{Binding SelectedObject, Converter={StaticResource ValidationSeverityConverter}}" />
-        <Setter Property="BorderBrush" Value="{Binding SelectedObject, Converter={StaticResource ValidationSeverityConverter}}" />
+    <Style Selector="Button.SourceObject">
+        <Setter Property="Background" Value="{Binding SelectedObject, Converter={StaticResource SourceObjectSeverityConverter}}" />
+        <Setter Property="BorderBrush" Value="{Binding SelectedObject, Converter={StaticResource SourceObjectSeverityConverter}}" />
         <Setter Property="Padding" Value="5 -2 5 0" />
         <Setter Property="CornerRadius" Value="0" />
         <Setter Property="Margin" Value="0" />
@@ -50,9 +50,9 @@
         <Setter Property="FontSize" Value="12" />
     </Style>
     
-    <Style Selector="Button.Validation:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{Binding  SelectedObject, Converter={StaticResource ValidationSeverityConverter}}" />
-        <Setter Property="BorderBrush" Value="{Binding  SelectedObject, Converter={StaticResource ValidationSeverityConverter}}" />
+    <Style Selector="Button.SourceObject:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{Binding  SelectedObject, Converter={StaticResource SourceObjectSeverityConverter}}" />
+        <Setter Property="BorderBrush" Value="{Binding  SelectedObject, Converter={StaticResource SourceObjectSeverityConverter}}" />
         <Setter Property="Padding" Value="5 -2 5 0" />
     </Style>
 </Styles>

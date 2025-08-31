@@ -33,6 +33,7 @@ using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
@@ -99,16 +100,21 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Currently selected validation object
         /// </summary>
-        public ValidationObject? SelectedValidationObject
+        public ITextualSourceObject? SelectedTextualSourceObject
         {
-            get => _selectedValidationObject;
-            set => this.RaiseAndSetIfChanged(ref _selectedValidationObject, value);
+            get => _selectedSourceObject;
+            set => this.RaiseAndSetIfChanged(ref _selectedSourceObject, value);
         }
 
         /// <summary>
+        /// Marker canvas view model
+        /// </summary>
+        public SourceObjectMarkerCanvasViewModel MarkerCanvasViewModel { get; } = new();
+        
+        /// <summary>
         /// Current detail view model
         /// </summary>
-        public IValidationDetailViewModel? DetailViewModel
+        public ISourceObjectDetailViewModel? DetailViewModel
         {
             get => _detailViewModel;
             set => this.RaiseAndSetIfChanged(ref _detailViewModel, value);
@@ -210,7 +216,7 @@ namespace Studio.ViewModels.Shader
         private void OnShowInSource()
         {
             // Navigate to the currently selected validation object
-            NavigationContext?.Navigate(typeof(CodeShaderContentViewModel), SelectedValidationObject?.Segment?.Location);
+            NavigationContext?.Navigate(typeof(CodeShaderContentViewModel), SelectedTextualSourceObject?.Segment?.Location);
         }
 
         /// <summary>
@@ -225,7 +231,7 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Is a validation object visible?
         /// </summary>
-        public bool IsObjectVisible(ValidationObject validationObject)
+        public bool IsObjectVisible(ITextualSourceObject sourceObject)
         {
             return true;
         }
@@ -321,11 +327,11 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Internal selection state
         /// </summary>
-        private ValidationObject? _selectedValidationObject;
+        private ITextualSourceObject? _selectedSourceObject;
 
         /// <summary>
         /// Internal detail state
         /// </summary>
-        private IValidationDetailViewModel? _detailViewModel;
+        private ISourceObjectDetailViewModel? _detailViewModel;
     }
 }

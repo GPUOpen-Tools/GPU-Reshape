@@ -34,7 +34,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace GRS.Features.ResourceBounds.UIX.Workspace.Objects
 {
-    public class ScalarizationDetailViewModel : ReactiveObject, IValidationDetailViewModel
+    public class ScalarizationDetailViewModel : ReactiveObject, ISourceObjectDetailViewModel
     {
         /// <summary>
         /// Source segment

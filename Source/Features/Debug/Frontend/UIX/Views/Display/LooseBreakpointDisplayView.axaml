@@ -12,12 +12,19 @@
              VerticalAlignment="Stretch">
     <Grid>
         <ListBox
-            ItemsSource="{Binding Items}">
+            ItemsSource="{Binding Items}"
+            Background="{StaticResource InfoMediumBackground}">
             <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
                     <VirtualizingStackPanel Orientation="Vertical"/>
                 </ItemsPanelTemplate>
             </ListBox.ItemsPanel>
+            
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Height" Value="20"/>
+                </Style>
+            </ListBox.Styles>
             
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:LooseItemViewModel">

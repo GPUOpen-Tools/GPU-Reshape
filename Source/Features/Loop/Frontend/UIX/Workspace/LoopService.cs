@@ -126,7 +126,7 @@ namespace GRS.Features.Loop.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Traits = ValidationTraits.NoDetail,
-                        Severity = ValidationSeverity.Error,
+                        Severity = SourceObjectSeverity.Error,
                         Content = "Loop timeout",
                         Count = 1u,
                     };

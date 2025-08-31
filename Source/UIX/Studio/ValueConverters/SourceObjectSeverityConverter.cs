@@ -34,7 +34,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ValueConverters
 {
-    public class ValidationSeverityConverter : IValueConverter
+    public class SourceObjectSeverityConverter : IValueConverter
     {
         /// <summary>
         /// Convert source data
@@ -47,18 +47,18 @@ namespace Studio.ValueConverters
         /// <exception cref="NotSupportedException"></exception>
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is not ValidationObject _object)
+            if (value is not ITextualSourceObject _object)
             {
                 return null;
             }
 
             switch (_object.Severity)
             {
-                case ValidationSeverity.Info:
+                case SourceObjectSeverity.Info:
                     return ResourceLocator.GetBrush("InfoMediumLowForeground");
-                case ValidationSeverity.Warning:
+                case SourceObjectSeverity.Warning:
                     return ResourceLocator.GetBrush("WarningDefaultBrush");
-                case ValidationSeverity.Error:
+                case SourceObjectSeverity.Error:
                     return ResourceLocator.GetBrush("ErrorDefaultBrush");
                 default:
                     throw new ArgumentOutOfRangeException();

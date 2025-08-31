@@ -149,7 +149,7 @@ namespace GRS.Features.Descriptor.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Content = contents,
-                        Severity = ValidationSeverity.Error,
+                        Severity = SourceObjectSeverity.Error,
                         Count = 1u
                     };
                     
