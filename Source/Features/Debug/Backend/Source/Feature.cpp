@@ -1441,7 +1441,7 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
         IL::Emitter<> emitter(context.program, *hashMergeBlock);
 
         // Check if the hash is matching
-        IL::ID isMatchingHash = emitter.NotEqual(
+        IL::ID isMatchingHash = emitter.Equal(
             breakpointHeader.Get<&BreakpointHeader::shaderInstrumentationHash32>(emitter),
             emitter.UInt32(breakpointData.shaderInstrumentationHash32)
         );
