@@ -35,6 +35,7 @@ using Studio.ViewModels.Workspace;
 using Message.CLR;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio;
+using Studio.Models.IL.Tiny;
 using Studio.Models.Instrumentation;
 using Studio.Services;
 using Studio.ViewModels;
@@ -124,8 +125,14 @@ namespace GRS.Features.Debug.UIX.Workspace
                     continue;
                 }
 
+                // Update tiny type if needed
+                if (message.dataTinyType.Count != 0)
+                {
+                    UpdateTinyType(breakpointViewModel, message);
+                }
+
                 // Process it on the messaging thread, let the heavy weight stuff leave the UI thread be
-                object? payload = processorViewModel.Process(message);
+                object? payload = processorViewModel.Process(breakpointViewModel, message);
                 
                 // Total number of streamed data
                 uint byteCount = (uint)message.data.Count;
@@ -160,6 +167,27 @@ namespace GRS.Features.Debug.UIX.Workspace
                     ProcessStreamRequest(breakpointViewModel, flat, byteCount);
                 });
             }
+        }
+
+        /// <summary>
+        /// Update an underlying tiny type
+        /// </summary>
+        private void UpdateTinyType(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage message)
+        {
+            // Check if we need to parse it again
+            if (breakpointViewModel.TinyType is { ID: var id } && id == message.dataTypeId)
+            {
+                return;
+            }
+            
+            // Unpack it
+            breakpointViewModel.TinyType = TinyTypePacking.UnpackTinyType(
+                message.dataTinyType,
+                new TinyTypePacking.TinyTypeResolver()
+            );
+
+            // Switch over from tiny type id to real one
+            breakpointViewModel.TinyType.ID = message.dataTypeId;
         }
 
         /// <summary>

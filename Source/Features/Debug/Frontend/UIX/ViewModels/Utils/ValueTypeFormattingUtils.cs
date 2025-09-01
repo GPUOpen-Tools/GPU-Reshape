@@ -5,7 +5,7 @@ using Studio.Models.IL;
 
 namespace GRS.Features.Debug.UIX.ViewModels.Utils;
 
-public static class TypeFormattingUtils
+public static class ValueTypeFormattingUtils
 {
     /// <summary>
     /// Format a boolean value

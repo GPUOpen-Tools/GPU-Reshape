@@ -26,8 +26,11 @@
 
 #pragma once
 
+// Std
+#include <cstdint>
+
 namespace Backend::IL {
-    enum class AddressSpace {
+    enum class AddressSpace : uint8_t {
         Constant,
         Texture,
         Buffer,

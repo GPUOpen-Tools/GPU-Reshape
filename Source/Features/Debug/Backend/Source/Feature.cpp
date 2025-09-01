@@ -47,6 +47,8 @@
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
 #include <Backend/Device/DeviceState.h>
 #include <Backend/Device/DeviceStateRef.h>
+#include <Backend/IL/Tiny/TinyType.h>
+#include <Backend/IL/Tiny/TinyTypePacking.h>
 #include <Backend/IL/TypeSize.h>
 
 // Generated schema
@@ -541,11 +543,15 @@ void DebugFeature::OnSyncPoint() {
 
             // Allocate breakpoint data
             auto message = view.Add(DebugBreakpointStreamMessage::AllocationInfo {
-                .dataCount = effectiveStreamSize
+                .dataCount = effectiveStreamSize,
+                .dataTinyTypeCount = breakpoint.hostLayout.tinyType.size()
             });
 
             // TODO[dbg]: Can we somehow map this in-place? There's a lot of copies going on
             std::memcpy(message->data.Get(), payload, effectiveStreamSize);
+
+            // Copy over tiny type
+            std::memcpy(message->dataTinyType.Get(), breakpoint.hostLayout.tinyType.data(), breakpoint.hostLayout.tinyType.size());
 
             // Write out request data
             message->request = ++defaultController.requestIndex;
@@ -771,6 +777,9 @@ bool DebugFeature::GetBreakpointFormat(const IL::VisitContext& context, const IL
 }
 
 bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {
+    // Reset host layout
+    breakpoint->hostLayout = {};
+    
     // May not have an associated type
     const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
     if (!type) {
@@ -816,6 +825,9 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
     } else {
         // If not relevant, just assume the type
         breakpoint->hostLayout.type = type;
+
+        // Pack the tiny type down
+        Backend::IL::Tiny::Pack(type, breakpoint->hostLayout.tinyType);
 
         // TODO[dbg]: I guess we don't need to handle alignment?
         breakpoint->hostLayout.dataDWordStride = static_cast<uint32_t>((GetPODNonAlignedTypeByteSize(type) + sizeof(uint32_t) - 1) / sizeof(uint32_t));

@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using GRS.Features.Debug.UIX.Models;
+using GRS.Features.Debug.UIX.ViewModels.Utils;
 using Message.CLR;
 using Studio.Models.IL;
 
@@ -16,7 +17,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     /// Must not interact with the UI thread
     /// </summary>
     /// <returns>optional payload data</returns>
-    public object? Process(DebugBreakpointStreamMessage message)
+    public object? Process(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage message)
     {
         // Ignore empty images
         if (message.dataStaticWidth == 0 || message.dataStaticHeight == 0)
@@ -29,7 +30,10 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         switch ((Format)message.dataFormat)
         {
             default:
-                return null;
+                throw new NotImplementedException($"Unimplemented format {message.dataFormat}");
+            case Format.None:
+                bitmapFormat = default;
+                break;
             case Format.RGBA8:
                 bitmapFormat = PixelFormat.Rgba8888;
                 break;
@@ -38,30 +42,37 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         // Handle processing
         if ((BreakpointDataOrder)message.dataOrder == BreakpointDataOrder.Static)
         {
-            return ProcessStatic(bitmapFormat, message);
+            return ProcessStatic(breakpointViewModel, bitmapFormat, message);
         }
         else
         {
-            return ProcessDynamic(bitmapFormat, message);
+            return ProcessDynamic(breakpointViewModel, bitmapFormat, message);
         }
     }
 
     /// <summary>
     /// Static processor
     /// </summary>
-    private unsafe object? ProcessStatic(PixelFormat bitmapFormat, DebugBreakpointStreamMessage message)
+    private unsafe object? ProcessStatic(BreakpointViewModel breakpointViewModel, PixelFormat bitmapFormat, DebugBreakpointStreamMessage message)
     {
-        return new WriteableBitmap(
-            bitmapFormat, AlphaFormat.Opaque,
-            new IntPtr(message.data.GetDataStart()), new PixelSize((int)message.dataStaticWidth, (int)message.dataStaticHeight),
-            new Vector(96, 96), (int)(message.dataStaticWidth * message.dataDWordStride * 4)
-        );
+        // Fast path, compressed and ready
+        if (message.dataFormat == 0)
+        {
+            return new WriteableBitmap(
+                bitmapFormat, AlphaFormat.Opaque,
+                new IntPtr(message.data.GetDataStart()), new PixelSize((int)message.dataStaticWidth, (int)message.dataStaticHeight),
+                new Vector(96, 96), (int)(message.dataStaticWidth * message.dataDWordStride * 4)
+            );
+        }
+
+        // TODO: Implement
+        return null;
     }
 
     /// <summary>
     /// Dynamic processor
     /// </summary>
-    private unsafe object? ProcessDynamic(PixelFormat bitmapFormat, DebugBreakpointStreamMessage message)
+    private unsafe object? ProcessDynamic(BreakpointViewModel breakpointViewModel, PixelFormat bitmapFormat, DebugBreakpointStreamMessage message)
     {
         // Deduce the actual safe number of dwords
         uint streamDWordCount = (uint)(message.data.Count / sizeof(uint));
@@ -80,19 +91,57 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         // Destination buffer
         uint[] dynamicCompositeBuffer = new uint[message.dataStaticWidth * message.dataStaticHeight];
 
-        // Parallelize composition
-        Parallel.For(0, exportCount, i =>
+        // Fast path, compressed and scatter memcpy
+        if (message.dataFormat != 0)
         {
-            int dwordOffset = (int)(i * exportDWordStride);
-            if (dwordOffset + 2 > dwordCount)
+            // Parallelize composition
+            Parallel.For(0, exportCount, i =>
             {
-                return;
-            }
+                int dwordOffset = (int)(i * exportDWordStride);
+                if (dwordOffset + 2 > dwordCount)
+                {
+                    return;
+                }
             
-            uint threadIndex = sourceDWordPtr[dwordOffset];
-            uint texel = sourceDWordPtr[dwordOffset + 1];
-            dynamicCompositeBuffer[threadIndex] = texel;
-        });
+                uint threadIndex = sourceDWordPtr[dwordOffset];
+                if (threadIndex < dynamicCompositeBuffer.Length)
+                {
+                    dynamicCompositeBuffer[threadIndex] = sourceDWordPtr[dwordOffset + 1];
+                }
+            });
+        }
+        else
+        {
+            // Shared formatting config
+            ValueTypeRenderingUtils.FormattingConfig config = new()
+            {
+                MaxValue = 1.0f
+            };
+            
+            // Parallelize composition
+            Parallel.For(0, exportCount, i =>
+            {
+                int dwordOffset = (int)(i * exportDWordStride);
+                if (dwordOffset + 2 > dwordCount)
+                {
+                    return;
+                }
+                
+                Span<byte> dataSpan = new(
+                    (byte*)(sourceDWordPtr + dwordOffset + 1),
+                    (int)(message.dataDWordStride * 4)
+                );
+
+                // Render using the tiny type, must exist at this point
+                uint texel = ValueTypeRenderingUtils.Render255(config, breakpointViewModel.TinyType, 0, ref dataSpan);
+
+                uint threadIndex = sourceDWordPtr[dwordOffset];
+                if (threadIndex < dynamicCompositeBuffer.Length)
+                {
+                    dynamicCompositeBuffer[threadIndex] = texel;
+                }
+            });
+        }
 
         // Create image
         fixed (uint* ptr = dynamicCompositeBuffer)

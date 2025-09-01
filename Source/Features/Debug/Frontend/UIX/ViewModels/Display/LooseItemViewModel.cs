@@ -257,17 +257,17 @@ public class LooseItemViewModel : ReactiveObject
             }
             case TypeKind.Bool:
             {
-                item.Items.Add(new LooseTreeItemViewModel { Text = TypeFormattingUtils.FormatBool((BoolType)type, ref byteSpan)});
+                item.Items.Add(new LooseTreeItemViewModel { Text = ValueTypeFormattingUtils.FormatBool((BoolType)type, ref byteSpan)});
                 break;
             }
             case TypeKind.Int:
             {
-                item.Items.Add(new LooseTreeItemViewModel { Text = TypeFormattingUtils.FormatInt((IntType)type, ref byteSpan)});
+                item.Items.Add(new LooseTreeItemViewModel { Text = ValueTypeFormattingUtils.FormatInt((IntType)type, ref byteSpan)});
                 break;
             }
             case TypeKind.FP:
             {
-                item.Items.Add(new LooseTreeItemViewModel { Text = TypeFormattingUtils.FormatFP((FPType)type, ref byteSpan)});
+                item.Items.Add(new LooseTreeItemViewModel { Text = ValueTypeFormattingUtils.FormatFP((FPType)type, ref byteSpan)});
                 break;
             }
             case TypeKind.Vector:

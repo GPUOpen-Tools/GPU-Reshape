@@ -1,0 +1,203 @@
+﻿using System;
+using System.Runtime.InteropServices;
+using Studio.Models.IL;
+using Type = Studio.Models.IL.Type;
+
+namespace GRS.Features.Debug.UIX.ViewModels.Utils;
+
+public static class ValueTypeRenderingUtils
+{
+    /// <summary>
+    /// All placeholder hacks, just to start somewhere
+    /// </summary>
+    
+    public struct FormattingConfig
+    {
+        public required float MaxValue;
+    }
+    
+    /// <summary>
+    /// Render a value to a 255 format
+    /// </summary>
+    public static uint Render255(FormattingConfig config, Type type, int shl, ref Span<byte> byteSpan)
+    {
+        switch (type.Kind)
+        {
+            default:
+            {
+                return 0;
+            }
+            case TypeKind.Bool:
+            {
+                return RenderBool255(config, (BoolType)type, 0, ref byteSpan);
+            }
+            case TypeKind.Int:
+            {
+                return RenderInt255(config, (IntType)type, 0, ref byteSpan);
+            }
+            case TypeKind.FP:
+            {
+                return RenderFP255(config, (FPType)type, 0, ref byteSpan);
+            }
+            case TypeKind.Vector:
+            {
+                var typed = (VectorType)type;
+
+                uint value = 0;
+                for (int i = 0; i < Math.Min(typed.Dimension, 4); i++)
+                {
+                    value |= Render255(config, typed.ContainedType, shl + 8 * i, ref byteSpan);
+                }
+
+                return value;
+            }
+            case TypeKind.Array:
+            {
+                var typed = (ArrayType)type;
+
+                uint value = 0;
+                for (int i = 0; i < Math.Min(typed.Count, 4); i++)
+                {
+                    value |= Render255(config, typed.ElementType, shl + 8 * i, ref byteSpan);
+                }
+
+                return value;
+            }
+            case TypeKind.Struct:
+            {
+                var typed = (StructType)type;
+                
+                uint value = 0;
+                for (int i = 0; i < Math.Min(typed.MemberTypes.Length, 4); i++)
+                {
+                    value |= Render255(config, typed.MemberTypes[i], shl + 8 * i, ref byteSpan);
+                }
+
+                return value;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Render a boolean value
+    /// </summary>
+    public static uint RenderBool255(FormattingConfig config, BoolType type, int shl, ref Span<byte> byteSpan)
+    {
+        uint value = byteSpan[0] * 255u;
+        byteSpan = byteSpan.Slice(1);
+        return value << shl;
+    }
+
+    /// <summary>
+    /// Render an integer value
+    /// </summary>
+    public static uint RenderInt255(FormattingConfig config, IntType type, int shl, ref Span<byte> byteSpan)
+    {
+        switch (type.BitWidth)
+        {
+            default:
+            {
+                return 0;
+            }
+            case 1:
+            {
+                uint value = byteSpan[0];
+                byteSpan = byteSpan.Slice(1);
+                return Pack(config, value, shl);
+            }
+            case 16:
+            {
+                if (type.Signedness)
+                {
+                    short value = MemoryMarshal.Read<short>(byteSpan);
+                    byteSpan = byteSpan.Slice(2);
+                    return Pack(config, (uint)value, shl);
+                }
+                else
+                {
+                    ushort value = MemoryMarshal.Read<ushort>(byteSpan);
+                    byteSpan = byteSpan.Slice(2);
+                    return Pack(config, value, shl);
+                }
+            }
+            case 32:
+            {
+                if (type.Signedness)
+                {
+                    int value = MemoryMarshal.Read<int>(byteSpan);
+                    byteSpan = byteSpan.Slice(4);
+                    return Pack(config, (uint)value, shl);
+                }
+                else
+                {
+                    uint value = MemoryMarshal.Read<uint>(byteSpan);
+                    byteSpan = byteSpan.Slice(4);
+                    return Pack(config, value, shl);
+                }
+            }
+            case 64:
+            {
+                if (type.Signedness)
+                {
+                    Int64 value = MemoryMarshal.Read<Int64>(byteSpan);
+                    byteSpan = byteSpan.Slice(8);
+                    return Pack(config, (uint)value, shl);
+                }
+                else
+                {
+                    UInt64 value = MemoryMarshal.Read<UInt64>(byteSpan);
+                    byteSpan = byteSpan.Slice(8);
+                    return Pack(config, (uint)value, shl);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Render a floating point value
+    /// </summary>
+    public static uint RenderFP255(FormattingConfig config, FPType type, int shl, ref Span<byte> byteSpan)
+    {
+        switch (type.BitWidth)
+        {
+            default:
+            {
+                return 0;
+            }
+            case 16:
+            {
+                Half value = MemoryMarshal.Read<Half>(byteSpan);
+                byteSpan = byteSpan.Slice(2);
+                return Pack(config, (float)value, shl);
+            }
+            case 32:
+            {
+                float value = MemoryMarshal.Read<float>(byteSpan);
+                byteSpan = byteSpan.Slice(4);
+                return Pack(config, value, shl);
+            }
+            case 64:
+            {
+                double value = MemoryMarshal.Read<double>(byteSpan);
+                byteSpan = byteSpan.Slice(8);
+                return Pack(config, (float)value, shl);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Pack a single fp value
+    /// </summary>
+    private static uint Pack(FormattingConfig config, float value, int shl)
+    {
+        return (uint)(Math.Min(value / config.MaxValue, 1.0f)) * 255 << shl;
+    }
+
+    /// <summary>
+    /// Pack a single int value
+    /// </summary>
+    private static uint Pack(FormattingConfig config, uint value, int shl)
+    {
+        return (uint)(Math.Min(value / config.MaxValue, 1.0f)) * 255 << shl;
+    }
+}

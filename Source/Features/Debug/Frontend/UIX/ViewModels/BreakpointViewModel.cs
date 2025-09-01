@@ -12,6 +12,7 @@ using Studio.Models.Workspace.Listeners;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 using ShaderViewModel = Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderViewModel;
+using Type = Studio.Models.IL.Type;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
 
@@ -93,6 +94,11 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         get => _paused;
         set => this.RaiseAndSetIfChanged(ref _paused, value);
     }
+    
+    /// <summary>
+    /// Intermediate tiny type
+    /// </summary>
+    public Type TinyType { get; set; }
     
     /// <summary>
     /// Shader property

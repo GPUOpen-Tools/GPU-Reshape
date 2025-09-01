@@ -63,6 +63,7 @@
         <field name="data" type="array" element="uint8"/>
         <field name="dataFormat" type="uint32"/>
         <field name="dataTypeId" type="uint32"/>
+        <field name="dataTinyType" type="array" element="uint8"/>
         <field name="dataCompression" type="uint32"/>
         <field name="dataDWordStride" type="uint32"/>
         <field name="dataOrder" type="uint32"/>

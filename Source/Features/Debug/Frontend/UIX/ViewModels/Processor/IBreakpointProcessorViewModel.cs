@@ -9,7 +9,7 @@ public interface IBreakpointProcessorViewModel
     /// Must not interact with the UI thread
     /// </summary>
     /// <returns>optional payload data</returns>
-    object? Process(DebugBreakpointStreamMessage message);
+    object? Process(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage message);
 
     /// <summary>
     /// Install the payload on the UI thread

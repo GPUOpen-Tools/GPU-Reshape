@@ -10,7 +10,7 @@ public class StructuredBreakpointProcessorViewModel : IBreakpointProcessorViewMo
     /// Must not interact with the UI thread
     /// </summary>
     /// <returns>optional payload data</returns>
-    public unsafe object? Process(DebugBreakpointStreamMessage message)
+    public unsafe object? Process(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage message)
     {
         var data = new uint[message.data.Count];
         

@@ -11,8 +11,8 @@ public class ImageBreakpointDisplaySelectorViewModel : IBreakpointDisplaySelecto
         var order       = (BreakpointDataOrder)message.dataOrder;
         var compression = (BreakpointCompression)message.dataCompression;
 
-        // Dynamic data isn't supported yet
-        if (order != BreakpointDataOrder.Static)
+        // Loose data not supported
+        if (order == BreakpointDataOrder.Loose)
         {
             return BreakpointDisplaySelectorPriority.Unsupported;
         }

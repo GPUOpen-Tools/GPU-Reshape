@@ -77,6 +77,9 @@ struct BreakpointDataHostLayout {
     /// If format is None, represents the structural type
     const Backend::IL::Type* type{nullptr};
 
+    /// Packed tiny type data
+    std::vector<uint8_t> tinyType;
+
     /// Compression type
     BreakpointCompression compression{BreakpointCompression::None};
     

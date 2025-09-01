@@ -33,7 +33,7 @@
 #include <Common/Assert.h>
 
 namespace Backend::IL {
-    enum class TextureDimension {
+    enum class TextureDimension : uint8_t {
         Texture1D,
         Texture2D,
         Texture3D,

@@ -30,7 +30,7 @@
 #include <cstdint>
 
 namespace Backend::IL {
-    enum class Format {
+    enum class Format : uint8_t {
         None,
         RGBA32Float,
         RGBA16Float,
