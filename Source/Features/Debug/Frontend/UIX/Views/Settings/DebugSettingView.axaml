@@ -87,6 +87,24 @@
                     HorizontalAlignment="Left"
                     TextWrapping="WrapWithOverflow"
                     Text="// INFO //"/>
+                
+                <TextBlock 
+                    Margin="0 0 0 0"
+                    HorizontalAlignment="Left"
+                    TextWrapping="WrapWithOverflow"
+                    Text="Max Breakpoint Image Size Per-Axis (pixels)"/>
+                
+                <NumericUpDown
+                    Margin="0 0 0 2.5" Height="25"
+                    Value="{Binding MaxBreakpointImageSizePerAxis}"
+                    Padding="0"/>
+                
+                <TextBlock 
+                    Width="500"
+                    Margin="0 5 0 0"
+                    HorizontalAlignment="Left"
+                    TextWrapping="WrapWithOverflow"
+                    Text="// INFO //"/>
             </StackPanel>
         </Grid>
     </StackPanel>

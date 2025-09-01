@@ -53,6 +53,16 @@ namespace GRS.Features.Debug.UIX.Settings
             set => this.RaiseAndSetIfChanged(ref _defaultBreakpointMemoryMb, value);
         }
         
+        /// <summary>
+        /// Max dimension of an image display
+        /// </summary>
+        [DataMember]
+        public uint MaxBreakpointImageSizePerAxis
+        {
+            get => _maxBreakpointImageSizePerAxisSize;
+            set => this.RaiseAndSetIfChanged(ref _maxBreakpointImageSizePerAxisSize, value);
+        }
+
         public DebugSettingViewModel() : base("Debugging")
         {
             
@@ -67,6 +77,11 @@ namespace GRS.Features.Debug.UIX.Settings
         /// Internal max mb
         /// </summary>
         private uint _maxBreakpointMemoryMb = 64;
+
+        /// <summary>
+        /// Internal max mb
+        /// </summary>
+        private uint _maxBreakpointImageSizePerAxisSize = 4096;
 
         /// <summary>
         /// Internal initial mb

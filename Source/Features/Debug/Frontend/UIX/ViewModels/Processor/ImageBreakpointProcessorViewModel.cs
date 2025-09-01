@@ -56,7 +56,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     private unsafe object? ProcessStatic(BreakpointViewModel breakpointViewModel, PixelFormat bitmapFormat, DebugBreakpointStreamMessage message)
     {
         // Fast path, compressed and ready
-        if (message.dataFormat == 0)
+        if (message.dataFormat != 0)
         {
             return new WriteableBitmap(
                 bitmapFormat, AlphaFormat.Opaque,

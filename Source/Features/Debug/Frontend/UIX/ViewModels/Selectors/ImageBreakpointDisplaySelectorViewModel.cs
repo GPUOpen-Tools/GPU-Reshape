@@ -1,5 +1,7 @@
 using GRS.Features.Debug.UIX.Models;
+using GRS.Features.Debug.UIX.Settings;
 using Message.CLR;
+using Studio.Services;
 
 namespace GRS.Features.Debug.UIX.ViewModels.Selectors;
 
@@ -23,6 +25,15 @@ public class ImageBreakpointDisplaySelectorViewModel : IBreakpointDisplaySelecto
             return BreakpointDisplaySelectorPriority.Unsupported;
         }
 
+        // Check if we're in the image size limits
+        if (_debugSettings != null && (
+            message.dataStaticWidth > _debugSettings.MaxBreakpointImageSizePerAxis ||
+            message.dataStaticHeight > _debugSettings.MaxBreakpointImageSizePerAxis
+        ))
+        {
+            return BreakpointDisplaySelectorPriority.Unsupported;
+        }
+
         // If compressed, optimal
         if (compression == BreakpointCompression.FPUNorm8888)
         {
@@ -32,4 +43,9 @@ public class ImageBreakpointDisplaySelectorViewModel : IBreakpointDisplaySelecto
         // Otherwise, the preferred display mode
         return BreakpointDisplaySelectorPriority.Preferred;
     }
+
+    /// <summary>
+    /// Settings
+    /// </summary>
+    private static DebugSettingViewModel? _debugSettings = ServiceRegistry.Get<ISettingsService>()?.Get<DebugSettingViewModel>();
 }
