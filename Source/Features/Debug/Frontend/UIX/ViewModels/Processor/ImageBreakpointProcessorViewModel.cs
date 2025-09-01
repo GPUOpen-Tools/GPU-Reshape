@@ -135,12 +135,18 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 // Render using the tiny type, must exist at this point
                 uint texel = ValueTypeRenderingUtils.Render255(config, breakpointViewModel.TinyType, 0, ref dataSpan);
 
+                // Fixed alpha if needed
+                texel = ValueTypeRenderingUtils.RenderFixedAlpha255(breakpointViewModel.TinyType, texel);
+
                 uint threadIndex = sourceDWordPtr[dwordOffset];
                 if (threadIndex < dynamicCompositeBuffer.Length)
                 {
                     dynamicCompositeBuffer[threadIndex] = texel;
                 }
             });
+            
+            // Assume 255
+            bitmapFormat = PixelFormat.Rgba8888;
         }
 
         // Create image

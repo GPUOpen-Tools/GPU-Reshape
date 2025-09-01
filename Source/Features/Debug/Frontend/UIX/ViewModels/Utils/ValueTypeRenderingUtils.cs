@@ -29,15 +29,15 @@ public static class ValueTypeRenderingUtils
             }
             case TypeKind.Bool:
             {
-                return RenderBool255(config, (BoolType)type, 0, ref byteSpan);
+                return RenderBool255(config, (BoolType)type, shl, ref byteSpan);
             }
             case TypeKind.Int:
             {
-                return RenderInt255(config, (IntType)type, 0, ref byteSpan);
+                return RenderInt255(config, (IntType)type, shl, ref byteSpan);
             }
             case TypeKind.FP:
             {
-                return RenderFP255(config, (FPType)type, 0, ref byteSpan);
+                return RenderFP255(config, (FPType)type, shl, ref byteSpan);
             }
             case TypeKind.Vector:
             {
@@ -76,6 +76,52 @@ public static class ValueTypeRenderingUtils
                 return value;
             }
         }
+    }
+    
+    /// <summary>
+    /// Render a fixed alpha channel if none present
+    /// </summary>
+    public static uint RenderFixedAlpha255(Type type, uint render255)
+    {
+        uint alphaValue = 0;
+        
+        switch (type.Kind)
+        {
+            default:
+            {
+                alphaValue = 0xFFu << 24;
+                break;
+            }
+            case TypeKind.Vector:
+            {
+                var typed = (VectorType)type;
+                if (typed.Dimension < 4)
+                {
+                    alphaValue = 0xFFu << 24;
+                }
+                break;
+            }
+            case TypeKind.Array:
+            {
+                var typed = (ArrayType)type;
+                if (typed.Count < 4)
+                {
+                    alphaValue = 0xFFu << 24;
+                }
+                break;
+            }
+            case TypeKind.Struct:
+            {
+                var typed = (StructType)type;
+                if (typed.MemberTypes.Length < 4)
+                {
+                    alphaValue = 0xFFu << 24;
+                }
+                break;
+            }
+        }
+
+        return render255 | alphaValue;
     }
     
     /// <summary>
@@ -190,7 +236,8 @@ public static class ValueTypeRenderingUtils
     /// </summary>
     private static uint Pack(FormattingConfig config, float value, int shl)
     {
-        return (uint)(Math.Min(value / config.MaxValue, 1.0f)) * 255 << shl;
+        value = (float)Math.Pow(value, 0.4545454545f);
+        return (uint)(Math.Min(value / config.MaxValue, 1.0f) * 255) << shl;
     }
 
     /// <summary>
@@ -198,6 +245,6 @@ public static class ValueTypeRenderingUtils
     /// </summary>
     private static uint Pack(FormattingConfig config, uint value, int shl)
     {
-        return (uint)(Math.Min(value / config.MaxValue, 1.0f)) * 255 << shl;
+        return (uint)(Math.Min(value / config.MaxValue, 1.0f) * 255) << shl;
     }
 }
