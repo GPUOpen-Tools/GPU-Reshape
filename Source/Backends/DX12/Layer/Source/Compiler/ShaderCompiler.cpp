@@ -193,6 +193,9 @@ bool ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Create a copy of the module, don't modify the source
     IDXModule *module = job.state->module->Copy();
 
+    // Assign the instrumentation hash, may be used within features for tracking
+    module->GetProgram()->SetShaderInstrumentationHash(job.instrumentationKey.combinedHash);
+
     // Debugging
     std::filesystem::path debugPath;
     if (debug) {

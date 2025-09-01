@@ -29,7 +29,11 @@
 
 <schema>
     <shader-export name="BreakpointAcquisition" no-sguid="true" no-traceback="true">
+        <chunk name="ExtraData">
+            <field name="instrumentationHash32" type="uint32"/>
+        </chunk>
+
         <field name="uid" type="uint32" bits="24"/>
-        <field name="magic" type="uint32" bits="8"/>
+        <field name="magic" type="uint32" bits="6"/>
     </shader-export>
 </schema>

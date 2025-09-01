@@ -129,13 +129,16 @@ private:
         uint32_t uid = 0;
 
         /// Host layout, determined at compile time
-        BreakpointDataHostLayout hostLayout{};
+        std::unordered_map<uint32_t, BreakpointDataHostLayout> hostLayoutMap;
 
         /// Registered capture mode
         BreakpointCaptureMode captureMode{};
 
         /// Allocated stream size
         uint64_t streamSize = 0;
+
+        /// Not valid for loose data order
+        uint32_t pendingCollectionHash = 0;
 
         /// Is this breakpoint pending collection?
         bool pendingCollection = false;
@@ -156,6 +159,12 @@ private:
     struct BreakpointData {
         /// Flags for this breakpoint
         BreakpointFlag flags{BreakpointFlag::None};
+
+        /// Current instrumentation hash
+        uint32_t shaderInstrumentationHash32{0};
+
+        /// Intermediate host layout data
+        BreakpointDataHostLayout hostLayout{};
         
         /// The dynamically assigned ordering type
         IL::ID orderType{IL::InvalidID};
@@ -232,7 +241,7 @@ private:
     /// @param id value to check for
     /// @param breakpoint host breakpoint data
     /// @return true if a format is appropriate, over structured data
-    bool GetBreakpointFormat(const IL::VisitContext& context, const IL::Instruction* instr, IL::ID id, Breakpoint* breakpoint);
+    bool GetBreakpointFormat(const IL::VisitContext& context, const IL::Instruction* instr, IL::ID id, BreakpointData& breakpointData);
 
     /// Try to get the breakpoint data host layout, fails in case it's not a valid breakpoint
     /// @param context parent context
@@ -289,6 +298,11 @@ private:
     /// @param breakpoint target breakpoint
     bool CanCollectBreakpoint(const Breakpoint& breakpoint);
 
+    /// Get the current instrumentation hash used for host layout matching
+    /// @param breakpoint target breakpoint
+    /// @param header mapped header
+    uint32_t GetBreakpointInstrumentationHash(const Breakpoint& breakpoint, const BreakpointHeader* header);
+
     /// Check if a breakpoint header has any valid data for collection
     /// @param breakpoint target breakpoint
     /// @param header mapped header
@@ -298,7 +312,7 @@ private:
     /// @param breakpoint target breakpoint
     /// @param header mapped header
     /// @return stream byte size
-    uint64_t GetBreakpointStreamRequestSize(const Breakpoint& breakpoint, const BreakpointHeader* header);
+    uint64_t GetBreakpointStreamRequestSize(const Breakpoint& breakpoint, const BreakpointHeader* header, const BreakpointDataHostLayout& hostLayout);
 
 private:
     /// Create the payload for a given breakpoint

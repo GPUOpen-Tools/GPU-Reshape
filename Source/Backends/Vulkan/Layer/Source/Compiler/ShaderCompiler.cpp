@@ -184,6 +184,9 @@ bool ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     // Create a copy of the module, don't modify the source
     SpvModule *module = job.info.state->spirvModule->Copy();
 
+    // Assign the instrumentation hash, may be used within features for tracking
+    module->GetProgram()->SetShaderInstrumentationHash(job.info.instrumentationKey.combinedHash);
+
     // Spv job
     SpvJob spvJob;
     spvJob.instrumentationKey = job.info.instrumentationKey;

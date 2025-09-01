@@ -75,7 +75,7 @@ struct BreakpointDataHostLayout {
     Backend::IL::Format format{Backend::IL::Format::None};
 
     /// If format is None, represents the structural type
-    const Backend::IL::Type* type{nullptr};
+    IL::ID typeId{IL::InvalidID};
 
     /// Packed tiny type data
     std::vector<uint8_t> tinyType;
@@ -100,6 +100,10 @@ struct BreakpointHeader {
     /// The lock for checksum data
     uint32_t streamingChecksumLock{0};
 
+    /// The instrumentation version acquired
+    /// Only used for loose data ordering
+    uint32_t shaderInstrumentationHash32{0};
+
     /// Expected checksum
     uint32_t streamingChecksum{0};
     
@@ -120,7 +124,7 @@ struct BreakpointHeader {
     uint32_t dwordStreamCount{0};
 
     /// Useful for debugging
-    uint32_t paddingPayload[5];
+    uint32_t paddingPayload[4];
 };
 
 struct BreakpointPatchData {
