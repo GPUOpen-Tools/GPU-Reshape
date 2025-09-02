@@ -45,6 +45,24 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
         set => this.RaiseAndSetIfChanged(ref _compress, value);
     }
 
+    /// <summary>
+    /// Current min display value
+    /// </summary>
+    public float MinValue
+    {
+        get => _minValue;
+        set => this.RaiseAndSetIfChanged(ref _minValue, value);
+    }
+
+    /// <summary>
+    /// Current max display value
+    /// </summary>
+    public float MaxValue
+    {
+        get => _maxValue;
+        set => this.RaiseAndSetIfChanged(ref _maxValue, value);
+    }
+
     public ImageBreakpointDisplayViewModel()
     {
         // Values that require reinstrumentation
@@ -91,4 +109,14 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// Internal compress state
     /// </summary>
     private bool _compress = true;
+
+    /// <summary>
+    /// Internal min display
+    /// </summary>
+    private float _minValue = 0.0f;
+    
+    /// <summary>
+    /// Internal max display
+    /// </summary>
+    private float _maxValue = 1.0f;
 }

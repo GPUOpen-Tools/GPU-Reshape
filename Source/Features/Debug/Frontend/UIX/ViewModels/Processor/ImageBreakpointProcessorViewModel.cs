@@ -55,6 +55,8 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     /// </summary>
     private unsafe object? ProcessStatic(BreakpointViewModel breakpointViewModel, PixelFormat bitmapFormat, DebugBreakpointStreamMessage message)
     {
+        var imageDisplayViewModel = breakpointViewModel.DisplayViewModel as ImageBreakpointDisplayViewModel;
+        
         // Fast path, compressed and ready
         if (message.dataFormat != 0)
         {
@@ -77,7 +79,8 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         // Shared formatting config
         ValueTypeRenderingUtils.FormattingConfig config = new()
         {
-            MaxValue = 1.0f
+            MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
+            MaxValue = imageDisplayViewModel?.MaxValue ?? 1.0f
         };
 
         // Parallelize composition
@@ -115,6 +118,8 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     /// </summary>
     private unsafe object? ProcessDynamic(BreakpointViewModel breakpointViewModel, PixelFormat bitmapFormat, DebugBreakpointStreamMessage message)
     {
+        var imageDisplayViewModel = breakpointViewModel.DisplayViewModel as ImageBreakpointDisplayViewModel;
+
         // Deduce the actual safe number of dwords
         uint streamDWordCount = (uint)(message.data.Count / sizeof(uint));
         uint dataDWordCount   = message.dataDynamicCounter * (DynamicBreakpointHeader.DWordCount + message.dataDWordStride);
@@ -156,7 +161,8 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
             // Shared formatting config
             ValueTypeRenderingUtils.FormattingConfig config = new()
             {
-                MaxValue = 1.0f
+                MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
+                MaxValue = imageDisplayViewModel?.MinValue ?? 1.0f
             };
             
             // Parallelize composition

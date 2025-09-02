@@ -113,6 +113,10 @@
         <DependentUpon>LocatorViewHost.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Themes\SliderRange.axaml.cs">
+        <DependentUpon>SliderRange.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
 
 

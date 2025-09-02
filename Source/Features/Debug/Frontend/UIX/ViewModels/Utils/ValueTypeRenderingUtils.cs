@@ -13,6 +13,14 @@ public static class ValueTypeRenderingUtils
     
     public struct FormattingConfig
     {
+        /// <summary>
+        /// Minimum render value
+        /// </summary>
+        public required float MinValue;
+        
+        /// <summary>
+        /// Maximum render value
+        /// </summary>
         public required float MaxValue;
     }
     
@@ -236,8 +244,9 @@ public static class ValueTypeRenderingUtils
     /// </summary>
     private static uint Pack(FormattingConfig config, float value, int shl)
     {
+        // Gamma
         value = (float)Math.Pow(value, 0.4545454545f);
-        return (uint)(Math.Min(value / config.MaxValue, 1.0f) * 255) << shl;
+        return (uint)(Math.Min(Math.Max(0, value - config.MinValue) / (config.MaxValue - config.MinValue), 1.0f) * 255) << shl;
     }
 
     /// <summary>
@@ -245,6 +254,6 @@ public static class ValueTypeRenderingUtils
     /// </summary>
     private static uint Pack(FormattingConfig config, uint value, int shl)
     {
-        return (uint)(Math.Min(value / config.MaxValue, 1.0f) * 255) << shl;
+        return (uint)(Math.Min(Math.Max(0, value - config.MinValue) / (config.MaxValue - config.MinValue), 1.0f) * 255) << shl;
     }
 }
