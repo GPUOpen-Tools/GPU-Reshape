@@ -94,6 +94,15 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         get => _paused;
         set => this.RaiseAndSetIfChanged(ref _paused, value);
     }
+
+    /// <summary>
+    /// Is this breakpoint out of memory?
+    /// </summary>
+    public bool IsOutOfMemory
+    {
+        get => _isOutOfMemory;
+        set => this.RaiseAndSetIfChanged(ref _isOutOfMemory, value);
+    }
     
     /// <summary>
     /// Intermediate tiny type
@@ -360,4 +369,9 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// Internal pause state
     /// </summary>
     private bool _paused = false;
+
+    /// <summary>
+    /// Internal oom state
+    /// </summary>
+    private bool _isOutOfMemory = false;
 }

@@ -61,8 +61,26 @@
         
         <!-- Info -->
         <Grid Grid.Row="2">
-            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+            <StackPanel 
+                HorizontalAlignment="Left"
+                Orientation="Horizontal">
                 <Label Content="{Binding Decoration}"/>
+            </StackPanel>
+            
+            <StackPanel
+                IsVisible="{Binding IsOutOfMemory}"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Height="25">
+                <PathIcon
+                    VerticalAlignment="Center"
+                    Margin="0 1 0 0"
+                    Data="{StaticResource Warning}" Width="14" Height="14"/>
+                
+                <TextBlock 
+                    Margin="5 0 0 0"
+                    VerticalAlignment="Center"
+                    Text="Out of breakpoint memory"/>
             </StackPanel>
         </Grid>
     </Grid>

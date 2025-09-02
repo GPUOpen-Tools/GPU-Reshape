@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using GRS.Features.Debug.UIX.Models;
 using GRS.Features.Debug.UIX.Settings;
 using GRS.Features.Debug.UIX.ViewModels;
 using Studio.ViewModels.Workspace;
@@ -141,7 +142,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                 DebugBreakpointStreamMessage.FlatInfo flat = message.Flat;
 
                 // Update all breakpoint stats
-                IDisposable statsCommit = UpdateStats(breakpointViewModel);
+                IDisposable statsCommit = UpdateStats(breakpointViewModel, message);
                 
                 // The rest needs to happen on the UI thread
                 Dispatcher.UIThread.InvokeAsync(() =>
@@ -193,7 +194,7 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Update all breakpoint statistics
         /// </summary>
-        private IDisposable UpdateStats(BreakpointViewModel breakpointViewModel)
+        private IDisposable UpdateStats(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage message)
         {
             // Calculate average frametime
             long  now = Stopwatch.GetTimestamp();
@@ -202,15 +203,38 @@ namespace GRS.Features.Debug.UIX.Workspace
             float frameRate = 1.0f / seconds;
             float weight = 0.95f;
             
+            // Update the thread specific stamp
             breakpointViewModel.ProcessThreadLastTimeStamp = now;
+
+            // Check if we're out of memory
+            bool isOutOfMemory = IsOutOfMemory(message);
             
             // Update timing
             return new ActionDisposable(() =>
             {
+                breakpointViewModel.IsOutOfMemory = isOutOfMemory;
                 breakpointViewModel.FrameRate = weight * breakpointViewModel.FrameRate + (1.0f - weight) * frameRate;
             });
         }
-
+        
+        /// <summary>
+        /// Check if a breakpoint is out of memory
+        /// </summary>
+        private bool IsOutOfMemory(DebugBreakpointStreamMessage message)
+        {
+            switch ((BreakpointDataOrder)message.dataOrder)
+            {
+                case BreakpointDataOrder.Static:
+                    return false;
+                case BreakpointDataOrder.Dynamic:
+                    return message.dataDynamicCounter * sizeof(int) * (DynamicBreakpointHeader.DWordCount + message.dataDWordStride) > message.data.Count;
+                case BreakpointDataOrder.Loose:
+                    return message.dataDynamicCounter * sizeof(int) * (LooseBreakpointHeader.DWordCount + message.dataDWordStride) > message.data.Count;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+        
         /// <summary>
         /// Open a window for a breakpoint
         /// </summary>
