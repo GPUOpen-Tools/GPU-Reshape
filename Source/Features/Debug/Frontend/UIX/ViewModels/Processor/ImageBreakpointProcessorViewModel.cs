@@ -57,8 +57,15 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     {
         var imageDisplayViewModel = breakpointViewModel.DisplayViewModel as ImageBreakpointDisplayViewModel;
         
+        // Shared formatting config
+        ValueTypeRenderingUtils.FormattingConfig config = new()
+        {
+            MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
+            MaxValue = imageDisplayViewModel?.MaxValue ?? 1.0f
+        };
+        
         // Fast path, compressed and ready
-        if (message.dataFormat != 0)
+        if (message.dataFormat != 0 && config.IsTrivial())
         {
             return new WriteableBitmap(
                 bitmapFormat, AlphaFormat.Opaque,
@@ -75,32 +82,37 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         
         // Destination buffer
         uint[] dynamicCompositeBuffer = new uint[exportCount];
-        
-        // Shared formatting config
-        ValueTypeRenderingUtils.FormattingConfig config = new()
+
+        // If there's a data format, don't render the entire thing, just re-pack
+        if (message.dataFormat != 0)
         {
-            MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
-            MaxValue = imageDisplayViewModel?.MaxValue ?? 1.0f
-        };
-
-        // Parallelize composition
-        Parallel.For(0, exportCount, i =>
+            // Parallelize composition
+            Parallel.For(0, exportCount, i =>
+            {
+                dynamicCompositeBuffer[i] = ValueTypeRenderingUtils.Repack255(config, sourceDWordPtr[i]);
+            });
+        }
+        else
         {
-            int dwordOffset = (int)(i * message.dataDWordStride);
+            // Parallelize composition
+            Parallel.For(0, exportCount, i =>
+            {
+                int dwordOffset = (int)(i * message.dataDWordStride);
             
-            Span<byte> dataSpan = new(
-                (byte*)(sourceDWordPtr + dwordOffset),
-                (int)(message.dataDWordStride * 4)
-            );
+                Span<byte> dataSpan = new(
+                    (byte*)(sourceDWordPtr + dwordOffset),
+                    (int)(message.dataDWordStride * 4)
+                );
 
-            // Render using the tiny type, must exist at this point
-            uint texel = ValueTypeRenderingUtils.Render255(config, breakpointViewModel.TinyType, 0, ref dataSpan);
+                // Render using the tiny type, must exist at this point
+                uint texel = ValueTypeRenderingUtils.Render255(config, breakpointViewModel.TinyType, 0, ref dataSpan);
 
-            // Fixed alpha if needed
-            texel = ValueTypeRenderingUtils.RenderFixedAlpha255(breakpointViewModel.TinyType, texel);
+                // Fixed alpha if needed
+                texel = ValueTypeRenderingUtils.RenderFixedAlpha255(breakpointViewModel.TinyType, texel);
             
-            dynamicCompositeBuffer[i] = texel;
-        });
+                dynamicCompositeBuffer[i] = texel;
+            });
+        }
 
         // Create image
         fixed (uint* ptr = dynamicCompositeBuffer)

@@ -22,6 +22,16 @@ public static class ValueTypeRenderingUtils
         /// Maximum render value
         /// </summary>
         public required float MaxValue;
+
+        /// <summary>
+        /// Is this trivial formatting?
+        /// I.e., is memcpy enough?
+        /// </summary>
+        /// <returns></returns>
+        public bool IsTrivial()
+        {
+            return MinValue < 1e-4f && Math.Abs(MaxValue - 1.0f) < 1e-4f;
+        }
     }
     
     /// <summary>
@@ -240,12 +250,23 @@ public static class ValueTypeRenderingUtils
     }
 
     /// <summary>
+    /// Repack a 255 value with new formatting rules
+    /// </summary>
+    public static uint Repack255(FormattingConfig config, uint texel)
+    {
+        return Pack(config, (texel & 0xFF) / 255.0f, 0, 1.0f) |
+               Pack(config, ((texel >> 8) & 0xFF) / 255.0f, 8, 1.0f) |
+               Pack(config, ((texel >> 16) & 0xFF) / 255.0f, 16, 1.0f) |
+               Pack(config, ((texel >> 24) & 0xFF) / 255.0f, 24, 1.0f);
+    }
+
+    /// <summary>
     /// Pack a single fp value
     /// </summary>
-    private static uint Pack(FormattingConfig config, float value, int shl)
+    private static uint Pack(FormattingConfig config, float value, int shl, float gammaPwr = 0.4545454545f)
     {
         // Gamma
-        value = (float)Math.Pow(value, 0.4545454545f);
+        value = (float)Math.Pow(value, gammaPwr);
         return (uint)(Math.Min(Math.Max(0, value - config.MinValue) / (config.MaxValue - config.MinValue), 1.0f) * 255) << shl;
     }
 

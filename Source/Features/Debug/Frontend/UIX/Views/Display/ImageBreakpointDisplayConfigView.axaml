@@ -8,10 +8,22 @@
              x:Class="UIX.Views.Display.ImageBreakpointDisplayConfigView"
              x:DataType="viewModels:ImageBreakpointDisplayViewModel">
     <StackPanel Orientation="Horizontal">
-        <CheckBox Content="Maintain Aspect Ratio" IsChecked="{Binding MaintainAspectRatio}"/>
-        <CheckBox Content="Compress" IsChecked="{Binding Compress}"/>
+        <CheckBox 
+            Content="Maintain Aspect Ratio" 
+            IsChecked="{Binding MaintainAspectRatio}"/>
+        
+        <CheckBox 
+            Content="Compress" 
+            Margin="5 0 0 0"
+            IsChecked="{Binding Compress}"/>
         
         <!-- Display Range -->
+        
+        <Border 
+            Width="1"
+            Margin="5 0 0 0"
+            VerticalAlignment="Stretch"
+            Background="{StaticResource RegionColor}"/>
         
         <TextBlock 
             Text="Range"
@@ -19,17 +31,23 @@
             VerticalAlignment="Center"/>
             
         <NumericUpDown 
+            Height="20"
+            VerticalAlignment="Center"
             Margin="5 0 0 0"
             Value="{Binding Minimum, ElementName=DisplayRangeSlider}"
             Padding="0 -3 0 0"/>
             
         <controls:SliderRange 
             x:Name="DisplayRangeSlider"
+            Margin="5 0 0 0"
             LowerValue="{Binding MinValue, Mode=TwoWay}"
             UpperValue="{Binding MaxValue, Mode=TwoWay}"
             Width="100"/>
             
         <NumericUpDown 
+            Height="20"
+            VerticalAlignment="Center"
+            Margin="5 0 0 0"
             Value="{Binding Maximum, ElementName=DisplayRangeSlider}"
             Padding="0 -3 0 0"/>
     </StackPanel>
