@@ -804,6 +804,47 @@ bool DebugFeature::GetBreakpointFormat(const IL::VisitContext& context, const IL
     return false;
 }
 
+bool DebugFeature::SupportsKernelType(IL::KernelType kernelType, Breakpoint* breakpoint) {
+    switch (breakpoint->captureMode) {
+        default: {
+            ASSERT(false, "Invalid mode");
+            return false;
+        }
+        case BreakpointCaptureMode::FirstEvent: {
+            // Only some shaders supported for now
+            switch (kernelType) {
+                default: {
+                    ASSERT(false, "Invalid mode");
+                    return false;
+                }
+                case IL::KernelType::None:
+                case IL::KernelType::Vertex:
+                case IL::KernelType::Geometry:
+                case IL::KernelType::Hull:
+                case IL::KernelType::Domain:
+                case IL::KernelType::Amplification:
+                case IL::KernelType::Mesh:
+                case IL::KernelType::RayGen:
+                case IL::KernelType::RayMiss:
+                case IL::KernelType::RayHit:
+                case IL::KernelType::Lib: {
+                    // Not supported, yet
+                    return false;
+                }
+                case IL::KernelType::Compute:
+                case IL::KernelType::Pixel: {
+                    // Supported
+                    return true;
+                }
+            }
+        }
+        case BreakpointCaptureMode::AllEvents: {
+            // Always supported
+            return true;
+        }
+    }
+}
+
 bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {
     // May not have an associated type
     const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
@@ -818,24 +859,8 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
 
     // Check kernel type support
     auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.function.GetID());
-    switch (kernelType->type) {
-        case IL::KernelType::None:
-        case IL::KernelType::Vertex:
-        case IL::KernelType::Geometry:
-        case IL::KernelType::Hull:
-        case IL::KernelType::Domain:
-        case IL::KernelType::Amplification:
-        case IL::KernelType::Mesh:
-        case IL::KernelType::RayGen:
-        case IL::KernelType::RayMiss:
-        case IL::KernelType::RayHit:
-        case IL::KernelType::Lib:
-            // Not supported, yet
-            return false;
-        case IL::KernelType::Compute:
-        case IL::KernelType::Pixel:
-            // Supported
-            break;
+    if (!SupportsKernelType(kernelType->type, breakpoint)) {
+        return false;
     }
 
     // Supports 8-8-8-8 compression?
@@ -1522,7 +1547,10 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
             auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.program.GetEntryPoint()->GetID());
             switch (kernelType->type) {
                 default: {
-                    ASSERT(false, "Unexpected type");
+                    // Just default to zero for now
+                    threadX = emitter.UInt32(0);
+                    threadY = emitter.UInt32(0);
+                    threadZ = emitter.UInt32(0);
                     break;
                 }
                 case IL::KernelType::Pixel: {

@@ -43,6 +43,7 @@
 #include <Backend/Device/DeviceStateRef.h>
 #include <Backend/IL/ShaderBufferStruct.h>
 #include <Backend/IL/ShaderStruct.h>
+#include <Backend/IL/Metadata/KernelMetadata.h>
 
 // Schemas
 #include <Schemas/Features/DebugConfig.h>
@@ -243,6 +244,12 @@ private:
     /// @return true if a format is appropriate, over structured data
     bool GetBreakpointFormat(const IL::VisitContext& context, const IL::Instruction* instr, IL::ID id, BreakpointData& breakpointData);
 
+    /// Check if a kernel type is supported
+    /// @param kernelType type to check
+    /// @param breakpoint active breakpoint
+    /// @return supported
+    bool SupportsKernelType(IL::KernelType kernelType, Breakpoint* breakpoint);
+    
     /// Try to get the breakpoint data host layout, fails in case it's not a valid breakpoint
     /// @param context parent context
     /// @param instr exporting instruction

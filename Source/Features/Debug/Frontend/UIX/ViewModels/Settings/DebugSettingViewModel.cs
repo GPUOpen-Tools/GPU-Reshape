@@ -76,7 +76,7 @@ namespace GRS.Features.Debug.UIX.Settings
         /// <summary>
         /// Internal max mb
         /// </summary>
-        private uint _maxBreakpointMemoryMb = 64;
+        private uint _maxBreakpointMemoryMb = 256;
 
         /// <summary>
         /// Internal max mb
@@ -86,6 +86,6 @@ namespace GRS.Features.Debug.UIX.Settings
         /// <summary>
         /// Internal initial mb
         /// </summary>
-        private uint _defaultBreakpointMemoryMb = 8;
+        private uint _defaultBreakpointMemoryMb = 32;
     }
 }
