@@ -826,7 +826,6 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
         case IL::KernelType::Domain:
         case IL::KernelType::Amplification:
         case IL::KernelType::Mesh:
-        case IL::KernelType::Pixel:
         case IL::KernelType::RayGen:
         case IL::KernelType::RayMiss:
         case IL::KernelType::RayHit:
@@ -834,6 +833,7 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
             // Not supported, yet
             return false;
         case IL::KernelType::Compute:
+        case IL::KernelType::Pixel:
             // Supported
             break;
     }
@@ -870,14 +870,23 @@ void DebugFeature::GetBreakpointOrderingFirstEvent(const IL::VisitContext &conte
     breakpointData.firstEvent.staticOrderHeight = emitter.UInt32(0);
     breakpointData.firstEvent.staticOrderDepth = emitter.UInt32(0);
 
+    IL::ID dwordStride = emitter.UInt32(breakpointData.hostLayout.dataDWordStride);
+
+    // Get work dimensions
     switch (kernelType->type) {
         default: {
             ASSERT(false, "Unexpected type");
             break;
         }
+        case IL::KernelType::Pixel: {
+            // Determine the thread counts
+            breakpointData.firstEvent.staticOrderWidth = execution.Get<&ExecutionInfo::viewport>(emitter, 0);
+            breakpointData.firstEvent.staticOrderHeight = execution.Get<&ExecutionInfo::viewport>(emitter, 1);
+            breakpointData.firstEvent.staticOrderDepth = emitter.UInt32(1);
+            break;
+        }
         case IL::KernelType::Compute: {
             auto* kernelWorkgroupSize = context.program.GetMetadataMap().GetMetadata<IL::KernelWorkgroupSizeMetadata>(context.function.GetID());
-            IL::ID dwordStride = emitter.UInt32(breakpointData.hostLayout.dataDWordStride);
 
             // Get the number of thread groups
             IL::ID threadGroupsX = execution.Get<&ExecutionInfo::dispatch>(emitter, 0);
@@ -888,51 +897,76 @@ void DebugFeature::GetBreakpointOrderingFirstEvent(const IL::VisitContext &conte
             breakpointData.firstEvent.staticOrderWidth = emitter.Mul(threadGroupsX, emitter.UInt32(kernelWorkgroupSize->threadsX));
             breakpointData.firstEvent.staticOrderHeight = emitter.Mul(threadGroupsY, emitter.UInt32(kernelWorkgroupSize->threadsY));
             breakpointData.firstEvent.staticOrderDepth = emitter.Mul(threadGroupsZ, emitter.UInt32(kernelWorkgroupSize->threadsZ));
+            break;
+        }
+    }
 
-            // Determine the max number of dwords
-            breakpointData.firstEvent.dwordStreamCount = emitter.Mul(breakpointData.firstEvent.staticOrderWidth, emitter.Mul(breakpointData.firstEvent.staticOrderHeight, emitter.Mul(breakpointData.firstEvent.staticOrderDepth, dwordStride)));
+    // Determine the max number of dwords
+    breakpointData.firstEvent.dwordStreamCount = emitter.Mul(breakpointData.firstEvent.staticOrderWidth, emitter.Mul(breakpointData.firstEvent.staticOrderHeight, emitter.Mul(breakpointData.firstEvent.staticOrderDepth, dwordStride)));
 
-            // Max number of dwords
-            IL::ID payloadDWordCount = breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(emitter);
+    // Max number of dwords
+    IL::ID payloadDWordCount = breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(emitter);
 
-            /// Is this a dynamic payload?
-            breakpointData.firstEvent.isDynamic = emitter.GreaterThan(breakpointData.firstEvent.dwordStreamCount, payloadDWordCount);
+    /// Is this a dynamic payload?
+    breakpointData.firstEvent.isDynamic = emitter.GreaterThan(breakpointData.firstEvent.dwordStreamCount, payloadDWordCount);
 
-            // Select dynamic if we exceed 
-            breakpointData.orderType = emitter.Select(
-                breakpointData.firstEvent.isDynamic,
-                emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic)),
-                emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Static))
-            );
+    // Select dynamic if we exceed 
+    breakpointData.orderType = emitter.Select(
+        breakpointData.firstEvent.isDynamic,
+        emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic)),
+        emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Static))
+    );
 
+    // Indices
+    IL::ID x = IL::InvalidID;
+    IL::ID y = IL::InvalidID;
+    IL::ID z = IL::InvalidID;
+
+    // Get thread indices
+    switch (kernelType->type) {
+        default: {
+            ASSERT(false, "Unexpected type");
+            break;
+        }
+        case IL::KernelType::Pixel: {
+            // Get typed dispatch index
+            IL::ID pos = emitter.KernelValue(Backend::IL::KernelValue::PixelPosition);
+
+            // Get dimensions
+            x = emitter.FloatToUInt32(emitter.Extract(pos, emitter.UInt32(0)));
+            y = emitter.FloatToUInt32(emitter.Extract(pos, emitter.UInt32(1)));
+            z = emitter.UInt32(0);
+            break;
+        }
+        case IL::KernelType::Compute: {
             // Get typed dispatch index
             IL::ID dtid = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
 
             // Get dimensions
-            IL::ID x = emitter.Extract(dtid, emitter.UInt32(0));
-            IL::ID y = emitter.Extract(dtid, emitter.UInt32(1));
-            IL::ID z = emitter.Extract(dtid, emitter.UInt32(2));
-
-            // Static ordering
-            IL::ID staticOrder;
-            {
-                // z * w * h + y * w + x
-                staticOrder = emitter.Mul(z, emitter.Mul(breakpointData.firstEvent.staticOrderWidth, breakpointData.firstEvent.staticOrderHeight));
-                staticOrder = emitter.Add(staticOrder, emitter.Mul(y, breakpointData.firstEvent.staticOrderWidth));
-                staticOrder = emitter.Add(staticOrder, x);
-            }
-
-            // Assume static ordering for now, dynamic exporting happens later
-            breakpointData.staticOrder = staticOrder;
-            
-#if !defined(NDEBUG) && 0
-            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, x, 0);
-            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, y, 1);
-            breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, z, 2);
-#endif // NDEBUG
+            x = emitter.Extract(dtid, emitter.UInt32(0));
+            y = emitter.Extract(dtid, emitter.UInt32(1));
+            z = emitter.Extract(dtid, emitter.UInt32(2));
             break;
         }
     }
+
+    // Static ordering
+    IL::ID staticOrder;
+    {
+        // z * w * h + y * w + x
+        staticOrder = emitter.Mul(z, emitter.Mul(breakpointData.firstEvent.staticOrderWidth, breakpointData.firstEvent.staticOrderHeight));
+        staticOrder = emitter.Add(staticOrder, emitter.Mul(y, breakpointData.firstEvent.staticOrderWidth));
+        staticOrder = emitter.Add(staticOrder, x);
+    }
+
+    // Assume static ordering for now, dynamic exporting happens later
+    breakpointData.staticOrder = staticOrder;
+    
+#if !defined(NDEBUG) && 0
+    breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, x, 0);
+    breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, y, 1);
+    breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, z, 2);
+#endif // NDEBUG
 }
 
 static void GetBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, uint32_t& byteOffset, TrivialStackVector<IL::ID, 16u>& dwords) {
@@ -1480,22 +1514,34 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
             }
 
             // Local thread data
-            IL::ID threadX;
-            IL::ID threadY;
-            IL::ID threadZ;
+            IL::ID threadX = IL::InvalidID;
+            IL::ID threadY = IL::InvalidID;
+            IL::ID threadZ = IL::InvalidID;
 
             // Get the thread indices
-            auto* kernelTypeMd = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.program.GetEntryPoint()->GetID());
-            if (kernelTypeMd && kernelTypeMd->type == IL::KernelType::Compute) {
-                IL::ID threadId = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
-                threadX = emitter.Extract(threadId, emitter.UInt32(0));
-                threadY = emitter.Extract(threadId, emitter.UInt32(1));
-                threadZ = emitter.Extract(threadId, emitter.UInt32(2));
-            } else {
-                // TODO: Need vs, ps, etc. support
-                threadX = emitter.UInt32(0);
-                threadY = emitter.UInt32(0);
-                threadZ = emitter.UInt32(0);
+            auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.program.GetEntryPoint()->GetID());
+            switch (kernelType->type) {
+                default: {
+                    ASSERT(false, "Unexpected type");
+                    break;
+                }
+                case IL::KernelType::Pixel: {
+                    // Get typed dispatch index
+                    IL::ID pos = emitter.KernelValue(Backend::IL::KernelValue::PixelPosition);
+
+                    // Get dimensions
+                    threadX = emitter.FloatToUInt32(emitter.Extract(pos, emitter.UInt32(0)));
+                    threadY = emitter.FloatToUInt32(emitter.Extract(pos, emitter.UInt32(1)));
+                    threadZ = emitter.UInt32(0);
+                    break;
+                }
+                case IL::KernelType::Compute: {
+                    IL::ID threadId = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
+                    threadX = emitter.Extract(threadId, emitter.UInt32(0));
+                    threadY = emitter.Extract(threadId, emitter.UInt32(1));
+                    threadZ = emitter.Extract(threadId, emitter.UInt32(2));
+                    break;
+                }
             }
 
             // Store the thread indices

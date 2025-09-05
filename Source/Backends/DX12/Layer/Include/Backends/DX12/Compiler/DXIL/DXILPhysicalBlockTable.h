@@ -48,6 +48,7 @@
 #include <string>
 
 // Forward declarations
+struct DXBCPhysicalBlockTable;
 struct DXCompileJob;
 struct DXStream;
 
@@ -88,6 +89,9 @@ struct DXILPhysicalBlockTable {
     /// Utilities
     DXILUtilIntrinsics intrinsics;
     DXILUtilCompliance compliance;
+
+    /// Optional, parent DXBC container
+    DXBCPhysicalBlockTable* container = nullptr;
 
     /// Shared binding info
     DXILBindingInfo bindingInfo;

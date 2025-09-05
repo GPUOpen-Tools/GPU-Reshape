@@ -33,6 +33,7 @@
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockSection.h>
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILMetadataHandleEntry.h>
 #include <Backends/DX12/Compiler/DXIL/DXILIDType.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCHeader.h>
 
 // Std
 #include <string_view>
@@ -102,6 +103,15 @@ public:
     void CreateResourceHandles(const DXCompileJob& job);
 
 public:
+    /// Add or get a new input
+    /// @param name name of the input
+    /// @param semantic semantic kind
+    /// @param type component type
+    /// @param mask expected mask
+    /// @param precision numeric precision
+    /// @return input index
+    uint32_t GetOrCompileInput(const std::string& name, DXILSemantic semantic, DXILSignatureElementComponentType type, IL::ComponentMaskSet mask, DXILSignatureElementPrecision precision);
+    
     /// Get the IL component format
     /// \param type dxil type
     /// \return format, optionally unexposed

@@ -62,6 +62,9 @@ void DXBCPhysicalBlockInputSignature::Parse() {
         ElementEntry& entry = entries.emplace_back();
         entry.scan = source;
         entry.semanticName = reinterpret_cast<const char*>(block->ptr + source.semanticNameOffset);
+
+        // Set bound
+        registerBound = std::max(registerBound, entry.scan._register + 1);
     }
 }
 
@@ -74,10 +77,33 @@ void DXBCPhysicalBlockInputSignature::Compile() {
 
     // Get compiled binding info
     ASSERT(table.dxilModule, "IS not supported for native DXBC");
-    const RootRegisterBindingInfo& bindingInfo = table.dxilModule->GetBindingInfo().bindingInfo;
 
-    // Not used yet
-    GRS_SINK(bindingInfo);
+    // Fill string-buffer
+    std::vector<char> stringBuffer;
+
+    // Entries right after the header
+    header.offset = sizeof(DXILInputSignature);
+
+    // Append header and strings
+    block->stream.Append(header);
+
+    // Start of string buffer
+    uint32_t stringStart = block->stream.GetOffset() + static_cast<uint32_t>(sizeof(DXILSignatureElement) * entries.size());
+
+    // Append all entries
+    for (ElementEntry& entry : entries) {
+        // Set strings
+        entry.scan.semanticNameOffset = stringStart + static_cast<uint32_t>(stringBuffer.size());
+        stringBuffer.insert(stringBuffer.end(), entry.semanticName.begin(), entry.semanticName.end());
+        stringBuffer.push_back('\0');
+
+        // Append entry
+        block->stream.Append(entry.scan);
+    }
+
+    // Append strings
+    block->stream.AppendData(stringBuffer.data(), static_cast<uint32_t>(stringBuffer.size()));
+    block->stream.AlignTo(4);
 }
 
 void DXBCPhysicalBlockInputSignature::CompileDXILCompatability(DXCompileJob &job) {
@@ -91,4 +117,27 @@ void DXBCPhysicalBlockInputSignature::CompileDXILCompatability(DXCompileJob &job
 void DXBCPhysicalBlockInputSignature::CopyTo(DXBCPhysicalBlockInputSignature &out) {
     out.header = header;
     out.entries = entries;
+}
+
+uint32_t DXBCPhysicalBlockInputSignature::AddOrGetInput(const std::string &name, DXILSignatureElementSemantic semantic, DXILSignatureElementComponentType type, IL::ComponentMaskSet mask, DXILSignatureElementPrecision precision) {
+    for (ElementEntry &entry : entries) {
+        if (entry.semanticName == name) {
+            return entry.scan._register;
+        }
+    }
+
+    // Write out entry
+    ElementEntry entry{};
+    entry.scan.streamIndex = 0;
+    entry.scan.semanticIndex = 0;
+    entry.scan.semantic = semantic;
+    entry.scan.componentType = type;
+    entry.scan.mask = mask.value;
+    entry.scan._register = registerBound++;
+    entry.scan.writeMask = 0x0;
+    entry.scan.precision = precision;
+    entry.scan.pad = 0;
+    entries.push_back(entry);
+    
+    return entry.scan._register;
 }

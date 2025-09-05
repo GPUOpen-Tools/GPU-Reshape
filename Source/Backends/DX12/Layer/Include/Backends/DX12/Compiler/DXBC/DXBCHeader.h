@@ -417,6 +417,42 @@ enum class DXILSignatureElementSemantic : uint32_t {
     InnerCoverage = 70,
 };
 
+enum class DXILSemantic : uint32_t {
+    Arbitrary,
+    VertexID,
+    InstanceID,
+    Position,
+    RenderTargetArrayIndex,
+    ViewportArrayIndex,
+    ClipDistance,
+    CullDistance,
+    OutputControlPointID,
+    DomainLocation,
+    PrimitiveID,
+    GSInstanceID,
+    SampleIndex,
+    IsFrontFace,
+    Coverage,
+    InnerCoverage,
+    Target,
+    Depth,
+    DepthLessEqual,
+    DepthGreaterEqual,
+    StencilRef,
+    DispatchThreadID,
+    GroupID,
+    GroupIndex,
+    GroupThreadID,
+    TessFactor,
+    InsideTessFactor,
+    ViewID,
+    Barycentrics,
+    ShadingRate,
+    CullPrimitive,
+    StartVertexLocation,
+    StartInstanceLocation
+};
+
 enum class DXILSignatureElementComponentType : uint32_t {
     Unknown = 0,
     UInt32 = 1,

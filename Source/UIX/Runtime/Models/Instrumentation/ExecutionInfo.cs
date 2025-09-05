@@ -3,7 +3,7 @@ using Message.CLR;
 
 namespace Studio.Models.Instrumentation;
 
-[StructLayout(LayoutKind.Explicit, Size = 40, CharSet = CharSet.Ansi)]
+[StructLayout(LayoutKind.Explicit, Size = 48, CharSet = CharSet.Ansi)]
 public struct ExecutionInfo
 {
     public static uint DWordCount = (uint)(Marshal.SizeOf(typeof(ExecutionInfo)) / sizeof(uint));
@@ -18,7 +18,7 @@ public struct ExecutionInfo
         public uint indexCount;
     }
     
-    [StructLayout(LayoutKind.Explicit, Size = 8, CharSet = CharSet.Ansi)]
+    [StructLayout(LayoutKind.Explicit, Size = 12, CharSet = CharSet.Ansi)]
     public struct DispatchInfo
     {
         [FieldOffset(0)]
@@ -29,6 +29,16 @@ public struct ExecutionInfo
         
         [FieldOffset(8)]
         public uint groupCountZ;
+    }
+    
+    [StructLayout(LayoutKind.Explicit, Size = 8, CharSet = CharSet.Ansi)]
+    public struct Viewport
+    {
+        [FieldOffset(0)]
+        public uint width;
+        
+        [FieldOffset(4)]
+        public uint height;
     }
     
     [FieldOffset(0)]
@@ -51,4 +61,7 @@ public struct ExecutionInfo
     
     [FieldOffset(28)]
     public DispatchInfo dispatchInfo;
+    
+    [FieldOffset(40)]
+    public Viewport viewport;
 }

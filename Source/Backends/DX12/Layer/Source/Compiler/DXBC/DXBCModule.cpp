@@ -142,6 +142,12 @@ GlobalUID DXBCModule::GetInstrumentationGUID() {
 }
 
 bool DXBCModule::Compile(const DXCompileJob& job, DXStream& out) {
+    // Allow the dxil table to reference the dxbc container
+    if (table.dxilModule) {
+        DXILPhysicalBlockTable &dxilTable = table.dxilModule->GetTable();
+        dxilTable.container = &table;
+    }
+    
     // Try to recompile for the given job
     if (!table.Compile(job)) {
         return false;

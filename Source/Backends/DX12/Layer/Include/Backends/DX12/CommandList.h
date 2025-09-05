@@ -117,6 +117,7 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList *list, UINT N
 void WINAPI HookID3D12CommandListBarrier(ID3D12CommandList *list, UINT NumBarrierGroups, const D3D12_BARRIER_GROUP *pBarrierGroups);
 void WINAPI HookID3D12CommandListBeginRenderPass(ID3D12CommandList* list, UINT NumRenderTargets, const D3D12_RENDER_PASS_RENDER_TARGET_DESC* pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags);
 void WINAPI HookID3D12CommandListEndRenderPass(ID3D12CommandList* list);
+void WINAPI HookID3D12CommandListRSSetViewports(ID3D12CommandList *list, UINT NumViewports, const D3D12_VIEWPORT *pViewports);
 void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList *list, UINT VertexCountPerInstance, UINT InstanceCount, UINT StartVertexLocation, UINT StartInstanceLocation);
 void WINAPI HookID3D12CommandListDrawIndexedInstanced(ID3D12CommandList *list, UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation);
 void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList *list, UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ);

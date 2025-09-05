@@ -231,6 +231,9 @@ struct ShaderExportStreamState {
     /// Graphics render pass
     ShaderExportRenderPassState renderPass;
 
+    /// Currently set viewport
+    D3D12_VIEWPORT viewport{};
+
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};
 

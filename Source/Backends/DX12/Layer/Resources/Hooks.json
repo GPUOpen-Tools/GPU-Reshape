@@ -218,6 +218,7 @@
         "CopyBufferRegion",
         "CopyTextureRegion",
         "ResourceBarrier",
+        "RSSetViewports",
         "Barrier",
         "BeginRenderPass",
         "EndRenderPass",

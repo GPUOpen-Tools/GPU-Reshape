@@ -38,6 +38,7 @@
 #include <Backends/DX12/Resource/VirtualResourceMapping.h>
 #include <Backends/DX12/Resource/DescriptorData.h>
 #include <Backends/DX12/Resource/DescriptorDataControl.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockTable.h>
 
 // Backend
 #include <Backend/IL/TypeCommon.h>
@@ -3988,6 +3989,46 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             uint64_t ops[1];
                             ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::FlattenedThreadIdInGroup))->id);
                             block->AddRecord(CompileIntrinsicCall(instr->result, intrinsic, 1, ops));
+                            break;
+                        }
+                        case Backend::IL::KernelValue::PixelPosition: {
+                            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpLoadInputF32);
+
+                            // Get the input index
+                            ASSERT(table.container, "Pixel position requires DXBC container");
+                            uint32_t signatureIndex = table.metadata.GetOrCompileInput(
+                                "SV_Position",
+                                DXILSemantic::Position,
+                                DXILSignatureElementComponentType::Float32,
+                                IL::ComponentMask::Red | IL::ComponentMask::Green,
+                                DXILSignatureElementPrecision::Default
+                            );
+                           
+                            // Get each dimension
+                            IL::ID pixelPositions[2];
+                            for (uint32_t i = 0; i < 2; i++) {
+                                pixelPositions[i] = program.GetIdentifierMap().AllocID();
+                                
+                                // Get the pixel position
+                                uint64_t ops[5];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::LoadInput_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(signatureIndex)->id);
+                                ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(0)->id);
+                                ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(i, 8)->id);
+                                ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                    Backend::IL::UndefConstant{}
+                                )->id);
+                                block->AddRecord(CompileIntrinsicCall(pixelPositions[i], intrinsic, 5, ops));
+
+                                // Set type for svox
+                                program.GetTypeMap().SetType(pixelPositions[0], program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+                                    .bitWidth = 32
+                                }));
+                            }
+                            
+                            // Create svox
+                            table.idRemapper.SetUserRedirect(instr->result, AllocateSVOSequential(2, pixelPositions[0], pixelPositions[1]));
                             break;
                         }
                     }

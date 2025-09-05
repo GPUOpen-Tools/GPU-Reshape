@@ -224,6 +224,8 @@ namespace GRS.Features.Debug.UIX.Workspace
         {
             switch ((BreakpointDataOrder)message.dataOrder)
             {
+                case BreakpointDataOrder.None:
+                    return false;
                 case BreakpointDataOrder.Static:
                     return false;
                 case BreakpointDataOrder.Dynamic:

@@ -1198,6 +1198,17 @@ void WINAPI HookID3D12CommandListEndRenderPass(ID3D12CommandList* list) {
     ResolveRenderPassForUserEnd(table.next, &table.state->streamState->renderPass);
 }
 
+void WINAPI HookID3D12CommandListRSSetViewports(ID3D12CommandList *list, UINT NumViewports, const D3D12_VIEWPORT *pViewports) {
+    auto table = GetTable(list);
+
+    if (NumViewports) {
+        table.state->streamState->viewport = pViewports[0];
+    }
+
+    // Pass down callchain
+    table.next->RSSetViewports(NumViewports, pViewports);
+}
+
 void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState) {
     ShaderExportStreamBindState &bindState = streamState->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
 
@@ -1337,6 +1348,10 @@ static ExecutionInfo GetBaseExecutionInfo(CommandListState* state) {
 
     // Scope is not implemented yet
     info.scopeUID = 0;
+
+    // Set the viewport
+    info.viewport.width = static_cast<uint32_t>(state->streamState->viewport.Width);
+    info.viewport.height = static_cast<uint32_t>(state->streamState->viewport.Height);
 
     // OK
     return info;

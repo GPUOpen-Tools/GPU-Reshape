@@ -31,6 +31,7 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILConstant.h>
 #include <Backends/DX12/Resource/DescriptorDataControl.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockTable.h>
 
 // Backend
 #include <Backend/IL/TypeSize.h>
@@ -2357,6 +2358,170 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
             kvRecord->opCount += 2;
         }
     }
+}
+
+static DXILSignatureElementSemantic AsSignatureSemantic(DXILSemantic semantic) {
+    switch (semantic) {
+        default:
+            ASSERT(false, "Unsupported");
+            return {};
+        case DXILSemantic::VertexID:
+            return DXILSignatureElementSemantic::VertexID;
+        case DXILSemantic::InstanceID:
+            return DXILSignatureElementSemantic::InstanceID;
+        case DXILSemantic::Position:
+            return DXILSignatureElementSemantic::Position;
+        case DXILSemantic::RenderTargetArrayIndex:
+            return DXILSignatureElementSemantic::RenderTargetArrayIndex;
+        case DXILSemantic::ViewportArrayIndex:
+            return DXILSignatureElementSemantic::ViewPortArrayIndex;
+        case DXILSemantic::ClipDistance:
+            return DXILSignatureElementSemantic::ClipDistance;
+        case DXILSemantic::CullDistance:
+            return DXILSignatureElementSemantic::CullDistance;
+        case DXILSemantic::PrimitiveID:
+            return DXILSignatureElementSemantic::PrimitiveID;
+        case DXILSemantic::SampleIndex:
+            return DXILSignatureElementSemantic::SampleIndex;
+        case DXILSemantic::IsFrontFace:
+            return DXILSignatureElementSemantic::IsFrontFace;
+        case DXILSemantic::Coverage:
+            return DXILSignatureElementSemantic::Coverage;
+        case DXILSemantic::InnerCoverage:
+            return DXILSignatureElementSemantic::InnerCoverage;
+        case DXILSemantic::Target:
+            return DXILSignatureElementSemantic::Target;
+        case DXILSemantic::Depth:
+            return DXILSignatureElementSemantic::Depth;
+        case DXILSemantic::DepthLessEqual:
+            return DXILSignatureElementSemantic::DepthLessEqual;
+        case DXILSemantic::DepthGreaterEqual:
+            return DXILSignatureElementSemantic::DepthGreaterEqual;
+        case DXILSemantic::StencilRef:
+            return DXILSignatureElementSemantic::StencilRef;
+        case DXILSemantic::Barycentrics:
+            return DXILSignatureElementSemantic::Barycentrics;
+        case DXILSemantic::ShadingRate:
+            return DXILSignatureElementSemantic::ShadingRate;
+        case DXILSemantic::CullPrimitive:
+            return DXILSignatureElementSemantic::CullPrimitive;
+    }
+}
+
+uint32_t DXILPhysicalBlockMetadata::GetOrCompileInput(const std::string &name, DXILSemantic semantic, DXILSignatureElementComponentType type, IL::ComponentMaskSet mask, DXILSignatureElementPrecision precision) {
+    LLVMBlock* mdBlock = declarationBlock->GetBlockWithUID(entryPoints.uid);
+
+    // Get the metadata
+    MetadataBlock* metadataBlock = GetMetadataBlock(entryPoints.uid);
+
+    // Update all entry points
+    for (const EntryPoint& entryPoint : entryPoints.entries) {
+        LLVMRecordView programRecord(mdBlock, entryPoint.programId);
+
+        // Unbound signature node?
+        if (!programRecord->Op(2)) {
+            // Create KV node
+            LLVMRecord sigRecord(LLVMMetadataRecord::Node);
+            sigRecord.opCount = 3;
+            sigRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(sigRecord.opCount);
+            sigRecord.ops[0] = 0;
+            sigRecord.ops[1] = 0;
+            sigRecord.ops[2] = 0;
+            mdBlock->AddRecord(sigRecord);
+
+            // KV identifier
+            Metadata& signMd = metadataBlock->metadata.emplace_back();
+            signMd.source = static_cast<uint32_t>(mdBlock->records.size()) - 1;
+            programRecord->Op(2) = signMd.source + 1;
+        }
+    
+        // Get the signature node
+        LLVMRecordView sigRecord(mdBlock, programRecord->Op32(2) - 1);
+
+        // Unbound signature input node?
+        if (!sigRecord->Op(0)) {
+            // Create KV node
+            LLVMRecord inputRecord(LLVMMetadataRecord::Node);
+            inputRecord.opCount = 0;
+            mdBlock->AddRecord(inputRecord);
+
+            // KV identifier
+            Metadata& signMd = metadataBlock->metadata.emplace_back();
+            signMd.source = static_cast<uint32_t>(mdBlock->records.size()) - 1;
+            sigRecord->Op(0) = signMd.source + 1;
+        }
+    
+        // Get the sig node
+        LLVMRecordView sigInputRecord(mdBlock, sigRecord->Op32(0) - 1);
+
+        // Check existing inputs
+        for (uint32_t i = 0; i < sigInputRecord->opCount; i++) {
+            LLVMRecordView inputRecord(mdBlock, sigInputRecord->Op32(i) - 1);
+
+            // Try to match the semantic
+            if (GetOperandU32Constant<DXILSemantic>(*metadataBlock, inputRecord->Op32(3)) == semantic) {
+                return GetOperandU32Constant(*metadataBlock, inputRecord->Op32(0));
+            }
+        }
+
+        // Resulting index
+        uint32_t inputIndex;
+
+        // Copy ops
+        auto ops = table.recordAllocator.AllocateArray<uint64_t>(sigInputRecord->opCount);
+        std::memcpy(ops, sigInputRecord->ops, sizeof(uint64_t) * sigInputRecord->opCount);
+
+        // Append input
+        // TODO: ...
+        {
+            // Allocate the input
+            inputIndex = table.container->inputSignature.AddOrGetInput(name, AsSignatureSemantic(semantic), type, mask, precision);
+            
+            // Create KV node
+            LLVMRecord indexRecord(LLVMMetadataRecord::Node);
+            indexRecord.opCount = 1;
+            indexRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
+            indexRecord.ops[0] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, 0);
+            mdBlock->AddRecord(indexRecord);
+
+            // KV identifier
+            Metadata& indexMD = metadataBlock->metadata.emplace_back();
+            indexMD.source = static_cast<uint32_t>(mdBlock->records.size()) - 1;
+            uint32_t indexID = indexMD.source + 1;
+            
+            // Create KV node
+            LLVMRecord inputRecord(LLVMMetadataRecord::Node);
+            inputRecord.opCount = 11;
+            inputRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(inputRecord.opCount);
+            inputRecord.ops[0] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, inputIndex);
+            inputRecord.ops[1] = FindOrAddString(*metadataBlock, mdBlock, name);
+            inputRecord.ops[2] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint32_t>(type));
+            inputRecord.ops[3] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint32_t>(semantic));
+            inputRecord.ops[4] = indexID;
+            inputRecord.ops[5] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, 4);
+            inputRecord.ops[6] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, 1);
+            inputRecord.ops[7] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, 4);
+            inputRecord.ops[8] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, 0);
+            inputRecord.ops[9] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, 0);
+            inputRecord.ops[10] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, 0);
+            mdBlock->AddRecord(inputRecord);
+
+            // KV identifier
+            Metadata& signMd = metadataBlock->metadata.emplace_back();
+            signMd.source = static_cast<uint32_t>(mdBlock->records.size()) - 1;
+            ops[sigInputRecord->opCount] = signMd.source + 1;
+        }
+
+        // Set new ops
+        sigInputRecord->ops = ops;
+        sigInputRecord->opCount++;
+
+        // OK
+        return inputIndex;
+    }
+
+    ASSERT(false, "Unexpected entry point state");
+    return UINT32_MAX;
 }
 
 void DXILPhysicalBlockMetadata::StitchMetadataAttachments(struct LLVMBlock *block, const TrivialStackVector<uint32_t, 512>& recordRelocation) {

@@ -242,6 +242,12 @@ namespace Backend::IL {
             case KernelValue::FlattenedLocalThreadID: {
                 return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
             }
+            case KernelValue::PixelPosition: {
+                return program.GetTypeMap().FindTypeOrAdd(VectorType{
+                    .containedType = program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false }),
+                    .dimension = 2
+                });
+            }
         }
     }
 

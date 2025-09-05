@@ -48,6 +48,16 @@ struct DXBCPhysicalBlockInputSignature : public DXBCPhysicalBlockSection {
 
     /// Copy this block
     void CopyTo(DXBCPhysicalBlockInputSignature &out);
+
+public:
+    /// Add or get a new input
+    /// @param name name of the input
+    /// @param semantic semantic kind
+    /// @param type component type
+    /// @param mask expected mask
+    /// @param precision numeric precision
+    /// @return input index
+    uint32_t AddOrGetInput(const std::string& name, DXILSignatureElementSemantic semantic, DXILSignatureElementComponentType type, IL::ComponentMaskSet mask, DXILSignatureElementPrecision precision);
     
 private:
     /// Signature header
@@ -59,8 +69,11 @@ private:
         DXILSignatureElement scan;
 
         /// Name string
-        const char *semanticName{nullptr};
+        std::string semanticName;
     };
+
+    /// Current register bound
+    uint32_t registerBound = 0;
 
     /// All entries
     Vector<ElementEntry> entries;

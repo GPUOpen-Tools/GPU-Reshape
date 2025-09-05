@@ -2087,6 +2087,20 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         spv[3] = varId;
                         break;
                     }
+                    case Backend::IL::KernelValue::PixelPosition: {
+                        const Backend::IL::Type *type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{
+                            .containedType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 32}),
+                            .dimension = 2
+                        });
+
+                        IL::ID varId = table.typeConstantVariable.FindOrCreateInput(SpvBuiltInFragCoord, type);
+
+                        SpvInstruction &spv = stream.Allocate(SpvOpLoad, 4);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = kernel->result;
+                        spv[3] = varId;
+                        break;
+                    }
                 }
                 break;
             }

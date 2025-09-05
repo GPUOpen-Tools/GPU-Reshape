@@ -64,10 +64,18 @@ struct ExecutionInfo {
             uint32_t groupCountZ;
         } dispatch;
     };
+
+    /// State data
+    struct {
+        struct {
+            uint32_t width;
+            uint32_t height;
+        } viewport;
+    };
 };
 
 /// Number of dwords required for the execution structure
 static constexpr uint32_t kExecutionInfoDWordCount = sizeof(ExecutionInfo) / sizeof(uint32_t);
 
 /// Sanity check
-static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 10);
+static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 12);
