@@ -9,16 +9,19 @@
              x:Class="UIX.Views.Display.ImageBreakpointDisplayView"
              x:DataType="viewModels:ImageBreakpointDisplayViewModel">
     <UserControl.Resources>
-        <valueConverters:ImageAspectRatioConverter x:Key="ImageAspectRatioConverter"/>
+        <valueConverters:ImageAspectRatioConverter x:Key="ImageAspectRatioConverter" />
     </UserControl.Resources>
-    
-    <Grid>
-        <controls:Checkerboard/>
-        <Image
-            x:Name="Image"
-            Source="{Binding Image}"
-            Stretch="{Binding MaintainAspectRatio, Converter={StaticResource ImageAspectRatioConverter}}"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch" />
-    </Grid>
+
+    <ScrollViewer x:Name="ScrollArea">
+        <Grid>
+            <controls:Checkerboard />
+        
+            <Image
+                x:Name="Image"
+                Source="{Binding Image}"
+                Stretch="{Binding MaintainAspectRatio, Converter={StaticResource ImageAspectRatioConverter}}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch" />
+        </Grid>
+    </ScrollViewer>
 </UserControl>

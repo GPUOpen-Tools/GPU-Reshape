@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 using Studio.Models.IL;
+using Type = Studio.Models.IL.Type;
 
 namespace GRS.Features.Debug.UIX.ViewModels.Utils;
 
@@ -110,6 +112,104 @@ public static class ValueTypeFormattingUtils
                 double value = MemoryMarshal.Read<double>(byteSpan);
                 byteSpan = byteSpan.Slice(8);
                 return value.ToString(CultureInfo.InvariantCulture);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Format an opaque value
+    /// </summary>
+    public static string FormatValue(Type type, Span<byte> byteSpan)
+    {
+        Span<byte> byteSpanRef = byteSpan;
+        return FormatValue(type, ref byteSpanRef);
+    }
+
+    /// <summary>
+    /// Format an opaque value
+    /// </summary>
+    public static string FormatValue(Type type, ref Span<byte> byteSpan)
+    {
+        switch (type.Kind)
+        {
+            default:
+            {
+                return type.Kind.ToString();
+            }
+            case TypeKind.Bool:
+            {
+                return FormatBool((BoolType)type, ref byteSpan);
+            }
+            case TypeKind.Int:
+            {
+                return FormatInt((IntType)type, ref byteSpan);
+            }
+            case TypeKind.FP:
+            {
+                return FormatFP((FPType)type, ref byteSpan);
+            }
+            case TypeKind.Vector:
+            {
+                var typed = (VectorType)type;
+
+                StringBuilder builder = new();
+
+                for (int i = 0; i < typed.Dimension; i++)
+                {
+                    builder.Append(FormatValue(typed.ContainedType, ref byteSpan));
+                    builder.Append(' ');
+                }
+
+                return builder.ToString();
+            }
+            case TypeKind.Array:
+            {
+                var typed = (ArrayType)type;
+                
+                StringBuilder builder = new();
+
+                for (int i = 0; i < typed.Count; i++)
+                {
+                    builder.Append(FormatValue(typed.ElementType, ref byteSpan));
+                    builder.Append(' ');
+                }
+                
+                return builder.ToString();
+            }
+            case TypeKind.Matrix:
+            {
+                var typed = (MatrixType)type;
+                
+                StringBuilder builder = new();
+
+                for (int row = 0; row < typed.Rows; row++)
+                {
+                    LooseTreeItemViewModel rowItem = new() { Text = $"Row {row}" };
+                    
+                    for (int column = 0; column < typed.Columns; column++)
+                    {
+                        builder.Append(FormatValue(typed.ContainedType, ref byteSpan));
+                        builder.Append(' ');
+                    }
+                    
+                    builder.Append(" - ");
+                }
+                
+                return builder.ToString();
+            }
+            case TypeKind.Struct:
+            {
+                var typed = (StructType)type;
+                
+                StringBuilder builder = new();
+
+                for (int i = 0; i < typed.MemberTypes.Length; i++)
+                {
+                    builder.Append(FormatValue(typed.MemberTypes[i], ref byteSpan));
+                    builder.Append(' ');
+                }
+                
+                return builder.ToString();
             }
         }
     }

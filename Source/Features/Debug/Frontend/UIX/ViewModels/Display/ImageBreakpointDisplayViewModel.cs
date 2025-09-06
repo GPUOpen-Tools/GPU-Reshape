@@ -17,6 +17,11 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
         get => _image;
         set => this.RaiseAndSetIfChanged(ref _image, value);
     }
+    
+    /// <summary>
+    /// Optional pixel inspector
+    /// </summary>
+    public IImageInspector? Inspector { get; set; }
 
     /// <summary>
     /// Shader property
@@ -61,6 +66,24 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     {
         get => _maxValue;
         set => this.RaiseAndSetIfChanged(ref _maxValue, value);
+    }
+
+    /// <summary>
+    /// Current pixel decoration for status rendering
+    /// </summary>
+    public string PixelDecoration
+    {
+        get => _pixelDecoration;
+        set => this.RaiseAndSetIfChanged(ref _pixelDecoration, value);
+    }
+
+    /// <summary>
+    /// Current decoration color
+    /// </summary>
+    public IBrush PixelColor
+    {
+        get => _pixelColor;
+        set => this.RaiseAndSetIfChanged(ref _pixelColor, value);
     }
 
     public ImageBreakpointDisplayViewModel()
@@ -119,4 +142,14 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// Internal max display
     /// </summary>
     private float _maxValue = 1.0f;
+
+    /// <summary>
+    /// Internal decoration state
+    /// </summary>
+    private string _pixelDecoration;
+    
+    /// <summary>
+    /// Internal decoration state
+    /// </summary>
+    private IBrush _pixelColor;
 }

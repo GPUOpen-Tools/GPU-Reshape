@@ -33,7 +33,16 @@ public static class ValueTypeRenderingUtils
             return MinValue < 1e-4f && Math.Abs(MaxValue - 1.0f) < 1e-4f;
         }
     }
-    
+
+    /// <summary>
+    /// Render a value to a 255 format
+    /// </summary>
+    public static uint Render255(FormattingConfig config, Type type, int shl, Span<byte> byteSpan)
+    {
+        Span<byte> byteSpanRef = byteSpan;
+        return Render255(config, type, shl, ref byteSpanRef);
+    }
+
     /// <summary>
     /// Render a value to a 255 format
     /// </summary>

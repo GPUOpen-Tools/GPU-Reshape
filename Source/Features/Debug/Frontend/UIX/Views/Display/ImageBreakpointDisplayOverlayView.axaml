@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="UIX.Views.Display.ImageBreakpointDisplayOverlayView"
+             x:DataType="viewModels:ImageBreakpointDisplayViewModel">
+    <StackPanel 
+        Margin="10 10 0 0"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Top"
+        Orientation="Vertical"
+        Spacing="5">
+        <Button Classes="Overlay">
+            <PathIcon Data="{StaticResource MagnifyExpand}" Width="15" />
+        </Button>
+        
+        <Button Classes="Overlay">
+            <PathIcon Data="{StaticResource Palette}" Width="15" />
+        </Button>
+    </StackPanel>
+</UserControl>

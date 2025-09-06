@@ -101,6 +101,7 @@
         <SolidColorBrush x:Key="ToggleButtonCheckColorBrush">#2C2C2C</SolidColorBrush>
         <SolidColorBrush x:Key="LinkForeground">#8B529E</SolidColorBrush>
         <SolidColorBrush x:Key="LinkForegroundHighlight">#A869BB</SolidColorBrush>
+        <SolidColorBrush x:Key="OverlayButtonBrush">#323232</SolidColorBrush>
         
         <!-- Status brushes -->
         <SolidColorBrush x:Key="StatusActive">#92969C</SolidColorBrush>
@@ -236,6 +237,7 @@
     <StyleInclude Source="avares://GPUReshape/Themes/Button.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/PrimaryButton.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/IconButton.axaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/OverlayButton.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/TextBox.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/ComboBox.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/AutoCompleteBox.axaml" />

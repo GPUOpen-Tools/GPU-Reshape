@@ -10,5 +10,15 @@ public enum ViewType
     /// <summary>
     /// View for general configuration
     /// </summary>
-    Config
+    Config,
+    
+    /// <summary>
+    /// Status for general configuration
+    /// </summary>
+    Status,
+    
+    /// <summary>
+    /// Overlay for general configuration
+    /// </summary>
+    Overlay
 }

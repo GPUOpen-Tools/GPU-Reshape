@@ -20,7 +20,7 @@
                 <!-- Archetype -->
                 <ComboBox SelectedItem="{Binding ArchetypeViewModel}" ItemsSource="{Binding Archetypes}" DisplayMemberBinding="{Binding Name}"/>
                 
-                <!-- Display -->
+                <!-- Config -->
                 <controls:LocatorViewHost 
                     Margin="5 0 0 0"
                     HorizontalAlignment="Stretch" 
@@ -52,36 +52,58 @@
                 HorizontalAlignment="Stretch"
                 Background="{DynamicResource LineBorderBrush}"/>
             
+            <!-- Primary -->
             <controls:LocatorViewHost 
                 Margin="0 1 0 0"
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 
                 DataContext="{Binding DisplayViewModel}" />
+            
+            <!-- Overlay -->
+            <controls:LocatorViewHost 
+                Margin="0 1 0 0"
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch" 
+                ViewType="Overlay"
+                DataContext="{Binding DisplayViewModel}"/>
         </Grid>
         
         <!-- Info -->
         <Grid Grid.Row="2">
             <StackPanel 
+                Margin="25 0 0 0"
                 HorizontalAlignment="Left"
                 Orientation="Horizontal">
-                <Label Content="{Binding Decoration}"/>
+                <!-- Status -->
+                <controls:LocatorViewHost 
+                    Margin="5 0 0 0"
+                    HorizontalAlignment="Stretch" 
+                    VerticalAlignment="Stretch" 
+                    ViewType="Status"
+                    DataContext="{Binding DisplayViewModel}"/>
             </StackPanel>
             
             <StackPanel
-                IsVisible="{Binding HasStatusMessage}"
                 Margin="0 0 5 0"
                 HorizontalAlignment="Right"
                 Orientation="Horizontal"
                 Height="25">
-                <PathIcon
-                    VerticalAlignment="Center"
-                    Margin="0 1 0 0"
-                    Data="{StaticResource Warning}" Width="14" Height="14"/>
+                <Label Content="{Binding Decoration}"/>
                 
-                <TextBlock 
-                    Margin="5 0 0 0"
-                    VerticalAlignment="Center"
-                    Text="{Binding StatusMessage}"/>
+                <StackPanel
+                    IsVisible="{Binding HasStatusMessage}"
+                    HorizontalAlignment="Left"
+                    Orientation="Horizontal">
+                    <PathIcon
+                        VerticalAlignment="Center"
+                        Margin="0 1 0 0"
+                        Data="{StaticResource Warning}" Width="14" Height="14"/>
+                    
+                    <TextBlock 
+                        Margin="5 0 0 0"
+                        VerticalAlignment="Center"
+                        Text="{Binding StatusMessage}"/>
+                </StackPanel>
             </StackPanel>
         </Grid>
     </Grid>
