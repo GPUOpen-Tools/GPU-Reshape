@@ -139,6 +139,10 @@ public class LooseItemViewModel : ReactiveObject
             }
             
             executionInfoItem.Items.Add(item);
+
+            threadInfo.Items.AddRange([
+                new LooseTreeItemViewModel { Text = $"Vertex ID : {header.threadX}" }
+            ]);
         }
         
         // Data span begin

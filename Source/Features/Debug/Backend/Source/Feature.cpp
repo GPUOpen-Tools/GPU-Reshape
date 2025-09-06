@@ -1555,6 +1555,13 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
                     threadZ = emitter.UInt32(0);
                     break;
                 }
+                case IL::KernelType::Vertex: {
+                    // Report VID
+                    threadX = emitter.UInt32(emitter.KernelValue(Backend::IL::KernelValue::VertexID));
+                    threadY = emitter.UInt32(0);
+                    threadZ = emitter.UInt32(0);
+                    break;
+                }
                 case IL::KernelType::Pixel: {
                     // Get typed dispatch index
                     IL::ID pos = emitter.KernelValue(Backend::IL::KernelValue::PixelPosition);

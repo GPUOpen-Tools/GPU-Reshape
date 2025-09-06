@@ -4031,6 +4031,33 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             table.idRemapper.SetUserRedirect(instr->result, AllocateSVOSequential(2, pixelPositions[0], pixelPositions[1]));
                             break;
                         }
+                        case Backend::IL::KernelValue::VertexID: {
+                            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpLoadInputI32);
+
+                            // Get the input index
+                            ASSERT(table.container, "Vertex ID requires DXBC container");
+                            uint32_t signatureIndex = table.metadata.GetOrCompileInput(
+                                "SV_VertexID",
+                                DXILSemantic::VertexID,
+                                DXILSignatureElementComponentType::UInt32,
+                                IL::ComponentMask::Red,
+                                DXILSignatureElementPrecision::Default
+                            );
+                           
+                            // Get the vertex id
+                            uint64_t ops[5];
+                            ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::LoadInput_))->id);
+                            ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(signatureIndex)->id);
+                            ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(0)->id);
+                            ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(0, 8)->id);
+                            ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                Backend::IL::UndefConstant{}
+                            )->id);
+                            
+                            block->AddRecord(CompileIntrinsicCall(instr->result, intrinsic, 5, ops));
+                            break;
+                        }
                     }
                     break;
                 }

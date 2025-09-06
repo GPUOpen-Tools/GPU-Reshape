@@ -2101,6 +2101,17 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         spv[3] = varId;
                         break;
                     }
+                    case Backend::IL::KernelValue::VertexID: {
+                        const Backend::IL::Type *type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = false});
+
+                        IL::ID varId = table.typeConstantVariable.FindOrCreateInput(SpvBuiltInVertexId, type);
+
+                        SpvInstruction &spv = stream.Allocate(SpvOpLoad, 4);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = kernel->result;
+                        spv[3] = varId;
+                        break;
+                    }
                 }
                 break;
             }

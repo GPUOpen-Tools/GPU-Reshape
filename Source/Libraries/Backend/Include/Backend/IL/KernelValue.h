@@ -30,6 +30,7 @@ namespace Backend::IL {
     enum class KernelValue {
         DispatchThreadID,
         FlattenedLocalThreadID,
-        PixelPosition
+        PixelPosition,
+        VertexID
     };
 }

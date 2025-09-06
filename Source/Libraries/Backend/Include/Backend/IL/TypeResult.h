@@ -248,6 +248,9 @@ namespace Backend::IL {
                     .dimension = 2
                 });
             }
+            case KernelValue::VertexID: {
+                return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
+            }
         }
     }
 
