@@ -206,35 +206,48 @@ namespace GRS.Features.Debug.UIX.Workspace
             // Update the thread specific stamp
             breakpointViewModel.ProcessThreadLastTimeStamp = now;
 
-            // Check if we're out of memory
-            bool isOutOfMemory = IsOutOfMemory(message);
+            // Get the optional status message
+            string statusMessage = GetStatusMessage(message);
             
             // Update timing
             return new ActionDisposable(() =>
             {
-                breakpointViewModel.IsOutOfMemory = isOutOfMemory;
+                breakpointViewModel.StatusMessage = statusMessage;
+                breakpointViewModel.HasStatusMessage = !string.IsNullOrEmpty(statusMessage);
                 breakpointViewModel.FrameRate = weight * breakpointViewModel.FrameRate + (1.0f - weight) * frameRate;
             });
         }
         
         /// <summary>
-        /// Check if a breakpoint is out of memory
+        /// Check breakpoint status
         /// </summary>
-        private bool IsOutOfMemory(DebugBreakpointStreamMessage message)
+        private string GetStatusMessage(DebugBreakpointStreamMessage message)
         {
+            // Get the requested byte size
+            uint dynamicRequestedByteSize = 0;
             switch ((BreakpointDataOrder)message.dataOrder)
             {
                 case BreakpointDataOrder.None:
-                    return false;
                 case BreakpointDataOrder.Static:
-                    return false;
+                    break;
                 case BreakpointDataOrder.Dynamic:
-                    return message.dataDynamicCounter * sizeof(int) * (DynamicBreakpointHeader.DWordCount + message.dataDWordStride) > message.data.Count;
+                    dynamicRequestedByteSize = message.dataDynamicCounter * sizeof(int) * (DynamicBreakpointHeader.DWordCount + message.dataDWordStride);
+                    break;
                 case BreakpointDataOrder.Loose:
-                    return message.dataDynamicCounter * sizeof(int) * (LooseBreakpointHeader.DWordCount + message.dataDWordStride) > message.data.Count;
+                    dynamicRequestedByteSize = message.dataDynamicCounter * sizeof(int) * (LooseBreakpointHeader.DWordCount + message.dataDWordStride);
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+
+            // Out of memory?
+            if (dynamicRequestedByteSize > message.data.Count)
+            {
+                return $"Out of memory, requested {(int)(dynamicRequestedByteSize / 1e6)}mb, max {_debugSettingViewModel?.MaxBreakpointMemoryMb ?? 32}mb";
+            }
+
+            // Nothing of importance
+            return string.Empty;
         }
         
         /// <summary>

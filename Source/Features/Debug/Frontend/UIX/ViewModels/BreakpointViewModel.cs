@@ -96,12 +96,21 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     }
 
     /// <summary>
-    /// Is this breakpoint out of memory?
+    /// Optional status message
     /// </summary>
-    public bool IsOutOfMemory
+    public string StatusMessage
     {
-        get => _isOutOfMemory;
-        set => this.RaiseAndSetIfChanged(ref _isOutOfMemory, value);
+        get => _statusMessage;
+        set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
+    }
+
+    /// <summary>
+    /// Any status to be displayed
+    /// </summary>
+    public bool HasStatusMessage
+    {
+        get => _hasStatusMessage;
+        set => this.RaiseAndSetIfChanged(ref _hasStatusMessage, value);
     }
     
     /// <summary>
@@ -371,7 +380,12 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     private bool _paused = false;
 
     /// <summary>
-    /// Internal oom state
+    /// Internal status state
     /// </summary>
-    private bool _isOutOfMemory = false;
+    private string _statusMessage = string.Empty;
+
+    /// <summary>
+    /// Internal status state
+    /// </summary>
+    private bool _hasStatusMessage;
 }
