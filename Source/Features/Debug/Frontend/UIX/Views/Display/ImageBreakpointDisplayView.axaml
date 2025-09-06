@@ -12,7 +12,10 @@
         <valueConverters:ImageAspectRatioConverter x:Key="ImageAspectRatioConverter" />
     </UserControl.Resources>
 
-    <ScrollViewer x:Name="ScrollArea">
+    <ScrollViewer
+        x:Name="ScrollArea"
+        HorizontalScrollBarVisibility="Auto"
+        VerticalScrollBarVisibility="Auto">
         <Grid>
             <controls:Checkerboard />
         

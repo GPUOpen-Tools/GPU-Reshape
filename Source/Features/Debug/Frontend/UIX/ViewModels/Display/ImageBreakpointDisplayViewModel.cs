@@ -51,6 +51,15 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     }
 
     /// <summary>
+    /// Is this view locked?
+    /// </summary>
+    public bool LockToContent
+    {
+        get => _lockToContent;
+        set => this.RaiseAndSetIfChanged(ref _lockToContent, value);
+    }
+
+    /// <summary>
     /// Current min display value
     /// </summary>
     public float MinValue
@@ -132,6 +141,11 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// Internal compress state
     /// </summary>
     private bool _compress = true;
+
+    /// <summary>
+    /// Internal lock state
+    /// </summary>
+    private bool _lockToContent = true;
 
     /// <summary>
     /// Internal min display

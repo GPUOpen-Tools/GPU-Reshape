@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
 using GRS.Features.Debug.UIX.ViewModels;
@@ -25,10 +26,40 @@ public partial class ImageBreakpointDisplayView : UserControl, IViewFor
         this.WhenAnyValue(x => x.DataContext)
             .CastNullable<ImageBreakpointDisplayViewModel>()
             .WhereNotNull()
-            .Subscribe(x =>
+            .Subscribe(vm =>
             {
-                Image.Events().PointerMoved.Subscribe(e => OnImagePointerMoved(x, e));
+                // Bind lock changes
+                vm.WhenAnyValue(x => x.LockToContent).Subscribe(x => OnLockChanged(vm));
+                
+                // Reapply lock when the image has changed
+                vm.WhenAnyValue(x => x.Image).Subscribe(x => OnLockChanged(vm));
+
+                // Bind pointer move
+                Image.Events().PointerMoved.Subscribe(e => OnImagePointerMoved(vm, e));
             });
+    }
+    
+    /// <summary>
+    /// Invoked on lock changes
+    /// </summary>
+    private void OnLockChanged(ImageBreakpointDisplayViewModel viewModel)
+    {
+        if (viewModel.LockToContent)
+        {
+            Image.Width = ScrollArea.Bounds.Width;
+            Image.Height = ScrollArea.Bounds.Height;
+
+            ScrollArea.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
+            ScrollArea.VerticalScrollBarVisibility = ScrollBarVisibility.Hidden;
+        }
+        else
+        {
+            Image.Width = Image.Source?.Size.Width ?? 1.0;
+            Image.Height = Image.Source?.Size.Height ?? 1.0;
+
+            ScrollArea.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            ScrollArea.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+        }
     }
 
     /// <summary>

@@ -12,9 +12,11 @@
         VerticalAlignment="Top"
         Orientation="Vertical"
         Spacing="5">
-        <Button Classes="Overlay">
+        <ToggleButton
+            IsChecked="{Binding LockToContent}"
+            Classes="Overlay">
             <PathIcon Data="{StaticResource MagnifyExpand}" Width="15" />
-        </Button>
+        </ToggleButton>
         
         <Button Classes="Overlay">
             <PathIcon Data="{StaticResource Palette}" Width="15" />

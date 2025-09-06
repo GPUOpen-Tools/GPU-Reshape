@@ -25,6 +25,7 @@
 // 
 
 using System;
+using System.Reactive;
 using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -73,6 +74,14 @@ namespace Studio.Extensions
             return (s, e) => handler(e);
         }, handler => _control.PointerMoved += handler, handler => _control.PointerMoved -= handler);
         
+        /// <summary>
+        /// Observable layout updated
+        /// </summary>
+        public IObservable<Unit> LayoutUpdated => Observable.FromEvent<EventHandler, Unit>(handler =>
+        {
+            return (s, e) => handler(Unit.Default);
+        }, handler => _control.LayoutUpdated += handler, handler => _control.LayoutUpdated -= handler);
+
         /// <summary>
         /// Internal Control
         /// </summary>
