@@ -487,8 +487,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDraw(CommandBufferObject *commandBuffer, ui
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw;
-        info.draw.vertexCount = vertexCount;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = ExecutionDrawFlag::VertexCountPerInstance | ExecutionDrawFlag::InstanceCount | ExecutionDrawFlag::StartVertex | ExecutionDrawFlag::StartInstance;
+        info.draw.vertexCountPerInstance = vertexCount;
+        info.draw.instanceCount = instanceCount;
+        info.draw.startVertex = firstVertex;
+        info.draw.startInstance = firstInstance;
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     
@@ -504,8 +507,12 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexed(CommandBufferObject *commandBuf
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = indexCount;
+        info.draw.drawFlags = ExecutionDrawFlag::IndexCountPerInstance | ExecutionDrawFlag::InstanceCount | ExecutionDrawFlag::StartIndex | ExecutionDrawFlag::VertexOffset | ExecutionDrawFlag::StartInstance;
+        info.draw.indexCountPerInstance = indexCount;
+        info.draw.instanceCount = instanceCount;
+        info.draw.startIndex = firstIndex;
+        info.draw.vertexOffset = vertexOffset;
+        info.draw.startInstance = firstInstance;
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     
@@ -521,8 +528,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndirect(CommandBufferObject *commandBu
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = {};
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     
@@ -538,8 +544,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexedIndirect(CommandBufferObject *co
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = {};
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     
@@ -573,8 +578,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksEXT(CommandBufferObject* comma
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = {};
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     
@@ -590,8 +594,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectEXT(CommandBufferObjec
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = {};
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     
@@ -607,8 +610,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectCountEXT(CommandBuffer
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw | ExecutionFlag::TypeIndirect;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = {};
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     
@@ -764,8 +766,6 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchIndirect(CommandBufferObject *comma
     if (UsesExecutionInfo(commandBuffer, PipelineType::Compute)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Compute);
         info.executionFlags = ExecutionFlag::TypeDispatch | ExecutionFlag::TypeIndirect;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Compute, info);
     }
     
@@ -784,8 +784,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndirectCount(CommandBufferObject *comm
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = {};
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     
@@ -801,8 +800,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexedIndirectCount(CommandBufferObjec
     if (UsesExecutionInfo(commandBuffer, PipelineType::Graphics)) {
         ExecutionInfo info = GetBaseExecutionInfo(commandBuffer, PipelineType::Graphics);
         info.executionFlags = ExecutionFlag::TypeDraw;
-        info.draw.vertexCount = 0;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = {};
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Graphics, info);
     }
     

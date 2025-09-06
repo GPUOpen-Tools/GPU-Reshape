@@ -93,20 +93,52 @@ public class LooseItemViewModel : ReactiveObject
         // Add draw parameters
         if (header.executionInfo.executionFlags.HasFlag(ExecutionFlag.Draw))
         {
-            executionInfoItem.Items.Add(new LooseTreeItemViewModel()
+            var item = new LooseTreeItemViewModel()
             {
-                Text = TracebackUtils.Format(header.executionInfo.executionFlags),
-                Items =
-                [
-                    new LooseTreeItemViewModel { Text = $"Vertex Count : {header.executionInfo.drawInfo.vertexCount}" },
-                    new LooseTreeItemViewModel { Text = $"Index Count  : {header.executionInfo.drawInfo.indexCount}" }
-                ]
-            });
+                Text = TracebackUtils.Format(header.executionInfo.executionFlags)
+            };
 
-            threadInfo.Items.AddRange([
-                new LooseTreeItemViewModel { Text = $"Vertex Count : {header.threadX}" },
-                new LooseTreeItemViewModel { Text = $"Index Count  : {header.threadY}" }
-            ]);
+            if (header.executionInfo.drawInfo.drawFlags.HasFlag(ExecutionDrawFlag.VertexCountPerInstance))
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = $"Vertex Count Per Instance : {header.executionInfo.drawInfo.vertexCountPerInstance}" });
+            }
+
+            if (header.executionInfo.drawInfo.drawFlags.HasFlag(ExecutionDrawFlag.IndexCountPerInstance))
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = $"Index Count Per Instance : {header.executionInfo.drawInfo.indexCountPerInstance}" });
+            }
+
+            if (header.executionInfo.drawInfo.drawFlags.HasFlag(ExecutionDrawFlag.InstanceCount))
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = $"Instance Count : {header.executionInfo.drawInfo.instanceCount}" });
+            }
+
+            if (header.executionInfo.drawInfo.drawFlags.HasFlag(ExecutionDrawFlag.StartVertex))
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = $"Start Vertex : {header.executionInfo.drawInfo.startVertex}" });
+            }
+
+            if (header.executionInfo.drawInfo.drawFlags.HasFlag(ExecutionDrawFlag.StartIndex))
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = $"Start Index : {header.executionInfo.drawInfo.startIndex}" });
+            }
+
+            if (header.executionInfo.drawInfo.drawFlags.HasFlag(ExecutionDrawFlag.StartInstance))
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = $"Start Instance : {header.executionInfo.drawInfo.startInstance}" });
+            }
+
+            if (header.executionInfo.drawInfo.drawFlags.HasFlag(ExecutionDrawFlag.VertexOffset))
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = $"Vertex Offset : {header.executionInfo.drawInfo.vertexOffset}" });
+            }
+
+            if (header.executionInfo.drawInfo.drawFlags.HasFlag(ExecutionDrawFlag.InstanceOffset))
+            {
+                item.Items.Add(new LooseTreeItemViewModel { Text = $"Instance Offset : {header.executionInfo.drawInfo.instanceOffset}" });
+            }
+            
+            executionInfoItem.Items.Add(item);
         }
         
         // Data span begin

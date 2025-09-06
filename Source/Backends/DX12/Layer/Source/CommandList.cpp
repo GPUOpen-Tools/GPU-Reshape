@@ -1429,8 +1429,11 @@ void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList* list, UINT Ver
     if (UsesExecutionInfo(table.state)) {
         ExecutionInfo info = GetBaseExecutionInfo(table.state);
         info.executionFlags = ExecutionFlag::TypeDraw;
-        info.draw.vertexCount = VertexCountPerInstance;
-        info.draw.indexCount = 0;
+        info.draw.drawFlags = ExecutionDrawFlag::VertexCountPerInstance | ExecutionDrawFlag::InstanceCount | ExecutionDrawFlag::StartVertex | ExecutionDrawFlag::StartInstance;
+        info.draw.vertexCountPerInstance = VertexCountPerInstance;
+        info.draw.instanceCount = InstanceCount;
+        info.draw.startVertex = StartVertexLocation;
+        info.draw.startInstance = StartInstanceLocation;
         device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Graphics, info);
     }
     
@@ -1451,8 +1454,12 @@ void WINAPI HookID3D12CommandListDrawIndexedInstanced(ID3D12CommandList* list, U
     if (UsesExecutionInfo(table.state)) {
         ExecutionInfo info = GetBaseExecutionInfo(table.state);
         info.executionFlags = ExecutionFlag::TypeDraw;
-        info.draw.vertexCount = 9;
-        info.draw.indexCount = IndexCountPerInstance;
+        info.draw.drawFlags = ExecutionDrawFlag::IndexCountPerInstance | ExecutionDrawFlag::InstanceCount | ExecutionDrawFlag::StartVertex | ExecutionDrawFlag::StartIndex;
+        info.draw.indexCountPerInstance = IndexCountPerInstance;
+        info.draw.instanceCount = InstanceCount;
+        info.draw.instanceOffset = StartInstanceLocation;
+        info.draw.startIndex = StartIndexLocation;
+        info.draw.startVertex = BaseVertexLocation;
         device.state->exportStreamer->SetExecutionInfo(table.state->streamState, PipelineType::Graphics, info);
     }
 

@@ -40,7 +40,19 @@ enum class ExecutionFlag : uint32_t {
     TypeRaytracing = BIT(2),
 
     /// The execution is indirect in nature
-    TypeIndirect = BIT(3),
+    TypeIndirect = BIT(3)
+};
+
+enum class ExecutionDrawFlag : uint32_t {
+    VertexCountPerInstance = BIT(0),
+    IndexCountPerInstance = BIT(1),
+    InstanceCount = BIT(2),
+    StartVertex = BIT(3),
+    StartIndex = BIT(4),
+    StartInstance = BIT(5),
+    VertexOffset = BIT(6),
+    InstanceOffset = BIT(7)
 };
 
 BIT_SET(ExecutionFlag);
+BIT_SET(ExecutionDrawFlag);

@@ -282,8 +282,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdTraceRaysKHR(CommandBufferObject* commandBu
     if (UsesExecutionInfo(commandBuffer, PipelineType::Raytracing)) {
         ExecutionInfo execInfo = GetBaseExecutionInfo(commandBuffer, PipelineType::Raytracing);
         execInfo.executionFlags = ExecutionFlag::TypeRaytracing;
-        execInfo.draw.vertexCount = 0;
-        execInfo.draw.indexCount = 0;
+        execInfo.dispatch.groupCountX = width;
+        execInfo.dispatch.groupCountY = height;
+        execInfo.dispatch.groupCountZ = depth;
         commandBuffer->table->exportStreamer->SetExecutionInfo(commandBuffer->streamState, commandBuffer->object, PipelineType::Raytracing, execInfo);
     }
     

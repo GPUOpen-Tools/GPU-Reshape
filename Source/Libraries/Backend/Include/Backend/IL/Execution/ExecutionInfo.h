@@ -50,11 +50,17 @@ struct ExecutionInfo {
     /// Payload data
     struct {
         struct {
-            /// Number of vertices
-            uint32_t vertexCount;
-
-            /// Number of indices
-            uint32_t indexCount;
+            ExecutionDrawFlagSet drawFlags;
+            
+            /// Parameters
+            uint32_t vertexCountPerInstance;
+            uint32_t indexCountPerInstance;
+            uint32_t instanceCount;
+            uint32_t startVertex;
+            uint32_t startIndex;
+            uint32_t startInstance;
+            uint32_t vertexOffset;
+            uint32_t instanceOffset;
         } draw;
 
         struct {
@@ -72,10 +78,13 @@ struct ExecutionInfo {
             uint32_t height;
         } viewport;
     };
+
+    // Padding helpers
+    uint32_t pad20;
 };
 
 /// Number of dwords required for the execution structure
 static constexpr uint32_t kExecutionInfoDWordCount = sizeof(ExecutionInfo) / sizeof(uint32_t);
 
 /// Sanity check
-static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 12);
+static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 20);

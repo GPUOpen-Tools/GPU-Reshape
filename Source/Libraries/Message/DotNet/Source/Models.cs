@@ -40,6 +40,18 @@ namespace Message.CLR
         Indirect   = 1 << 3
     }
     
+    [Flags]
+    public enum ExecutionDrawFlag {
+        VertexCountPerInstance = 1 << 0,
+        IndexCountPerInstance = 1 << 1,
+        InstanceCount = 1 << 2,
+        StartVertex = 1 << 3,
+        StartIndex = 1 << 4,
+        StartInstance = 1 << 5,
+        VertexOffset = 1 << 6,
+        InstanceOffset = 1 << 7
+    };
+    
     public struct Traceback
     {
         /// <summary>
