@@ -152,6 +152,16 @@ namespace Studio.ViewModels
             get => _suspendDeferredInitialization;
             set => this.RaiseAndSetIfChanged(ref _suspendDeferredInitialization, value);
         }
+
+        /// <summary>
+        /// Launch and wait for the debugger?
+        /// </summary>
+        [DataMember]
+        public bool WaitForDebugger
+        {
+            get => _waitForDebugger;
+            set => this.RaiseAndSetIfChanged(ref _waitForDebugger, value);
+        }
         
         /// <summary>
         /// Optional, redirect all process pipes
@@ -596,6 +606,7 @@ namespace Studio.ViewModels
             processInfo.captureChildProcesses = _captureChildProcesses;
             processInfo.attachAllDevices = _attachAllDevices;
             processInfo.suspendDeferredInitialization = _suspendDeferredInitialization;
+            processInfo.waitForDebugger = _waitForDebugger;
             processInfo.redirectPipes = RedirectPipes;
 
             // Parse environment
@@ -980,6 +991,11 @@ namespace Studio.ViewModels
         /// Internal suspend state
         /// </summary>
         private bool _suspendDeferredInitialization;
+
+        /// <summary>
+        /// Internal wait state
+        /// </summary>
+        private bool _waitForDebugger;
         
         /// <summary>
         /// Internal safe guard state

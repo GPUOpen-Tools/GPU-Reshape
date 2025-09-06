@@ -1900,6 +1900,13 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         InitializeCriticalSection(&libraryCriticalSection);
         InitializeCriticalSection(&bootstrapCriticalSection);
 
+        // Wait for debugger?
+        if (IsBackendKeySet(Backend::kWaitForDebugger)) {
+            while (!IsDebuggerPresent()) {
+                Sleep(0);
+            }
+        }
+
         // Create deferred initialization event
         InitializationEvent = CreateEvent(nullptr, true, false, nullptr);
 

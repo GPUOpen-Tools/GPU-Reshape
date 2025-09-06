@@ -119,6 +119,7 @@ bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryP
     nativeInfo.captureChildProcesses = createInfo->captureChildProcesses;
     nativeInfo.attachAllDevices = createInfo->attachAllDevices;
     nativeInfo.suspendDeferredInitialization = createInfo->suspendDeferredInitialization;
+    nativeInfo.waitForDebugger = createInfo->waitForDebugger;
     nativeInfo.redirectPipes = createInfo->redirectPipes;
 
     // Convert environment to native

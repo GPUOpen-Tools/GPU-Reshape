@@ -164,6 +164,9 @@ Do you consent to this?</value>
     <data name="Launch_SuspendDeferredInitialization" xml:space="preserve">
         <value>Suspends the deferred initialization thread created on injection, this avoids some app-side TLS initialization order issues</value>
     </data>
+    <data name="Launch_WaitForDebugger" xml:space="preserve">
+        <value>Launch and wait for the debugger</value>
+    </data>
     <data name="Launch_AttachAllDevices" xml:space="preserve">
         <value>Attach to all graphical devices the application creates, a workspace is automatically created per device</value>
     </data>

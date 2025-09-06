@@ -56,6 +56,9 @@ namespace Discovery::CLR {
         /// TODO: All of this should be a flag set
         bool suspendDeferredInitialization = false;
 
+        /// Wait for the debugger on launch?
+        bool waitForDebugger = false;
+
         /// Should the pipes be redirected?
         /// If true, make sure to regularly read/flush the pipes
         bool redirectPipes = false;

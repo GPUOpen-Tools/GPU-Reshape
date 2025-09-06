@@ -473,6 +473,7 @@ public class LaunchCommand : IBaseCommand
             CaptureChildProcesses = true,
             RedirectPipes = userWorkspace.Config.RedirectOutput,
             SuspendDeferredInitialization = userWorkspace.Config.SuspendDeferredInitialization,
+            WaitForDebugger = userWorkspace.Config.WaitForDebugger,
             Coverage = userWorkspace.Config.Coverage,
             Detail = userWorkspace.Config.Detail
             // TODO: Wait for connection tag

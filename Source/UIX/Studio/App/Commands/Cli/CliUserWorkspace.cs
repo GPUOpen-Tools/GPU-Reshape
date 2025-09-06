@@ -51,6 +51,11 @@ public class CliUserWorkspaceConfig
     /// Suspend the deferred initialization thread
     /// </summary>
     public bool SuspendDeferredInitialization { get; set; } = false;
+
+    /// <summary>
+    /// Launch and wait for debugger
+    /// </summary>
+    public bool WaitForDebugger { get; set; } = false;
 }
 
 public class CliUserWorkspace

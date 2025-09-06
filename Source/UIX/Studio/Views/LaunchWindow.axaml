@@ -126,11 +126,16 @@
                             <TextBox Text="{Binding Environment}" />
                         </Grid>
                         
-                        <StackPanel Orientation="Horizontal" Margin="0 15 0 0">
+                        <StackPanel Orientation="Horizontal" Margin="0 15 0 0" Spacing="5">
                             <CheckBox
                                 IsChecked="{Binding SuspendDeferredInitialization}"
                                 Content="Suspend Deferred Initialization"
                                 ToolTip.Tip="{x:Static r:Resources.Launch_SuspendDeferredInitialization}"/>
+                            
+                            <CheckBox
+                                IsChecked="{Binding WaitForDebugger}"
+                                Content="Wait For Debugger"
+                                ToolTip.Tip="{x:Static r:Resources.Launch_WaitForDebugger}"/>
                         </StackPanel>
                     </StackPanel>
                 </controls:InlineSectionView>

@@ -251,6 +251,15 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Launch and wait for the debugger.
+        /// </summary>
+        public static string Launch_WaitForDebugger {
+            get {
+                return ResourceManager.GetString("Launch_WaitForDebugger", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Clear all logging entries.
         /// </summary>
         public static string Log_Close_Tooltip {

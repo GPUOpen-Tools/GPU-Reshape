@@ -193,6 +193,11 @@ bool DiscoveryService::InstallLocal(const DiscoveryProcessLocalInfo& localInfo, 
         _putenv_s(Backend::kSuspendDeferredInitializationKey, "");
     }
 
+    // Wait for debugger?
+    if (localInfo.waitForDebugger) {
+        _putenv_s(Backend::kWaitForDebugger, "");
+    }
+
     // Disable service traps, must always bootstrap regardless of discoverability
     _putenv_s(Backend::kNoServiceTrapKey, "");
 #else // _WIN32
@@ -290,6 +295,11 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo
     // Suspended initialization?
     if (createInfo.suspendDeferredInitialization) {
         bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kSuspendDeferredInitializationKey, "");
+    }
+
+    // Wait for debugger?
+    if (createInfo.waitForDebugger) {
+        bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kWaitForDebugger, "");
     }
 
     // Disable service traps, must always bootstrap regardless of discoverability
