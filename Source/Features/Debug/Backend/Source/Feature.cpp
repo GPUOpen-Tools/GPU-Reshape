@@ -493,9 +493,11 @@ uint64_t DebugFeature::GetBreakpointStreamRequestSize(const Breakpoint &breakpoi
             ASSERT(false, "Invalid capture mode");
             return 0;
         case BreakpointCaptureMode::FirstEvent:
+            // Just stream back the entire thing
             return header->dwordStreamCount * sizeof(uint32_t);
         case BreakpointCaptureMode::AllEvents:
-            return header->dynamicCounter * hostLayout.dataDWordStride;
+            // Stream back the actual contents
+            return header->dynamicCounter * (sizeof(BreakpointLooseHeader) + hostLayout.dataDWordStride * sizeof(uint32_t));
     }
 }
 
