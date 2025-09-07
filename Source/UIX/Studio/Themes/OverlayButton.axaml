@@ -31,7 +31,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Design.PreviewWith>
         <StackPanel Background="Red" Width="200" Height="200">
-            <ToggleButton Classes="Overlay">
+            <ToggleButton Classes="Overlay" IsChecked="False">
+                <PathIcon Data="{StaticResource MagnifyExpand}" Width="15" />
+            </ToggleButton>
+            
+            <ToggleButton Classes="Overlay" IsChecked="True">
                 <PathIcon Data="{StaticResource MagnifyExpand}" Width="15" />
             </ToggleButton>
             
@@ -69,6 +73,10 @@
         <Setter Property="Height" Value="25" />
         <Setter Property="Opacity" Value="0.7" />
         <Setter Property="Padding" Value="2" />
+    </Style>
+
+    <Style Selector="ToggleButton.Overlay:checked">
+        <Setter Property="Opacity" Value="0.78" />
     </Style>
 
     <Style Selector="ToggleButton.Overlay:checked /template/ ContentPresenter#PART_ContentPresenter">
