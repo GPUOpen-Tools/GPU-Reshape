@@ -3,9 +3,15 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
+             xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
+             xmlns:models="clr-namespace:GRS.Features.Debug.UIX.Models"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="UIX.Views.Display.ImageBreakpointDisplayOverlayView"
              x:DataType="viewModels:ImageBreakpointDisplayViewModel">
+    <UserControl.Resources>
+        <valueConverters:ColorMaskConverter x:Key="ColorMaskConverter" />
+    </UserControl.Resources>
+
     <StackPanel 
         Margin="10 10 0 0"
         HorizontalAlignment="Left"
@@ -20,6 +26,48 @@
         
         <Button Classes="Overlay">
             <PathIcon Data="{StaticResource Palette}" Width="15" />
+
+            <Button.Flyout>
+                <Flyout Placement="Right" FlyoutPresenterClasses="Overlay">
+                    <StackPanel Orientation="Horizontal">
+                        <ToggleButton
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="R"
+                            Foreground="Red"
+                            IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.R}}"
+                            Command="{Binding ToggleColorMaskCommand}"
+                            CommandParameter="{x:Static models:ColorMask.R}"/>
+
+                        <ToggleButton
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="G"
+                            Foreground="LawnGreen"
+                            IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.G}}"
+                            Command="{Binding ToggleColorMaskCommand}"
+                            CommandParameter="{x:Static models:ColorMask.G}" />
+
+                        <ToggleButton
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="B"
+                            Foreground="DeepSkyBlue"
+                            IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.B}}"
+                            Command="{Binding ToggleColorMaskCommand}"
+                            CommandParameter="{x:Static models:ColorMask.B}" />
+
+                        <ToggleButton
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="A"
+                            Foreground="White"
+                            IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.A}}"
+                            Command="{Binding ToggleColorMaskCommand}"
+                            CommandParameter="{x:Static models:ColorMask.A}" />
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
         </Button>
     </StackPanel>
 </UserControl>

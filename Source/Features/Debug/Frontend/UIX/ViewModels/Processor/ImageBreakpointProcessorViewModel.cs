@@ -71,6 +71,9 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     private unsafe WriteableBitmap ProcessStatic(BreakpointViewModel breakpointViewModel, PixelFormat bitmapFormat, DebugBreakpointStreamMessage message)
     {
         var imageDisplayViewModel = breakpointViewModel.DisplayViewModel as ImageBreakpointDisplayViewModel;
+
+        // Get mask
+        uint texelChannelMask = GetTexelChannelMask(imageDisplayViewModel);
         
         // Shared formatting config
         ValueTypeRenderingUtils.FormattingConfig config = new()
@@ -80,7 +83,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         };
         
         // Fast path, compressed and ready
-        if (message.dataFormat != 0 && config.IsTrivial())
+        if (message.dataFormat != 0 && config.IsTrivial() && texelChannelMask == ~0u)
         {
             return new WriteableBitmap(
                 bitmapFormat, AlphaFormat.Opaque,
@@ -104,7 +107,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
             // Parallelize composition
             Parallel.For(0, exportCount, i =>
             {
-                dynamicCompositeBuffer[i] = ValueTypeRenderingUtils.Repack255(config, sourceDWordPtr[i]);
+                dynamicCompositeBuffer[i] = ValueTypeRenderingUtils.Repack255(config, sourceDWordPtr[i]) & texelChannelMask;
             });
         }
         else
@@ -125,7 +128,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 // Fixed alpha if needed
                 texel = ValueTypeRenderingUtils.RenderFixedAlpha255(breakpointViewModel.TinyType, texel);
             
-                dynamicCompositeBuffer[i] = texel;
+                dynamicCompositeBuffer[i] = texel & texelChannelMask;
             });
         }
 
@@ -164,6 +167,9 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         // Destination buffer
         uint[] dynamicCompositeBuffer = new uint[message.dataStaticWidth * message.dataStaticHeight];
 
+        // Get mask
+        uint texelChannelMask = GetTexelChannelMask(imageDisplayViewModel);
+
         // Fast path, compressed and scatter memcpy
         if (message.dataFormat != 0)
         {
@@ -179,7 +185,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 uint threadIndex = sourceDWordPtr[dwordOffset];
                 if (threadIndex < dynamicCompositeBuffer.Length)
                 {
-                    dynamicCompositeBuffer[threadIndex] = sourceDWordPtr[dwordOffset + 1];
+                    dynamicCompositeBuffer[threadIndex] = sourceDWordPtr[dwordOffset + 1] & texelChannelMask;
                 }
             });
         }
@@ -215,7 +221,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 uint threadIndex = sourceDWordPtr[dwordOffset];
                 if (threadIndex < dynamicCompositeBuffer.Length)
                 {
-                    dynamicCompositeBuffer[threadIndex] = texel;
+                    dynamicCompositeBuffer[threadIndex] = texel & texelChannelMask;
                 }
             });
             
@@ -253,6 +259,41 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 Flat = typed.Flat
             };
         }
+    }
+
+    /// <summary>
+    /// Get the color 255 mask
+    /// </summary>
+    private uint GetTexelChannelMask(ImageBreakpointDisplayViewModel? imageDisplayViewModel)
+    {
+        if (imageDisplayViewModel == null)
+        {
+            return ~0u;
+        }
+        
+        uint mask = 0x0;
+            
+        if (imageDisplayViewModel.ColorMask.HasFlag(ColorMask.R))
+        {
+            mask |= 0xFF;
+        }
+            
+        if (imageDisplayViewModel.ColorMask.HasFlag(ColorMask.G))
+        {
+            mask |= 0xFFu << 8;
+        }
+            
+        if (imageDisplayViewModel.ColorMask.HasFlag(ColorMask.B))
+        {
+            mask |= 0xFFu << 16;
+        }
+            
+        if (imageDisplayViewModel.ColorMask.HasFlag(ColorMask.A))
+        {
+            mask |= 0xFFu << 24;
+        }
+            
+        return mask;
     }
 
     private class Payload

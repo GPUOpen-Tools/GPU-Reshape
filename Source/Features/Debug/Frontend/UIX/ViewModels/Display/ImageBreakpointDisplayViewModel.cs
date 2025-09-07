@@ -1,4 +1,5 @@
 using System;
+using System.Windows.Input;
 using ReactiveUI;
 using Avalonia.Media;
 using GRS.Features.Debug.UIX.Models;
@@ -95,11 +96,38 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
         set => this.RaiseAndSetIfChanged(ref _pixelColor, value);
     }
 
+    /// <summary>
+    /// Color channel mask
+    /// </summary>
+    public ColorMask ColorMask
+    {
+        get => _colorMask;
+        set => this.RaiseAndSetIfChanged(ref _colorMask, value);
+    }
+    
+    /// <summary>
+    /// Toggle command
+    /// </summary>
+    public ICommand ToggleColorMaskCommand { get; }
+
     public ImageBreakpointDisplayViewModel()
     {
         // Values that require reinstrumentation
         this.WhenAnyValue(x => x.Compress, x => x.ShaderProperty)
             .Subscribe(_ => OnInstrumentChanged());
+
+        // Create color mask command
+        ToggleColorMaskCommand = ReactiveCommand.Create<ColorMask>(flag =>
+        {
+            if (ColorMask.HasFlag(flag))
+            {
+                ColorMask &= ~flag;
+            }
+            else
+            {
+                ColorMask |= flag;
+            }
+        });
     }
 
     /// <summary>
@@ -166,4 +194,9 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// Internal decoration state
     /// </summary>
     private IBrush _pixelColor;
+
+    /// <summary>
+    /// Internal mask state
+    /// </summary>
+    private ColorMask _colorMask = ColorMask.All;
 }
