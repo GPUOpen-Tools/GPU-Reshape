@@ -126,6 +126,7 @@ public partial class ImageBreakpointDisplayView : UserControl, IViewFor
         if (vm.LockToContent)
         {
             vm.LockToContent = false;
+            OnLayoutChanged(vm);
         }
         
         Point point = e.GetPosition(ScrollArea);
