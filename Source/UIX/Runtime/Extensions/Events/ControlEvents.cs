@@ -81,6 +81,14 @@ namespace Studio.Extensions
         {
             return (s, e) => handler(Unit.Default);
         }, handler => _control.LayoutUpdated += handler, handler => _control.LayoutUpdated -= handler);
+        
+        /// <summary>
+        /// Wheel changed
+        /// </summary>
+        public IObservable<PointerWheelEventArgs> PointerWheelChanged => Observable.FromEvent<EventHandler<PointerWheelEventArgs>, PointerWheelEventArgs>(handler =>
+        {
+            return (s, e) => handler(e);
+        }, handler => _control.PointerWheelChanged += handler, handler => _control.PointerWheelChanged -= handler);
 
         /// <summary>
         /// Internal Control

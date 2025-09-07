@@ -88,15 +88,6 @@ namespace GRS.Features.Debug.UIX.Workspace
         {
             // Remove listeners
             ViewModel.Connection?.Bridge?.Deregister(DebugBreakpointStreamMessage.ID, this);
-
-            // Close all windows
-            Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                foreach (IWindowViewModel window in _windows.Values)
-                {
-                    window.Close();
-                }
-            });
         }
 
         /// <summary>
@@ -161,9 +152,6 @@ namespace GRS.Features.Debug.UIX.Workspace
                         }
                     }
 
-                    // TODO[dbg]: Dummy code
-                    OpenWindow(breakpointViewModel);
-                    
                     // Internal stream handling
                     ProcessStreamRequest(breakpointViewModel, flat, byteCount);
                 });
@@ -249,23 +237,6 @@ namespace GRS.Features.Debug.UIX.Workspace
             // Nothing of importance
             return string.Empty;
         }
-        
-        /// <summary>
-        /// Open a window for a breakpoint
-        /// </summary>
-        private void OpenWindow(BreakpointViewModel breakpointViewModel)
-        {
-            if (_windows.ContainsKey(breakpointViewModel))
-            {
-                return;
-            }
-            
-            // Try to open the window
-            if (ServiceRegistry.Get<IWindowService>()?.OpenFor(breakpointViewModel) is { } window)
-            {
-                _windows.Add(breakpointViewModel, window);
-            }
-        }
 
         /// <summary>
         /// Invoked on stream requests
@@ -338,10 +309,5 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// Internal settings
         /// </summary>
         private readonly DebugSettingViewModel? _debugSettingViewModel;
-
-        /// <summary>
-        /// All breakpoint windows
-        /// </summary>
-        private Dictionary<BreakpointViewModel, IWindowViewModel> _windows = new();
     }
 }

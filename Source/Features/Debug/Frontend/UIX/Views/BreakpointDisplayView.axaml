@@ -41,6 +41,16 @@
                     IsChecked="{Binding Paused}">
                     <PathIcon Data="{StaticResource Pause}" Margin="0 1 1 0" Width="10" />
                 </ToggleButton>
+                
+                <Button
+                    Margin="0 0 0 0" 
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Height="25"
+                    Width="25"
+                    Command="{Binding OpenInNewCommand}">
+                    <PathIcon Data="{StaticResource OpenInNew}" Margin="0 1 1 0" Width="10" />
+                </Button>
             </StackPanel>
         </Grid>
         

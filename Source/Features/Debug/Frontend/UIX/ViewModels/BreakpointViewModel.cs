@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Windows.Input;
 using Avalonia.Threading;
 using GRS.Features.Debug.UIX.Models;
 using ReactiveUI;
@@ -112,6 +113,11 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         get => _hasStatusMessage;
         set => this.RaiseAndSetIfChanged(ref _hasStatusMessage, value);
     }
+
+    /// <summary>
+    /// Open in new window command
+    /// </summary>
+    public ICommand OpenInNewCommand { get; private set; }
     
     /// <summary>
     /// Intermediate tiny type
@@ -173,6 +179,15 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     public BreakpointViewModel()
     {
         StreamSize = GetDefaultSize();
+
+        // Create commands
+        OpenInNewCommand = ReactiveCommand.Create(OnOpenInNew);
+    }
+
+    private void OnOpenInNew()
+    {
+        // Open window
+        ServiceRegistry.Get<IWindowService>()?.OpenFor(this);
     }
 
     /// <summary>

@@ -20,5 +20,10 @@ public enum ViewType
     /// <summary>
     /// Overlay for general configuration
     /// </summary>
-    Overlay
+    Overlay,
+    
+    /// <summary>
+    /// Dedicated window
+    /// </summary>
+    Window
 }

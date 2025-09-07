@@ -12,19 +12,19 @@
         <valueConverters:ImageAspectRatioConverter x:Key="ImageAspectRatioConverter" />
     </UserControl.Resources>
 
-    <ScrollViewer
-        x:Name="ScrollArea"
-        HorizontalScrollBarVisibility="Auto"
-        VerticalScrollBarVisibility="Auto">
-        <Grid>
-            <controls:Checkerboard />
-        
+    <Grid>
+        <controls:Checkerboard />
+
+        <ScrollViewer
+            x:Name="ScrollArea"
+            HorizontalScrollBarVisibility="Auto"
+            VerticalScrollBarVisibility="Auto">
             <Image
                 x:Name="Image"
                 Source="{Binding Image}"
                 Stretch="{Binding MaintainAspectRatio, Converter={StaticResource ImageAspectRatioConverter}}"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch" />
-        </Grid>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

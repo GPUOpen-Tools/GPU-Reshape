@@ -54,7 +54,8 @@ namespace Studio.Services
             }
 
             // Attempt to resolve
-            Window? window = _locator?.InstantiateDerived<Window>(viewModel);
+            // Try window before primary
+            Window? window = _locator?.InstantiateDerived<Window>(viewModel, ViewType.Window) ?? _locator?.InstantiateDerived<Window>(viewModel);
             if (window == null)
             {
                 return Task.FromResult<IWindowViewModel?>(null);
@@ -84,7 +85,8 @@ namespace Studio.Services
             }
 
             // Attempt to resolve
-            Window? window = _locator?.InstantiateDerived<Window>(viewModel);
+            // Try window before primary
+            Window? window = _locator?.InstantiateDerived<Window>(viewModel, ViewType.Window) ?? _locator?.InstantiateDerived<Window>(viewModel);
             if (window == null)
             {
                 return null;

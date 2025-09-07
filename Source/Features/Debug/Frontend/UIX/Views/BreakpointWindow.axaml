@@ -7,7 +7,7 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="UIX.Views.BreakpointWindow"
         x:DataType="viewModels:BreakpointViewModel"
-        Width="1280" Height="720"
-        Title="BreakpointDisplay">
+        Width="920" Height="720"
+        Title="Breakpoint Display">
     <views:BreakpointDisplayView/>
 </Window>
