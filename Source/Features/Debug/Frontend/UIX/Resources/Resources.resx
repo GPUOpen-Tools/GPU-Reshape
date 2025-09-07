@@ -24,4 +24,25 @@
     <data name="Workspace_Configuration_Debug_Name" xml:space="preserve">
         <value>Debug</value>
     </data>
+    <data name="Debug_Image_Overlay_LockToContent" xml:space="preserve">
+        <value>Lock the viewport to the full image</value>
+    </data>
+    <data name="Debug_Image_Overlay_Palette" xml:space="preserve">
+        <value>Color settings</value>
+    </data>
+    <data name="Debug_Image_Overlay_SRGB" xml:space="preserve">
+        <value>Render image in SRGB</value>
+    </data>
+    <data name="Debug_Image_Overlay_R" xml:space="preserve">
+        <value>Render Red channel</value>
+    </data>
+    <data name="Debug_Image_Overlay_G" xml:space="preserve">
+        <value>Render Green channel</value>
+    </data>
+    <data name="Debug_Image_Overlay_B" xml:space="preserve">
+        <value>Render Blue channel</value>
+    </data>
+    <data name="Debug_Image_Overlay_A" xml:space="preserve">
+        <value>Render Alpha channel</value>
+    </data>
 </root>

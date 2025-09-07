@@ -104,6 +104,15 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
         get => _colorMask;
         set => this.RaiseAndSetIfChanged(ref _colorMask, value);
     }
+
+    /// <summary>
+    /// Render the image in SRGB?
+    /// </summary>
+    public bool IsSRGB
+    {
+        get => _isSRGB;
+        set => this.RaiseAndSetIfChanged(ref _isSRGB, value);
+    }
     
     /// <summary>
     /// Toggle command
@@ -199,4 +208,9 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// Internal mask state
     /// </summary>
     private ColorMask _colorMask = ColorMask.All;
+
+    /// <summary>
+    /// Internal SRGB state
+    /// </summary>
+    private bool _isSRGB = true;
 }

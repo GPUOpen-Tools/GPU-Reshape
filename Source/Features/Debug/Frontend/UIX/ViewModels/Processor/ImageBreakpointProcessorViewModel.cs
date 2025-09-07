@@ -72,18 +72,11 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     {
         var imageDisplayViewModel = breakpointViewModel.DisplayViewModel as ImageBreakpointDisplayViewModel;
 
-        // Get mask
-        uint texelChannelMask = GetTexelChannelMask(imageDisplayViewModel);
-        
         // Shared formatting config
-        ValueTypeRenderingUtils.FormattingConfig config = new()
-        {
-            MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
-            MaxValue = imageDisplayViewModel?.MaxValue ?? 1.0f
-        };
+        ValueTypeRenderingUtils.FormattingConfig config = GetFormattingConfig(imageDisplayViewModel);
         
         // Fast path, compressed and ready
-        if (message.dataFormat != 0 && config.IsTrivial() && texelChannelMask == ~0u)
+        if (message.dataFormat != 0 && config.IsTrivial())
         {
             return new WriteableBitmap(
                 bitmapFormat, AlphaFormat.Opaque,
@@ -104,10 +97,13 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         // If there's a data format, don't render the entire thing, just re-pack
         if (message.dataFormat != 0)
         {
+            // Already gamma encoded, undo it
+            config.Gamma = (float)(1.0 / ValueTypeRenderingUtils.FormattingConfig.DefaultGamma);
+            
             // Parallelize composition
             Parallel.For(0, exportCount, i =>
             {
-                dynamicCompositeBuffer[i] = ValueTypeRenderingUtils.Repack255(config, sourceDWordPtr[i]) & texelChannelMask;
+                dynamicCompositeBuffer[i] = ValueTypeRenderingUtils.Repack255(config, sourceDWordPtr[i]);
             });
         }
         else
@@ -123,12 +119,12 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 );
 
                 // Render using the tiny type, must exist at this point
-                uint texel = ValueTypeRenderingUtils.Render255(config, breakpointViewModel.TinyType, 0, ref dataSpan);
+                uint texel = ValueTypeRenderingUtils.Render255(config, breakpointViewModel.TinyType, 0, dataSpan);
 
                 // Fixed alpha if needed
                 texel = ValueTypeRenderingUtils.RenderFixedAlpha255(breakpointViewModel.TinyType, texel);
             
-                dynamicCompositeBuffer[i] = texel & texelChannelMask;
+                dynamicCompositeBuffer[i] = texel;
             });
         }
 
@@ -150,6 +146,9 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     {
         var imageDisplayViewModel = breakpointViewModel.DisplayViewModel as ImageBreakpointDisplayViewModel;
 
+        // Shared formatting config
+        ValueTypeRenderingUtils.FormattingConfig config = GetFormattingConfig(imageDisplayViewModel);
+
         // Deduce the actual safe number of dwords
         uint streamDWordCount = (uint)(message.data.Count / sizeof(uint));
         uint dataDWordCount   = message.dataDynamicCounter * (DynamicBreakpointHeader.DWordCount + message.dataDWordStride);
@@ -167,12 +166,12 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         // Destination buffer
         uint[] dynamicCompositeBuffer = new uint[message.dataStaticWidth * message.dataStaticHeight];
 
-        // Get mask
-        uint texelChannelMask = GetTexelChannelMask(imageDisplayViewModel);
-
         // Fast path, compressed and scatter memcpy
         if (message.dataFormat != 0)
         {
+            // Already gamma encoded, undo it
+            config.Gamma = (float)(1.0 / ValueTypeRenderingUtils.FormattingConfig.DefaultGamma);
+            
             // Parallelize composition
             Parallel.For(0, exportCount, i =>
             {
@@ -185,19 +184,12 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 uint threadIndex = sourceDWordPtr[dwordOffset];
                 if (threadIndex < dynamicCompositeBuffer.Length)
                 {
-                    dynamicCompositeBuffer[threadIndex] = sourceDWordPtr[dwordOffset + 1] & texelChannelMask;
+                    dynamicCompositeBuffer[threadIndex] = ValueTypeRenderingUtils.Repack255(config, sourceDWordPtr[dwordOffset + 1]);
                 }
             });
         }
         else
         {
-            // Shared formatting config
-            ValueTypeRenderingUtils.FormattingConfig config = new()
-            {
-                MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
-                MaxValue = imageDisplayViewModel?.MaxValue ?? 1.0f
-            };
-            
             // Parallelize composition
             Parallel.For(0, exportCount, i =>
             {
@@ -213,7 +205,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 );
 
                 // Render using the tiny type, must exist at this point
-                uint texel = ValueTypeRenderingUtils.Render255(config, breakpointViewModel.TinyType, 0, ref dataSpan);
+                uint texel = ValueTypeRenderingUtils.Render255(config, breakpointViewModel.TinyType, 0, dataSpan);
 
                 // Fixed alpha if needed
                 texel = ValueTypeRenderingUtils.RenderFixedAlpha255(breakpointViewModel.TinyType, texel);
@@ -221,7 +213,7 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
                 uint threadIndex = sourceDWordPtr[dwordOffset];
                 if (threadIndex < dynamicCompositeBuffer.Length)
                 {
-                    dynamicCompositeBuffer[threadIndex] = texel & texelChannelMask;
+                    dynamicCompositeBuffer[threadIndex] = texel;
                 }
             });
             
@@ -262,9 +254,23 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     }
 
     /// <summary>
+    /// Get the formatting config
+    /// </summary>
+    private static ValueTypeRenderingUtils.FormattingConfig GetFormattingConfig(ImageBreakpointDisplayViewModel? imageDisplayViewModel)
+    {
+        return new()
+        {
+            MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
+            MaxValue = imageDisplayViewModel?.MaxValue ?? 1.0f,
+            Gamma = (imageDisplayViewModel?.IsSRGB ?? true) ? ValueTypeRenderingUtils.FormattingConfig.DefaultGamma : 1.0f,
+            TexelChannelMask = GetTexelChannelMask(imageDisplayViewModel)
+        };
+    }
+
+    /// <summary>
     /// Get the color 255 mask
     /// </summary>
-    private uint GetTexelChannelMask(ImageBreakpointDisplayViewModel? imageDisplayViewModel)
+    private static uint GetTexelChannelMask(ImageBreakpointDisplayViewModel? imageDisplayViewModel)
     {
         if (imageDisplayViewModel == null)
         {
@@ -344,12 +350,8 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
             var imageDisplayViewModel = BreakpointViewModel.DisplayViewModel as ImageBreakpointDisplayViewModel;
 
             // Shared formatting config
-            ValueTypeRenderingUtils.FormattingConfig config = new()
-            {
-                MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
-                MaxValue = imageDisplayViewModel?.MaxValue ?? 1.0f
-            };
-
+            ValueTypeRenderingUtils.FormattingConfig config = GetFormattingConfig(imageDisplayViewModel);
+            
             // Slow path, but it's fine
             try
             {

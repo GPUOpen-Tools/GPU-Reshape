@@ -5,6 +5,7 @@
              xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              xmlns:models="clr-namespace:GRS.Features.Debug.UIX.Models"
+             xmlns:r="clr-namespace:UIX.Resources"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="UIX.Views.Display.ImageBreakpointDisplayOverlayView"
              x:DataType="viewModels:ImageBreakpointDisplayViewModel">
@@ -19,21 +20,40 @@
         Orientation="Vertical"
         Spacing="5">
         <ToggleButton
-            IsChecked="{Binding LockToContent}"
-            Classes="Overlay">
+            Classes="Overlay"
+            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_LockToContent}"
+            IsChecked="{Binding LockToContent}">
             <PathIcon Data="{StaticResource MagnifyExpand}" Width="15" />
         </ToggleButton>
         
-        <Button Classes="Overlay">
+        <Button 
+            Classes="Overlay"
+            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_Palette}">
             <PathIcon Data="{StaticResource Palette}" Width="15" />
 
             <Button.Flyout>
                 <Flyout Placement="Right" FlyoutPresenterClasses="Overlay">
                     <StackPanel Orientation="Horizontal">
+                        <ToggleButton 
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="SRGB"
+                            Width="40"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_SRGB}"
+                            Foreground="White"
+                            IsChecked="{Binding IsSRGB}"/>
+                            
+                        <Border 
+                            Width="1"
+                            VerticalAlignment="Stretch"
+                            HorizontalAlignment="Stretch"
+                            Background="{DynamicResource BorderColor}"/>
+                        
                         <ToggleButton
                             Classes="Overlay"
                             CornerRadius="0"
                             Content="R"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_R}"
                             Foreground="Red"
                             IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.R}}"
                             Command="{Binding ToggleColorMaskCommand}"
@@ -43,6 +63,7 @@
                             Classes="Overlay"
                             CornerRadius="0"
                             Content="G"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_G}"
                             Foreground="LawnGreen"
                             IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.G}}"
                             Command="{Binding ToggleColorMaskCommand}"
@@ -52,6 +73,7 @@
                             Classes="Overlay"
                             CornerRadius="0"
                             Content="B"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_B}"
                             Foreground="DeepSkyBlue"
                             IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.B}}"
                             Command="{Binding ToggleColorMaskCommand}"
@@ -61,6 +83,7 @@
                             Classes="Overlay"
                             CornerRadius="0"
                             Content="A"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_A}"
                             Foreground="White"
                             IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.A}}"
                             Command="{Binding ToggleColorMaskCommand}"

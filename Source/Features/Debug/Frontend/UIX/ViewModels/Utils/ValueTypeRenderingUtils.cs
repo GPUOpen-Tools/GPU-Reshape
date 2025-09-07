@@ -14,6 +14,11 @@ public static class ValueTypeRenderingUtils
     public struct FormattingConfig
     {
         /// <summary>
+        /// Default SRGB gamma
+        /// </summary>
+        public static float DefaultGamma = 0.4545454545f;
+        
+        /// <summary>
         /// Minimum render value
         /// </summary>
         public required float MinValue;
@@ -24,13 +29,25 @@ public static class ValueTypeRenderingUtils
         public required float MaxValue;
 
         /// <summary>
+        /// Channel mask
+        /// </summary>
+        public required uint TexelChannelMask;
+
+        /// <summary>
+        /// Gamma to apply
+        /// </summary>
+        public required float Gamma;
+
+        /// <summary>
         /// Is this trivial formatting?
         /// I.e., is memcpy enough?
         /// </summary>
         /// <returns></returns>
         public bool IsTrivial()
         {
-            return MinValue < 1e-4f && Math.Abs(MaxValue - 1.0f) < 1e-4f;
+            return MinValue < 1e-4f && Math.Abs(MaxValue - 1.0f) < 1e-4f &&
+                   Math.Abs(Gamma - DefaultGamma) < 1e-4f &&
+                   TexelChannelMask == ~0u;
         }
     }
 
@@ -40,7 +57,7 @@ public static class ValueTypeRenderingUtils
     public static uint Render255(FormattingConfig config, Type type, int shl, Span<byte> byteSpan)
     {
         Span<byte> byteSpanRef = byteSpan;
-        return Render255(config, type, shl, ref byteSpanRef);
+        return Render255(config, type, shl, ref byteSpanRef) & config.TexelChannelMask;
     }
 
     /// <summary>
@@ -263,19 +280,21 @@ public static class ValueTypeRenderingUtils
     /// </summary>
     public static uint Repack255(FormattingConfig config, uint texel)
     {
-        return Pack(config, (texel & 0xFF) / 255.0f, 0, 1.0f) |
-               Pack(config, ((texel >> 8) & 0xFF) / 255.0f, 8, 1.0f) |
-               Pack(config, ((texel >> 16) & 0xFF) / 255.0f, 16, 1.0f) |
-               Pack(config, ((texel >> 24) & 0xFF) / 255.0f, 24, 1.0f);
+        texel = Pack(config, (texel & 0xFF) / 255.0f, 0) |
+                Pack(config, ((texel >> 8) & 0xFF) / 255.0f, 8) |
+                Pack(config, ((texel >> 16) & 0xFF) / 255.0f, 16) |
+                Pack(config, ((texel >> 24) & 0xFF) / 255.0f, 24);
+        
+        return texel & config.TexelChannelMask;
     }
 
     /// <summary>
     /// Pack a single fp value
     /// </summary>
-    private static uint Pack(FormattingConfig config, float value, int shl, float gammaPwr = 0.4545454545f)
+    private static uint Pack(FormattingConfig config, float value, int shl)
     {
         // Gamma
-        value = (float)Math.Pow(value, gammaPwr);
+        value = (float)Math.Pow(value, config.Gamma);
         return (uint)(Math.Min(Math.Max(0, value - config.MinValue) / (config.MaxValue - config.MinValue), 1.0f) * 255) << shl;
     }
 

@@ -21,7 +21,7 @@ namespace UIX.Resources {
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "4.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class Resources {
+    public class Resources {
         
         private static global::System.Resources.ResourceManager resourceMan;
         
@@ -35,7 +35,7 @@ namespace UIX.Resources {
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Resources.ResourceManager ResourceManager {
+        public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
                     global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("UIX.Resources.Resources", typeof(Resources).Assembly);
@@ -50,7 +50,7 @@ namespace UIX.Resources {
         ///   resource lookups using this strongly typed resource class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Globalization.CultureInfo Culture {
+        public static global::System.Globalization.CultureInfo Culture {
             get {
                 return resourceCulture;
             }
@@ -60,9 +60,72 @@ namespace UIX.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Render Alpha channel.
+        /// </summary>
+        public static string Debug_Image_Overlay_A {
+            get {
+                return ResourceManager.GetString("Debug_Image_Overlay_A", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Render Blue channel.
+        /// </summary>
+        public static string Debug_Image_Overlay_B {
+            get {
+                return ResourceManager.GetString("Debug_Image_Overlay_B", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Render Green channel.
+        /// </summary>
+        public static string Debug_Image_Overlay_G {
+            get {
+                return ResourceManager.GetString("Debug_Image_Overlay_G", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Lock the viewport to the full image.
+        /// </summary>
+        public static string Debug_Image_Overlay_LockToContent {
+            get {
+                return ResourceManager.GetString("Debug_Image_Overlay_LockToContent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Color settings.
+        /// </summary>
+        public static string Debug_Image_Overlay_Palette {
+            get {
+                return ResourceManager.GetString("Debug_Image_Overlay_Palette", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Render Red channel.
+        /// </summary>
+        public static string Debug_Image_Overlay_R {
+            get {
+                return ResourceManager.GetString("Debug_Image_Overlay_R", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Render image in SRGB.
+        /// </summary>
+        public static string Debug_Image_Overlay_SRGB {
+            get {
+                return ResourceManager.GetString("Debug_Image_Overlay_SRGB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to --.
         /// </summary>
-        internal static string Workspace_Configuration_Debug_Description {
+        public static string Workspace_Configuration_Debug_Description {
             get {
                 return ResourceManager.GetString("Workspace_Configuration_Debug_Description", resourceCulture);
             }
@@ -71,7 +134,7 @@ namespace UIX.Resources {
         /// <summary>
         ///   Looks up a localized string similar to Debug.
         /// </summary>
-        internal static string Workspace_Configuration_Debug_Name {
+        public static string Workspace_Configuration_Debug_Name {
             get {
                 return ResourceManager.GetString("Workspace_Configuration_Debug_Name", resourceCulture);
             }
