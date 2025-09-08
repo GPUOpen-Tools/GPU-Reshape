@@ -600,6 +600,16 @@ void DebugFeature::OnSyncPoint() {
         // Patch the header
         builder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
 
+        // Clear the buffer, if needed
+        if (breakpoint.captureMode == BreakpointCaptureMode::FirstEvent) {
+            builder.ClearBuffer(
+                streamBufferID,
+                breakpoint.streamAllocation.offset,
+                breakpoint.streamAllocation.length,
+                0x0
+            );
+        }
+
         // Collected!
         breakpoint.pendingCollection = false;
     }
