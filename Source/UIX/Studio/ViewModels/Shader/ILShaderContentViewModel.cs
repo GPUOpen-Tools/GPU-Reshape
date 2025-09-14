@@ -25,6 +25,7 @@
 // 
 
 using System;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
@@ -38,6 +39,7 @@ using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
+using ShaderViewModel = Studio.ViewModels.Workspace.Objects.ShaderViewModel;
 
 namespace Studio.ViewModels.Shader
 {
@@ -51,8 +53,12 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// The target shader
         /// </summary>
-        public Workspace.Objects.ShaderViewModel? ShaderViewModel { get; set; }
-        
+        public Workspace.Objects.ShaderViewModel? ShaderViewModel
+        {
+            get => _shaderViewModel;
+            set => this.RaiseAndSetIfChanged(ref _shaderViewModel, value);
+        }
+
         /// <summary>
         /// Given descriptor
         /// </summary>
@@ -154,6 +160,11 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// All services
+        /// </summary>
+        public ObservableCollection<IDestructableObject> Services { get; } = new();
+
+        /// <summary>
         /// Is this model active?
         /// </summary>
         public bool IsActive
@@ -251,9 +262,30 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// Transform a shader line
+        /// </summary>
+        public ShaderInstructionSourceAssociationViewModel? TransformInstructionLine(AssembledInstructionMapping mapping)
+        {
+            // Association is trivial, just fetch the asssembled lookup
+            return new ShaderInstructionSourceAssociationViewModel()
+            {
+                Location = new ShaderLocation()
+                {
+                    BasicBlockId = mapping.BasicBlockId,
+                    InstructionIndex = mapping.InstructionIndex,
+                    Line = TransformLine(new ShaderLocation()
+                    {
+                        BasicBlockId = mapping.BasicBlockId,
+                        InstructionIndex = mapping.InstructionIndex
+                    })
+                }
+            };
+        }
+
+        /// <summary>
         /// Transform a shader location line
         /// </summary>
-        public AssembledInstructionMapping TransformInstruction(int line)
+        public ShaderInstructionAssociationViewModel? TransformSourceLine(int line)
         {
             if (Assembler == null)
             {
@@ -261,10 +293,17 @@ namespace Studio.ViewModels.Shader
             }
             
             // Transform instruction indices to line from assembler
-            return Assembler.GetInstructionMapping(new AssembledLineMapping()
+            return new ShaderInstructionAssociationViewModel
             {
-                Line = (uint)line
-            });
+                Mappings =
+                {
+                    Assembler.GetInstructionMapping(new AssembledLineMapping()
+                    {
+                        Line = (uint)line
+                    })
+                },
+                Populated = true
+            };
         }
 
         /// <summary>
@@ -333,5 +372,10 @@ namespace Studio.ViewModels.Shader
         /// Internal detail state
         /// </summary>
         private ISourceObjectDetailViewModel? _detailViewModel;
+
+        /// <summary>
+        /// Internal shader
+        /// </summary>
+        private ShaderViewModel? _shaderViewModel;
     }
 }

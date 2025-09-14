@@ -35,7 +35,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Services
 {
-    public interface IShaderMappingService : IPropertyService
+    public interface IShaderSourceMappingService : IPropertyService
     {
         /// <summary>
         /// Enqueue a validation object with given sguid

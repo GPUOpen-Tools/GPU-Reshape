@@ -89,6 +89,8 @@ protected:
     void OnMessage(const struct SetUseShaderExternalReferenceMessage& message);
     void OnMessage(const struct GetPipelineStatusMessage& message);
     void OnMessage(const struct GetShaderStatusMessage& message);
+    void OnMessage(const struct GetShaderInstructionMappingMessage& message);
+    void OnMessage(const struct GetShaderSourceInstructionMappingMessage& message);
 
 private:
     DeviceState* device;

@@ -24,6 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using Runtime.ViewModels.Shader;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace.Objects;
@@ -58,8 +59,13 @@ namespace Studio.ViewModels.Shader
         public int TransformLine(ShaderLocation shaderLocation);
 
         /// <summary>
+        /// Transform a shader instruction
+        /// </summary>
+        public ShaderInstructionSourceAssociationViewModel? TransformInstructionLine(AssembledInstructionMapping mapping);
+
+        /// <summary>
         /// Transform a shader line
         /// </summary>
-        public AssembledInstructionMapping TransformInstruction(int line);
+        public ShaderInstructionAssociationViewModel? TransformSourceLine(int line);
     }
 }

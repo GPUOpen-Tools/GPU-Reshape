@@ -218,10 +218,10 @@ namespace Studio.ViewModels.Workspace.Services
             using var scope = new BusScope(_root.GetService<IBusPropertyService>(), BusMode.Discard);
             
             // Find or create property
-            var shaderViewModel = _shaderCollection.GetPropertyWhere<ShaderViewModel>(x => x.Shader.GUID == msg.shaderUID);
+            var shaderViewModel = _shaderCollection.GetPropertyWhere<ShaderPropertyViewModel>(x => x.Shader.GUID == msg.shaderUID);
             if (shaderViewModel == null)
             {
-                _shaderCollection.Properties.Add(shaderViewModel = new ShaderViewModel()
+                _shaderCollection.Properties.Add(shaderViewModel = new ShaderPropertyViewModel()
                 {
                     Parent = _shaderCollection,
                     ConnectionViewModel = _shaderCollection.ConnectionViewModel,

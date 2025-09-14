@@ -30,10 +30,8 @@
 #include "DXILPhysicalBlockScan.h"
 #include <Backends/DX12/Compiler/IDXDebugModule.h>
 
-// Common
-#include <Common/Containers/LinearBlockAllocator.h>
-
 // Std
+#include <unordered_map>
 #include <string>
 
 // Forward declarations
@@ -51,6 +49,7 @@ struct DXILDebugModule final : public IDXDebugModule {
 
     ///Overrides
     DXSourceAssociation GetSourceAssociation(const IL::Function* function, uint32_t codeOffset) override;
+    std::span<DXInstructionAssociation> GetInstructionAssociations(uint16_t fileUID, uint32_t line) override;
     std::string_view GetLine(uint32_t fileUID, uint32_t line) override;
     std::string_view GetFilename() override;
     std::string_view GetSourceFilename(uint32_t fileUID) override;
@@ -93,6 +92,9 @@ private:
     /// Remap all line scopes for unresolved metadata
     void RemapLineScopes();
 
+    /// Create all reverse associations
+    void CreateReverseAssociations();
+    
     /// Get the linear file index
     /// \param scopeMdId scope id
     uint32_t GetLinearFileUID(uint32_t scopeMdId);
@@ -167,8 +169,16 @@ private:
         std::vector<InstructionMetadata> instructionMetadata;
     };
 
+    struct InstructionAssociationSet {
+        /// All instructions that are associated to this location
+        std::vector<DXInstructionAssociation> set;
+    };
+
     /// All function metadata, ordered by link index
     Vector<FunctionMetadata> functionMetadata;
+
+    /// Reverse instruction associations
+    std::unordered_map<uint64_t, InstructionAssociationSet> instructionAssociations;
 
 private:
     struct Metadata {

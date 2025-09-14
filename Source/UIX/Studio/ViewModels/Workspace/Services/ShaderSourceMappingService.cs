@@ -35,7 +35,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Services
 {
-    public class ShaderMappingService : IPropertyService, IShaderMappingService, Bridge.CLR.IBridgeListener
+    public class ShaderSourceMappingService : IPropertyService, IShaderSourceMappingService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
         /// Connection for this listener

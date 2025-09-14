@@ -32,18 +32,6 @@ public class BreakpointRegistryService : IPropertyService
             msg.streamSize = (uint)breakpointViewModel.StreamSize;
             msg.captureMode = (uint)breakpointViewModel.CaptureMode;
         }
-
-        // Create and register source object
-        breakpointViewModel.ShaderContentViewModel.MarkerCanvasViewModel.SourceObjects.Add(breakpointViewModel.TextualSourceObject = new BreakpointSourceObject()
-        {
-            Content = "Breakpoint",
-            DetailViewModel = breakpointViewModel,
-            Segment = breakpointViewModel.ShaderSourceSegment
-        });
-        
-        // Always select by default
-        breakpointViewModel.ShaderContentViewModel.SelectedTextualSourceObject = breakpointViewModel.TextualSourceObject;
-        breakpointViewModel.ShaderContentViewModel.MarkerCanvasViewModel.DetailCommand?.Execute(breakpointViewModel.TextualSourceObject);
     }
     
     /// <summary>
@@ -63,9 +51,6 @@ public class BreakpointRegistryService : IPropertyService
             var msg = bus.Add<DeregisterDebugBreakpointMessage>();
             msg.uid = breakpointViewModel.UID;
         }
-        
-        // Remove source object
-        breakpointViewModel.ShaderContentViewModel.MarkerCanvasViewModel.SourceObjects.Remove(breakpointViewModel.TextualSourceObject);
     }
 
     /// <summary>

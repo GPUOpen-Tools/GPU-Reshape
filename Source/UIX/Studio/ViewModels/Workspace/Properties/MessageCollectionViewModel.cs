@@ -312,13 +312,13 @@ namespace Studio.ViewModels.Workspace.Properties
         private void OnConnectionChanged()
         {
             // Set connection
-            _shaderMappingService.ConnectionViewModel = ConnectionViewModel;
+            _shaderSourceMappingService.ConnectionViewModel = ConnectionViewModel;
             
             // Make visible
-            Parent?.Services.Add(_shaderMappingService);
+            Parent?.Services.Add(_shaderSourceMappingService);
             
             // Register internal listeners
-            _connectionViewModel?.Bridge?.Register(ShaderSourceMappingMessage.ID, _shaderMappingService);
+            _connectionViewModel?.Bridge?.Register(ShaderSourceMappingMessage.ID, _shaderSourceMappingService);
 
             // Assign workspace collection to filter
             HierarchicalMessageFilterViewModel.PropertyViewModel = this.GetWorkspaceCollection();
@@ -333,7 +333,7 @@ namespace Studio.ViewModels.Workspace.Properties
         public void Destruct()
         {
             // Remove listeners
-            _connectionViewModel?.Bridge?.Deregister(ShaderSourceMappingMessage.ID, _shaderMappingService);
+            _connectionViewModel?.Bridge?.Deregister(ShaderSourceMappingMessage.ID, _shaderSourceMappingService);
         }
 
         /// <summary>
@@ -352,7 +352,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Shader mapping bridge listener
         /// </summary>
-        private ShaderMappingService _shaderMappingService = new();
+        private ShaderSourceMappingService _shaderSourceMappingService = new();
 
         /// <summary>
         /// Internal view model

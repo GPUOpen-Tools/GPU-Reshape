@@ -27,7 +27,7 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// <summary>
     /// Shader property
     /// </summary>
-    public ShaderViewModel? ShaderProperty
+    public ShaderPropertyViewModel? ShaderProperty
     {
         get => _shaderProperty;
         set => this.RaiseAndSetIfChanged(ref _shaderProperty, value);
@@ -167,7 +167,7 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// <summary>
     /// Internal property
     /// </summary>
-    private ShaderViewModel? _shaderProperty;
+    private ShaderPropertyViewModel? _shaderProperty;
 
     /// <summary>
     /// Internal aspect ratio state

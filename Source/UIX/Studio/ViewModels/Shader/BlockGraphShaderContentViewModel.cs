@@ -24,6 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
@@ -34,6 +35,7 @@ using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
+using ShaderViewModel = Studio.ViewModels.Workspace.Objects.ShaderViewModel;
 
 namespace Studio.ViewModels.Shader
 {
@@ -47,8 +49,12 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// The target shader
         /// </summary>
-        public Workspace.Objects.ShaderViewModel? ShaderViewModel { get; set; }
-        
+        public Workspace.Objects.ShaderViewModel? ShaderViewModel
+        {
+            get => _shaderViewModel;
+            set => this.RaiseAndSetIfChanged(ref _shaderViewModel, value);
+        }
+
         /// <summary>
         /// Given descriptor
         /// </summary>
@@ -87,6 +93,11 @@ namespace Studio.ViewModels.Shader
             get => _propertyCollection;
             set => this.RaiseAndSetIfChanged(ref _propertyCollection, value);
         }
+
+        /// <summary>
+        /// All services
+        /// </summary>
+        public ObservableCollection<IDestructableObject> Services { get; } = new();
 
         /// <summary>
         /// Is this model active?
@@ -196,5 +207,10 @@ namespace Studio.ViewModels.Shader
         /// Internal active state
         /// </summary>
         private bool _isActive = false;
+
+        /// <summary>
+        /// Internal shader
+        /// </summary>
+        private ShaderViewModel? _shaderViewModel;
     }
 }

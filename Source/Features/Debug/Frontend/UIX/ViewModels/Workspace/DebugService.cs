@@ -225,7 +225,8 @@ namespace GRS.Features.Debug.UIX.Workspace
                     dynamicRequestedByteSize = message.dataDynamicCounter * sizeof(int) * (LooseBreakpointHeader.DWordCount + message.dataDWordStride);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    Logging.Error("Failed to decode breakpoint stream");
+                    break;
             }
 
             // Out of memory?

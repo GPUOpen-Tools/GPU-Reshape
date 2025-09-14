@@ -16,5 +16,10 @@ public interface IEditorService : IReactiveObject
     /// <summary>
     /// Install extensions against an editor
     /// </summary>
+    public void InstallViewModel(IShaderContentViewModel viewModel);
+
+    /// <summary>
+    /// Install extensions against an editor
+    /// </summary>
     public void InstallView(IShaderContentViewModel viewModel, TextEditor textEditor);
 }

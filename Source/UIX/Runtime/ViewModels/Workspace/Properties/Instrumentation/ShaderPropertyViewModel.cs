@@ -38,7 +38,7 @@ using Studio.ViewModels.Workspace.Properties.Config;
 
 namespace Studio.ViewModels.Workspace.Properties.Instrumentation
 {
-    public class ShaderViewModel : BasePropertyViewModel, IInstrumentableObject, IClosableObject, IBusObject
+    public class ShaderPropertyViewModel : BasePropertyViewModel, IInstrumentableObject, IClosableObject, IBusObject
     {
         /// <summary>
         /// Invoked on closes
@@ -107,7 +107,7 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// <summary>
         /// Constructor
         /// </summary>
-        public ShaderViewModel() : base("Shader", PropertyVisibility.WorkspaceTool)
+        public ShaderPropertyViewModel() : base("Shader", PropertyVisibility.WorkspaceTool)
         {
             CloseCommand = ReactiveCommand.Create(OnClose);
 

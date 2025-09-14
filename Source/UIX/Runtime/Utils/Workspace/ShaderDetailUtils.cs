@@ -73,10 +73,10 @@ namespace Runtime.Utils.Workspace
             }
 
             // Find or create property
-            var shaderViewModel = shaderCollectionViewModel.GetPropertyWhere<Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderViewModel>(x => x.Shader.GUID == _object.GUID);
+            var shaderViewModel = shaderCollectionViewModel.GetPropertyWhere<Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderPropertyViewModel>(x => x.Shader.GUID == _object.GUID);
             if (shaderViewModel == null)
             {
-                shaderCollectionViewModel.Properties.Add(shaderViewModel = new Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderViewModel()
+                shaderCollectionViewModel.Properties.Add(shaderViewModel = new Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderPropertyViewModel()
                 {
                     Parent = shaderCollectionViewModel,
                     ConnectionViewModel = shaderCollectionViewModel.ConnectionViewModel,

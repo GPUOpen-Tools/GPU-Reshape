@@ -795,6 +795,8 @@ static IL::ID GetInstructionDebugValue(const IL::Instruction* instr) {
             return instr->As<IL::StoreVertexOutputInstruction>()->value;
         case IL::OpCode::StoreOutput:
             return instr->As<IL::StoreOutputInstruction>()->value;
+        case IL::OpCode::BranchConditional:
+            return instr->As<IL::BranchConditionalInstruction>()->cond;
     }
 }
 

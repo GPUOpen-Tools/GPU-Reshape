@@ -24,6 +24,8 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
+using System.Reactive.Linq;
 using Avalonia.Media;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
@@ -32,11 +34,9 @@ using DynamicData;
 using GRS.Features.Debug.UIX.Settings;
 using GRS.Features.Debug.UIX.ViewModels;
 using GRS.Features.Debug.UIX.ViewModels.Editor;
+using GRS.Features.Debug.UIX.ViewModels.Utils;
 using GRS.Features.Debug.UIX.Workspace;
-using Runtime.Models.Objects;
-using Runtime.ViewModels.Traits;
-using Runtime.ViewModels.Workspace.Properties;
-using Studio.Models.Workspace;
+using ReactiveUI;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Shader;
@@ -135,7 +135,50 @@ namespace GRS.Features.Debug.UIX
         }
 
         /// <summary>
-        /// Install all code editor extensions
+        /// Install all view model extensions
+        /// </summary>
+        public void InstallViewModel(IShaderContentViewModel viewModel)
+        {
+            // Must be textual, ignore diagrams
+            if (viewModel is not ITextualShaderContentViewModel textualShaderViewModel)
+            {
+                return;
+            }
+
+            // The actual shader and property may change, bind them
+            viewModel
+                .WhenAnyValue(x => x.PropertyCollection, y => y.ShaderViewModel)
+                .Where(x => x is { Item1: not null, Item2: not null })
+                .Subscribe(_ =>
+            {
+                // Try to get the breakpoint collection
+                if (BreakpointUtils.GetShaderBreakpointCollection(viewModel.PropertyCollection!, viewModel.ShaderViewModel!) is not { } collectionViewModel)
+                {
+                    return;
+                }
+                
+                // Check if we have the breakpoint service
+                // We need to dynamically rebind them, so it's unfortunately not that simple
+                if (collectionViewModel.GetServiceWhere<ShaderContentBreakpointServiceViewModel>(x =>
+                    x.ContentViewModel == textualShaderViewModel && x.BreakpointCollectionViewModel == collectionViewModel
+                ) is null)
+                {
+                    // Create service
+                    ShaderContentBreakpointServiceViewModel breakpointService = new()
+                    {
+                        ContentViewModel = textualShaderViewModel,
+                        BreakpointCollectionViewModel = collectionViewModel
+                    };
+            
+                    // Bind and keep track of it
+                    breakpointService.Bind();
+                    viewModel.Services.Add(breakpointService);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Install extensions against an editor
         /// </summary>
         public void InstallView(IShaderContentViewModel viewModel, TextEditor textEditor)
         {
@@ -145,48 +188,10 @@ namespace GRS.Features.Debug.UIX
                 return;
             }
             
-            // Find the debug feature
-            FeatureInfo? featureInfo = viewModel.PropertyCollection?
-                .GetWorkspaceCollection()?
-                .GetWorkspaceCollection()?
-                .GetProperty<IFeatureCollectionViewModel>()?
-                .GetFeature("Debug");
-            
-            // TODO[dbg]: Standardize this, and only when breakpoints are added
-            
-            // Must have shader collection
-            var shaderCollectionViewModel = viewModel.PropertyCollection?.GetProperty<IShaderCollectionViewModel>();
-            if (shaderCollectionViewModel == null)
+            // Try to get the breakpoint collection
+            if (BreakpointUtils.GetShaderBreakpointCollection(viewModel.PropertyCollection!, viewModel.ShaderViewModel!) is not { } collectionViewModel)
             {
                 return;
-            }
-            
-            // Find or create shader property
-            var shaderViewModel = shaderCollectionViewModel.GetPropertyWhere<Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderViewModel>(x => x.Shader.GUID == viewModel.ShaderViewModel.GUID);
-            if (shaderViewModel == null)
-            {
-                shaderCollectionViewModel.Properties.Add(shaderViewModel = new Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderViewModel()
-                {
-                    Parent = shaderCollectionViewModel,
-                    ConnectionViewModel = shaderCollectionViewModel.ConnectionViewModel,
-                    Shader = new ShaderIdentifier()
-                    {
-                        GUID = viewModel.ShaderViewModel.GUID,
-                        Descriptor = $"Shader {viewModel.ShaderViewModel.GUID} - {System.IO.Path.GetFileName(viewModel.ShaderViewModel.Filename)}"
-                    }
-                });
-            }
-
-            // Get breakpoint collection for the shader
-            var service = shaderViewModel.GetProperty<ShaderBreakpointCollectionViewModel>();
-            if (service == null)
-            {
-                shaderViewModel.Properties.Add(service = new ShaderBreakpointCollectionViewModel()
-                {
-                    FeatureInfo = featureInfo!.Value,
-                    ShaderProperty = shaderViewModel,
-                    Parent = shaderViewModel
-                });
             }
             
             // Add background renderer
@@ -199,7 +204,7 @@ namespace GRS.Features.Debug.UIX
                 DataContext = new BreakpointMarginViewModel
                 {
                     ContentViewModel = textualShaderViewModel,
-                    CollectionViewModel = service
+                    CollectionViewModel = collectionViewModel
                 }
             });
         }

@@ -80,7 +80,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
             _messageCollectionViewModel = viewModel.PropertyCollection.GetProperty<IMessageCollectionViewModel>();
             
             // Get services
-            _shaderMappingService = viewModel.PropertyCollection.GetService<IShaderMappingService>();
+            _shaderMappingService = viewModel.PropertyCollection.GetService<IShaderSourceMappingService>();
             _versioningService = ViewModel.PropertyCollection.GetService<IVersioningService>();
         }
 
@@ -313,7 +313,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// <summary>
         /// Segment mapping
         /// </summary>
-        private IShaderMappingService? _shaderMappingService;
+        private IShaderSourceMappingService? _shaderMappingService;
 
         /// <summary>
         /// Validation container

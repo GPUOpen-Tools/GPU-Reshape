@@ -45,6 +45,7 @@ using Runtime.ViewModels.Shader;
 using Studio.Extensions;
 using Studio.Models.Instrumentation;
 using Studio.Models.Workspace.Objects;
+using Studio.Services;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
@@ -111,6 +112,9 @@ namespace Studio.Views.Shader
                 .WhereNotNull()
                 .Subscribe(codeViewModel =>
                 {
+                    // Install the extensions
+                    ServiceRegistry.Get<IEditorService>()?.InstallView(codeViewModel, Editor);
+
                     // Update services
                     _validationTextMarkerService.ShaderContentViewModel = codeViewModel;
                     _validationBackgroundRenderer.ShaderContentViewModel = codeViewModel;

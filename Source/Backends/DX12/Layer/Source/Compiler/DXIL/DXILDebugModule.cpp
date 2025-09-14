@@ -74,6 +74,22 @@ DXSourceAssociation DXILDebugModule::GetSourceAssociation(const IL::Function* fu
     return md.instructionMetadata[codeOffset].sourceAssociation;
 }
 
+std::span<DXInstructionAssociation> DXILDebugModule::GetInstructionAssociations(uint16_t fileUID, uint32_t line) {
+    // Find all associations
+    auto it = instructionAssociations.find(DXSourceAssociation{
+        .fileUID = fileUID,
+        .line = line
+    }.GetKey());
+
+    // May not exist
+    if (it == instructionAssociations.end()) {
+        return {};
+    }
+
+    // Get view
+    return std::span(it->second.set.data(), it->second.set.size());
+}
+
 std::string_view DXILDebugModule::GetLine(uint32_t fileUID, uint32_t line) {
     // Safeguard file
     if (fileUID >= sourceFragments.size()) {
@@ -170,6 +186,9 @@ bool DXILDebugModule::Parse(const void *byteCode, uint64_t byteLength) {
         RemapLineScopes();
     }
 
+    // Populate reverse lookup
+    CreateReverseAssociations();
+
     // OK
     return true;
 }
@@ -181,7 +200,7 @@ void DXILDebugModule::RemapLineScopes() {
             if (md.sourceAssociation.fileUID == UINT16_MAX ||
                 md.sourceAssociation.fileUID >= sourceFragments.size()) {
                 continue;
-                }
+            }
 
             // The parent fragment
             SourceFragment& targetFragment = sourceFragments.at(md.sourceAssociation.fileUID);
@@ -210,6 +229,39 @@ void DXILDebugModule::RemapLineScopes() {
             // Remap the association
             md.sourceAssociation.fileUID = candidateDirective.fileUID;
             md.sourceAssociation.line = candidateDirective.fileLineOffset + intraDirectiveOffset; 
+        }
+    }
+}
+
+void DXILDebugModule::CreateReverseAssociations() {
+    DXILPhysicalBlockTable& table = module->GetTable();
+    
+    for (uint64_t linkIndex = 0; linkIndex < functionMetadata.size(); linkIndex++) {
+        FunctionMetadata& functionMd = functionMetadata[linkIndex];
+
+        // Get the declaration
+        const DXILFunctionDeclaration *functionDeclaration = table.function.GetFunctionDeclarationFromIndex(static_cast<uint32_t>(linkIndex));
+
+        // Create key -> record lookups
+        for (uint64_t recordIndex = 0; recordIndex < functionMd.instructionMetadata.size(); recordIndex++) {
+            InstructionMetadata& md = functionMd.instructionMetadata[recordIndex];
+            
+            // Unmapped or invalid?
+            if (md.sourceAssociation.fileUID == UINT16_MAX || md.sourceAssociation.fileUID >= sourceFragments.size()) {
+                continue;
+            }
+
+            // Get the set
+            InstructionAssociationSet &instructionSet = instructionAssociations[DXSourceAssociation{
+                .fileUID = md.sourceAssociation.fileUID,
+                .line = md.sourceAssociation.line
+            }.GetKey()];
+
+            // Add to set
+            instructionSet.set.push_back(DXInstructionAssociation {
+                .functionId = functionDeclaration->functionId,
+                .codeOffset = static_cast<uint32_t>(recordIndex)
+            });
         }
     }
 }

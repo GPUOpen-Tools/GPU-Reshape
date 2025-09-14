@@ -19,7 +19,7 @@ namespace Studio.Models.Workspace.Objects
         public bool ProducesDetailDataFor(Program program, ShaderLocation location)
         {
             // Try to find instruction, if this failed, for whatever reason, just presume true
-            if (program.GetInstruction(location) is not { } instr)
+            if (program.GetInstruction(location.GetAssembled()) is not { } instr)
             {
                 return true;
             }

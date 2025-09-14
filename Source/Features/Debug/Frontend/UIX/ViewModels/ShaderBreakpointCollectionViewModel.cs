@@ -25,12 +25,12 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
     /// <summary>
     /// The shader this collection represents
     /// </summary>
-    public ShaderViewModel ShaderProperty
+    public ShaderPropertyViewModel ShaderPropertyProperty
     {
-        get => _shaderProperty;
+        get => _shaderPropertyProperty;
         set
         {
-            this.RaiseAndSetIfChanged(ref _shaderProperty, value);
+            this.RaiseAndSetIfChanged(ref _shaderPropertyProperty, value);
             OnShaderChanged();
         }
     }
@@ -56,7 +56,7 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
     /// </summary>
     private void OnShaderChanged()
     {
-        _breakpointRegistryService = ShaderProperty.GetWorkspaceCollection()?.GetService<BreakpointRegistryService>();
+        _breakpointRegistryService = ShaderPropertyProperty.GetWorkspaceCollection()?.GetService<BreakpointRegistryService>();
     }
 
     /// <summary>
@@ -65,7 +65,7 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
     private void OnAdded(BreakpointViewModel obj)
     {
         _breakpointRegistryService?.Register(obj);
-        ShaderProperty.EnqueueBus();
+        ShaderPropertyProperty.EnqueueBus();
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
     private void OnRemoved(BreakpointViewModel obj)
     {
         _breakpointRegistryService?.Deregister(obj);
-        ShaderProperty.EnqueueBus();
+        ShaderPropertyProperty.EnqueueBus();
     }
 
     /// <summary>
@@ -94,7 +94,7 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
             BreakpointConfig breakpointConfig = breakpointViewModel.GetBreakpointConfig();
             
             var breakpoint = view.Add();
-            breakpoint.codeOffset = breakpointViewModel.SourceBinding!.InstructionCodeOffset;
+            breakpoint.codeOffset = breakpointViewModel.SourceBinding!.Mapping.CodeOffset;
             breakpoint.uid = breakpointViewModel.UID;
             breakpoint.flags = (uint)breakpointConfig.Flags;
         }
@@ -117,5 +117,5 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
     /// <summary>
     /// Internal shader view model
     /// </summary>
-    private ShaderViewModel _shaderProperty;
+    private ShaderPropertyViewModel _shaderPropertyProperty;
 }

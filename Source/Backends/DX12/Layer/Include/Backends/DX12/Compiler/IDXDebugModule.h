@@ -30,6 +30,7 @@
 #include "DXSourceAssociation.h"
 
 // Std
+#include <span>
 #include <string_view>
 
 /// Forward declarations
@@ -46,6 +47,12 @@ public:
     /// \param codeOffset the instruction (i.e. record) code offset
     /// \return default if failed
     virtual DXSourceAssociation GetSourceAssociation(const IL::Function* function, uint32_t codeOffset) = 0;
+
+    /// Get the instruction associations
+    /// @param fileUID file to query for
+    /// @param line the line in question
+    /// @return may be empty
+    virtual std::span<DXInstructionAssociation> GetInstructionAssociations(uint16_t fileUID, uint32_t line) = 0;
 
     /// Get a source view of a line
     /// \param fileUID originating file uid

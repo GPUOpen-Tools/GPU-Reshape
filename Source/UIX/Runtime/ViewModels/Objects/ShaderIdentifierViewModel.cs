@@ -106,7 +106,7 @@ namespace Runtime.ViewModels.Objects
             {
                 return Workspace?.PropertyCollection
                     .GetProperty<IShaderCollectionViewModel>()?
-                    .GetPropertyWhere<ShaderViewModel>(x => x.Shader.GUID == Model.GUID)?
+                    .GetPropertyWhere<ShaderPropertyViewModel>(x => x.Shader.GUID == Model.GUID)?
                     .InstrumentationState ?? new InstrumentationState();   
             }
         }
@@ -150,10 +150,10 @@ namespace Runtime.ViewModels.Objects
             }
 
             // Find or create property
-            var shaderViewModel = shaderCollectionViewModel.GetPropertyWhere<ShaderViewModel>(x => x.Shader.GUID == Model.GUID);
+            var shaderViewModel = shaderCollectionViewModel.GetPropertyWhere<ShaderPropertyViewModel>(x => x.Shader.GUID == Model.GUID);
             if (shaderViewModel == null)
             {
-                shaderCollectionViewModel.Properties.Add(shaderViewModel = new ShaderViewModel()
+                shaderCollectionViewModel.Properties.Add(shaderViewModel = new ShaderPropertyViewModel()
                 {
                     Parent = shaderCollectionViewModel,
                     ConnectionViewModel = shaderCollectionViewModel.ConnectionViewModel,

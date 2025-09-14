@@ -24,7 +24,7 @@ public class StructuredBreakpointDisplayViewModel : ReactiveObject, IBreakpointD
     /// <summary>
     /// Shader property
     /// </summary>
-    public ShaderViewModel? ShaderProperty { get; set; }
+    public ShaderPropertyViewModel? ShaderProperty { get; set; }
     
     /// <summary>
     /// Apply all local breakpoint config

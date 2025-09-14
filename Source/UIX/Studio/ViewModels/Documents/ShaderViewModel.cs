@@ -37,6 +37,7 @@ using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
 using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
+using Studio.Services;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Services;
@@ -169,6 +170,9 @@ namespace Studio.ViewModels.Documents
                     shaderContentViewModel
                         .WhenAnyValue(x => x.IsActive)
                         .Subscribe(x => OnSetContentViewModel(shaderContentViewModel, x));
+                    
+                    // Install the extensions
+                    ServiceRegistry.Get<IEditorService>()?.InstallViewModel(shaderContentViewModel);
                 })
                 .Subscribe();
             
@@ -188,7 +192,7 @@ namespace Studio.ViewModels.Documents
                     NavigationContext = this
                 }
             });
-            
+
             // Selected
             ShaderContentViewModels[0].IsActive = true;
         }

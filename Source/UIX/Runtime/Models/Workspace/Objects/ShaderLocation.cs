@@ -65,6 +65,19 @@ namespace Studio.Models.Workspace.Objects
         /// Instruction linear index into the basic block
         /// </summary>
         public uint InstructionIndex { get; set; }
+
+        /// <summary>
+        /// Get assembled state
+        /// </summary>
+        public AssembledInstructionMapping GetAssembled()
+        {
+            return new AssembledInstructionMapping()
+            {
+                BasicBlockId = BasicBlockId,
+                InstructionIndex = InstructionIndex,
+                CodeOffset = 0
+            };
+        }
     }
 
     public static class ShaderLocationExtensions
@@ -75,7 +88,7 @@ namespace Studio.Models.Workspace.Objects
         /// <param name="program">the program to query</param>
         /// <param name="location">location within the program to extract</param>
         /// <returns>null if not found</returns>
-        public static Instruction? GetInstruction(this Program program, ShaderLocation location)
+        public static Instruction? GetInstruction(this Program program, AssembledInstructionMapping location)
         {
             // Try to find basic block
             if (!program.Lookup.TryGetValue(location.BasicBlockId, out object? valueObject) || valueObject is not BasicBlock block)

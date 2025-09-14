@@ -140,6 +140,14 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetShaderStatusMessage>());
                     break;
                 }
+                case GetShaderInstructionMappingMessage::kID: {
+                    OnMessage(*it.Get<GetShaderInstructionMappingMessage>());
+                    break;
+                }
+                case GetShaderSourceInstructionMappingMessage::kID: {
+                    OnMessage(*it.Get<GetShaderSourceInstructionMappingMessage>());
+                    break;
+                }
             }
         }
     }
@@ -516,6 +524,108 @@ void MetadataController::OnMessage(const struct GetShaderSourceMappingMessage& m
 
     // Fill contents
     response->contents.Set(sourceContents);
+}
+
+void MetadataController::OnMessage(const struct GetShaderInstructionMappingMessage& message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderGUID);
+
+    // Create module if not present
+    if (shaderCompiler && shader && !shader->module) {
+        shaderCompiler->InitializeModule(shader);
+    }
+
+    // Get debug module
+    IDXDebugModule* debugModule = shader->module->GetDebug();
+
+    // No sources available?
+    if (!debugModule) {
+        auto&& response = view.Add<ShaderInstructionMappingSetMessage>(ShaderInstructionMappingSetMessage::AllocationInfo { .mappingsByteSize = 0 });
+        response->shaderGUID = message.shaderGUID;
+        response->fileUID = message.fileUID;
+        response->line = message.line;
+        response->found = false;
+        return;
+    }
+
+    // Create mappings set
+    MessageStream streamMappings;
+    for (DXInstructionAssociation association : debugModule->GetInstructionAssociations(static_cast<uint16_t>(message.fileUID), message.line)) {
+        DXCodeOffsetTraceback traceback = shader->module->GetCodeOffsetTraceback(association.codeOffset);
+        if (traceback.functionID == IL::InvalidID) {
+            continue;
+        }
+
+        // Append to set
+        auto* status = MessageStreamView<ShaderInstructionMappingMessage>(streamMappings).Add();
+        status->basicBlockId = traceback.basicBlockID;
+        status->instructionIndex = traceback.instructionIndex;
+        status->codeOffset = association.codeOffset;
+    }
+
+    // Report all mappings
+    auto&& response = view.Add<ShaderInstructionMappingSetMessage>(ShaderInstructionMappingSetMessage::AllocationInfo { .mappingsByteSize = streamMappings.GetByteSize() });
+    response->shaderGUID = message.shaderGUID;
+    response->fileUID = message.fileUID;
+    response->line = message.line;
+    response->found = true;
+    response->mappings.Set(streamMappings);
+}
+
+void MetadataController::OnMessage(const struct GetShaderSourceInstructionMappingMessage &message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderGUID);
+
+    // Create module if not present
+    if (shaderCompiler && shader && !shader->module) {
+        shaderCompiler->InitializeModule(shader);
+    }
+
+    // Get debug module
+    IDXDebugModule* debugModule = shader->module->GetDebug();
+
+    // Standard response
+    auto&& response = view.Add<ShaderSourceInstructionMappingMessage>();
+    response->shaderGUID = message.shaderGUID;
+    response->basicBlockId = message.basicBlockId;
+    response->instructionIndex = message.instructionIndex;
+    response->codeOffset = message.codeOffset;
+    response->found = false;
+    
+    // No sources available?
+    if (!debugModule) {
+        return;
+    }
+
+    // Get the program, always valid
+    IL::Program *program = shader->module->GetProgram();
+
+    // Get the traceback
+    DXCodeOffsetTraceback traceback = shader->module->GetCodeOffsetTraceback(message.codeOffset);
+    if (traceback.functionID == IL::InvalidID) {
+        return;
+    }
+
+    // Try to get the function
+    IL::Function *fn = program->GetFunctionList().GetFunction(traceback.functionID);
+    if (!fn) {
+        return;
+    }
+
+    // Get the association
+    DXSourceAssociation association = debugModule->GetSourceAssociation(fn, message.codeOffset);
+    if (association.fileUID == UINT16_MAX) {
+        return;
+    }
+
+    // Compose message
+    response->found = true;
+    response->fileUID = association.fileUID;
+    response->line = association.line;
 }
 
 void MetadataController::Commit() {

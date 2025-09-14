@@ -16,6 +16,17 @@ public class EditorService : ReactiveObject, IEditorService
     /// <summary>
     /// Install all extensions against an editor
     /// </summary>
+    public void InstallViewModel(IShaderContentViewModel viewModel)
+    {
+        foreach (IEditorExtension extension in Extensions.Items)
+        {
+            extension.InstallViewModel(viewModel);
+        }
+    }
+
+    /// <summary>
+    /// Install all extensions against an editor
+    /// </summary>
     public void InstallView(IShaderContentViewModel viewModel, TextEditor textEditor)
     {
         foreach (IEditorExtension extension in Extensions.Items)

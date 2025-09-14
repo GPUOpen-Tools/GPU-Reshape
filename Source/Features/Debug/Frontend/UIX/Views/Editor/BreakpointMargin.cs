@@ -1,13 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Rendering;
 using GRS.Features.Debug.UIX.Models;
+using GRS.Features.Debug.UIX.ViewModels;
 using GRS.Features.Debug.UIX.ViewModels.Editor;
 using GRS.Features.Debug.UIX.ViewModels.Utils;
+using ReactiveUI;
+using Runtime.ViewModels.Shader;
 
 namespace UIX.Views.Editor;
 
@@ -47,7 +52,7 @@ public class BreakpointMargin : AbstractMargin
             int lineNumberBase1 = visualLine.FirstDocumentLine.LineNumber;
 
             // Has an assigned breakpoint?
-            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(b => b.SourceBinding?.InstructionLine == lineNumberBase1 - 1) is { } breakpoint)
+            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(b => BindSourceInstructionLine(b) == lineNumberBase1 - 1) is { } breakpoint)
             {
                 // Draw breakpoint
                 context.FillRectangle(
@@ -81,6 +86,46 @@ public class BreakpointMargin : AbstractMargin
             }
         }
     }
+
+    /// <summary>
+    /// Bind an instruction line
+    /// Invalidates when actually bound
+    /// </summary>
+    private int BindSourceInstructionLine(BreakpointViewModel breakpointViewModel)
+    {
+        // Check cache
+        if (!_breakpointSourceAssociations.TryGetValue(breakpointViewModel, out ShaderInstructionSourceAssociationViewModel? association))
+        {
+            if (breakpointViewModel.SourceBinding is not { })
+            {
+                return int.MaxValue;;
+            }
+
+            // Let the content view model handle the instruction -> line of code
+            association = VM.ContentViewModel.TransformInstructionLine(breakpointViewModel.SourceBinding.Mapping);
+            if (association is null)
+            {
+                return int.MaxValue;
+            }
+
+            // Invalidate visuals when the location has been mapped
+            if (!association.Location.HasValue)
+            {
+                association.WhenAnyValue(x => x.Location).Subscribe(_ =>
+                {
+                    // Make sure to invalidate it outside a render loop
+                    Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        InvalidateVisual();
+                    });
+                });
+            }
+            
+            _breakpointSourceAssociations.Add(breakpointViewModel, association);
+        }
+        
+        return association.Location?.Line ?? int.MaxValue;
+    }
     
     /// <summary>
     /// Invoked on pointer moves
@@ -94,7 +139,7 @@ public class BreakpointMargin : AbstractMargin
             VM.LineNumberBase0 = (int)(_previewLineBase1 - 1);
             
             // Assign highlighted breakpoint
-            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => x.SourceBinding?.InstructionLine == VM.LineNumberBase0) is { } breakpoint)
+            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => BindSourceInstructionLine(x) == VM.LineNumberBase0) is { } breakpoint)
             {
                 VM.HighlightedBreakpointViewModel = breakpoint;
             }
@@ -169,7 +214,7 @@ public class BreakpointMargin : AbstractMargin
     private void HandleNewBreakpoint(int lineBase0)
     {
         // If there's a breakpoint, remove it
-        if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => x.SourceBinding?.InstructionLine == lineBase0) is { } breakpoint)
+        if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => BindSourceInstructionLine(x) == lineBase0) is { } breakpoint)
         {
             VM.CollectionViewModel.Breakpoints.Remove(breakpoint);
         }
@@ -213,6 +258,11 @@ public class BreakpointMargin : AbstractMargin
     /// View model helper
     /// </summary>
     private BreakpointMarginViewModel VM => (BreakpointMarginViewModel)DataContext!;
+
+    /// <summary>
+    /// All cached associations
+    /// </summary>
+    private Dictionary<BreakpointViewModel, ShaderInstructionSourceAssociationViewModel> _breakpointSourceAssociations = new();
 
     /// <summary>
     /// Current preview line

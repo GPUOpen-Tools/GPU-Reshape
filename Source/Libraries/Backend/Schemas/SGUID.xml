@@ -43,4 +43,42 @@
         <field name="sguid" type="uint32"/>
         <field name="contents" type="string"/>
     </struct>
+
+    <struct name="GetShaderInstructionMapping">
+        <field name="shaderGUID" type="uint64"/>
+        <field name="found" type="bool"/>
+        <field name="fileUID" type="uint32"/>
+        <field name="line" type="uint32"/>
+    </struct>
+
+    <struct name="ShaderInstructionMappingSet">
+        <field name="shaderGUID" type="uint64"/>
+        <field name="found" type="bool"/>
+        <field name="fileUID" type="uint32"/>
+        <field name="line" type="uint32"/>
+        <field name="mappings" type="stream"/>
+    </struct>
+    
+    <struct name="ShaderInstructionMapping">
+        <field name="basicBlockId" type="uint32"/>
+        <field name="instructionIndex" type="uint32"/>
+        <field name="codeOffset" type="uint32"/>
+    </struct>
+
+    <struct name="GetShaderSourceInstructionMapping">
+        <field name="shaderGUID" type="uint64"/>
+        <field name="basicBlockId" type="uint32"/>
+        <field name="instructionIndex" type="uint32"/>
+        <field name="codeOffset" type="uint32"/>
+    </struct>
+
+    <struct name="ShaderSourceInstructionMapping">
+        <field name="shaderGUID" type="uint64"/>
+        <field name="basicBlockId" type="uint32"/>
+        <field name="instructionIndex" type="uint32"/>
+        <field name="codeOffset" type="uint32"/>
+        <field name="found" type="bool"/>
+        <field name="fileUID" type="uint32"/>
+        <field name="line" type="uint32"/>
+    </struct>
 </schema>

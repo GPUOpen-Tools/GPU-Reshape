@@ -24,6 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia.Media;
 using Runtime.ViewModels.Traits;
@@ -33,7 +34,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader
 {
-    public interface IShaderContentViewModel
+    public interface IShaderContentViewModel : IDestructableObject
     {
         /// <summary>
         /// The owning navigation context
@@ -54,6 +55,11 @@ namespace Studio.ViewModels.Shader
         /// Workspace within this overview
         /// </summary>
         public IPropertyViewModel? PropertyCollection { get; set; }
+        
+        /// <summary>
+        /// All installed services
+        /// </summary>
+        public ObservableCollection<IDestructableObject> Services { get; }
 
         /// <summary>
         /// Shader view model of the content

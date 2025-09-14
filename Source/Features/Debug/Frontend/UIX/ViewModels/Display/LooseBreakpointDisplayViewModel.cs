@@ -34,7 +34,7 @@ public class LooseBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// <summary>
     /// Shader property
     /// </summary>
-    public ShaderViewModel? ShaderProperty { get; set; }
+    public ShaderPropertyViewModel? ShaderProperty { get; set; }
     
     /// <summary>
     /// Apply all local breakpoint config

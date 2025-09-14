@@ -160,7 +160,26 @@ namespace Studio.ViewModels.Workspace.Properties
 
             return default;
         }
-        
+
+        /// <summary>
+        /// Get a service from a given type
+        /// </summary>
+        /// <param name="self"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>null if not found</returns>
+        public static T? GetServiceWhere<T>(this IPropertyViewModel self, Func<T, bool> predecate)
+        {
+            foreach (IPropertyService extension in self.Services.Items)
+            {
+                if (extension is T typed && predecate.Invoke(typed))
+                {
+                    return typed;
+                }
+            }
+
+            return default;
+        }
+
         /// <summary>
         /// Get a set of services with type
         /// </summary>

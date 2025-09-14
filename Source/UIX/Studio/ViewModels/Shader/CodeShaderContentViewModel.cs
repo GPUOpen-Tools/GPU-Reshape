@@ -43,6 +43,7 @@ using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
+using ShaderViewModel = Studio.ViewModels.Workspace.Objects.ShaderViewModel;
 
 namespace Studio.ViewModels.Shader
 {
@@ -56,8 +57,12 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// The target shader
         /// </summary>
-        public Workspace.Objects.ShaderViewModel? ShaderViewModel { get; set; }
-        
+        public Workspace.Objects.ShaderViewModel? ShaderViewModel
+        {
+            get => _shaderViewModel;
+            set => this.RaiseAndSetIfChanged(ref _shaderViewModel, value);
+        }
+
         /// <summary>
         /// Given descriptor
         /// </summary>
@@ -92,6 +97,11 @@ namespace Studio.ViewModels.Shader
             get => _propertyCollection;
             set => this.RaiseAndSetIfChanged(ref _propertyCollection, value);
         }
+
+        /// <summary>
+        /// All services
+        /// </summary>
+        public ObservableCollection<IDestructableObject> Services { get; } = new();
 
         /// <summary>
         /// Currently selected validation object
@@ -191,11 +201,35 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// Transform a shader line
+        /// </summary>
+        public ShaderInstructionSourceAssociationViewModel? TransformInstructionLine(AssembledInstructionMapping mapping)
+        {
+            // Association is non-trivial, we need to query it
+            if (_propertyCollection?.GetService<IShaderInstructionMappingService>() is { } service)
+            {
+                return service.GetOrCreateSourceAssociation(ShaderViewModel?.GUID ?? 0, mapping);
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Transform a shader location line
         /// </summary>
-        public AssembledInstructionMapping TransformInstruction(int line)
+        public ShaderInstructionAssociationViewModel? TransformSourceLine(int line)
         {
-            throw new NotImplementedException();
+            if (_propertyCollection?.GetService<IShaderInstructionMappingService>() is { } service)
+            {
+                return service.GetOrCreateInstructionAssociation(new ShaderShaderInstructionAssociationLocation()
+                {
+                    SGUID = _object?.GUID ?? 0,
+                    FileUID = (int)(_selectedSelectedShaderFileViewModel?.UID ?? 0),
+                    Line = line
+                });
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -311,5 +345,10 @@ namespace Studio.ViewModels.Shader
         /// Internal detail state
         /// </summary>
         private ISourceObjectDetailViewModel? _detailViewModel;
+
+        /// <summary>
+        /// Internal shader
+        /// </summary>
+        private ShaderViewModel? _shaderViewModel;
     }
 }

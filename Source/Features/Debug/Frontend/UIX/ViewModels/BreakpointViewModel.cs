@@ -10,9 +10,8 @@ using Message.CLR;
 using Studio.Services;
 using Studio;
 using Studio.Models.Workspace.Listeners;
-using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
-using ShaderViewModel = Studio.ViewModels.Workspace.Properties.Instrumentation.ShaderViewModel;
+using Studio.ViewModels.Workspace.Properties.Instrumentation;
 using Type = Studio.Models.IL.Type;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
@@ -28,11 +27,6 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         set => MonitorWrite(() => this.RaiseAndSetIfChanged(ref _displayViewModel, value));
     }
 
-    /// <summary>
-    /// Owning shader content
-    /// </summary>
-    public required ITextualShaderContentViewModel ShaderContentViewModel { get; set; }
-    
     /// <summary>
     /// Source object of this breakpoint
     /// </summary>
@@ -127,7 +121,7 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// <summary>
     /// Shader property
     /// </summary>
-    public ShaderViewModel? ShaderProperty { get; set; }
+    public ShaderPropertyViewModel? ShaderProperty { get; set; }
 
     /// <summary>
     /// The source location of the breakpoint

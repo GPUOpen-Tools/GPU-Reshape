@@ -164,6 +164,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
         // Provide traceback
         if (basicBlock != nullptr) {
             sourceTraceback[recordIdx] = DXCodeOffsetTraceback {
+                .functionID = fn->GetID(),
                 .basicBlockID = basicBlock->GetID(),
                 .instructionIndex = basicBlock->GetCount()
             };
