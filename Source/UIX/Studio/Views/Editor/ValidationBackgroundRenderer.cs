@@ -71,7 +71,7 @@ namespace Studio.Views.Editor
             foreach (ValidationObject validationObject in _validationObjects)
             {
                 // Valid file?
-                if (!ShaderContentViewModel.IsObjectVisible(validationObject))
+                if (validationObject.Segment == null || !ShaderContentViewModel.IsLocationVisible(validationObject.Segment.Location))
                 {
                     continue;
                 }

@@ -97,7 +97,7 @@ namespace Studio.Views.Editor
             }
 
             // Mismatched file?
-            if (!(ShaderContentViewModel?.IsObjectVisible(validationObject) ?? false))
+            if (!(ShaderContentViewModel?.IsLocationVisible(validationObject.Segment.Location) ?? false))
             {
                 return;
             }

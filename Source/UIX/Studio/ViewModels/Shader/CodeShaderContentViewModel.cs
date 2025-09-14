@@ -185,11 +185,11 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
-        /// Is an object object visible?
+        /// Is a location visible?
         /// </summary>
-        public bool IsObjectVisible(ITextualSourceObject sourceObject)
+        public bool IsLocationVisible(ShaderLocation location)
         {
-            return sourceObject.Segment?.Location.FileUID == SelectedShaderFileViewModel?.UID;
+            return location.FileUID == SelectedShaderFileViewModel?.UID;
         }
 
         /// <summary>

@@ -240,9 +240,9 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
-        /// Is a validation object visible?
+        /// Is a location visible?
         /// </summary>
-        public bool IsObjectVisible(ITextualSourceObject sourceObject)
+        public bool IsLocationVisible(ShaderLocation location)
         {
             return true;
         }

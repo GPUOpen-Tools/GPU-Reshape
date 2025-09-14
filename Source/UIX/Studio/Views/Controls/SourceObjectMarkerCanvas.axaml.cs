@@ -275,7 +275,7 @@ namespace Studio.Views.Controls
                 {
                     foreach (ITextualSourceObject sourceObject in categoryViewModel.Objects)
                     {
-                        if (ShaderContentViewModel?.IsObjectVisible(sourceObject) ?? false)
+                        if (sourceObject.Segment != null && (ShaderContentViewModel?.IsLocationVisible(sourceObject.Segment.Location) ?? false))
                         {
                             hasAnyVisibleObject = true;
                             break;

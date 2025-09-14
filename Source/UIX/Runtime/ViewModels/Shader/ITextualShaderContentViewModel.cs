@@ -49,9 +49,9 @@ namespace Studio.ViewModels.Shader
         public bool IsOverlayVisible();
         
         /// <summary>
-        /// Is a source object visible?
+        /// Is a location visible?
         /// </summary>
-        public bool IsObjectVisible(ITextualSourceObject sourceObject);
+        public bool IsLocationVisible(ShaderLocation sourceObject);
 
         /// <summary>
         /// Transform a shader location

@@ -13,6 +13,7 @@ using GRS.Features.Debug.UIX.ViewModels.Editor;
 using GRS.Features.Debug.UIX.ViewModels.Utils;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
+using Studio.Models.Workspace.Objects;
 
 namespace UIX.Views.Editor;
 
@@ -52,7 +53,7 @@ public class BreakpointMargin : AbstractMargin
             int lineNumberBase1 = visualLine.FirstDocumentLine.LineNumber;
 
             // Has an assigned breakpoint?
-            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(b => BindSourceInstructionLine(b) == lineNumberBase1 - 1) is { } breakpoint)
+            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(b => IsBreakpointVisible(b, lineNumberBase1 - 1)) is { } breakpoint)
             {
                 // Draw breakpoint
                 context.FillRectangle(
@@ -91,21 +92,21 @@ public class BreakpointMargin : AbstractMargin
     /// Bind an instruction line
     /// Invalidates when actually bound
     /// </summary>
-    private int BindSourceInstructionLine(BreakpointViewModel breakpointViewModel)
+    private ShaderLocation? BindSourceInstructionLine(BreakpointViewModel breakpointViewModel)
     {
         // Check cache
         if (!_breakpointSourceAssociations.TryGetValue(breakpointViewModel, out ShaderInstructionSourceAssociationViewModel? association))
         {
             if (breakpointViewModel.SourceBinding is not { })
             {
-                return int.MaxValue;;
+                return null;
             }
 
             // Let the content view model handle the instruction -> line of code
             association = VM.ContentViewModel.TransformInstructionLine(breakpointViewModel.SourceBinding.Mapping);
             if (association is null)
             {
-                return int.MaxValue;
+                return null;
             }
 
             // Invalidate visuals when the location has been mapped
@@ -124,7 +125,7 @@ public class BreakpointMargin : AbstractMargin
             _breakpointSourceAssociations.Add(breakpointViewModel, association);
         }
         
-        return association.Location?.Line ?? int.MaxValue;
+        return association.Location;
     }
     
     /// <summary>
@@ -139,7 +140,7 @@ public class BreakpointMargin : AbstractMargin
             VM.LineNumberBase0 = (int)(_previewLineBase1 - 1);
             
             // Assign highlighted breakpoint
-            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => BindSourceInstructionLine(x) == VM.LineNumberBase0) is { } breakpoint)
+            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => IsBreakpointVisible(x, VM.LineNumberBase0)) is { } breakpoint)
             {
                 VM.HighlightedBreakpointViewModel = breakpoint;
             }
@@ -214,7 +215,7 @@ public class BreakpointMargin : AbstractMargin
     private void HandleNewBreakpoint(int lineBase0)
     {
         // If there's a breakpoint, remove it
-        if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => BindSourceInstructionLine(x) == lineBase0) is { } breakpoint)
+        if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => IsBreakpointVisible(x, lineBase0)) is { } breakpoint)
         {
             VM.CollectionViewModel.Breakpoints.Remove(breakpoint);
         }
@@ -224,6 +225,20 @@ public class BreakpointMargin : AbstractMargin
         }
 
         InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Check if a breakpoint is visible
+    /// </summary>
+    private bool IsBreakpointVisible(BreakpointViewModel breakpointViewModel, int lineBase0)
+    {
+        if (BindSourceInstructionLine(breakpointViewModel) is not { } location)
+        {
+            return false;
+        }
+
+        // Check the line
+        return lineBase0 == location.Line && VM.ContentViewModel.IsLocationVisible(location);
     }
 
     /// <summary>
