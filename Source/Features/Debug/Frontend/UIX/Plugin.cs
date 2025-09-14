@@ -91,8 +91,6 @@ namespace GRS.Features.Debug.UIX
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayConfigView), ViewType.Config);
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayStatusView), ViewType.Status);
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayOverlayView), ViewType.Overlay);
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(StructuredBreakpointDisplayViewModel), typeof(StructuredBreakpointDisplayView));
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(StructuredBreakpointDisplayViewModel), typeof(StructuredBreakpointDisplayConfigView), ViewType.Config);
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(LooseBreakpointDisplayViewModel), typeof(LooseBreakpointDisplayView));
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(LooseBreakpointDisplayViewModel), typeof(LooseBreakpointDisplayConfigView), ViewType.Config);
 

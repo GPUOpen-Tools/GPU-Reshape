@@ -30,18 +30,6 @@ public class BreakpointDisplayRegistryService
                 ]
             },
             
-            // Structured display
-            new BreakpointDisplayArchetypeViewModel
-            {
-                Name = "Structured",
-                Archetype = typeof(StructuredBreakpointDisplayViewModel),
-                Selector = new StructuredBreakpointDisplaySelectorViewModel(),
-                ProcessorArchetypes = 
-                [
-                    typeof(StructuredBreakpointProcessorViewModel)
-                ]
-            },
-            
             // Loose display
             new BreakpointDisplayArchetypeViewModel
             {
