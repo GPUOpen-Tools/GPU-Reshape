@@ -295,6 +295,7 @@ add_library(
     Layer/Source/Compiler/Utils/SpvUtilShaderDescriptorConstantData.cpp
     Layer/Source/Compiler/Utils/SpvUtilShaderConstantData.cpp
     Layer/Source/Compiler/Utils/SpvUtilShaderDebug.cpp
+    Layer/Source/Compiler/Utils/SpvUtilShaderExecution.cpp
     Layer/Source/Compiler/SpvPhysicalBlockScan.cpp
     Layer/Source/Compiler/SpvPhysicalBlockTable.cpp
     Layer/Source/ShaderData/ShaderDataHost.cpp
