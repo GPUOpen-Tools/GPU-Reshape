@@ -799,7 +799,7 @@ IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, c
     IL::Emitter<> emitter(context.program, context.basicBlock, insertIt);
 
     // Try to reconstruct the source value first
-    if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, instr)) {
+    if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, instr); reconstructed != IL::InvalidID) {
         // Split after the constructed debug value
         insertIt = emitter.GetIterator();
         return reconstructed;
