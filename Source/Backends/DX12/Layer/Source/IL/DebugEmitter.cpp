@@ -29,7 +29,10 @@
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/Compiler/IDXDebugModule.h>
 #include <Backends/DX12/Compiler/IDXModule.h>
+
+// Backend
 #include <Backend/IL/PrettyPrint.h>
+#include <Backend/IL/TypeSize.h>
 
 DebugEmitter::DebugEmitter(DeviceState *device) : device(device) {
     
@@ -59,7 +62,17 @@ const Backend::IL::Type * DebugEmitter::ReconstructValueType(IL::Program &progra
         return nullptr;
     }
 
-    return info.variables[0].type;
+    // Target type
+    const Backend::IL::Type *type = info.variables[0].type;
+
+    // TODO: Bit extraction?
+    ASSERT(info.variables[0].values[0].bitWise.bitStart % 8 == 0, "Non-byte aligned");
+
+    // For now, report the first decomposed type at location
+    return Backend::IL::GetStructuredTypeAtOffset(
+        type,
+        info.variables[0].values[0].bitWise.bitStart / 8
+    );
 }
 
 IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruction *instr) {
@@ -89,7 +102,16 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruct
     }
 
     // Assumes the first one
-    DXDwarfVariableValue& variableValue =  info.variables[0];
+    DXDwarfVariableValue& variableValue = info.variables[0];
+
+    // TODO: Bit extraction?
+    ASSERT(info.variables[0].values[0].bitWise.bitStart % 8 == 0, "Non-byte aligned");
+
+    // For now, report the first decomposed type at location
+    const Backend::IL::Type *type = Backend::IL::GetStructuredTypeAtOffset(
+        variableValue.type,
+        info.variables[0].values[0].bitWise.bitStart / 8
+    );
 
     // All values
     TrivialStackVector<IL::ID, 16> values;
@@ -125,5 +147,5 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruct
     }
 
     // Construct from the splatted value
-    return emitter.ConstructPtr(variableValue.type, values.Data(), static_cast<uint32_t>(values.Size()));
+    return emitter.ConstructPtr(type, values.Data(), static_cast<uint32_t>(values.Size()));
 }

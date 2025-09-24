@@ -51,7 +51,7 @@ struct DXDwarfValue {
     union {
         struct {
             uint32_t bitStart;
-            uint32_t bitEnd;
+            uint32_t bitLength;
         } bitWise;
     };
 };

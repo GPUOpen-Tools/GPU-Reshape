@@ -622,7 +622,7 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                         }
                         case LLVMDwarfOpKind::BitPiece: {
                             md.expression.bitPiece.bitStart = static_cast<uint32_t>(record.Op(2));
-                            md.expression.bitPiece.bitEnd = static_cast<uint32_t>(record.Op(3));
+                            md.expression.bitPiece.bitLength = static_cast<uint32_t>(record.Op(3));
                             break;
                         }
                     }
@@ -670,6 +670,13 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                             md.compositeType._class.align = static_cast<uint32_t>(record.Op(8));
                             md.compositeType._class.elementsMdId = static_cast<uint32_t>(record.Op(11));
                             md.compositeType._class.templateParamsMdId = static_cast<uint32_t>(record.Op(14));
+                            break;
+                        }
+                        case LLVMDwarfTag::StructureType: {
+                            md.compositeType.structureType.nameMdId = static_cast<uint32_t>(record.Op(2));
+                            md.compositeType.structureType.size = static_cast<uint32_t>(record.Op(7));
+                            md.compositeType.structureType.align = static_cast<uint32_t>(record.Op(8));
+                            md.compositeType.structureType.elementsMdId = static_cast<uint32_t>(record.Op(11));
                             break;
                         }
                     }
@@ -1080,6 +1087,9 @@ const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(Backend::IL::TypeMap&
                 case LLVMDwarfTag::ClassType: {
                     return GetClassTypeFromDwarf(typeMap, typeMd);
                 }
+                case LLVMDwarfTag::StructureType: {
+                    return GetStructureTypeFromDwarf(typeMap, typeMd);
+                }
             }
             break;
         }
@@ -1097,13 +1107,35 @@ const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::Ty
     // All elements
     TrivialStackVector<const Backend::IL::Type*, 16> elements;
 
+    // Current bit offset
+    uint32_t bitOffset = 0;
+
     // Populate all elements
     for (uint32_t i = 0; i < memberListMd.record->opCount; i++) {
         Metadata& memberMd = metadata[memberListMd.record->Op32(i) - 1];
         ASSERT(memberMd.type == LLVMMetadataRecord::DerivedType, "Unexpected type");
+        ASSERT(memberMd.derivedType.tag == LLVMDwarfTag::Member, "Unexpected tag");
+
+        // Aligned?
+        if (memberMd.derivedType.member.offset != bitOffset) {
+            ASSERT(memberMd.derivedType.member.offset > bitOffset, "Out of order declaration");
+
+            // Get padding requirement
+            uint32_t bitPadding = memberMd.derivedType.member.offset - bitOffset;
+            ASSERT(bitPadding % 8 == 0, "Padding not byte aligned");
+
+            // Insert dummy padding
+            elements.Add(typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+                .elementType = typeMap.FindTypeOrAdd(Backend::IL::IntType { .bitWidth = 8, .signedness = false }),
+                .count = bitPadding / 8
+            }));
+        }
 
         // Get member type
         elements.Add(GetTypeFromDwarf(typeMap, memberMd.derivedType.member.baseTypeMdId - 1));
+        
+        // Next offset
+        bitOffset = memberMd.derivedType.member.offset + memberMd.derivedType.member.size;
     }
 
     // Name of the composite
@@ -1125,6 +1157,51 @@ const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::Ty
                 .dimension = static_cast<uint8_t>(elements.Size())
             });
         }
+    }
+
+    // Otherwise assume struct
+    Backend::IL::StructType _struct;
+    for (const Backend::IL::Type* element : elements) {
+        _struct.memberTypes.push_back(element);
+    }
+    
+    return typeMap.FindTypeOrAdd(_struct);
+}
+
+const Backend::IL::Type * DXILDebugModule::GetStructureTypeFromDwarf(Backend::IL::TypeMap &typeMap, const Metadata &typeMd) {
+    Metadata& memberListMd = metadata[typeMd.compositeType.structureType.elementsMdId - 1];
+
+    // All elements
+    TrivialStackVector<const Backend::IL::Type*, 16> elements;
+
+    // Current bit offset
+    uint32_t bitOffset = 0;
+
+    // Populate all elements
+    for (uint32_t i = 0; i < memberListMd.record->opCount; i++) {
+        Metadata& memberMd = metadata[memberListMd.record->Op32(i) - 1];
+        ASSERT(memberMd.type == LLVMMetadataRecord::DerivedType, "Unexpected type");
+        ASSERT(memberMd.derivedType.tag == LLVMDwarfTag::Member, "Unexpected tag");
+
+        if (memberMd.derivedType.member.offset != bitOffset) {
+            ASSERT(memberMd.derivedType.member.offset > bitOffset, "Out of order declaration");
+
+            // Get padding requirement
+            uint32_t bitPadding = memberMd.derivedType.member.offset - bitOffset;
+            ASSERT(bitPadding % 8 == 0, "Padding not byte aligned");
+
+            // Insert dummy padding
+            elements.Add(typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+                .elementType = typeMap.FindTypeOrAdd(Backend::IL::IntType { .bitWidth = 8, .signedness = false }),
+                .count = bitPadding / 8
+            }));
+        }
+
+        // Get member type
+        elements.Add(GetTypeFromDwarf(typeMap, memberMd.derivedType.member.baseTypeMdId - 1));
+
+        // Next offset
+        bitOffset = memberMd.derivedType.member.offset + memberMd.derivedType.member.size;
     }
 
     // Otherwise assume struct
@@ -1249,7 +1326,7 @@ void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LL
         }
         case LLVMDwarfOpKind::BitPiece: {
             value.bitWise.bitStart = expressionMd.expression.bitPiece.bitStart;
-            value.bitWise.bitEnd = expressionMd.expression.bitPiece.bitEnd;
+            value.bitWise.bitLength = expressionMd.expression.bitPiece.bitLength;
             break;
         }
     }

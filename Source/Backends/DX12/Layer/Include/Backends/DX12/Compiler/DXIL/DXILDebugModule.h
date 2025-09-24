@@ -274,7 +274,7 @@ private:
                 union {
                     struct {
                         uint32_t bitStart;
-                        uint32_t bitEnd;
+                        uint32_t bitLength;
                     } bitPiece;
                 };
             } expression;
@@ -307,6 +307,13 @@ private:
                         uint32_t elementsMdId;
                         uint32_t templateParamsMdId;
                     } _class;
+                    
+                    struct {
+                        uint32_t nameMdId;
+                        uint32_t size;
+                        uint32_t align;
+                        uint32_t elementsMdId;
+                    } structureType;
                 };
             } compositeType;
 
@@ -344,6 +351,11 @@ private:
     /// @return type
     const Backend::IL::Type* GetClassTypeFromDwarf(Backend::IL::TypeMap& typeMap, const Metadata& typeMd);
 
+    /// Get the struct backend type from a dward type
+    /// @param typeMd class md
+    /// @return type
+    const Backend::IL::Type* GetStructureTypeFromDwarf(Backend::IL::TypeMap& typeMap, const Metadata& typeMd);
+    
     /// Get the basic backend type from a dward type
     /// @param typeMd basic md
     /// @return type

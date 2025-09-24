@@ -481,6 +481,7 @@ enum class LLVMDwarfOpKind {
 enum class LLVMDwarfTag {
     ClassType = 2,
     Member = 13,
+    StructureType = 19,
     Typedef = 22
 };
 
