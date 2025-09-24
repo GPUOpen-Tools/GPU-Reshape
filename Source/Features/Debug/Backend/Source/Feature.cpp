@@ -50,6 +50,7 @@
 #include <Backend/IL/Tiny/TinyType.h>
 #include <Backend/IL/Tiny/TinyTypePacking.h>
 #include <Backend/IL/TypeSize.h>
+#include <Backend/IL/Emitters/IDebugEmitter.h>
 
 // Generated schema
 #include <Schemas/Features/Debug.h>
@@ -135,6 +136,9 @@ bool DebugFeature::Install() {
 
     // Get state voter, used primarily for scheduler changes
     stateVote = registry->Get<IDeviceStateVote>();
+
+    // Get the debug emitter
+    debugEmitter = registry->Get<IL::IDebugEmitter>();
 
     // Allocate breakpoint headers
     buddyAllocator.Allocate(kMaxBreakpoints * sizeof(BreakpointHeader));
@@ -776,7 +780,36 @@ static IL::ID CompressFPUnorm8888(const IL::VisitContext &context, IL::Emitter<>
     }
 }
 
-static IL::ID GetInstructionDebugValue(const IL::Instruction* instr) {
+const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction *instr) {
+    // Try to reconstruct the source value first
+    if (const Backend::IL::Type* reconstructed = debugEmitter->ReconstructValueType(context.program, instr)) {
+        return reconstructed;
+    }
+
+    // Try to get the raw type
+    if (IL::ID nonDebugValue = GetInstructionRawDebugValue(context, instr); nonDebugValue != IL::InvalidID) {
+        return context.program.GetTypeMap().GetType(nonDebugValue);
+    }
+
+    return nullptr;
+}
+
+IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, IL::BasicBlock::Iterator& insertIt) {
+    // Emit after the instruction
+    IL::Emitter<> emitter(context.program, context.basicBlock, insertIt);
+
+    // Try to reconstruct the source value first
+    if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, instr)) {
+        // Split after the constructed debug value
+        insertIt = emitter.GetIterator();
+        return reconstructed;
+    }
+
+    // Get the raw value
+    return GetInstructionRawDebugValue(context, instr);
+}
+
+IL::ID DebugFeature::GetInstructionRawDebugValue(const IL::VisitContext &context, const IL::Instruction *instr) {
     // Select the value for debugging
     switch (instr->opCode) {
         default:
@@ -800,7 +833,7 @@ static IL::ID GetInstructionDebugValue(const IL::Instruction* instr) {
     }
 }
 
-bool DebugFeature::GetBreakpointFormat(const IL::VisitContext& context, const IL::Instruction* instr, IL::ID id, BreakpointData& breakpointData) {
+bool DebugFeature::GetBreakpointFormat(BreakpointData& breakpointData) {
     // Check compression
     switch (breakpointData.hostLayout.compression) {
         default: {
@@ -859,15 +892,9 @@ bool DebugFeature::SupportsKernelType(IL::KernelType kernelType, Breakpoint* bre
     }
 }
 
-bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {
-    // May not have an associated type
-    const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
-    if (!type) {
-        return false;
-    }
-
+bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, const Backend::IL::Type* valueType, Breakpoint* breakpoint, BreakpointData& breakpointData) {
     // Type may not be serializable
-    if (!IsTypeSerializationSupported(type)) {
+    if (!IsTypeSerializationSupported(valueType)) {
         return false;
     }
 
@@ -878,23 +905,23 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
     }
 
     // Supports 8-8-8-8 compression?
-    if (breakpointData.flags & BreakpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, type)) {
+    if (breakpointData.flags & BreakpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, valueType)) {
         breakpointData.hostLayout.compression = BreakpointCompression::FPUnorm8888;
     }
 
     // Try to get the format
-    if (GetBreakpointFormat(context, instr, value, breakpointData)) {
+    if (GetBreakpointFormat(breakpointData)) {
         // Assume stride
         breakpointData.hostLayout.dataDWordStride = static_cast<uint32_t>(GetSize(breakpointData.hostLayout.format) / sizeof(uint32_t));
     } else {
         // If not relevant, just assume the type
-        breakpointData.hostLayout.typeId = type->id;
+        breakpointData.hostLayout.typeId = valueType->id;
 
         // Pack the tiny type down
-        Backend::IL::Tiny::Pack(type, breakpointData.hostLayout.tinyType);
+        Backend::IL::Tiny::Pack(valueType, breakpointData.hostLayout.tinyType);
 
         // TODO[dbg]: I guess we don't need to handle alignment?
-        breakpointData.hostLayout.dataDWordStride = static_cast<uint32_t>((GetPODNonAlignedTypeByteSize(type) + sizeof(uint32_t) - 1) / sizeof(uint32_t));
+        breakpointData.hostLayout.dataDWordStride = static_cast<uint32_t>((GetPODNonAlignedTypeByteSize(valueType) + sizeof(uint32_t) - 1) / sizeof(uint32_t));
     }
 
     // Host layout supported
@@ -1126,7 +1153,7 @@ void DebugFeature::StoreBreakpointDataDWords(const IL::VisitContext &context, IL
     }
 }
 
-void DebugFeature::StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {    
+void DebugFeature::StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {    
     // Handle any kind of compression
     switch (breakpointData.hostLayout.compression) {
         default: {
@@ -1152,7 +1179,7 @@ static uint32_t ShaderInstrumentationHashWideTo32(uint64_t wide) {
     return BufferCRC32Short(&wide, sizeof(wide));
 }
 
-IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, const DebugBreakpointMessage& breakpointMessage) {
+IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &context, IL::BasicBlock::Iterator it, const DebugBreakpointMessage& breakpointMessage) {
     // TODO[dbg]: Send a message back "nothing to debug!" This shouldn't come from a message
 
     // Find the relevant breakpoint
@@ -1160,10 +1187,10 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     if (!breakpoint) {
         return it;
     }
-    
+
     // Get the value to be debugged
-    IL::ID value = GetInstructionDebugValue(it);
-    if (value == IL::InvalidID) {
+    const Backend::IL::Type *valueType = GetInstructionDebugType(context, it);
+    if (!valueType) {
         return it;
     }
 
@@ -1174,13 +1201,24 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
 
     // Try to determine the data layout
     // This may fail if there's nothing suitable
-    if (!GetBreakpointDataHostLayout(context, it, value, breakpoint, breakpointData)) {
+    if (!GetBreakpointDataHostLayout(context, it, valueType, breakpoint, breakpointData)) {
         return it;
     }
 
     /**
      * At this point the breakpoint has been accepted, emitting is allowed
      **/
+
+    // Set name for debugging
+    it.block->SetName("Breakpoint.EntryBlock");
+
+    // Splitting/inserting after the debug instruction
+    IL::BasicBlock::Iterator insertIt = std::next(it);
+
+    // Get the value to be debugged
+    // This may modify the program, so do it after
+    IL::ID value = GetInstructionDebugValue(context, it, insertIt);
+    ASSERT(value != IL::InvalidID, "Type without value");
     
     // Emit in the interrupt block
     IL::BasicBlock* interruptBlock = context.function.GetBasicBlocks().AllocBlock();
@@ -1191,17 +1229,17 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     switch (breakpoint->captureMode) {
         default:
             ASSERT(false, "Invalid capture mode");
-            return it;
+            return insertIt;
         case BreakpointCaptureMode::FirstEvent:
-            resumeBlock = AcquireAndAllocateBreakpointFirstEvent(context, it, interruptBlock, breakpoint, breakpointData);
+            resumeBlock = AcquireAndAllocateBreakpointFirstEvent(context, insertIt, interruptBlock, breakpoint, breakpointData);
             break;
         case BreakpointCaptureMode::AllEvents:
-            resumeBlock = AcquireAndAllocateBreakpointAllEvents(context, it, interruptBlock, breakpoint, breakpointData);
+            resumeBlock = AcquireAndAllocateBreakpointAllEvents(context, insertIt, interruptBlock, breakpoint, breakpointData);
             break;
     }
 
     // Store the breakpoint data
-    StoreBreakpointData(context, emitter, resumeBlock->begin(), value, breakpoint, breakpointData);
+    StoreBreakpointData(context, emitter, value, breakpoint, breakpointData);
     
     // Branch the breakpoint to resume
     IL::Emitter(context.program, *interruptBlock).Branch(resumeBlock);
@@ -1213,7 +1251,7 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     return resumeBlock->begin();
 }
 
-IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData) {
+IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData) {
     /**
      * First-event optimized acquisition.
      *
@@ -1244,10 +1282,10 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
     
     // Split the iterator to resume
     // Excluding the iterator itself, since we may want to reference the instruction results
-    it.block->Split(resumeBlock, std::next(it));
+    insertIt.block->Split(resumeBlock, insertIt);
 
     // Immediately branch to the header
-    IL::Emitter(context.program, *it.block).Branch(headerBlock);
+    IL::Emitter(context.program, *insertIt.block).Branch(headerBlock);
     IL::Emitter<> headerEmitter(context.program, *headerBlock);
 
     // Find the relevant breakpoint
@@ -1352,7 +1390,7 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
     return resumeBlock;
 }
 
-IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
+IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
     /**
     * acq = acquire()
     * if (acq) {
@@ -1370,7 +1408,7 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::
     IL::BasicBlock* mergeBlock   = context.function.GetBasicBlocks().AllocBlock("Bk.Inject.Merge");
 
     // Acquire the breakpoint
-    IL::BasicBlock* resumeBlock = AcquireBreakpointFirstEvent(context, it, headerBlock, breakpoint, breakpointData);
+    IL::BasicBlock* resumeBlock = AcquireBreakpointFirstEvent(context, insertIt, headerBlock, breakpoint, breakpointData);
 
     // Header
     IL::ID staticPayloadDataOffset;
@@ -1442,7 +1480,7 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::
     return resumeBlock;
 }
 
-IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *interruptBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
+IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *interruptBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
     /**
      * <instr>
      *
@@ -1465,10 +1503,10 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
 
     // Split the iterator to resume
     // Excluding the iterator itself, since we may want to reference the instruction results
-    it.block->Split(resumeBlock, std::next(it));
+    insertIt.block->Split(resumeBlock, insertIt);
     
     // Immediately branch to the header
-    IL::Emitter(context.program, *it.block).Branch(hashHeaderBlock);
+    IL::Emitter(context.program, *insertIt.block).Branch(hashHeaderBlock);
 
     // Shared header
     IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader;

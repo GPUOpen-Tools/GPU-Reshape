@@ -36,27 +36,30 @@
 #   define DX12_DIAGNOSTIC 0
 #endif
 
+/// Enable all shader compilation debug options
+#define SHADER_COMPILER_ALL_DEBUG 0
+
 /// Enable debugging mode for shader compiler
-#define SHADER_COMPILER_DEBUG (DX12_DIAGNOSTIC && 0)
+#define SHADER_COMPILER_DEBUG (DX12_DIAGNOSTIC && (SHADER_COMPILER_ALL_DEBUG || 0))
 
 /// Enable serial compilation for debugging purposes
-#define SHADER_COMPILER_SERIAL (DX12_DIAGNOSTIC && 0)
-
-/// Log allocations
-#define LOG_ALLOCATION (DX12_DIAGNOSTIC && 0)
+#define SHADER_COMPILER_SERIAL (DX12_DIAGNOSTIC && (SHADER_COMPILER_ALL_DEBUG || 0))
 
 /// Validates LLVM bit-stream 1:1 read / writes
-#define DXIL_VALIDATE_MIRROR (DX12_DIAGNOSTIC && 0)
+#define DXIL_VALIDATE_MIRROR (DX12_DIAGNOSTIC && (SHADER_COMPILER_ALL_DEBUG || 0))
 
 /// Dump DXIL bit stream to file?
 ///   Useful with llvm-bcanalyzer
-#define DXIL_DUMP_BITSTREAM (DX12_DIAGNOSTIC && 0)
+#define DXIL_DUMP_BITSTREAM (DX12_DIAGNOSTIC && (SHADER_COMPILER_ALL_DEBUG || 0))
 
 /// Dump DXBC byte stream to file?
-#define DXBC_DUMP_STREAM (DX12_DIAGNOSTIC && 0)
+#define DXBC_DUMP_STREAM (DX12_DIAGNOSTIC && (SHADER_COMPILER_ALL_DEBUG || 0))
 
 /// Pretty print pipeline IL?
-#define DXIL_PRETTY_PRINT (DX12_DIAGNOSTIC && 0)
+#define DXIL_PRETTY_PRINT (DX12_DIAGNOSTIC && (SHADER_COMPILER_ALL_DEBUG || 0))
+
+/// Log allocations
+#define LOG_ALLOCATION (DX12_DIAGNOSTIC && 0)
 
 /// Log instrumentation information
 #define LOG_INSTRUMENTATION (1)

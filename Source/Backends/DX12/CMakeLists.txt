@@ -409,6 +409,7 @@ add_library(
     Layer/Source/Command/UserCommandBuffer.cpp
     Layer/Source/FeatureProxies.cpp
     Layer/Source/IL/DeviceCommandEmitter.cpp
+    Layer/Source/IL/DebugEmitter.cpp
 
     # Generated source dependencies
     Layer/Source/DeepCopy.Gen.cpp

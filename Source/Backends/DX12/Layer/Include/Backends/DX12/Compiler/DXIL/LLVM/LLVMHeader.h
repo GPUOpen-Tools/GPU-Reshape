@@ -471,6 +471,13 @@ enum class LLVMMetadataRecord : uint8_t {
     ArgList = 46
 };
 
+enum class LLVMDwarfOpKind {
+    None = 0,
+    BitPiece = 157,
+    AutoVariable = 256,
+    ArgumentVariable = 257
+};
+
 struct LLVMAbbreviationParameter {
     /// Encoding used
     LLVMAbbreviationEncoding encoding{};

@@ -39,6 +39,7 @@
 #include <Backends/DX12/RootSignature.h>
 #include <Backends/DX12/States/RootSignatureLogicalMapping.h>
 #include <Backends/DX12/IL/DeviceCommandEmitter.h>
+#include <Backends/DX12/IL/DebugEmitter.h>
 
 // Backend
 #include <Backend/ShaderProgram/IShaderProgram.h>
@@ -72,8 +73,9 @@ bool ShaderProgramHost::Install() {
     // Optional debug
     debug = registry->Get<ShaderCompilerDebug>();
 
-    // Install general command format
+    // Install emitters
     registry->AddNew<DeviceCommandFormat>();
+    registry->AddNew<DebugEmitter>(device);
 
     // OK
     return true;

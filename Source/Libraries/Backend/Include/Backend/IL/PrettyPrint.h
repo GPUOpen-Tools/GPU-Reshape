@@ -100,4 +100,10 @@ namespace IL {
     void PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out);
     void PrettyPrintBlockJsonGraph(const Function& function, PrettyPrintContext out);
     void PrettyPrintProgramJson(const Program& program, PrettyPrintContext out);
+
+    namespace Debug {
+        void PrettyPrintFile(const Program& program, const std::string& path);
+        void PrettyPrintConsole(const Program& program);
+        void PrettyPrintConsole(const Program& program, const Instruction* instr);
+    }
 }

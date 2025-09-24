@@ -69,6 +69,10 @@ class IShaderSGUIDHost;
 class ChecksumShaderProgram;
 struct CommandBuilder;
 
+namespace IL {
+    class IDebugEmitter;
+}
+
 class DebugFeature final : public IFeature, public IShaderFeature, public IBridgeListener {
 public:
     COMPONENT(DebugFeature);
@@ -122,7 +126,7 @@ private:
     /// @param it instruction to debug
     /// @param breakpoint breakpoint to be added
     /// @return next iterator
-    IL::BasicBlock::Iterator InjectBreakpoint(const IL::VisitContext& context, const IL::BasicBlock::Iterator& it, const DebugBreakpointMessage& breakpoint);
+    IL::BasicBlock::Iterator InjectBreakpoint(const IL::VisitContext& context, IL::BasicBlock::Iterator it, const DebugBreakpointMessage& breakpoint);
 
 private:
     struct Breakpoint {
@@ -236,13 +240,28 @@ private:
     /// @param breakpointData device breakpoint data
     void StoreBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData);
 
-    /// Try to get the texel format of a breakpoint
+    /// Get the raw (i.e., not reconstructed) debug value
     /// @param context parent context
-    /// @param instr exporting instruction
-    /// @param id value to check for
-    /// @param breakpoint host breakpoint data
+    /// @param instr debug instruction
+    /// @return invalid if failed
+    IL::ID GetInstructionRawDebugValue(const IL::VisitContext &context, const IL::Instruction* instr);
+    
+    /// Get the debug type for an instruction
+    /// @param context parent context
+    /// @param instr debug instruction
+    /// @return invalid if failed
+    const Backend::IL::Type* GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction* instr);
+    
+    /// Get the debug value for an instruction
+    /// @param context parent context
+    /// @param instr debug instruction
+    /// @param insertIt the insertion iterator for reconstruction
+    /// @return invalid if failed
+    IL::ID GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, IL::BasicBlock::Iterator& insertIt);
+    
+    /// Try to get the texel format of a breakpoint
     /// @return true if a format is appropriate, over structured data
-    bool GetBreakpointFormat(const IL::VisitContext& context, const IL::Instruction* instr, IL::ID id, BreakpointData& breakpointData);
+    bool GetBreakpointFormat(BreakpointData& breakpointData);
 
     /// Check if a kernel type is supported
     /// @param kernelType type to check
@@ -257,7 +276,7 @@ private:
     /// @param breakpoint host breakpoint data
     /// @param breakpointData device breakpoint data
     /// @return false if failed
-    bool GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, IL::ID value, Breakpoint *breakpoint, BreakpointData& breakpointData);
+    bool GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, const Backend::IL::Type* valueType, Breakpoint *breakpoint, BreakpointData& breakpointData);
 
     /// Store all exported breakpoint data
     /// @param context parent context
@@ -266,7 +285,7 @@ private:
     /// @param value value to check for
     /// @param breakpoint host breakpoint data
     /// @param breakpointData device breakpoint data
-    void StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, const IL::Instruction* instr, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    void StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData);
 
     /// Get first event ordering
     /// @param context parent context
@@ -283,7 +302,7 @@ private:
     /// @param breakpoint breakpoint data
     /// @param breakpointData
     /// @return next instruction iterator
-    IL::BasicBlock* AcquireBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    IL::BasicBlock* AcquireBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
     
     /// Acquire and allocate first event ordering
     /// @param it instruction being instrumented
@@ -291,7 +310,7 @@ private:
     /// @param breakpoint breakpoint data
     /// @param breakpointData
     /// @return next instruction iterator
-    IL::BasicBlock* AcquireAndAllocateBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    IL::BasicBlock* AcquireAndAllocateBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
     
     /// Acquire and allocate all event ordering
     /// @param it instruction being instrumented
@@ -299,7 +318,7 @@ private:
     /// @param breakpoint breakpoint data
     /// @param breakpointData
     /// @return next instruction iterator
-    IL::BasicBlock* AcquireAndAllocateBreakpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &it, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    IL::BasicBlock* AcquireAndAllocateBreakpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
 
     /// Check if we can collect any breakpoint data
     /// @param breakpoint target breakpoint
@@ -386,10 +405,11 @@ private:
     std::mutex mutex;
     
     /// Shared components
-    ComRef<IShaderSGUIDHost> sguidHost;
-    ComRef<IShaderDataHost>  shaderDataHost;
-    ComRef<IScheduler>       scheduler;
-    ComRef<IDeviceStateVote> stateVote;
+    ComRef<IShaderSGUIDHost>  sguidHost;
+    ComRef<IShaderDataHost>   shaderDataHost;
+    ComRef<IScheduler>        scheduler;
+    ComRef<IDeviceStateVote>  stateVote;
+    ComRef<IL::IDebugEmitter> debugEmitter;
 
     /// All device states
     DeviceStateRef<DeviceStatePooling> poolingState;

@@ -29,6 +29,16 @@
 #include <Backend/IL/Function.h>
 #include <Backend/IL/BasicBlock.h>
 
+// System
+#ifdef _MSC_VER
+#include <Windows.h>
+#endif // _MSC_VER
+
+// Std
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 void IL::PrettyPrint(const Program &program, IL::PrettyPrintContext out) {
     out.Line() << "Program\n";
     out.Line() << "Bound     : " << program.GetIdentifierMap().GetMaxID() << "\n";
@@ -2604,4 +2614,44 @@ void IL::PrettyPrintProgramJson(const Program& program, PrettyPrintContext out) 
 
     // Close document
     out.Line() << "}";
+}
+
+void IL::Debug::PrettyPrintFile(const Program &program, const std::string &path) {
+    std::ofstream out(path);
+    if (!out.good()) {
+        return;
+    }
+
+    PrettyPrintContext context(out);
+    PrettyPrint(program, context);
+}
+
+void IL::Debug::PrettyPrintConsole(const Program &program) {
+#ifdef _MSC_VER
+    std::stringstream ss;
+    PrettyPrintContext context(ss);
+#else  // _MSC_VER
+    PrettyPrintContext context(std::cout);
+#endif  // _MSC_VER
+
+    PrettyPrint(program, context);
+    
+#ifdef _MSC_VER
+    OutputDebugStringA(ss.str().c_str());
+#endif // _MSC_VER
+}
+
+void IL::Debug::PrettyPrintConsole(const Program &program, const Instruction *instr) {
+#ifdef _MSC_VER
+    std::stringstream ss;
+    PrettyPrintContext context(ss);
+#else  // _MSC_VER
+    PrettyPrintContext context(std::cout);
+#endif  // _MSC_VER
+
+    PrettyPrint(&program, instr, context);
+    
+#ifdef _MSC_VER
+    OutputDebugStringA(ss.str().c_str());
+#endif // _MSC_VER
 }

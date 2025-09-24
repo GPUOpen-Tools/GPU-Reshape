@@ -50,6 +50,7 @@ struct DXILDebugModule final : public IDXDebugModule {
     ///Overrides
     DXSourceAssociation GetSourceAssociation(const IL::Function* function, uint32_t codeOffset) override;
     std::span<DXInstructionAssociation> GetInstructionAssociations(uint16_t fileUID, uint32_t line) override;
+    DXDwardInfo GetDwarfInfo(const IL::Function* function, uint32_t codeOffset) override;
     std::string_view GetLine(uint32_t fileUID, uint32_t line) override;
     std::string_view GetFilename() override;
     std::string_view GetSourceFilename(uint32_t fileUID) override;
@@ -74,6 +75,10 @@ private:
     /// \param block source block
     void ParseMetadata(LLVMBlock* block);
 
+    /// Parse the symbol table
+    /// @param child source block
+    void ParseSymTab(LLVMBlock * child);
+    
     /// Parse a named metadata node
     /// \param block source block
     /// \param record source record
@@ -103,6 +108,17 @@ private:
     /// Create source fragments from the optional source block
     void CreateFragmentsFromSourceBlock();
 
+private:
+    /// Get a value cstring mapping, may incur an allocation
+    /// \param id value id
+    /// \return nullptr if not found
+    const char* GetValueAllocation(uint32_t id);
+
+    /// Get the backend type from a dward type
+    /// @param id dwarf id
+    /// @return type
+    const Backend::IL::Type* GetTypeFromDwarf(uint32_t id);
+    
 private:
     /// Scanner
     DXILPhysicalBlockScan scan;
@@ -164,9 +180,23 @@ private:
         DXSourceAssociation sourceAssociation;
     };
 
+    struct InstructionDWARFInfo {
+        /// Name of the written variable
+        const char* name {nullptr};
+
+        /// Metadata type id
+        uint32_t typeMdId{0};
+
+        /// All values assigned to this instruction
+        std::vector<DXDwardValue> values;
+    };
+
     struct FunctionMetadata {
         /// All instruction data, used for cross referencing
         std::vector<InstructionMetadata> instructionMetadata;
+
+        /// Code offset to dwarf info
+        std::unordered_map<uint32_t, InstructionDWARFInfo> instructionDwarfInfos;
     };
 
     struct InstructionAssociationSet {
@@ -181,12 +211,31 @@ private:
     std::unordered_map<uint64_t, InstructionAssociationSet> instructionAssociations;
 
 private:
+    /// Parse a special debug call
+    void ParseDebugCall(FunctionMetadata& functionMd, const LLVMRecord &record, uint32_t anchor, uint32_t functionValueIndex);
+    
+    /// Parse a special debug value call
+    void ParseDebugValueCall(FunctionMetadata& functionMd, const LLVMRecord &record, uint32_t anchor);
+
+private:
+    /// Symtab values
+    Vector<LLVMRecordStringView> valueStrings;
+
+    /// String values, allocated on demand
+    Vector<char*> valueAllocations;
+    
+private:
     struct Metadata {
         /// Underlying MD
         LLVMMetadataRecord type{};
 
+        /// Owning record
+        const LLVMRecord *record{nullptr};
+
         /// Payload data
         union {
+            uint32_t value;
+            
             struct {
                 uint32_t linearFileUID;
             } file;
@@ -210,6 +259,22 @@ private:
             struct {
                 uint32_t fileMdId;
             } compileUnit;
+
+            struct {
+                LLVMDwarfOpKind op;
+                uint32_t nameMdId;
+                uint32_t mdTypeId;
+            } localVar;
+
+            struct {
+                LLVMDwarfOpKind op;
+                union {
+                    struct {
+                        uint32_t bitStart;
+                        uint32_t bitEnd;
+                    } bitPiece;
+                };
+            } expression;
         };
     };
 
@@ -228,8 +293,9 @@ private:
         /// Payload data
         union {
             struct {
-                uint32_t parameterCount : 16;
-                uint32_t isVoidReturn   : 1;
+                uint32_t* parameterTypes;
+                uint32_t  parameterCount : 16;
+                uint32_t  isVoidReturn   : 1;
             } function;
         };
     };
@@ -237,7 +303,9 @@ private:
     /// Value validation kind
     enum class ThinValueKind {
         None,
-        Function
+        Function,
+        Parameter,
+        Instruction
     };
 
     /// Lightweight value definition
@@ -248,6 +316,9 @@ private:
         /// Optional type
         uint32_t thinType{~0u};
 
+        /// Offset of the declaring record
+        uint32_t recordOffset{0};
+
         /// Is this value non-semantic? Meaning, stripped from the canonical module?
         bool bIsNonSemantic{false};
     };
@@ -257,6 +328,9 @@ private:
 
     /// All values
     Vector<ThinValue> thinValues;
+
+    /// Allocator for misc data
+    LinearBlockAllocator<256> blockAllocator;
 
 private:
     struct ThinFunction {

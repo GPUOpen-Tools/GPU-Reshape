@@ -40,6 +40,8 @@ DXILDebugModule::DXILDebugModule(const Allocators &allocators, DXILModule* modul
     : scan(allocators),
       sourceFragments(allocators),
       functionMetadata(allocators),
+      valueStrings(allocators.Tag(kAllocModuleDXILSymbols)),
+      valueAllocations(allocators.Tag(kAllocModuleDXILSymbols)),
       metadata(allocators),
       thinTypes(allocators),
       thinValues(allocators),
@@ -88,6 +90,31 @@ std::span<DXInstructionAssociation> DXILDebugModule::GetInstructionAssociations(
 
     // Get view
     return std::span(it->second.set.data(), it->second.set.size());
+}
+
+DXDwardInfo DXILDebugModule::GetDwarfInfo(const IL::Function *function, uint32_t codeOffset) {
+    DXILPhysicalBlockTable& table = module->GetTable();
+
+    // Get the linked index
+    uint32_t index = table.function.GetNonPrototypeFunctionIndex(function->GetID());
+
+    // Get function
+    FunctionMetadata& md = functionMetadata[index];
+    if (codeOffset >= md.instructionMetadata.size()) {
+        return {};
+    }
+
+    // May not have any debug info
+    auto it = md.instructionDwarfInfos.find(codeOffset);
+    if (it == md.instructionDwarfInfos.end()) {
+        return {};
+    }
+
+    return DXDwardInfo {
+        .name = it->second.name,
+        .type = GetTypeFromDwarf(it->second.typeMdId),
+        .values = it->second.values
+    };
 }
 
 std::string_view DXILDebugModule::GetLine(uint32_t fileUID, uint32_t line) {
@@ -172,6 +199,9 @@ bool DXILDebugModule::Parse(const void *byteCode, uint64_t byteLength) {
                 break;
             case LLVMReservedBlock::Metadata:
                 ParseMetadata(block);
+                break;
+            case LLVMReservedBlock::ValueSymTab:
+                ParseSymTab(block);
                 break;
         }
     }
@@ -298,8 +328,12 @@ void DXILDebugModule::ParseTypes(LLVMBlock *block) {
                 // Number of parameters
                 type.function.parameterCount = record.opCount - 2;
 
+                // Allocate types
+                type.function.parameterTypes = blockAllocator.AllocateArray<uint32_t>(type.function.parameterCount);
+
                 // Inherit non-semantic from parameters
                 for (uint32_t i = 2; i < record.opCount; i++) {
+                    type.function.parameterTypes[i - 2] = static_cast<uint32_t>(record.Op(i));
                     type.bIsNonSemantic |= thinTypes.at(record.Op(i)).bIsNonSemantic;
                 }
                 break;
@@ -338,7 +372,8 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
 
     // Create value per parameter
     for (uint32_t i = 0; i < thinTypes[function.thinType].function.parameterCount; i++) {
-        thinValues.emplace_back();
+        ThinValue& value = thinValues.emplace_back();
+        value.kind = ThinValueKind::Parameter;
     }
     
     for(LLVMBlock* child : block->blocks) {
@@ -347,6 +382,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                 ASSERT(false, "Invalid block");
                 break;
             case LLVMReservedBlock::ValueSymTab:
+                ParseSymTab(child);
                 break;
             case LLVMReservedBlock::UseList:
                 break;
@@ -364,13 +400,14 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
     // Pending metadata
     InstructionMetadata metadata;
 
-    for (const LLVMBlockElement& element : block->elements) {
-        if (!element.Is(LLVMBlockElementType::Record)) {
-            continue;
-        }
+    /// Was the last instruction semantically relevant?
+    bool isSemanticInstruction = false;
 
-        // Get record
-        const LLVMRecord& record = block->records[element.id];
+    /// Current source record offset, not debug
+    uint32_t recordOffset = 0;
+
+    for (uint32_t recordIdx = 0; recordIdx < static_cast<uint32_t>(block->records.size()); recordIdx++) {
+        LLVMRecord &record = block->records[recordIdx];
 
         // Current anchor
         uint32_t anchor = static_cast<uint32_t>(thinValues.size());
@@ -380,27 +417,51 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
             default: {
                 // Result value?
                 if (HasValueAllocation(record.As<LLVMFunctionRecord>(), record.opCount)) {
-                    thinValues.emplace_back();
+                    ThinValue& value = thinValues.emplace_back();
+                    value.kind = ThinValueKind::Instruction;
+                    value.recordOffset = recordOffset;
                 }
 
                 // Add metadata and consume
                 functionMd.instructionMetadata.emplace_back();
+
+                // Always semantically relevant
+                isSemanticInstruction = true;
+
+                // Always in source
+                recordOffset++;
                 break;
             }
 
             case LLVMFunctionRecord::InstCall:
             case LLVMFunctionRecord::InstCall2: {
-                const ThinValue& called = thinValues.at(anchor - record.Op(3));
+                uint32_t functionValueIndex = anchor - static_cast<uint32_t>(record.Op(3));
+                
+                ThinValue called = thinValues.at(functionValueIndex);
                 ASSERT(called.kind == ThinValueKind::Function, "Mismatched thin type");
-
+                
                 // Ignore non-semantic instructions from cross-referencing
-                if (!called.bIsNonSemantic) {
+                if (called.bIsNonSemantic) {
+                    ASSERT(thinTypes[called.thinType].function.isVoidReturn, "Unexpected function");
+                    ParseDebugCall(functionMd, record, anchor, functionValueIndex);
+                    isSemanticInstruction = false;
+                } else {
                     functionMd.instructionMetadata.emplace_back();
+
+                    // Always semantically relevant
+                    isSemanticInstruction = true;
                 }
                 
                 // Allocate return value if need be
                 if (!thinTypes[called.thinType].function.isVoidReturn) {
-                    thinValues.emplace_back();
+                    ThinValue& value = thinValues.emplace_back();
+                    value.kind = ThinValueKind::Instruction;
+                    value.recordOffset = recordOffset;
+                }
+
+                // Increment source record on semantic
+                if (!called.bIsNonSemantic) {
+                    recordOffset++;
                 }
                 break;
             }
@@ -416,7 +477,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                     metadata.sourceAssociation.fileUID = static_cast<uint16_t>(GetLinearFileUID(scope - 1));
                 }
 
-                if (functionMd.instructionMetadata.size()) {
+                if (isSemanticInstruction && functionMd.instructionMetadata.size()) {
                     functionMd.instructionMetadata.back() = metadata;
                 }
                 break;
@@ -424,7 +485,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
 
             case LLVMFunctionRecord::DebugLOCAgain: {
                 // Repush pending
-                if (functionMd.instructionMetadata.size()) {
+                if (isSemanticInstruction && functionMd.instructionMetadata.size()) {
                     functionMd.instructionMetadata.back() = metadata;
                 }
                 break;
@@ -447,37 +508,70 @@ void DXILDebugModule::ParseConstants(LLVMBlock *block) {
 }
 
 void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
-    // Current name
-    LLVMRecordStringView recordName;
-
     // Value anchor
     uint32_t anchor = static_cast<uint32_t>(metadata.size());
 
     // Preallocate
-    metadata.resize(metadata.size() + block->records.size());
+    metadata.reserve(metadata.size() + block->records.size());
 
     // Visit records
     for (size_t i = 0; i < block->records.size(); i++) {
         const LLVMRecord &record = block->records[i];
 
-        // Setup md
-        Metadata& md = metadata[anchor + i];
-        md.type = static_cast<LLVMMetadataRecord>(record.id);
-
-        // Handle record
-        switch (md.type) {
+        switch (static_cast<LLVMMetadataRecord>(record.id)) {
             default: {
-                // Ignored
                 break;
+            }
+
+            case LLVMMetadataRecord::Kind: {
+                // No value addition
+                continue;
             }
 
             case LLVMMetadataRecord::Name: {
                 // Set name
-                recordName = LLVMRecordStringView(record, 0);
+                LLVMRecordStringView recordName = LLVMRecordStringView(record, 0);
 
                 // Validate next
                 ASSERT(i + 1 != block->records.size(), "Expected succeeding metadata record");
                 ASSERT(block->records[i + 1].Is(LLVMMetadataRecord::NamedNode), "Succeeding record to Name must be NamedNode");
+
+                ParseNamedMetadata(block, anchor, block->records[++i], recordName);
+                continue;
+            }
+        }
+
+        // Setup md
+        Metadata& md = metadata.emplace_back();
+        md.type = static_cast<LLVMMetadataRecord>(record.id);
+        md.record = &record;
+
+        // Handle record
+        switch (md.type) {
+            default: {
+                ASSERT(false, "Unhandled type");
+                break;
+            }
+
+            case LLVMMetadataRecord::Node:
+            case LLVMMetadataRecord::OldFnNode:
+            case LLVMMetadataRecord::OldNode:
+            case LLVMMetadataRecord::DistinctNode:
+            case LLVMMetadataRecord::Location:
+            case LLVMMetadataRecord::GenericDebug:
+            case LLVMMetadataRecord::SubRange: 
+            case LLVMMetadataRecord::Enumerator: 
+            case LLVMMetadataRecord::BasicType: 
+            case LLVMMetadataRecord::DerivedType: 
+            case LLVMMetadataRecord::CompositeType: 
+            case LLVMMetadataRecord::SubroutineType: 
+            case LLVMMetadataRecord::Module: 
+            case LLVMMetadataRecord::TemplateType: 
+            case LLVMMetadataRecord::TemplateValue: 
+            case LLVMMetadataRecord::GlobalVar: 
+            case LLVMMetadataRecord::ObjProperty: 
+            case LLVMMetadataRecord::ImportedEntity: 
+            case LLVMMetadataRecord::StringOld: {
                 break;
             }
 
@@ -506,6 +600,36 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                 break;
             }
 
+            case LLVMMetadataRecord::Value: {
+                md.value = static_cast<uint32_t>(record.Op(1));
+                break;
+            }
+
+            case LLVMMetadataRecord::LocalVar: {
+                md.localVar.op = static_cast<LLVMDwarfOpKind>(record.Op(1));
+                md.localVar.mdTypeId = static_cast<uint32_t>(record.Op(6));
+                md.localVar.nameMdId = static_cast<uint32_t>(record.Op(3));
+                break;
+            }
+
+            case LLVMMetadataRecord::Expression: {
+                if (record.opCount > 1) {
+                    md.expression.op = static_cast<LLVMDwarfOpKind>(record.Op(1));
+                
+                    switch (md.expression.op) {
+                        default: {
+                            break;
+                        }
+                        case LLVMDwarfOpKind::BitPiece: {
+                            md.expression.bitPiece.bitStart = static_cast<uint32_t>(record.Op(2));
+                            md.expression.bitPiece.bitEnd = static_cast<uint32_t>(record.Op(3));
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+
             case LLVMMetadataRecord::File: {
                 md.file.linearFileUID = static_cast<uint32_t>(sourceFragments.size());
 
@@ -521,9 +645,43 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                 fragment.filename = SanitizeCompilerPath(fragment.filename);
                 break;
             }
+        }
+    }
+}
 
-            case LLVMMetadataRecord::NamedNode: {
-                ParseNamedMetadata(block, anchor, record, recordName);
+void DXILDebugModule::ParseSymTab(LLVMBlock *block) {
+    for (const LLVMRecord &record: block->records) {
+        switch (static_cast<LLVMSymTabRecord>(record.id)) {
+            default: {
+                break;
+            }
+            case LLVMSymTabRecord::Entry: {
+                /*
+                 * LLVM Specification
+                 *   VST_ENTRY: [valueid, namechar x N]
+                 */
+
+                // May not be mapped
+                if (uint32_t value = record.Op32(0)) {
+                    // Grow to capacity
+                    if (valueStrings.size() <= value) {
+                        valueStrings.resize(value + 1);
+                        valueAllocations.resize(value + 1);
+                    }
+
+                    // Insert from operand 1
+                    valueStrings[value] = LLVMRecordStringView(record, 1);
+
+                    // Debugging experience
+#ifndef NDEBUG
+                    char buffer[256];
+                    if (record.opCount < 256) {
+                        record.FillOperands(buffer, 1);
+                    }
+
+                    GetValueAllocation(value);
+#endif // NDEBUG
+                }
                 break;
             }
         }
@@ -804,6 +962,100 @@ void DXILDebugModule::CreateFragmentsFromSourceBlock() {
             if (fragment->contents[i] == '\n') {
                 fragment->lineOffsets.push_back(static_cast<uint32_t>(i + 1));
             }
+        }
+    }
+}
+
+const char* DXILDebugModule::GetValueAllocation(uint32_t id) {
+    if (id >= valueStrings.size() || !valueStrings[id]) {
+        return nullptr;
+    }
+
+    // Current view
+    const LLVMRecordStringView& view = valueStrings[id];
+
+    // Not allocated?
+    if (!valueAllocations[id]) {
+        valueAllocations[id] = blockAllocator.AllocateArray<char>(view.Length() + 1);
+        view.CopyTerminated(valueAllocations[id]);
+    }
+
+    return valueAllocations[id];
+}
+
+const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(uint32_t typeMdId) {
+    Metadata& typeMd = metadata[typeMdId];
+    return nullptr;
+}
+
+void DXILDebugModule::ParseDebugCall(FunctionMetadata& functionMd, const LLVMRecord &record, uint32_t anchor, uint32_t functionValueIndex) {
+    // Determine call from string table
+    if (functionValueIndex >= valueStrings.size()) {
+        return;
+    }
+    
+    LLVMRecordStringView view = valueStrings[functionValueIndex];
+
+    // Debug value?
+    if (view.StartsWith("llvm.dbg.value")) {
+        ParseDebugValueCall(functionMd, record, anchor);
+    }
+}
+
+void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LLVMRecord &record, uint32_t anchor) {
+    // Interpret operands
+    uint32_t valueMdIndex  = anchor - static_cast<uint32_t>(record.Op(4));
+    uint32_t byteOffset    = anchor - static_cast<uint32_t>(record.Op(5));
+    Metadata &variableMd   = this->metadata[anchor - static_cast<uint32_t>(record.Op(6))];
+    Metadata& expressionMd = this->metadata[anchor - static_cast<uint32_t>(record.Op(7))];
+
+    // No instruction to associate with?
+    if (!functionMd.instructionMetadata.size()) {
+        return;
+    }
+
+    // Optional, variable name
+    char* variableName = nullptr;
+
+    // Copy over name if possible
+    if (variableMd.localVar.nameMdId) {
+        LLVMRecordStringView name(*this->metadata[variableMd.localVar.nameMdId - 1].record, 0);
+        variableName = blockAllocator.AllocateArray<char>(name.Length() + 1);
+        name.CopyTerminated(variableName);
+    }
+
+    // By default, always associate with the last one
+    InstructionDWARFInfo &set = functionMd.instructionDwarfInfos[static_cast<uint32_t>(functionMd.instructionMetadata.size() - 1)];
+    set.name = variableName;
+    set.typeMdId = variableMd.localVar.mdTypeId;
+
+    // Setup value
+    DXDwardValue& value = set.values.emplace_back();
+    value.codeOffset = IL::InvalidID;
+    value.kind = expressionMd.expression.op;
+
+    // Get value reference
+    if (Metadata &valueMd = this->metadata[valueMdIndex]; valueMd.type == LLVMMetadataRecord::Value) {
+        // We cannot reliably cross-reference constants, just do records
+        const ThinValue& debugValue = thinValues[valueMd.value];
+        switch (debugValue.kind) {
+            default:
+                break;
+            case ThinValueKind::Instruction:
+                value.codeOffset = debugValue.recordOffset;
+                break;
+        }
+    }
+
+    // Copy over dwarf kind
+    switch (value.kind) {
+        default: {
+            break;
+        }
+        case LLVMDwarfOpKind::BitPiece: {
+            value.bitWise.bitStart = expressionMd.expression.bitPiece.bitStart;
+            value.bitWise.bitEnd = expressionMd.expression.bitPiece.bitEnd;
+            break;
         }
     }
 }
