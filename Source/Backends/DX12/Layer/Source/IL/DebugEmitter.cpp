@@ -29,6 +29,7 @@
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/Compiler/IDXDebugModule.h>
 #include <Backends/DX12/Compiler/IDXModule.h>
+#include <Backend/IL/PrettyPrint.h>
 
 DebugEmitter::DebugEmitter(DeviceState *device) : device(device) {
     
@@ -51,35 +52,14 @@ const Backend::IL::Type * DebugEmitter::ReconstructValueType(IL::Program &progra
     }
 
     // Get the dwarf info for the code offset
-    DXDwardInfo info = shaderState->module->GetDebug()->GetDwarfInfo(fn, instr->source.codeOffset);
+    DXDwarfInfo info = shaderState->module->GetDebug()->GetDwarfInfo(program.GetTypeMap(), fn, instr->source.codeOffset);
 
     // No values? No reconstruction
-    if (info.values.empty()) {
+    if (info.variables.empty()) {
         return nullptr;
     }
 
-    /// THIS IS INCORRECT, USE STORES FROM DWARF INFO ///
-    /// Just dummy code until then
-
-    DXCodeOffsetTraceback valueTraceback = shaderState->module->GetCodeOffsetTraceback(info.values[0].codeOffset);
-
-    IL::BasicBlock *block = fn->GetBasicBlocks().GetBlock(valueTraceback.basicBlockID);
-
-    IL::BasicBlock::Iterator instrIt = block->begin();
-    std::advance(instrIt, valueTraceback.instructionIndex);
-
-    const IL::Instruction *valueInstr = instrIt.Get();
-    
-    const Backend::IL::Type *contained = program.GetTypeMap().GetType(valueInstr->result);
-    if (!contained) {
-        return nullptr;
-    }
-
-    if (info.values.size() == 1) {
-        return contained;
-    }
-    
-    return Backend::IL::Splat(program, contained, static_cast<uint8_t>(info.values.size()));
+    return info.variables[0].type;
 }
 
 IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruction *instr) {
@@ -101,24 +81,21 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruct
     }
 
     // Get the dwarf info for the code offset
-    DXDwardInfo info = shaderState->module->GetDebug()->GetDwarfInfo(fn, instr->source.codeOffset);
+    DXDwarfInfo info = shaderState->module->GetDebug()->GetDwarfInfo(program.GetTypeMap(), fn, instr->source.codeOffset);
 
     // No values? No reconstruction
-    if (info.values.empty()) {
+    if (info.variables.empty()) {
         return IL::InvalidID;
     }
 
-    // Get the reconstructed value type
-    const Backend::IL::Type *type = ReconstructValueType(program, instr);
-    if (!type) {
-        return IL::InvalidID;
-    }
+    // Assumes the first one
+    DXDwarfVariableValue& variableValue =  info.variables[0];
 
     // All values
     TrivialStackVector<IL::ID, 16> values;
 
     // Resolve all the values
-    for (const DXDwardValue& value : info.values) {
+    for (const DXDwarfValue& value : variableValue.values) {
         if (value.codeOffset == IL::InvalidID) {
             continue;
         }
@@ -136,6 +113,9 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruct
 
         // Append value
         const IL::Instruction *valueInstr = instrIt.Get();
+#if 0
+        IL::Debug::PrettyPrintConsole(program, valueInstr);
+#endif // 0
         values.Add(valueInstr->result);
     }
 
@@ -145,5 +125,5 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruct
     }
 
     // Construct from the splatted value
-    return emitter.ConstructPtr(type, values.Data(), static_cast<uint32_t>(values.Size()));
+    return emitter.ConstructPtr(variableValue.type, values.Data(), static_cast<uint32_t>(values.Size()));
 }

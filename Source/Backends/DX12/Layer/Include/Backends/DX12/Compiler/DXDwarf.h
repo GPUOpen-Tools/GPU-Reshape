@@ -27,11 +27,10 @@
 #pragma once
 
 // Layer
-#include "Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h"
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
 
-// Std
-#include <cstdint>
-#include <span>
+// Common
+#include <Common/Containers/TrivialStackVector.h>
 
 namespace Backend::IL {
     struct Type;
@@ -41,7 +40,7 @@ namespace IL {
     struct Function;
 }
 
-struct DXDwardValue {
+struct DXDwarfValue {
     /// Type of this value
     LLVMDwarfOpKind kind;
 
@@ -57,7 +56,7 @@ struct DXDwardValue {
     };
 };
 
-struct DXDwardInfo {
+struct DXDwarfVariableValue {
     /// Name of the variable
     const char* name{nullptr};
 
@@ -65,5 +64,10 @@ struct DXDwardInfo {
     const Backend::IL::Type* type{nullptr};
 
     /// All values assigned
-    std::span<DXDwardValue> values;
+    std::vector<DXDwarfValue> values;
+};
+
+struct DXDwarfInfo {
+    /// All variables assigned
+    std::vector<DXDwarfVariableValue> variables;
 };

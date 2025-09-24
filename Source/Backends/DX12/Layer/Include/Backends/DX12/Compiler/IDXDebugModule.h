@@ -30,6 +30,9 @@
 #include "DXSourceAssociation.h"
 #include "DXDwarf.h"
 
+// Backend
+#include <Backend/IL/TypeMap.h>
+
 // Std
 #include <span>
 #include <string_view>
@@ -56,10 +59,11 @@ public:
     virtual std::span<DXInstructionAssociation> GetInstructionAssociations(uint16_t fileUID, uint32_t line) = 0;
 
     /// Get the dward info
+    /// \param typeMap map to insert into
     /// \param function the owning function to lookup for
     /// \param codeOffset the instruction (i.e. record) code offset
     /// @return default if failed
-    virtual DXDwardInfo GetDwarfInfo(const IL::Function* function, uint32_t codeOffset) = 0;
+    virtual DXDwarfInfo GetDwarfInfo(Backend::IL::TypeMap& typeMap, const IL::Function* function, uint32_t codeOffset) = 0;
 
     /// Get a source view of a line
     /// \param fileUID originating file uid

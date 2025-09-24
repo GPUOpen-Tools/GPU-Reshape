@@ -478,6 +478,19 @@ enum class LLVMDwarfOpKind {
     ArgumentVariable = 257
 };
 
+enum class LLVMDwarfTag {
+    ClassType = 2,
+    Member = 13,
+    Typedef = 22
+};
+
+enum class LLVMDwarfTypeEncoding {
+    Bool = 2,
+    Float = 4,
+    Signed = 5,
+    Unsigned = 7
+};
+
 struct LLVMAbbreviationParameter {
     /// Encoding used
     LLVMAbbreviationEncoding encoding{};

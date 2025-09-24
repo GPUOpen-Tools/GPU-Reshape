@@ -92,7 +92,7 @@ std::span<DXInstructionAssociation> DXILDebugModule::GetInstructionAssociations(
     return std::span(it->second.set.data(), it->second.set.size());
 }
 
-DXDwardInfo DXILDebugModule::GetDwarfInfo(const IL::Function *function, uint32_t codeOffset) {
+DXDwarfInfo DXILDebugModule::GetDwarfInfo(Backend::IL::TypeMap& typeMap, const IL::Function *function, uint32_t codeOffset) {
     DXILPhysicalBlockTable& table = module->GetTable();
 
     // Get the linked index
@@ -110,11 +110,16 @@ DXDwardInfo DXILDebugModule::GetDwarfInfo(const IL::Function *function, uint32_t
         return {};
     }
 
-    return DXDwardInfo {
-        .name = it->second.name,
-        .type = GetTypeFromDwarf(it->second.typeMdId),
-        .values = it->second.values
-    };
+    // Copy over info
+    DXDwarfInfo info;
+    for (const InstructionDwarfVariable& sourceVar : it->second.variables) {
+        DXDwarfVariableValue& variable =  info.variables.emplace_back();
+        variable.name = sourceVar.name;
+        variable.type = GetTypeFromDwarf(typeMap, sourceVar.typeMdId - 1);
+        variable.values = sourceVar.values;
+    }
+    
+    return info;
 }
 
 std::string_view DXILDebugModule::GetLine(uint32_t fileUID, uint32_t line) {
@@ -561,13 +566,8 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
             case LLVMMetadataRecord::GenericDebug:
             case LLVMMetadataRecord::SubRange: 
             case LLVMMetadataRecord::Enumerator: 
-            case LLVMMetadataRecord::BasicType: 
-            case LLVMMetadataRecord::DerivedType: 
-            case LLVMMetadataRecord::CompositeType: 
             case LLVMMetadataRecord::SubroutineType: 
             case LLVMMetadataRecord::Module: 
-            case LLVMMetadataRecord::TemplateType: 
-            case LLVMMetadataRecord::TemplateValue: 
             case LLVMMetadataRecord::GlobalVar: 
             case LLVMMetadataRecord::ObjProperty: 
             case LLVMMetadataRecord::ImportedEntity: 
@@ -627,6 +627,74 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                         }
                     }
                 }
+                break;
+            }
+
+            case LLVMMetadataRecord::DerivedType: {
+                if (record.opCount > 1) {
+                    md.derivedType.tag = static_cast<LLVMDwarfTag>(record.Op(1));
+
+                    switch (md.derivedType.tag) {
+                        default: {
+                            break;
+                        }
+                        case LLVMDwarfTag::Typedef: {
+                            md.derivedType._typedef.nameMdId = static_cast<uint32_t>(record.Op(2));
+                            md.derivedType._typedef.baseTypeMdId = static_cast<uint32_t>(record.Op(6));
+                            break;
+                        }
+                        case LLVMDwarfTag::Member: {
+                            md.derivedType.member.nameMdId = static_cast<uint32_t>(record.Op(2));
+                            md.derivedType.member.baseTypeMdId = static_cast<uint32_t>(record.Op(6));
+                            md.derivedType.member.size = static_cast<uint32_t>(record.Op(7));
+                            md.derivedType.member.align = static_cast<uint32_t>(record.Op(8));
+                            md.derivedType.member.offset = static_cast<uint32_t>(record.Op(9));
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+
+            case LLVMMetadataRecord::CompositeType: {
+                if (record.opCount > 1) {
+                    md.compositeType.tag = static_cast<LLVMDwarfTag>(record.Op(1));
+
+                    switch (md.compositeType.tag) {
+                        default: {
+                            break;
+                        }
+                        case LLVMDwarfTag::ClassType: {
+                            md.compositeType._class.nameMdId = static_cast<uint32_t>(record.Op(2));
+                            md.compositeType._class.size = static_cast<uint32_t>(record.Op(7));
+                            md.compositeType._class.align = static_cast<uint32_t>(record.Op(8));
+                            md.compositeType._class.elementsMdId = static_cast<uint32_t>(record.Op(11));
+                            md.compositeType._class.templateParamsMdId = static_cast<uint32_t>(record.Op(14));
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+
+            case LLVMMetadataRecord::TemplateType: {
+                md.templateType.nameMdId = static_cast<uint32_t>(record.Op(1));
+                md.templateType.typeMdId = static_cast<uint32_t>(record.Op(2));
+                break;
+            }
+
+            case LLVMMetadataRecord::TemplateValue: {
+                md.templateValue.nameMdId = static_cast<uint32_t>(record.Op(2));
+                md.templateValue.typeMdId = static_cast<uint32_t>(record.Op(3));
+                md.templateValue.value = static_cast<uint32_t>(record.Op(4));
+                break;
+            }
+
+            case LLVMMetadataRecord::BasicType: {
+                md.basicType.nameMdId = static_cast<uint32_t>(record.Op(2));
+                md.basicType.size = static_cast<uint32_t>(record.Op(3));
+                md.basicType.align = static_cast<uint32_t>(record.Op(4));
+                md.basicType.encoding = static_cast<LLVMDwarfTypeEncoding>(record.Op(5));
                 break;
             }
 
@@ -983,8 +1051,119 @@ const char* DXILDebugModule::GetValueAllocation(uint32_t id) {
     return valueAllocations[id];
 }
 
-const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(uint32_t typeMdId) {
+const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(Backend::IL::TypeMap& typeMap, uint32_t typeMdId) {
     Metadata& typeMd = metadata[typeMdId];
+
+    switch (typeMd.type) {
+        default: {
+            ASSERT(false, "Unexpected type");
+            break;
+        }
+        case LLVMMetadataRecord::DerivedType: {
+            switch (typeMd.derivedType.tag) {
+                default: {
+                    ASSERT(false, "Unexpected derived tag");
+                    break;
+                }
+                case LLVMDwarfTag::Typedef: {
+                    return GetTypeFromDwarf(typeMap, typeMd.derivedType._typedef.baseTypeMdId - 1);
+                }
+            }
+            break;
+        }
+        case LLVMMetadataRecord::CompositeType: {
+            switch (typeMd.compositeType.tag) {
+                default: {
+                    ASSERT(false, "Unexpected composite tag");
+                    break;
+                }
+                case LLVMDwarfTag::ClassType: {
+                    return GetClassTypeFromDwarf(typeMap, typeMd);
+                }
+            }
+            break;
+        }
+        case LLVMMetadataRecord::BasicType: {
+            return GetBasicTypeFromDwarf(typeMap, typeMd);
+        }
+    }
+    
+    return nullptr;
+}
+
+const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::TypeMap &typeMap, const Metadata &typeMd) {
+    Metadata& memberListMd = metadata[typeMd.compositeType._class.elementsMdId - 1];
+
+    // All elements
+    TrivialStackVector<const Backend::IL::Type*, 16> elements;
+
+    // Populate all elements
+    for (uint32_t i = 0; i < memberListMd.record->opCount; i++) {
+        Metadata& memberMd = metadata[memberListMd.record->Op32(i) - 1];
+        ASSERT(memberMd.type == LLVMMetadataRecord::DerivedType, "Unexpected type");
+
+        // Get member type
+        elements.Add(GetTypeFromDwarf(typeMap, memberMd.derivedType.member.baseTypeMdId - 1));
+    }
+
+    // Name of the composite
+    LLVMRecordStringView name(*this->metadata[typeMd.compositeType._class.nameMdId - 1].record, 0);
+
+    // If vector, try to represent it as such
+    if (name.StartsWith("vector")) {
+        ASSERT(elements.Size() <= 4, "Unexpected vector length");
+
+        // Vector elements must all match
+        bool bAllMatching = true;
+        for (uint64_t i = 1; i < elements.Size(); i++) {
+            bAllMatching &= elements[i] == elements[0];
+        }
+
+        if (bAllMatching) {
+            return typeMap.FindTypeOrAdd(Backend::IL::VectorType {
+                .containedType = elements[0],
+                .dimension = static_cast<uint8_t>(elements.Size())
+            });
+        }
+    }
+
+    // Otherwise assume struct
+    Backend::IL::StructType _struct;
+    for (const Backend::IL::Type* element : elements) {
+        _struct.memberTypes.push_back(element);
+    }
+    
+    return typeMap.FindTypeOrAdd(_struct);
+}
+
+const Backend::IL::Type * DXILDebugModule::GetBasicTypeFromDwarf(Backend::IL::TypeMap &typeMap, const Metadata &typeMd) {
+    switch (typeMd.basicType.encoding) {
+        default: {
+            ASSERT(false, "Unexpected composite tag");
+            break;
+        }
+        case LLVMDwarfTypeEncoding::Bool: {
+            return typeMap.FindTypeOrAdd(Backend::IL::BoolType {});
+        }
+        case LLVMDwarfTypeEncoding::Float: {
+            return typeMap.FindTypeOrAdd(Backend::IL::FPType {
+                .bitWidth = static_cast<uint8_t>(typeMd.basicType.size)
+            });
+        }
+        case LLVMDwarfTypeEncoding::Signed: {
+            return typeMap.FindTypeOrAdd(Backend::IL::IntType {
+                .bitWidth = static_cast<uint8_t>(typeMd.basicType.size),
+                .signedness = true
+            });
+        }
+        case LLVMDwarfTypeEncoding::Unsigned: {
+            return typeMap.FindTypeOrAdd(Backend::IL::IntType {
+                .bitWidth = static_cast<uint8_t>(typeMd.basicType.size),
+                .signedness = false
+            });
+        }
+    }
+    
     return nullptr;
 }
 
@@ -1004,33 +1183,49 @@ void DXILDebugModule::ParseDebugCall(FunctionMetadata& functionMd, const LLVMRec
 
 void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LLVMRecord &record, uint32_t anchor) {
     // Interpret operands
-    uint32_t valueMdIndex  = anchor - static_cast<uint32_t>(record.Op(4));
-    uint32_t byteOffset    = anchor - static_cast<uint32_t>(record.Op(5));
-    Metadata &variableMd   = this->metadata[anchor - static_cast<uint32_t>(record.Op(6))];
-    Metadata& expressionMd = this->metadata[anchor - static_cast<uint32_t>(record.Op(7))];
+    uint32_t valueMdIndex    = anchor - static_cast<uint32_t>(record.Op(4));
+    uint32_t byteOffset      = anchor - static_cast<uint32_t>(record.Op(5));
+    uint32_t variableMdIndex = anchor - static_cast<uint32_t>(record.Op(6));
+    Metadata &variableMd     = this->metadata[variableMdIndex];
+    Metadata& expressionMd   = this->metadata[anchor - static_cast<uint32_t>(record.Op(7))];
 
     // No instruction to associate with?
     if (!functionMd.instructionMetadata.size()) {
         return;
     }
 
-    // Optional, variable name
-    char* variableName = nullptr;
+    // By default, always associate with the last one
+    InstructionDwarfInfo &set = functionMd.instructionDwarfInfos[static_cast<uint32_t>(functionMd.instructionMetadata.size() - 1)];
 
-    // Copy over name if possible
-    if (variableMd.localVar.nameMdId) {
-        LLVMRecordStringView name(*this->metadata[variableMd.localVar.nameMdId - 1].record, 0);
-        variableName = blockAllocator.AllocateArray<char>(name.Length() + 1);
-        name.CopyTerminated(variableName);
+    // Try to find existing variable
+    InstructionDwarfVariable* variable = nullptr;
+    for (InstructionDwarfVariable& candidate : set.variables) {
+        if (candidate.variableMdId == variableMdIndex) {
+            variable = &candidate;
+            break;
+        }
     }
 
-    // By default, always associate with the last one
-    InstructionDWARFInfo &set = functionMd.instructionDwarfInfos[static_cast<uint32_t>(functionMd.instructionMetadata.size() - 1)];
-    set.name = variableName;
-    set.typeMdId = variableMd.localVar.mdTypeId;
+    // None found, create a new one
+    if (!variable) {
+        // Optional, variable name
+        char* variableName = nullptr;
 
+        // Copy over name if possible
+        if (variableMd.localVar.nameMdId) {
+            LLVMRecordStringView name(*this->metadata[variableMd.localVar.nameMdId - 1].record, 0);
+            variableName = blockAllocator.AllocateArray<char>(name.Length() + 1);
+            name.CopyTerminated(variableName);
+        }
+        
+        variable = &set.variables.emplace_back();
+        variable->name = variableName;
+        variable->variableMdId = variableMdIndex;
+        variable->typeMdId = variableMd.localVar.mdTypeId;
+    }
+    
     // Setup value
-    DXDwardValue& value = set.values.emplace_back();
+    DXDwarfValue& value = variable->values.emplace_back();
     value.codeOffset = IL::InvalidID;
     value.kind = expressionMd.expression.op;
 

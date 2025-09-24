@@ -50,7 +50,7 @@ struct DXILDebugModule final : public IDXDebugModule {
     ///Overrides
     DXSourceAssociation GetSourceAssociation(const IL::Function* function, uint32_t codeOffset) override;
     std::span<DXInstructionAssociation> GetInstructionAssociations(uint16_t fileUID, uint32_t line) override;
-    DXDwardInfo GetDwarfInfo(const IL::Function* function, uint32_t codeOffset) override;
+    DXDwarfInfo GetDwarfInfo(Backend::IL::TypeMap& typeMap, const IL::Function* function, uint32_t codeOffset) override;
     std::string_view GetLine(uint32_t fileUID, uint32_t line) override;
     std::string_view GetFilename() override;
     std::string_view GetSourceFilename(uint32_t fileUID) override;
@@ -113,11 +113,6 @@ private:
     /// \param id value id
     /// \return nullptr if not found
     const char* GetValueAllocation(uint32_t id);
-
-    /// Get the backend type from a dward type
-    /// @param id dwarf id
-    /// @return type
-    const Backend::IL::Type* GetTypeFromDwarf(uint32_t id);
     
 private:
     /// Scanner
@@ -180,15 +175,23 @@ private:
         DXSourceAssociation sourceAssociation;
     };
 
-    struct InstructionDWARFInfo {
+    struct InstructionDwarfVariable {
         /// Name of the written variable
         const char* name {nullptr};
+
+        /// Variable being assigned
+        uint32_t variableMdId{0};
 
         /// Metadata type id
         uint32_t typeMdId{0};
 
         /// All values assigned to this instruction
-        std::vector<DXDwardValue> values;
+        std::vector<DXDwarfValue> values;
+    };
+
+    struct InstructionDwarfInfo {
+        /// All variables assigned to this instruction
+        std::vector<InstructionDwarfVariable> variables;
     };
 
     struct FunctionMetadata {
@@ -196,7 +199,7 @@ private:
         std::vector<InstructionMetadata> instructionMetadata;
 
         /// Code offset to dwarf info
-        std::unordered_map<uint32_t, InstructionDWARFInfo> instructionDwarfInfos;
+        std::unordered_map<uint32_t, InstructionDwarfInfo> instructionDwarfInfos;
     };
 
     struct InstructionAssociationSet {
@@ -275,11 +278,76 @@ private:
                     } bitPiece;
                 };
             } expression;
+
+            struct {
+                LLVMDwarfTag tag;
+                union {
+                    struct {
+                        uint32_t nameMdId;
+                        uint32_t baseTypeMdId;
+                    } _typedef;
+
+                    struct {
+                        uint32_t nameMdId;
+                        uint32_t baseTypeMdId;
+                        uint32_t size;
+                        uint32_t align;
+                        uint32_t offset;
+                    } member;
+                };
+            } derivedType;
+
+            struct {
+                LLVMDwarfTag tag;
+                union {
+                    struct {
+                        uint32_t nameMdId;
+                        uint32_t size;
+                        uint32_t align;
+                        uint32_t elementsMdId;
+                        uint32_t templateParamsMdId;
+                    } _class;
+                };
+            } compositeType;
+
+            struct {
+                uint32_t nameMdId;
+                uint32_t typeMdId;
+            } templateType;
+
+            struct {
+                uint32_t nameMdId;
+                uint32_t typeMdId;
+                uint32_t value;
+            } templateValue;
+
+            struct {
+                uint32_t nameMdId;
+                uint32_t size;
+                uint32_t align;
+                LLVMDwarfTypeEncoding encoding;
+            } basicType;
         };
     };
 
     /// All metadata
     Vector<Metadata> metadata;
+
+private:
+    /// Get the backend type from a dward type
+    /// @param id dwarf id
+    /// @return type
+    const Backend::IL::Type* GetTypeFromDwarf(Backend::IL::TypeMap& typeMap, uint32_t id);
+
+    /// Get the class backend type from a dward type
+    /// @param typeMd class md
+    /// @return type
+    const Backend::IL::Type* GetClassTypeFromDwarf(Backend::IL::TypeMap& typeMap, const Metadata& typeMd);
+
+    /// Get the basic backend type from a dward type
+    /// @param typeMd basic md
+    /// @return type
+    const Backend::IL::Type* GetBasicTypeFromDwarf(Backend::IL::TypeMap& typeMap, const Metadata& typeMd);
 
 private:
     /// Lightweight type definition
