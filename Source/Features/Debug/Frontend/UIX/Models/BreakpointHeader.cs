@@ -31,6 +31,7 @@ public enum BreakpointDataOrder
 
 public enum BreakpointCaptureMode {
     FirstEvent,
+    FirstViewport,
     AllEvents
 };
 

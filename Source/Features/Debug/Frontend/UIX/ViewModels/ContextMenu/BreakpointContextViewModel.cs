@@ -52,8 +52,13 @@ public class BreakpointContextViewModel : ReactiveObject, IContextViewModel
         itemViewModels.AddRange([
             new ContextMenuItemViewModel
             {
-                Header = "Add Breakpoint",
+                Header = "Add First-Event Breakpoint",
                 Command = ReactiveCommand.Create(() => OnAddBreakpoint(marginViewModel[0], BreakpointCaptureMode.FirstEvent))
+            },
+            new ContextMenuItemViewModel
+            {
+                Header = "Add First-Viewport Breakpoint",
+                Command = ReactiveCommand.Create(() => OnAddBreakpoint(marginViewModel[0], BreakpointCaptureMode.FirstViewport))
             },
             new ContextMenuItemViewModel
             {

@@ -461,6 +461,7 @@ bool DebugFeature::CanCollectBreakpoint(const Breakpoint &breakpoint) {
             ASSERT(false, "Invalid capture mode");
             return false;
         case BreakpointCaptureMode::FirstEvent:
+        case BreakpointCaptureMode::FirstViewport:
             return breakpoint.pendingCollection;
         case BreakpointCaptureMode::AllEvents:
             return true;
@@ -473,6 +474,7 @@ uint32_t DebugFeature::GetBreakpointInstrumentationHash(const Breakpoint &breakp
             ASSERT(false, "Invalid capture mode");
             return 0u;
         case BreakpointCaptureMode::FirstEvent:
+        case BreakpointCaptureMode::FirstViewport:
             return breakpoint.pendingCollectionHash;
         case BreakpointCaptureMode::AllEvents:
             return header->shaderInstrumentationHash32;
@@ -485,6 +487,7 @@ bool DebugFeature::HasBreakpointStreambackData(const Breakpoint& breakpoint, con
             ASSERT(false, "Invalid capture mode");
             return false;
         case BreakpointCaptureMode::FirstEvent:
+        case BreakpointCaptureMode::FirstViewport:
             return true;
         case BreakpointCaptureMode::AllEvents:
             return header->dynamicCounter > 0;
@@ -497,6 +500,7 @@ uint64_t DebugFeature::GetBreakpointStreamRequestSize(const Breakpoint &breakpoi
             ASSERT(false, "Invalid capture mode");
             return 0;
         case BreakpointCaptureMode::FirstEvent:
+        case BreakpointCaptureMode::FirstViewport:
             // Just stream back the entire thing
             return header->dwordStreamCount * sizeof(uint32_t);
         case BreakpointCaptureMode::AllEvents:
@@ -605,7 +609,7 @@ void DebugFeature::OnSyncPoint() {
         builder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
 
         // Clear the buffer, if needed
-        if (breakpoint.captureMode == BreakpointCaptureMode::FirstEvent) {
+        if (breakpoint.captureMode == BreakpointCaptureMode::FirstEvent || breakpoint.captureMode == BreakpointCaptureMode::FirstViewport) {
             builder.ClearBuffer(
                 streamBufferID,
                 breakpoint.streamAllocation.offset,
@@ -857,7 +861,8 @@ bool DebugFeature::SupportsKernelType(IL::KernelType kernelType, Breakpoint* bre
             ASSERT(false, "Invalid mode");
             return false;
         }
-        case BreakpointCaptureMode::FirstEvent: {
+        case BreakpointCaptureMode::FirstEvent:
+        case BreakpointCaptureMode::FirstViewport: {
             // Only some shaders supported for now
             switch (kernelType) {
                 default: {
@@ -1231,6 +1236,7 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
             ASSERT(false, "Invalid capture mode");
             return insertIt;
         case BreakpointCaptureMode::FirstEvent:
+        case BreakpointCaptureMode::FirstViewport:
             resumeBlock = AcquireAndAllocateBreakpointFirstEvent(context, insertIt, interruptBlock, breakpoint, breakpointData);
             break;
         case BreakpointCaptureMode::AllEvents:
@@ -1307,9 +1313,25 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
     // This is a regular buffer read, not atomic
     IL::ID acquiredUID = breakpointHeader.Get<&BreakpointHeader::acquiredExecutionUID>(headerEmitter);
 
+    // Get the rolling uid
+    IL::ID rollingUID;
+    switch (breakpoint->captureMode) {
+        default: {
+            ASSERT(false, "Invalid capture mode");
+            return nullptr;
+        }
+        case BreakpointCaptureMode::FirstEvent: {
+            rollingUID = execution.Get<&ExecutionInfo::rollingExecutionUID>(headerEmitter);
+            break;
+        }
+        case BreakpointCaptureMode::FirstViewport: {
+            rollingUID = execution.Get<&ExecutionInfo::rollingViewportUID>(headerEmitter);
+            break;
+        }
+    }
+    
     // Acquired states, first check if it's equal to the current UID
-    IL::ID executionUID      = execution.Get<&ExecutionInfo::rollingExecutionUID>(headerEmitter);
-    IL::ID acquiredHeader = headerEmitter.Equal(acquiredUID, executionUID);
+    IL::ID acquiredHeader = headerEmitter.Equal(acquiredUID, rollingUID);
     IL::ID acquiredCAS       = IL::InvalidID;
 
     // If not acquired, and it's equal to zero (i.e., unallocated), enter the CAS block
@@ -1328,13 +1350,13 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
         IL::Emitter<> casEmitter(context.program, *casBlock);
 
         // Actually do the CAS
-        IL::ID previousValue = breakpointHeader.AtomicCompareExchange<&BreakpointHeader::acquiredExecutionUID>(casEmitter, casEmitter.UInt32(0), executionUID);
+        IL::ID previousValue = breakpointHeader.AtomicCompareExchange<&BreakpointHeader::acquiredExecutionUID>(casEmitter, casEmitter.UInt32(0), rollingUID);
 
         // Allocated if it was zero
         IL::ID allocatedCAS = casEmitter.Equal(previousValue, casEmitter.UInt32(0));
 
         // Either we allocated or acquired the UID
-        acquiredCAS = casEmitter.Or(allocatedCAS, casEmitter.Equal(previousValue, executionUID));
+        acquiredCAS = casEmitter.Or(allocatedCAS, casEmitter.Equal(previousValue, rollingUID));
 
         // If allocated, move to the export block
         casEmitter.BranchConditional(allocatedCAS, exportBlock, exportMergeBlock, IL::ControlFlow::Selection(exportMergeBlock));

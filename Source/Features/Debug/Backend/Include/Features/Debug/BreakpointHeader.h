@@ -34,6 +34,9 @@ enum class BreakpointCaptureMode {
     /// Capture the first event only
     FirstEvent,
 
+    /// Capture the first viewport only
+    FirstViewport,
+
     /// Capture all events
     AllEvents
 };
