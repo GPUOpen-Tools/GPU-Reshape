@@ -99,12 +99,14 @@
 
             <Button.Flyout>
                 <Flyout Placement="Right" FlyoutPresenterClasses="Overlay">
-                    <StackPanel Orientation="Vertical">
-                        <CheckBox
-                            IsChecked="{Binding EarlyDepthStencil}"
-                            Content="Early Depth Stencil"
-                            ToolTip.Tip="Forcefully enables early depth stencil for debugging purposes"/>
-                    </StackPanel>
+                    <Grid Margin="3">
+                        <StackPanel Orientation="Vertical">
+                            <CheckBox
+                                IsChecked="{Binding EarlyDepthStencil}"
+                                Content="Early Depth Stencil"
+                                ToolTip.Tip="Forcefully enables early depth stencil for debugging purposes"/>
+                        </StackPanel>
+                    </Grid>
                 </Flyout>
             </Button.Flyout>
         </Button>
