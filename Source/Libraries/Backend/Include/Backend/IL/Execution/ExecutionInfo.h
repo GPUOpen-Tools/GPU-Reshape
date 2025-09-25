@@ -30,10 +30,11 @@
 #include <Backend/IL/Execution/ExecutionFlag.h>
 
 struct ExecutionInfo {
-    /// A rolling execution counter UID
+    /// Rolling counter UIDs
     /// This is typically atomically allocated, and is expected to roll on the numerical limit
     /// Useful for expected transient results based on <reasonable> amounts of invocations within submissions
     uint32_t rollingExecutionUID;
+    uint32_t rollingViewportUID;
 
     /// Execution set flags
     ExecutionFlagSet executionFlags;
@@ -78,9 +79,6 @@ struct ExecutionInfo {
             uint32_t height;
         } viewport;
     };
-
-    // Padding helpers
-    uint32_t pad20;
 };
 
 /// Number of dwords required for the execution structure

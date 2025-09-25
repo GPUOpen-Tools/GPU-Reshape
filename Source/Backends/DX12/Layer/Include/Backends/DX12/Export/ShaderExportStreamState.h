@@ -203,6 +203,14 @@ struct ShaderExportStreamStateBackendMessages {
     bool pendingInitialization = true;
 };
 
+struct ShaderExportStreamViewportState {
+    /// Currently set viewport
+    D3D12_VIEWPORT state{};
+
+    /// Assigned uid
+    uint32_t rollingUID{0};
+};
+
 /// Single stream state
 struct ShaderExportStreamState {
     ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators), referencedHeaps(allocators) {
@@ -232,7 +240,7 @@ struct ShaderExportStreamState {
     ShaderExportRenderPassState renderPass;
 
     /// Currently set viewport
-    D3D12_VIEWPORT viewport{};
+    ShaderExportStreamViewportState viewport;
 
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};

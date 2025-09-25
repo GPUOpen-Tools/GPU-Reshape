@@ -1198,11 +1198,21 @@ void WINAPI HookID3D12CommandListEndRenderPass(ID3D12CommandList* list) {
     ResolveRenderPassForUserEnd(table.next, &table.state->streamState->renderPass);
 }
 
+static uint32_t AllocateRollingUID(DeviceState* state) {
+    // Allocate the identifier, we never want zero as that's reserved
+    for (;;) {
+        if (uint32_t rollingUID = state->rollingUIDs++; rollingUID != 0) {
+            return rollingUID;
+        }
+    }
+}
+
 void WINAPI HookID3D12CommandListRSSetViewports(ID3D12CommandList *list, UINT NumViewports, const D3D12_VIEWPORT *pViewports) {
     auto table = GetTable(list);
 
     if (NumViewports) {
-        table.state->streamState->viewport = pViewports[0];
+        table.state->streamState->viewport.state = pViewports[0];
+        table.state->streamState->viewport.rollingUID = AllocateRollingUID(GetState(table.state->parent));
     }
 
     // Pass down callchain
@@ -1339,9 +1349,8 @@ static ExecutionInfo GetBaseExecutionInfo(CommandListState* state) {
     ExecutionInfo info{};
 
     // Allocate the identifier, we never want zero as that's reserved
-    do {
-        info.rollingExecutionUID = device->rollingExecutionUID++;
-    } while (!info.rollingExecutionUID);
+    info.rollingExecutionUID = AllocateRollingUID(device);
+    info.rollingViewportUID = state->streamState->viewport.rollingUID;
 
     // Pipeline is optional
     info.pipelineUID = state->streamState->pipeline ? static_cast<uint32_t>(state->streamState->pipeline->uid) : 0;
@@ -1350,8 +1359,8 @@ static ExecutionInfo GetBaseExecutionInfo(CommandListState* state) {
     info.scopeUID = 0;
 
     // Set the viewport
-    info.viewport.width = static_cast<uint32_t>(state->streamState->viewport.Width);
-    info.viewport.height = static_cast<uint32_t>(state->streamState->viewport.Height);
+    info.viewport.width = static_cast<uint32_t>(state->streamState->viewport.state.Width);
+    info.viewport.height = static_cast<uint32_t>(state->streamState->viewport.state.Height);
 
     // OK
     return info;

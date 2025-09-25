@@ -173,7 +173,7 @@ public static class TinyTypePacking
                     Kind = kind,
                     ID = id,
                     SamplerMode = (ResourceSamplerMode)header.samplerMode,
-                    TexelType = (Format)header.tex3elType,
+                    TexelType = (Format)header.texelType,
                     ElementType = UnpackTinyType(ref span, resolver)
                 };
 

@@ -34,29 +34,21 @@ public enum BreakpointCaptureMode {
     AllEvents
 };
 
-[StructLayout(LayoutKind.Explicit, Size = 92, CharSet = CharSet.Ansi)]
+[StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
 public struct LooseBreakpointHeader
 {
     public static uint DWordCount = (uint)(Marshal.SizeOf(typeof(LooseBreakpointHeader)) / sizeof(uint));
 
-    [FieldOffset(0)]
     public ExecutionInfo executionInfo;
-    
-    [FieldOffset(80)]
     public uint threadX;
-
-    [FieldOffset(84)]
     public uint threadY;
-    
-    [FieldOffset(88)]
     public uint threadZ;
 }
 
-[StructLayout(LayoutKind.Explicit, Size = 4, CharSet = CharSet.Ansi)]
+[StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
 public struct DynamicBreakpointHeader
 {
     public static uint DWordCount = (uint)(Marshal.SizeOf(typeof(DynamicBreakpointHeader)) / sizeof(uint));
 
-    [FieldOffset(0)]
     public uint thread;
 }
