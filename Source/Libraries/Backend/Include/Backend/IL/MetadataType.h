@@ -53,6 +53,10 @@ namespace IL {
 
         /// Specifies the type of the kernel
         /// Payload: KernelTypeMetadata
-        KernelType
+        KernelType,
+
+        /// Specifies that the program should use early depth stencil
+        /// Payload: None
+        EarlyDepthStencil
     };
 }

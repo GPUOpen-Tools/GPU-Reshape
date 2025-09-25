@@ -20,7 +20,10 @@ enum class BreakpointFlag {
     None = 0,
 
     /// Allow floating point image compression to 8-8-8-8 texels
-    AllowImageFPUNorm8888Compression = BIT(0)
+    AllowImageFPUNorm8888Compression = BIT(0),
+
+    /// Enables early depth stencil
+    EarlyDepthStencil = BIT(1),
 };
 
 enum class BreakpointCompression {

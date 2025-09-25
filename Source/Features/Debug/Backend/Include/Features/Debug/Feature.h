@@ -220,6 +220,11 @@ private:
     /// Find a breakpoint from uid
     Breakpoint* FindBreakpointNoLock(uint32_t uid);
 
+    /// Apply program wide flags
+    /// @param context parent context
+    /// @param breakpointData device breakpoint data
+    void ApplyBreakpointFlagsToProgram(const IL::VisitContext& context, const BreakpointData& breakpointData);
+
     /// Get breakpoint device data
     /// @param emitter target emitter
     /// @param breakpoint host breakpoint data

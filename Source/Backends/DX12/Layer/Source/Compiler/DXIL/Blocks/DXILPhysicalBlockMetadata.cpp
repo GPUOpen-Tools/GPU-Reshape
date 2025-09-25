@@ -2065,6 +2065,11 @@ void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXCompileJob &job) {
     if (job.compatabilityTable.useViewportAndRTArray) {
         AddProgramFlag(DXILProgramShaderFlag::EnableViewportAndRTArray);
     }
+
+    // Check if the user program has requested early depth stencil
+    if (program.GetMetadataMap().HasMetadata(program.GetEntryPoint()->GetID(), IL::MetadataType::EarlyDepthStencil)) {
+        AddProgramFlag(DXILProgramShaderFlag::ForceEarlyDepthStencil);
+    }
 }
 
 void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXCompileJob &job) {

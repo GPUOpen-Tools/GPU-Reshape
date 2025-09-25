@@ -88,6 +88,15 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     }
 
     /// <summary>
+    /// Should early depth stencil be enabled?
+    /// </summary>
+    public bool EarlyDepthStencil
+    {
+        get => _earlyDepthStencil;
+        set => this.RaiseAndSetIfChanged(ref _earlyDepthStencil, value);
+    }
+
+    /// <summary>
     /// Current decoration color
     /// </summary>
     public IBrush PixelColor
@@ -122,7 +131,7 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     public ImageBreakpointDisplayViewModel()
     {
         // Values that require reinstrumentation
-        this.WhenAnyValue(x => x.Compress, x => x.ShaderProperty)
+        this.WhenAnyValue(x => x.Compress, x => x.ShaderProperty, x=> x.EarlyDepthStencil)
             .Subscribe(_ => OnInstrumentChanged());
 
         // Create color mask command
@@ -157,6 +166,11 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
         {
             config.Flags |= BreakpointFlag.AllowImageFPUNorm8888Compression;
         }
+
+        if (_earlyDepthStencil)
+        {
+            config.Flags |= BreakpointFlag.EarlyDepthStencil;
+        }
     }
 
     /// <summary>
@@ -178,6 +192,11 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// Internal compress state
     /// </summary>
     private bool _compress = true;
+
+    /// <summary>
+    /// Internal ds state
+    /// </summary>
+    private bool _earlyDepthStencil = false;
 
     /// <summary>
     /// Internal lock state

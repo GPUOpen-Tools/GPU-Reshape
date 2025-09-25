@@ -1214,6 +1214,9 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
      * At this point the breakpoint has been accepted, emitting is allowed
      **/
 
+    // Apply any per-program state
+    ApplyBreakpointFlagsToProgram(context, breakpointData);
+
     // Set name for debugging
     it.block->SetName("Breakpoint.EntryBlock");
 
@@ -1712,6 +1715,21 @@ DebugFeature::Breakpoint * DebugFeature::FindBreakpointNoLock(uint32_t uid) {
 
     // Not found
     return nullptr;
+}
+
+void DebugFeature::ApplyBreakpointFlagsToProgram(const IL::VisitContext &context, const BreakpointData &breakpointData) {
+    // Using early depth stencil?
+    if (breakpointData.flags & BreakpointFlag::EarlyDepthStencil) {
+        auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.program.GetEntryPoint()->GetID());
+
+        // Only for pixel shaders
+        if (kernelType->type == IL::KernelType::Pixel) {
+            context.program.GetMetadataMap().AddMetadata(
+                context.program.GetEntryPoint()->GetID(),
+                IL::MetadataType::EarlyDepthStencil
+            );
+        }
+    }
 }
 
 void DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, Breakpoint *breakpoint, BreakpointData& breakpointData) {

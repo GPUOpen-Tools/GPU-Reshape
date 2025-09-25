@@ -13,6 +13,7 @@ public enum BreakpointFlag
 {
     None = 0,
     AllowImageFPUNorm8888Compression = 1 << 0,
+    EarlyDepthStencil =  1 << 1,
 }
 
 public enum BreakpointCompression

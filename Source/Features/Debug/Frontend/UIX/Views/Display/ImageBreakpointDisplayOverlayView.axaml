@@ -92,5 +92,21 @@
                 </Flyout>
             </Button.Flyout>
         </Button>
+        
+        <Button
+            Classes="Overlay">
+            <PathIcon Data="{StaticResource Settings}" Width="15" />
+
+            <Button.Flyout>
+                <Flyout Placement="Right" FlyoutPresenterClasses="Overlay">
+                    <StackPanel Orientation="Vertical">
+                        <CheckBox
+                            IsChecked="{Binding EarlyDepthStencil}"
+                            Content="Early Depth Stencil"
+                            ToolTip.Tip="Forcefully enables early depth stencil for debugging purposes"/>
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
     </StackPanel>
 </UserControl>
