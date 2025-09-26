@@ -124,17 +124,14 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruct
 
         // Get the traceback from the value (debug module -> canonical)
         DXCodeOffsetTraceback valueTraceback = shaderState->module->GetCodeOffsetTraceback(value.codeOffset);
+        if (valueTraceback.instructionID == IL::InvalidID) {
+            continue;
+        }
 
-        // Get the block
-        IL::BasicBlock *block = fn->GetBasicBlocks().GetBlock(valueTraceback.basicBlockID);
-        ASSERT(block, "Failed to associate to canonical module");
-
-        // Instruction indices are linear, advance
-        IL::BasicBlock::Iterator instrIt = block->begin();
-        std::advance(instrIt, valueTraceback.instructionIndex);
+        // Get instruction
+        IL::InstructionRef valueInstr = program.GetIdentifierMap().Get(valueTraceback.instructionID);
 
         // Append value
-        const IL::Instruction *valueInstr = instrIt.Get();
 #if 0
         IL::Debug::PrettyPrintConsole(program, valueInstr);
 #endif // 0

@@ -160,15 +160,6 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
         // Setup reader
         DXILValueReader reader(table, record);
-
-        // Provide traceback
-        if (basicBlock != nullptr) {
-            sourceTraceback[recordIdx] = DXCodeOffsetTraceback {
-                .functionID = fn->GetID(),
-                .basicBlockID = basicBlock->GetID(),
-                .instructionIndex = basicBlock->GetCount()
-            };
-        }
         
         // Get the current id anchor
         //   LLVM id references are encoded relative to the current record
@@ -180,6 +171,16 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
         // Create mapping if present
         if (HasResult(record)) {
             result = table.idMap.AllocMappedID(DXILIDType::Instruction);
+        }
+
+        // Provide traceback
+        if (basicBlock != nullptr) {
+            sourceTraceback[recordIdx] = DXCodeOffsetTraceback {
+                .functionID = fn->GetID(),
+                .basicBlockID = basicBlock->GetID(),
+                .instructionID = result,
+                .instructionIndex = basicBlock->GetCount()
+            };
         }
 
         // Handle instruction

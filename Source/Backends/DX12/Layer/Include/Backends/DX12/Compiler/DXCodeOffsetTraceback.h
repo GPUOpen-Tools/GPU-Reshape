@@ -36,6 +36,9 @@ struct DXCodeOffsetTraceback {
     /// Originating basic block
     IL::ID basicBlockID{IL::InvalidID};
 
+    /// Optional, instruction id, if any
+    IL::ID instructionID{IL::InvalidID};
+
     /// Instruction index in basic block
     uint32_t instructionIndex{~0u};
 };
