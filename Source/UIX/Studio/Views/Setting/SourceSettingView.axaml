@@ -32,21 +32,16 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
-             xmlns:studio="clr-namespace:Studio"
-             xmlns:setting1="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
              xmlns:controls="clr-namespace:Studio.Views.Controls"
-             xmlns:setting2="clr-namespace:Studio.Views.Setting"
-             xmlns:r="clr-namespace:Studio.Resources"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Studio.Views.Setting.PDBSettingView"
-             x:DataType="setting:PDBSettingViewModel" x:CompileBindings="True">
+             x:Class="Studio.Views.Setting.SourceSettingView"
+             x:DataType="setting:SourceSettingViewModel" x:CompileBindings="True">
     <StackPanel Orientation="Vertical">
         <Grid>
-            <TextBlock Margin="15 0 0 0" Text="Configure the PDB indexing directories"/>
+            <TextBlock Margin="15 0 0 0" Text="Configure the source directories"/>
 
             <Button
                 x:Name="AddButton"
-                ToolTip.Tip="{x:Static r:Resources.PDBSetting_Add_Tooltip}"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Right"
                 Classes="Icon"
@@ -58,13 +53,13 @@
         
         <Grid Margin="15,5,0,0">
             <ListBox
-                ItemsSource="{Binding SearchDirectories}"
+                ItemsSource="{Binding SourceDirectories}"
                 SelectedItem="{Binding SelectedItem}"
                 MinHeight="100">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <controls:EditLabel Text="{Binding}" CloseCommand="{Binding
-                        ((setting:PDBSettingViewModel)DataContext).Close,
+                        ((setting:SourceSettingViewModel)DataContext).Close,
                             RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=UserControl}
                         }" Height="20"/>
                     </DataTemplate>
@@ -72,16 +67,10 @@
             </ListBox>
         </Grid>
         
-        <TextBlock
-            Margin="15 5 0 0"
-            Foreground="{StaticResource InfoMediumForeground}"
-            Height="20"
-            Text="Directories are indexed on application startup, large file trees may incur overhead" />
-        
         <Grid Margin="15,5,0,0">
             <CheckBox 
-                IsChecked="{Binding SearchInSubFolders}"
-                Content="Search sub-directories"/>
+                IsChecked="{Binding IndexSubFolders}"
+                Content="Index sub-directories"/>
         </Grid>
     </StackPanel>
 </UserControl>

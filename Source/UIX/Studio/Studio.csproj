@@ -278,6 +278,14 @@
         <DependentUpon>GenericValidationDetailView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Documents\CodeView.axaml.cs">
+        <DependentUpon>CodeView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Setting\SourceSettingView.axaml.cs">
+        <DependentUpon>SourceSettingView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

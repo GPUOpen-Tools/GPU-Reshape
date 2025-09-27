@@ -24,42 +24,20 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using AvaloniaEdit.Utils;
-using ReactiveUI;
-using Studio.Services.Suspension;
+using System.Collections.ObjectModel;
 
 namespace Studio.ViewModels.Setting
 {
-    public class ApplicationSettingViewModel : BaseSettingViewModel
+    public interface ISourceSettingViewModel
     {
         /// <summary>
-        /// Given application name
+        /// All source directories
         /// </summary>
-        [DataMember, SuspensionKey]
-        public string ApplicationName
-        {
-            get => _applicationName;
-            set
-            {
-                this.RaiseAndSetIfChanged(ref _applicationName, value);
-                Header = System.IO.Path.GetFileName(value);
-            }
-        }
-
-        public ApplicationSettingViewModel() : base("Unknown")
-        {
-            // Build in settings
-            Items.AddRange(new ISettingViewModel[]
-            {
-                new GlobalSettingViewModel(),
-                new PDBSettingViewModel(),
-                new SourceSettingViewModel()
-            });
-        }
-
+        public ObservableCollection<string> SourceDirectories { get; }
+        
         /// <summary>
-        /// Internal application name
+        /// Recursively index files?
         /// </summary>
-        private string _applicationName = "Unknown";
+        public bool IndexSubFolders { get; set; }
     }
 }

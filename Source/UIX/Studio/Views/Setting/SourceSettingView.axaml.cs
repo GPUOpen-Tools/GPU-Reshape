@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,42 +24,49 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using AvaloniaEdit.Utils;
+using System;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using ReactiveUI;
-using Studio.Services.Suspension;
+using Studio.Extensions;
+using Studio.ViewModels.Setting;
 
-namespace Studio.ViewModels.Setting
+namespace Studio.Views.Setting
 {
-    public class ApplicationSettingViewModel : BaseSettingViewModel
+    public partial class SourceSettingView : UserControl, IViewFor
     {
-        /// <summary>
-        /// Given application name
-        /// </summary>
-        [DataMember, SuspensionKey]
-        public string ApplicationName
+        public object? ViewModel { get; set; }
+
+        public SourceSettingView()
         {
-            get => _applicationName;
-            set
+            InitializeComponent();
+
+            // Bind events
+            AddButton.Events().Click.Subscribe(OnAddButton);
+        }
+        
+        /// <summary>
+        /// Invoked on add button
+        /// </summary>
+        /// <param name="x"></param>
+        private async void OnAddButton(RoutedEventArgs x)
+        {
+            // Create dialog
+            var dialog = new OpenFolderDialog();
+
+            // Get requested folder
+            string? result = await dialog.ShowAsync((Window)this.GetVisualRoot());
+            if (result == null)
             {
-                this.RaiseAndSetIfChanged(ref _applicationName, value);
-                Header = System.IO.Path.GetFileName(value);
+                return;
+            }
+
+            // Add directory to search directories
+            if (DataContext is SourceSettingViewModel vm)
+            {
+                vm.SourceDirectories.Add(result);
             }
         }
-
-        public ApplicationSettingViewModel() : base("Unknown")
-        {
-            // Build in settings
-            Items.AddRange(new ISettingViewModel[]
-            {
-                new GlobalSettingViewModel(),
-                new PDBSettingViewModel(),
-                new SourceSettingViewModel()
-            });
-        }
-
-        /// <summary>
-        /// Internal application name
-        /// </summary>
-        private string _applicationName = "Unknown";
     }
 }
