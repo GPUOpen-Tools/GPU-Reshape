@@ -175,6 +175,22 @@ private:
         DXSourceAssociation sourceAssociation;
     };
 
+    struct InstructionDwarfValue {
+        /// Type of this value
+        LLVMDwarfOpKind kind;
+
+        /// Owning value id
+        uint32_t codeOffset;
+
+        /// Payload
+        union {
+            struct {
+                uint32_t bitStart;
+                uint32_t bitLength;
+            } bitWise;
+        };
+    };
+
     struct InstructionDwarfVariable {
         /// Name of the written variable
         const char* name {nullptr};
@@ -186,7 +202,7 @@ private:
         uint32_t typeMdId{0};
 
         /// All values assigned to this instruction
-        std::vector<DXDwarfValue> values;
+        std::vector<InstructionDwarfValue*> values;
     };
 
     struct InstructionDwarfInfo {
@@ -213,13 +229,19 @@ private:
     /// Reverse instruction associations
     std::unordered_map<uint64_t, InstructionAssociationSet> instructionAssociations;
 
+    /// Unresolved debug values
+    Vector<InstructionDwarfValue*> unresolvedDwarfValues;
+
 private:
     /// Parse a special debug call
     void ParseDebugCall(FunctionMetadata& functionMd, const LLVMRecord &record, uint32_t anchor, uint32_t functionValueIndex);
-    
+
     /// Parse a special debug value call
     void ParseDebugValueCall(FunctionMetadata& functionMd, const LLVMRecord &record, uint32_t anchor);
 
+    /// Resolve a forward dwarf value
+    uint32_t ResolveDwarfValue(uint32_t thinIndex);
+    
 private:
     /// Symtab values
     Vector<LLVMRecordStringView> valueStrings;

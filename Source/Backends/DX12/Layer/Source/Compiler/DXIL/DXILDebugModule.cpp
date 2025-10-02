@@ -40,6 +40,7 @@ DXILDebugModule::DXILDebugModule(const Allocators &allocators, DXILModule* modul
     : scan(allocators),
       sourceFragments(allocators),
       functionMetadata(allocators),
+      unresolvedDwarfValues(allocators),
       valueStrings(allocators.Tag(kAllocModuleDXILSymbols)),
       valueAllocations(allocators.Tag(kAllocModuleDXILSymbols)),
       metadata(allocators),
@@ -116,7 +117,14 @@ DXDwarfInfo DXILDebugModule::GetDwarfInfo(Backend::IL::TypeMap& typeMap, const I
         DXDwarfVariableValue& variable =  info.variables.emplace_back();
         variable.name = sourceVar.name;
         variable.type = GetTypeFromDwarf(typeMap, sourceVar.typeMdId - 1);
-        variable.values = sourceVar.values;
+
+        for (const InstructionDwarfValue* sourceValue : sourceVar.values) {
+            DXDwarfValue &value = variable.values.emplace_back();
+            value.kind = sourceValue->kind;
+            value.codeOffset = sourceValue->codeOffset;
+            value.bitWise.bitStart = sourceValue->bitWise.bitStart;
+            value.bitWise.bitLength = sourceValue->bitWise.bitLength;
+        } 
     }
     
     return info;
@@ -497,6 +505,14 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
             }
         }
     }
+
+    // Resolve all pending values
+    for (InstructionDwarfValue *value : unresolvedDwarfValues) {
+        value->codeOffset = ResolveDwarfValue(value->codeOffset);
+    }
+
+    // Cleanup
+    unresolvedDwarfValues.clear();
 
     // Reset head, value indices reset after function blocks
     thinValues.resize(valueHead);
@@ -1302,33 +1318,42 @@ void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LL
     }
     
     // Setup value
-    DXDwarfValue& value = variable->values.emplace_back();
-    value.codeOffset = IL::InvalidID;
-    value.kind = expressionMd.expression.op;
-
-    // Get value reference
+    InstructionDwarfValue* value = variable->values.emplace_back(blockAllocator.Allocate<InstructionDwarfValue>());
+    value->codeOffset = IL::InvalidID;
+    value->kind = expressionMd.expression.op;
+    
     if (Metadata &valueMd = this->metadata[valueMdIndex]; valueMd.type == LLVMMetadataRecord::Value) {
-        // We cannot reliably cross-reference constants, just do records
-        const ThinValue& debugValue = thinValues[valueMd.value];
-        switch (debugValue.kind) {
-            default:
-                break;
-            case ThinValueKind::Instruction:
-                value.codeOffset = debugValue.recordOffset;
-                break;
+        value->codeOffset = valueMd.value;
+
+        // May not be resolved
+        if (value->codeOffset < thinValues.size()) {
+            value->codeOffset = ResolveDwarfValue(value->codeOffset);
+        } else {
+            unresolvedDwarfValues.push_back(value);
         }
     }
-
+    
     // Copy over dwarf kind
-    switch (value.kind) {
+    switch (value->kind) {
         default: {
             break;
         }
         case LLVMDwarfOpKind::BitPiece: {
-            value.bitWise.bitStart = expressionMd.expression.bitPiece.bitStart;
-            value.bitWise.bitLength = expressionMd.expression.bitPiece.bitLength;
+            value->bitWise.bitStart = expressionMd.expression.bitPiece.bitStart;
+            value->bitWise.bitLength = expressionMd.expression.bitPiece.bitLength;
             break;
         }
+    }
+}
+
+uint32_t DXILDebugModule::ResolveDwarfValue(uint32_t valueIndex) {
+    // We cannot reliably cross-reference constants, just do records
+    const ThinValue& debugValue = thinValues[valueIndex];
+    switch (debugValue.kind) {
+        default:
+            return IL::InvalidID;
+        case ThinValueKind::Instruction:
+            return debugValue.recordOffset;
     }
 }
 
