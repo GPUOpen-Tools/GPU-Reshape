@@ -1406,6 +1406,11 @@ void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXCompileJob& job) {
 }
 
 bool DXILPhysicalBlockMetadata::IsOptimized() {
+    // Check flags first and foremost
+    if (entryPoints.entries[0].shaderFlags & DXILProgramShaderFlag::NoOpt) {
+        return false;
+    }
+    
     // Get the block
     LLVMBlock* block = table.scan.GetRoot().GetBlockWithUID(sourceArguments.uid);
 
