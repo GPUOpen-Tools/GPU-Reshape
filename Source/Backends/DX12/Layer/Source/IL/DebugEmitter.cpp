@@ -138,6 +138,11 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruct
         values.Add(valueInstr->result);
     }
 
+    // May have failed
+    if (!values.Size()) {
+        return IL::InvalidID;
+    }
+
     // Singular?
     if (values.Size() == 1) {
         return values[0];
