@@ -103,6 +103,10 @@ public:
     void CreateResourceHandles(const DXCompileJob& job);
 
 public:
+    /// Is this module optimized?
+    bool IsOptimized();
+
+public:
     /// Add or get a new input
     /// @param name name of the input
     /// @param semantic semantic kind
@@ -292,6 +296,12 @@ public:
         uint32_t signatoryEntryPoint = ~0u;
         TrivialStackVector<EntryPoint, 4u> entries;
     } entryPoints;
+
+    /// Source arguments
+    struct SourceArguments {
+        uint32_t uid = ~0u;
+        LLVMRecord indirectList;
+    } sourceArguments;
 
     /// All resource entries
     struct Resources {

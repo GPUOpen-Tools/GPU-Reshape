@@ -201,3 +201,18 @@ const char * DXBCModule::GetLanguage() {
     // Source is DXIL if the module is present
     return table.dxilModule ? "DXIL" : "DXBC";
 }
+
+bool DXBCModule::IsOptimized() {
+    // Check the source info first
+    if (table.debug.pdbShaderSourceInfo.HasArguments()) {
+        return table.debug.pdbShaderSourceInfo.IsOptimized();
+    }
+
+    // Otherwise assume from dxil module
+    if (table.dxilModule) {
+        return table.dxilModule->IsOptimized();
+    }
+
+    // By default, consider it optimized
+    return true;
+}

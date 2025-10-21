@@ -180,3 +180,20 @@ bool DXBCPhysicalBlockShaderSourceInfo::IsSlimPDB() {
     // None found
     return false;
 }
+
+bool DXBCPhysicalBlockShaderSourceInfo::IsOptimized() {
+    // Check for any flags that disable it
+    for (const SourceArg& arg : sourceArgs) {
+        if (std::iequals(std::string(arg.name), "Od") ||
+            std::iequals(std::string(arg.name), "O0")) {
+            return false;
+        }
+    }
+
+    // Consider it optimized
+    return true;
+}
+
+bool DXBCPhysicalBlockShaderSourceInfo::HasArguments() {
+    return sourceArgs.size() > 0;
+}

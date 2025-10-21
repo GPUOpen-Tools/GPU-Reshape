@@ -81,6 +81,15 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Is this shader optimized?
+        /// </summary>
+        public bool IsOptimized
+        {
+            get => _isOptimized;
+            set => this.RaiseAndSetIfChanged(ref _isOptimized, value);
+        }
+
+        /// <summary>
         /// Current asynchronous status
         /// </summary>
         public AsyncObjectStatus AsyncStatus
@@ -170,5 +179,10 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Internal asynchronous status
         /// </summary>
         private AsyncObjectStatus _asyncStatus = AsyncObjectStatus.Pending;
+
+        /// <summary>
+        /// Internal optimized state
+        /// </summary>
+        private bool _isOptimized;
     }
 }

@@ -140,6 +140,15 @@ namespace Studio.ViewModels.Documents
         }
 
         /// <summary>
+        /// Is this shader optimized?
+        /// </summary>
+        public bool IsOptimized
+        {
+            get => _isOptimized;
+            set => this.RaiseAndSetIfChanged(ref _isOptimized, value);
+        }
+
+        /// <summary>
         /// All view models
         /// </summary>
         public ObservableCollection<IShaderContentViewModel> ShaderContentViewModels { get; } = new();
@@ -237,6 +246,9 @@ namespace Studio.ViewModels.Documents
                 }
             });
 
+            // Bind the properties
+            _object!.BindProperty(x => x.IsOptimized, x => IsOptimized = x);
+            
             // Bind files
             _object!.FileViewModels
                 .ToObservableChangeSet()
@@ -399,5 +411,10 @@ namespace Studio.ViewModels.Documents
         /// Internal ready state
         /// </summary>
         private bool _ready;
+
+        /// <summary>
+        /// Internal optimized state
+        /// </summary>
+        private bool _isOptimized;
     }
 }

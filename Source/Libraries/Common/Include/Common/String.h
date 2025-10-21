@@ -70,7 +70,7 @@ namespace std {
         return s;
     }
 
-    static inline bool iequals(const string &a, const string &b) {
+    static inline bool iequals(const string_view &a, const string_view &b) {
         return std::equal(
             a.begin(), a.end(),
             b.begin(), b.end(),

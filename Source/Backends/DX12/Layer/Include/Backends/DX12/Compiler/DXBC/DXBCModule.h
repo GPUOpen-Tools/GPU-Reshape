@@ -61,6 +61,7 @@ public:
     IDXCompilerEnvironment * CreateCompilerEnvironment(IDxcLibrary *library) override;
     DXCodeOffsetTraceback GetCodeOffsetTraceback(uint32_t codeOffset) override;
     const char* GetLanguage() override;
+    bool IsOptimized() override;
 
 private:
     Allocators allocators;

@@ -39,6 +39,12 @@ struct DXBCPhysicalBlockShaderSourceInfo {
     /// Check if this module uses "slim pdbs"
     bool IsSlimPDB();
 
+    /// Check if this module is optimized
+    bool IsOptimized();
+
+    /// Do we have any arguments?
+    bool HasArguments();
+
 public:
     struct SourceArg {
         /// Name of the argument

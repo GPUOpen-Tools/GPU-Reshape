@@ -102,9 +102,20 @@ namespace Studio.ViewModels.Workspace.Services
                             {
                                 status = AsyncObjectStatus.DebugSymbols;
                             }
+
+                            // Is the shader optimized?
+                            bool optimized = shaderCode.optimized == 1;
                             
                             // Update status
-                            Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.AsyncStatus |= status; });
+                            Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                entry.ShaderViewModel.AsyncStatus |= status;
+
+                                if (status != AsyncObjectStatus.NotFound)
+                                {
+                                    entry.ShaderViewModel.IsOptimized = optimized;
+                                }
+                            });
                             break;
                         }
                         case ShaderCodeFileMessage.ID:

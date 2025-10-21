@@ -226,6 +226,9 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     // Get the language
     const char* language = shader->module->GetLanguage();
 
+    // Is this module optimized?
+    bool optimized = shader->module->IsOptimized();
+
     // Get debug module
     IDXDebugModule* debugModule = shader->module->GetDebug();
 
@@ -237,6 +240,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         response->found = true;
         response->native = true;
         response->language.Set(language);
+        response->optimized = optimized;
         response->fileCount = 0;
         response->poolCode = message.poolCode;
         return;
@@ -251,6 +255,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     response->found = true;
     response->native = false;
     response->language.Set(language);
+    response->optimized = optimized;
     response->fileCount = fileCount;
     response->poolCode = message.poolCode;
 

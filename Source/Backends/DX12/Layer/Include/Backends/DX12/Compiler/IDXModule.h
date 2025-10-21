@@ -95,4 +95,7 @@ public:
     /// Get the language
     /// \return given language
     virtual const char* GetLanguage() = 0;
+
+    /// Is this module optimized?
+    virtual bool IsOptimized() = 0;
 };

@@ -39,6 +39,7 @@
 #include <Backend/IL/Execution/ExecutionInfo.h>
 
 // Common
+#include <Common/String.h>
 #include <Common/Sink.h>
 
 /*
@@ -69,6 +70,7 @@ void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.validationVersion = validationVersion;
     out.handles = handles;
     out.variableHandles = variableHandles;
+    out.sourceArguments = sourceArguments;
 }
 
 void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
@@ -187,6 +189,20 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
                     ParseResourceList(metadataBlock, block, static_cast<DXILShaderResourceClass>(i), resources.lists[i]);
                 }
             }
+            break;
+        }
+
+        // Source args
+        case GRS_CRC32("dx.source.args"): {
+            if (name != "dx.source.args") {
+                return;
+            }
+
+            // Set block uid
+            sourceArguments.uid = block->uid;
+
+            // Just keep the record around
+            sourceArguments.indirectList = record;
             break;
         }
 
@@ -1387,6 +1403,41 @@ void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXCompileJob& job) {
     CreateEventHandle(job);
     CreateShaderDataHandles(job);
     CreateShaderBindingDataHandles(job);
+}
+
+bool DXILPhysicalBlockMetadata::IsOptimized() {
+    // Get the block
+    LLVMBlock* block = table.scan.GetRoot().GetBlockWithUID(sourceArguments.uid);
+
+    // We're traversing a list of lists
+    for (uint32_t i = 0; i < sourceArguments.indirectList.opCount; i++) {
+        uint32_t listId = sourceArguments.indirectList.Op32(i);
+
+        // Operand always valid
+        const LLVMRecord& listRecord = block->records[listId - 1];
+
+        // Check all literal arguments
+        for (uint32_t argIndex = 0; argIndex < listRecord.opCount; argIndex++) {
+            LLVMRecordStringView argStr(block->records[listRecord.Op32(argIndex) - 1], 0);
+
+            // Not interested
+            if (argStr.Length() > 255) {
+                continue;
+            }
+
+            // Copy over for comparison
+            char buffer[255];
+            argStr.CopyTerminated(buffer);
+
+            // Check for known optimization flags
+            if (std::iequals(buffer, "-O0") || std::iequals(buffer, "-Od")) {
+                return false;
+            }
+        }
+    }
+
+    // Probably optimized
+    return true;
 }
 
 void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job) {

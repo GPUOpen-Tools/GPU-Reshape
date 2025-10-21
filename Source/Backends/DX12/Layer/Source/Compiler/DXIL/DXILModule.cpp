@@ -106,3 +106,7 @@ DXCodeOffsetTraceback DXILModule::GetCodeOffsetTraceback(uint32_t codeOffset) {
 const char * DXILModule::GetLanguage() {
     return "DXIL";
 }
+
+bool DXILModule::IsOptimized() {
+    return table.metadata.IsOptimized();
+}
