@@ -535,13 +535,14 @@ namespace Studio.ViewModels.Tools
                 
                     // Add and search from this node
                     node.Children.Add(directoryNode);
-                    node = directoryNode;
 
                     // Split point if there's more than a single child
                     if (node.Children.Count > 1)
                     {
                         node.IsSplitPoint = true;
                     }
+                    
+                    node = directoryNode;
                 }
             }
 

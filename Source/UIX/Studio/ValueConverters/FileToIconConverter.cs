@@ -60,7 +60,7 @@ namespace Studio.ValueConverters
             }
             else if (targetType == typeof(Double))
             {
-                if (value is ShaderFileViewModel)
+                if (value is CodeFileViewModel)
                 {
                     return 10.0;
                 }
