@@ -183,6 +183,12 @@ namespace Studio.ViewModels.Workspace.Properties
             {
                 ConnectionViewModel = ConnectionViewModel
             });
+            
+            // Register code indexing service
+            Services.Add(new FileCodeService()
+            {
+                Property = this
+            });
         }
 
         /// <summary>

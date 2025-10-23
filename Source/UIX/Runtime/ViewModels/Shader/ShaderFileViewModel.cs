@@ -24,31 +24,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using ReactiveUI;
 using Runtime.ViewModels.Traits;
+using Studio.ViewModels.Code;
 
 namespace Runtime.ViewModels.Shader
 {
-    public class ShaderFileViewModel : ReactiveObject, ISerializable
+    public class ShaderFileViewModel : CodeFileViewModel
     {
-        /// <summary>
-        /// Contents of this shader
-        /// </summary>
-        public string Filename
-        {
-            get => _filename;
-            set => this.RaiseAndSetIfChanged(ref _filename, value);
-        }
-
-        /// <summary>
-        /// Contents of this shader
-        /// </summary>
-        public string Contents
-        {
-            get => _contents;
-            set => this.RaiseAndSetIfChanged(ref _contents, value);
-        }
-
         /// <summary>
         /// Contents of this shader
         /// </summary>
@@ -57,7 +39,7 @@ namespace Runtime.ViewModels.Shader
         /// <summary>
         /// Serialize this object
         /// </summary>
-        public object Serialize()
+        public new object Serialize()
         {
             return new SerializationMap()
             {
@@ -66,15 +48,5 @@ namespace Runtime.ViewModels.Shader
                 { "UID", UID }
             };
         }
-        
-        /// <summary>
-        /// Internal contents
-        /// </summary>
-        private string _contents = string.Empty;
-
-        /// <summary>
-        /// Internal filename
-        /// </summary>
-        private string _filename = string.Empty;
     }
 }

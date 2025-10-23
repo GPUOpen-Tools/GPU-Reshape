@@ -133,6 +133,9 @@
         <!-- Button brushes -->
         <SolidColorBrush x:Key="CloseButtonColor">#9C1B25</SolidColorBrush>
         <SolidColorBrush x:Key="WindowStateButtonColor">#717478</SolidColorBrush>
+        
+        <!-- File colors -->
+        <SolidColorBrush x:Key="FileWorkspaceColor">#7654CD</SolidColorBrush>
     </Styles.Resources>
 
     <!-- Base style -->

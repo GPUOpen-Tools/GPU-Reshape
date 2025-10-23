@@ -26,22 +26,21 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Windows.Input;
-using Avalonia;
 using Avalonia.Media;
-using Avalonia.Threading;
-using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
-using Runtime.ViewModels.Objects;
 using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Tools;
 using Studio.Services;
+using Studio.ViewModels.Code;
 using Studio.ViewModels.Controls;
+using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Services;
 
 namespace Studio.ViewModels.Tools
 {
@@ -107,9 +106,21 @@ namespace Studio.ViewModels.Tools
         {
             Expand = ReactiveCommand.Create(OnExpand);
             Collapse = ReactiveCommand.Create(OnCollapse);
-            
+
+            // Must have service
+            if (ServiceRegistry.Get<IWorkspaceService>() is not { } workspaceService)
+            {
+                return;
+            }
+
             // Bind selected workspace
-            ServiceRegistry.Get<IWorkspaceService>()?
+            workspaceService
+                .WhenAnyValue(x => x.SelectedWorkspace)
+                .WhereNotNull()
+                .Subscribe(OnWorkspaceIndexedPooling);
+            
+            // Bind selected shader
+            workspaceService
                 .WhenAnyValue(x => x.SelectedShader)
                 .Subscribe(x =>
                 {
@@ -172,6 +183,77 @@ namespace Studio.ViewModels.Tools
         }
 
         /// <summary>
+        /// Invoked on workspace pooling
+        /// </summary>
+        private void OnWorkspaceIndexedPooling(IWorkspaceViewModel workspaceViewModel)
+        {
+            if (workspaceViewModel.PropertyCollection.GetService<IFileCodeService>() is { } fileCodeService)
+            {
+                // Remove last subscription
+                _workspaceComposite.Clear();
+
+                // Bind to indexing events
+                fileCodeService
+                    .WhenAnyValue(x => x.Indexed)
+                    .Subscribe(_ => OnWorkspaceIndexed(fileCodeService))
+                    .DisposeWith(_workspaceComposite);
+            }
+        }
+
+        /// <summary>
+        /// Remove a given root item and reset
+        /// </summary>
+        private void RemoveRootAndInvalidate(ref IObservableTreeItem? item)
+        {
+            if (item != null)
+            {
+                Files.Remove(item);
+                item = null;
+            }
+        }
+
+        /// <summary>
+        /// Invoked on workspace index completions
+        /// </summary>
+        private void OnWorkspaceIndexed(IFileCodeService fileCodeService)
+        {
+            // Filter outside the main collection, avoids needless observer events
+            List<IObservableTreeItem> files = new();
+
+            // No files at all?
+            if (fileCodeService.Files.Count == 0)
+            {
+                RemoveRootAndInvalidate(ref _workspaceIndexFileRoot);
+                return;
+            }
+
+            // Root node
+            FileNode root = new();
+            
+            // Populate all files
+            foreach (CodeFileViewModel codeFileViewModel in fileCodeService.Files)
+            {
+                InsertNode(root, codeFileViewModel);
+            }
+            
+            // Collapse root
+            CollapseNode(root, files, _fileWorkspaceColor, false);
+
+            // Rename root
+            IObservableTreeItem rootItem = files[0];
+            rootItem.Text = "Workspace";
+            rootItem.IsExpanded = true;
+
+            // Replace file collection
+            using (Files.SuspendNotifications())
+            {
+                RemoveRootAndInvalidate(ref _workspaceIndexFileRoot);
+                Files.Add(rootItem);
+                _workspaceIndexFileRoot = rootItem;
+            }
+        }
+
+        /// <summary>
         /// Pull in latest file changes
         /// </summary>
         private void OnShaderFilePooling()
@@ -186,7 +268,7 @@ namespace Studio.ViewModels.Tools
             {
                 IsHelpVisible = true;
                 HelpMessage = "No shader selected";
-                Files.Clear();
+                RemoveRootAndInvalidate(ref _selectedShaderFileRoot);
                 return;
             }
 
@@ -195,7 +277,7 @@ namespace Studio.ViewModels.Tools
             {
                 IsHelpVisible = true;
                 HelpMessage = "No files";
-                Files.Clear();
+                RemoveRootAndInvalidate(ref _selectedShaderFileRoot);
                 return;
             }
 
@@ -214,17 +296,20 @@ namespace Studio.ViewModels.Tools
                 InsertNode(root, shaderFileViewModel);
             }
             
-            // Collapse all children, root is detached in nature
-            foreach (FileNode child in root.Children)
-            {
-                CollapseNode(child, files);
-            }
+            // Collapse root
+            CollapseNode(root, files, Brushes.White, true);
 
+            // Rename root
+            IObservableTreeItem rootItem = files[0];
+            rootItem.Text = "Selected Shader";
+            rootItem.IsExpanded = true;
+            
             // Replace file collection
             using (Files.SuspendNotifications())
             {
-                Files.Clear();
-                Files.AddRange(files);
+                RemoveRootAndInvalidate(ref _selectedShaderFileRoot);
+                Files.Insert(0, rootItem);
+                _selectedShaderFileRoot =  rootItem;
             }
             
             // Events
@@ -245,15 +330,14 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// Collapse a given node
         /// </summary>
-        /// <param name="node">target node</param>
-        /// <param name="collection">collection to append to</param>
-        private void CollapseNode(FileNode node, IList<IObservableTreeItem> collection)
+        private void CollapseNode(FileNode node, IList<IObservableTreeItem> collection, IBrush? statusColor, bool expanded)
         {
             // Leaf node?
             if (node.File != null)
             {
                 collection.Add(new FileTreeItemViewModel()
                 {
+                    StatusColor = statusColor,
                     Text = node.Name,
                     ViewModel = node.File
                 });
@@ -277,6 +361,8 @@ namespace Studio.ViewModels.Tools
                 // Create item
                 var treeItem = new FileTreeItemViewModel()
                 {
+                    IsExpanded = expanded,
+                    StatusColor = statusColor,
                     Text = filename == string.Empty ? "//" : filename,
                     ViewModel = node.File
                 };
@@ -299,7 +385,7 @@ namespace Studio.ViewModels.Tools
             // Collapse all children
             foreach (var child in node.Children)
             {
-                CollapseNode(child, collection);
+                CollapseNode(child, collection, statusColor, expanded);
             }
         }
 
@@ -308,7 +394,7 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         /// <param name="node">search node</param>
         /// <param name="file">file to insert</param>
-        private void InsertNode(FileNode node, ShaderFileViewModel file)
+        private void InsertNode(FileNode node, CodeFileViewModel file)
         {
             // If there's a directory name, create a node tree
             string? immediateDirectory = System.IO.Path.GetDirectoryName(file.Filename);
@@ -398,7 +484,7 @@ namespace Studio.ViewModels.Tools
             /// <summary>
             /// Optional, leaf view model
             /// </summary>
-            public ShaderFileViewModel? File;
+            public CodeFileViewModel? File;
 
             /// <summary>
             /// Parent of this node
@@ -417,9 +503,16 @@ namespace Studio.ViewModels.Tools
         private ShaderNavigationViewModel? _shaderViewModel;
 
         /// <summary>
-        /// Disposer
+        /// Disposers
         /// </summary>
         private CompositeDisposable _lastFileComposite = new();
+        private CompositeDisposable _workspaceComposite = new();
+
+        /// <summary>
+        /// All root items
+        /// </summary>
+        private IObservableTreeItem? _selectedShaderFileRoot;
+        private IObservableTreeItem? _workspaceIndexFileRoot;
 
         /// <summary>
         /// Internal help state
@@ -430,5 +523,10 @@ namespace Studio.ViewModels.Tools
         /// Internal message state
         /// </summary>
         private string _helpMessage = "No files";
+
+        /// <summary>
+        /// All brushes
+        /// </summary>
+        private IBrush? _fileWorkspaceColor = ResourceLocator.GetBrush("FileWorkspaceColor");
     }
 }
