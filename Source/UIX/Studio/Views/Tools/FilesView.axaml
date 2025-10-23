@@ -54,6 +54,31 @@
                         <PathIcon Data="{StaticResource Collapse}" Width="13" />
                     </Button>
                 </StackPanel>
+            
+                <AutoCompleteBox 
+                    x:Name="QueryBox"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Height="25"
+                    Watermark="Search files"
+                    Margin="50,0 25,0"
+                    BorderThickness="0 0 0 1"
+                    Text="{Binding FilterString}" />
+                
+                <Button 
+                    Classes="Icon"
+                    HorizontalAlignment="Right"
+                    Width="25"
+                    Height="25"
+                    Margin="0 0 1 0">
+                    <PathIcon ToolTip.Tip="{x:Static r:Resources.Help_Tooltip}" Data="{StaticResource Question}" Width="13" />
+                    
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <TextBlock TextWrapping="Wrap">Search string, case insensitive.</TextBlock>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
             </Grid>
         </StackPanel>
 
@@ -63,7 +88,7 @@
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             BorderThickness="0"
             Tag="{Binding}"
-            ItemsSource="{Binding Files}"
+            ItemsSource="{Binding FilteredFiles}"
             AutoScrollToSelectedItem="False">
             <TreeView.Styles>
                 <Style Selector="TreeViewItem">

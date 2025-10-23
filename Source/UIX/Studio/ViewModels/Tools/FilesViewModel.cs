@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Runtime.Serialization;
 using System.Windows.Input;
 using Avalonia.Media;
 using DynamicData.Binding;
@@ -73,12 +74,31 @@ namespace Studio.ViewModels.Tools
             get => _helpMessage;
             set => this.RaiseAndSetIfChanged(ref _helpMessage, value);
         }
-        
+
+        /// <summary>
+        /// Current filter string
+        /// </summary>
+        [DataMember]
+        public string FilterString
+        {
+            get => _filterString;
+            set => this.RaiseAndSetIfChanged(ref _filterString, value);
+        }
+
         /// <summary>
         /// All child items
         /// </summary>
         public ObservableCollectionExtended<IObservableTreeItem> Files { get; } = new();
-        
+
+        /// <summary>
+        /// All filtered child items
+        /// </summary>
+        public ObservableCollectionExtended<IObservableTreeItem> FilteredFiles
+        {
+            get => _filteredFiles;
+            set => this.RaiseAndSetIfChanged(ref _filteredFiles, value);
+        }
+
         /// <summary>
         /// Connect to new workspace
         /// </summary>
@@ -112,6 +132,12 @@ namespace Studio.ViewModels.Tools
             {
                 return;
             }
+            
+            // Notify on query string change
+            this.WhenAnyValue(x => x.FilterString)
+                .Throttle(TimeSpan.FromMilliseconds(250))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(x => FilterFiles());
 
             // Bind selected workspace
             workspaceService
@@ -127,6 +153,59 @@ namespace Studio.ViewModels.Tools
                     ShaderViewModel = x;
                     Owner?.Factory?.SetActiveDockable(this);
                 });
+            
+            // Empty filter
+            FilterFiles();
+        }
+
+        /// <summary>
+        /// Run the filter
+        /// </summary>
+        private void FilterFiles()
+        {
+            if (string.IsNullOrEmpty(_filterString))
+            {
+                FilteredFiles = Files;
+                return;
+            }
+            
+            // Filter outside the main collection, avoids needless observer events
+            List<IObservableTreeItem> files = new();
+            
+            // Filter from roots, do not include roots
+            foreach (IObservableTreeItem observableTreeItem in Files)
+            {
+                FilterFlat(observableTreeItem, files);
+            }
+            
+            // Assign new files
+            using (Files.SuspendNotifications())
+            {
+                FilteredFiles = new ObservableCollectionExtended<IObservableTreeItem>(files);
+            }
+        }
+        
+        /// <summary>
+        /// Filter a file hierarchy
+        /// </summary>
+        private void FilterFlat(IObservableTreeItem item, List<IObservableTreeItem> files)
+        {
+            // Contains string?
+            if (item.Text.Contains(_filterString, StringComparison.InvariantCultureIgnoreCase))
+            {
+                files.Add(new FileTreeItemViewModel()
+                {
+                    Text = item.Text,
+                    StatusColor = item.StatusColor,
+                    ViewModel = item.ViewModel
+                });
+            }
+
+            // Filter all children
+            foreach (IObservableTreeItem child in item.Items)
+            {
+                FilterFlat(child, files);
+            }
         }
 
         /// <summary>
@@ -224,6 +303,7 @@ namespace Studio.ViewModels.Tools
             if (fileCodeService.Files.Count == 0)
             {
                 RemoveRootAndInvalidate(ref _workspaceIndexFileRoot);
+                FilterFiles();
                 return;
             }
 
@@ -251,6 +331,9 @@ namespace Studio.ViewModels.Tools
                 Files.Add(rootItem);
                 _workspaceIndexFileRoot = rootItem;
             }
+            
+            // Run the filter again
+            FilterFiles();
         }
 
         /// <summary>
@@ -269,6 +352,7 @@ namespace Studio.ViewModels.Tools
                 IsHelpVisible = true;
                 HelpMessage = "No shader selected";
                 RemoveRootAndInvalidate(ref _selectedShaderFileRoot);
+                FilterFiles();
                 return;
             }
 
@@ -278,6 +362,7 @@ namespace Studio.ViewModels.Tools
                 IsHelpVisible = true;
                 HelpMessage = "No files";
                 RemoveRootAndInvalidate(ref _selectedShaderFileRoot);
+                FilterFiles();
                 return;
             }
 
@@ -311,6 +396,9 @@ namespace Studio.ViewModels.Tools
                 Files.Insert(0, rootItem);
                 _selectedShaderFileRoot =  rootItem;
             }
+            
+            // Run the filter again
+            FilterFiles();
             
             // Events
             this.RaisePropertyChanged(nameof(IsHelpVisible));
@@ -515,6 +603,11 @@ namespace Studio.ViewModels.Tools
         private IObservableTreeItem? _workspaceIndexFileRoot;
 
         /// <summary>
+        /// Internal, default, connection string
+        /// </summary>
+        private string _filterString = "";
+
+        /// <summary>
         /// Internal help state
         /// </summary>
         private bool _isHelpVisible = true;
@@ -528,5 +621,10 @@ namespace Studio.ViewModels.Tools
         /// All brushes
         /// </summary>
         private IBrush? _fileWorkspaceColor = ResourceLocator.GetBrush("FileWorkspaceColor");
+
+        /// <summary>
+        /// Internal filtered reference
+        /// </summary>
+        private ObservableCollectionExtended<IObservableTreeItem> _filteredFiles;
     }
 }
