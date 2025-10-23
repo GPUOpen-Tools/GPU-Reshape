@@ -28,7 +28,7 @@ using System;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using ReactiveUI;
-using Runtime.ViewModels.Shader;
+using Studio.ViewModels.Code;
 
 namespace Studio.ViewModels.Controls
 {
@@ -49,8 +49,8 @@ namespace Studio.ViewModels.Controls
         /// <exception cref="NotSupportedException"></exception>
         public object? ViewModel
         {
-            get => _shaderFileViewModel;
-            set => this.RaiseAndSetIfChanged(ref _shaderFileViewModel, value as ShaderFileViewModel);
+            get => _codeFileViewModel;
+            set => this.RaiseAndSetIfChanged(ref _codeFileViewModel, value as CodeFileViewModel);
         }
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Internal file
         /// </summary>
-        private ShaderFileViewModel? _shaderFileViewModel;
+        private CodeFileViewModel? _codeFileViewModel;
         
         /// <summary>
         /// Internal expansion state

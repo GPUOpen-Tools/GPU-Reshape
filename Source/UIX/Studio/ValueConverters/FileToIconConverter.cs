@@ -26,13 +26,10 @@
 
 using System;
 using System.Globalization;
-using System.Linq;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using Runtime.ViewModels.Shader;
-using Studio.ViewModels.Tools;
-using Studio.ViewModels.Traits;
-using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Code;
 
 namespace Studio.ValueConverters
 {
@@ -52,7 +49,7 @@ namespace Studio.ValueConverters
             // Handle target
             if (targetType == typeof(Geometry))
             {
-                if (value is ShaderFileViewModel)
+                if (value is CodeFileViewModel)
                 {
                     return ResourceLocator.GetIcon("CodeFileHollow");
                 }
