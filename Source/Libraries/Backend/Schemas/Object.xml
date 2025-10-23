@@ -34,7 +34,9 @@
 
     <message name="ObjectStates">
         <field name="shaderCount" type="uint32"/>
+        <field name="shaderUIDHead" type="uint32"/>
         <field name="pipelineCount" type="uint32"/>
+        <field name="pipelineUIDHead" type="uint32"/>
     </message>
 
     <message name="GetShaderUIDRange">

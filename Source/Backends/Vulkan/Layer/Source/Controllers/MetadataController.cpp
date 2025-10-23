@@ -445,7 +445,9 @@ void MetadataController::OnMessage(const struct GetObjectStatesMessage& message)
     // Add response (linear locks)
     auto&& response = view.Add<ObjectStatesMessage>();
     response->shaderCount = static_cast<uint32_t>(table->states_shaderModule.GetLinear().object.size());
+    response->shaderUIDHead = static_cast<uint32_t>(table->states_shaderModule.GetUIDHead());
     response->pipelineCount = static_cast<uint32_t>(table->states_shaderModule.GetLinear().object.size());
+    response->pipelineUIDHead = static_cast<uint32_t>(table->states_pipeline.GetUIDHead());
 }
 
 void MetadataController::OnMessage(const struct GetShaderUIDRangeMessage& message) {

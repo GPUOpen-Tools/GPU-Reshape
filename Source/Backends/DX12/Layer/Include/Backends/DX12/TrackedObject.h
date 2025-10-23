@@ -150,6 +150,10 @@ struct TrackedObject : public ReferenceHost {
         return linear.size();
     }
 
+    uint64_t GetUIDHead() const {
+        return uidCounter;
+    }
+
     LinearView GetLinear() {
         return LinearView(mutex, linear);
     }
