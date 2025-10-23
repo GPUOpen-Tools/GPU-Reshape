@@ -36,7 +36,7 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Setting.SourceSettingView"
              x:DataType="setting:SourceSettingViewModel" x:CompileBindings="True">
-    <StackPanel Orientation="Vertical">
+    <StackPanel Orientation="Vertical" Spacing="3">
         <Grid>
             <TextBlock Margin="15 0 0 0" Text="Configure the source directories"/>
 
@@ -65,6 +65,22 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+        </Grid>
+        
+        <Grid Margin="15,5,0,0">
+            <StackPanel Orientation="Vertical" Spacing="5">
+                <TextBlock 
+                    Margin="0 0 0 0"
+                    HorizontalAlignment="Left"
+                    TextWrapping="WrapWithOverflow"
+                    Text="File Extensions (comma-delimited)"/>
+                    
+                <TextBox
+                    VerticalContentAlignment="Center"
+                    Margin="0 0 0 2.5" Height="25"
+                    Text="{Binding Extensions}"
+                    Padding="5"/>
+            </StackPanel>
         </Grid>
         
         <Grid Margin="15,5,0,0">

@@ -50,6 +50,15 @@ namespace Studio.ViewModels.Setting
         }
 
         /// <summary>
+        /// Indexing extensions
+        /// </summary>
+        public string Extensions
+        {
+            get => _extensions;
+            set => this.RaiseAndSetIfChanged(ref _extensions, value);
+        }
+
+        /// <summary>
         /// Current selected item?
         /// </summary>
         public string SelectedItem
@@ -90,5 +99,10 @@ namespace Studio.ViewModels.Setting
         /// Internal sub-directories
         /// </summary>
         private bool _indexSubFolders = false;
+
+        /// <summary>
+        /// Internal extensions
+        /// </summary>
+        private string _extensions = "hlsl,hlsli,glsl,glsli";
     }
 }

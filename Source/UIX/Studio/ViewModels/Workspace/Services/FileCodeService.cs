@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -248,6 +249,9 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
     public async Task IndexRecursive(SourceSettingViewModel settings, CancellationToken token = default)
     {
         Stack<string> worklist = new();
+
+        // Split all extensions
+        string[] extensions = settings.Extensions.Split(",");
         
         // Append supplied roots
         foreach (string directory in settings.SourceDirectories)
@@ -284,6 +288,7 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
             }
 
             // Find files
+            // TODO: Use a newer API to avoid manual filtering
             string[]? files = null;
             try
             {
@@ -299,6 +304,12 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
             {
                 foreach (string file in files)
                 {
+                    // Filter against accepted extensions
+                    if (extensions.Length != 0 && !extensions.Any(x => file.EndsWith(x)))
+                    {
+                        continue;
+                    }
+                    
                     CodeFileViewModel codeFileViewModel = new()
                     {
                         Filename = file
