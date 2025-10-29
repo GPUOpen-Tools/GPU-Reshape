@@ -11,6 +11,8 @@ using Studio.Models.IL;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Services;
 
 namespace GRS.Features.Debug.UIX.ViewModels.Utils;
 
@@ -79,7 +81,11 @@ public static class BreakpointMappingUtils
                 {
                     if (populated)
                     {
-                        action(pair.ShaderViewModel, pair.Association);
+                        SubscribeDeferredProgram(content.PropertyCollection!, pair.ShaderViewModel, () =>
+                        {
+                            action(pair.ShaderViewModel, pair.Association);
+                        });
+
                         disposable.Dispose();
                     }
                 }).DisposeWith(disposable);
@@ -111,11 +117,37 @@ public static class BreakpointMappingUtils
                 // Wait for population
                 pair.Association.WhenAnyValue(x => x.Location).WhereNotNull().Subscribe(_ =>
                 {
-                    action(pair.Association);
+                    SubscribeDeferredProgram(content.PropertyCollection!, pair.ShaderViewModel, () =>
+                    {
+                        action(pair.Association);
+                    });
+                    
                     disposable.Dispose();
                 }).DisposeWith(disposable);
             })
             .Subscribe()
             .Dispose();
+    }
+
+    /// <summary>
+    /// Subscribe to program initialization
+    /// </summary>
+    public static void SubscribeDeferredProgram(IPropertyViewModel propertyViewModel, ShaderViewModel shaderViewModel, Action action)
+    {
+        // If already ready, just invoke
+        if (shaderViewModel.Program != null)
+        {
+            action();
+            return;
+        }
+        
+        // Start enqueuing the IL
+        propertyViewModel.GetService<IShaderCodeService>()?.EnqueueShaderIL(shaderViewModel);
+        
+        // Invoke when ready
+        shaderViewModel
+            .WhenAnyValue(x => x.Program)
+            .WhereNotNull()
+            .Subscribe(_ => action());
     }
 }

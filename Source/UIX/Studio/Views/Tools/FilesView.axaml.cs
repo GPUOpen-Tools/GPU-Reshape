@@ -58,8 +58,7 @@ namespace Studio.Views.Tools
                 return;
             
             // Get service
-            var service = ServiceRegistry.Get<IWorkspaceService>();
-            if (service?.SelectedShader == null)
+            if (ServiceRegistry.Get<IWorkspaceService>() is not { } service)
                 return;
 
             // Must be file tree item
@@ -69,12 +68,15 @@ namespace Studio.Views.Tools
             // Shader file?
             if (itemViewModel is { ViewModel: ShaderFileViewModel shaderFileViewModel})
             {
-                service.SelectedShader.SelectedFile = shaderFileViewModel;
+                if (service.SelectedShader != null)
+                {
+                    service.SelectedShader.SelectedFile = shaderFileViewModel;
+                }
             }
             
             // Generic file?
             // TODO: This is oddly specialized compared to the above
-            if (itemViewModel is { ViewModel: CodeFileViewModel codeFileViewModel})
+            else if (itemViewModel is { ViewModel: CodeFileViewModel codeFileViewModel})
             {
                 if (ServiceRegistry.Get<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
                 {
