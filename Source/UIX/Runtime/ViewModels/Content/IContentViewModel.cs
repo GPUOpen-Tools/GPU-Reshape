@@ -28,23 +28,16 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia.Media;
 using Runtime.ViewModels.Traits;
-using Studio.ViewModels.Documents;
-using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader
 {
-    public interface IShaderContentViewModel : IDestructableObject
+    public interface IContentViewModel : IDestructableObject
     {
         /// <summary>
         /// The owning navigation context
         /// </summary>
         public INavigationContext? NavigationContext { get; set; }
-        
-        /// <summary>
-        /// Given creation descriptor
-        /// </summary>
-        public ShaderDescriptor? Descriptor { set; }
         
         /// <summary>
         /// Content icon
@@ -60,11 +53,6 @@ namespace Studio.ViewModels.Shader
         /// All installed services
         /// </summary>
         public ObservableCollection<IDestructableObject> Services { get; }
-
-        /// <summary>
-        /// Shader view model of the content
-        /// </summary>
-        public ShaderViewModel? ShaderViewModel { get; set; }
 
         /// <summary>
         /// Selection command
@@ -87,8 +75,8 @@ namespace Studio.ViewModels.Shader
         public NavigationLocation? NavigationLocation { get; set; }
 
         /// <summary>
-        /// Underlying object
+        /// Underlying content
         /// </summary>
-        public Workspace.Objects.ShaderViewModel? Object { get; set; }
+        public object? Content { get; set; }
     }
 }

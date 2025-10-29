@@ -173,7 +173,7 @@ namespace Studio.ViewModels.Documents
                 {
                     // Bind properties
                     this.BindProperty(x => x.PropertyCollection, x => shaderContentViewModel.PropertyCollection = x);
-                    this.BindProperty(x => x.Object, x => shaderContentViewModel.Object = x);
+                    this.BindProperty(x => x.Object, x => shaderContentViewModel.Content = x);
 
                     // Bind active state change
                     shaderContentViewModel
@@ -188,7 +188,7 @@ namespace Studio.ViewModels.Documents
             // Default view models
             ShaderContentViewModels.AddRange(new IShaderContentViewModel[]
             {
-                new CodeShaderContentViewModel()
+                new CodeContentViewModel()
                 {
                     NavigationContext = this
                 },
@@ -268,9 +268,9 @@ namespace Studio.ViewModels.Documents
                     SelectedShaderContentViewModel = ShaderContentViewModels.First(scvm => scvm is ILShaderContentViewModel);
                 }
             });
-                
+            
             // Update content objects
-            ShaderContentViewModels.ForEach(x => x.ShaderViewModel = _object);
+            ShaderContentViewModels.ForEach(x => x.Content = _object);
         }
 
         /// <summary>
@@ -279,7 +279,7 @@ namespace Studio.ViewModels.Documents
         private void OnFileAdded(ShaderFileViewModel file)
         {
             // Only for code navigation
-            if (SelectedShaderContentViewModel is not CodeShaderContentViewModel)
+            if (SelectedShaderContentViewModel is not CodeContentViewModel)
             {
                 return;
             }

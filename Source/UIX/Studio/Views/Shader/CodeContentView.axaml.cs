@@ -54,7 +54,7 @@ using TextMateSharp.Grammars;
 
 namespace Studio.Views.Shader
 {
-    public partial class CodeShaderContentView : UserControl, IViewFor
+    public partial class CodeContentView : UserControl, IViewFor
     {
         /// <summary>
         /// Assigned view model
@@ -65,7 +65,7 @@ namespace Studio.Views.Shader
             set => DataContext = value;
         }
 
-        public CodeShaderContentView()
+        public CodeContentView()
         {
             InitializeComponent();
 
@@ -108,7 +108,7 @@ namespace Studio.Views.Shader
             // Bind contents
             this.WhenAnyValue(x => x.DataContext)
                 .WhereNotNull()
-                .Cast<CodeShaderContentViewModel>()
+                .Cast<CodeContentViewModel>()
                 .WhereNotNull()
                 .Subscribe(codeViewModel =>
                 {
@@ -125,47 +125,24 @@ namespace Studio.Views.Shader
                     
                     // Assign marker view model
                     MarkerCanvas.DataContext = codeViewModel.MarkerCanvasViewModel;
-
-                    // Bind object model
-                    codeViewModel.WhenAnyValue(y => y.Object).WhereNotNull().Subscribe(_object =>
-                    {
-                        // Bind objects
-                        _object.ValidationObjects.ToObservableChangeSet()
-                            .AsObservableList()
-                            .Connect()
-                            .OnItemAdded(x => OnValidationObjectAdded(codeViewModel, x))
-                            .OnItemRemoved(x => OnValidationObjectRemoved(codeViewModel, x))
-                            .Subscribe();
-
-                        // Raise navigation changes on file additions
-                        _object.FileViewModels.ToObservableChangeSet()
-                            .AsObservableList()
-                            .Connect()
-                            .OnItemAdded(x =>
-                            {
-                                if (codeViewModel.NavigationLocation != null)
-                                {
-                                    UpdateNavigationLocation(codeViewModel, codeViewModel.NavigationLocation);
-                                }
-                            })
-                            .Subscribe();
-                        
-                        // Bind status
-                        _object.WhenAnyValue(o => o.AsyncStatus).Subscribe(status =>
+                    
+                    // Subscribe to content
+                    codeViewModel
+                        .WhenAnyValue(y => y.Content)
+                        .WhereNotNull()
+                        .Subscribe(_ =>
                         {
-                            if (status.HasFlag(AsyncObjectStatus.NotFound))
-                            {
-                                Editor.Text = Studio.Resources.Resources.Shader_NotFound;
-                            }
-                            else if (status.HasFlag(AsyncObjectStatus.NoDebugSymbols))
-                            {
-                                Editor.Text = Studio.Resources.Resources.Shader_NoDebugSymbols;
-                            }
+                            codeViewModel.GetObservableShaders()?
+                                .ToObservableChangeSet()
+                                .AsObservableList()
+                                .Connect()
+                                .OnItemAdded(x => OnShaderAdded(codeViewModel, x))
+                                .OnItemRemoved(OnShaderRemoved)
+                                .Subscribe();
                         });
-                    });
 
                     // Bind selected contents
-                    codeViewModel.WhenAnyValue(y => y.SelectedShaderFileViewModel, y => y?.Contents)
+                    codeViewModel.WhenAnyValue(y => y.SelectedFileViewModel, y => y?.Contents)
                         .WhereNotNull()
                         .Subscribe(contents =>
                         {
@@ -197,14 +174,71 @@ namespace Studio.Views.Shader
         }
 
         /// <summary>
+        /// Invoked on shader additions
+        /// </summary>
+        private void OnShaderAdded(CodeContentViewModel codeViewModel, ShaderViewModel shaderViewModel)
+        {
+            CompositeDisposable disposables = new();
+            
+            // Bind objects
+            shaderViewModel.ValidationObjects.ToObservableChangeSet()
+                .AsObservableList()
+                .Connect()
+                .OnItemAdded(x => OnValidationObjectAdded(codeViewModel, x))
+                .OnItemRemoved(x => OnValidationObjectRemoved(codeViewModel, x))
+                .Subscribe()
+                .DisposeWith(disposables);
+
+            // Raise navigation changes on file additions
+            shaderViewModel.FileViewModels.ToObservableChangeSet()
+                .AsObservableList()
+                .Connect()
+                .OnItemAdded(x =>
+                {
+                    if (codeViewModel.NavigationLocation != null)
+                    {
+                        UpdateNavigationLocation(codeViewModel, codeViewModel.NavigationLocation);
+                    }
+                })
+                .Subscribe()
+                .DisposeWith(disposables);
+                        
+            // Bind status
+            shaderViewModel.WhenAnyValue(o => o.AsyncStatus).Subscribe(status =>
+            {
+                if (status.HasFlag(AsyncObjectStatus.NotFound))
+                {
+                    Editor.Text = Studio.Resources.Resources.Shader_NotFound;
+                }
+                else if (status.HasFlag(AsyncObjectStatus.NoDebugSymbols))
+                {
+                    Editor.Text = Studio.Resources.Resources.Shader_NoDebugSymbols;
+                }
+            }).DisposeWith(disposables);
+            
+            _shaderDisposables.Add(shaderViewModel, disposables);
+        }
+
+        /// <summary>
+        /// Invoked on shader removal
+        /// </summary>
+        private void OnShaderRemoved(ShaderViewModel shaderViewModel)
+        {
+            if (_shaderDisposables.TryGetValue(shaderViewModel, out CompositeDisposable? disposables))
+            {
+                disposables.Clear();
+                _shaderDisposables.Remove(shaderViewModel);
+            }
+        }
+
+        /// <summary>
         /// Invoked on detail requests
         /// </summary>
         private void OnDetailCommand(ITextualSourceObject sourceObject)
         {
             // Validation
-            if (DataContext is not CodeShaderContentViewModel
+            if (DataContext is not CodeContentViewModel
                 {
-                    Object: {} shaderViewModel, 
                     PropertyCollection: {} property
                 } vm)
             {
@@ -214,21 +248,21 @@ namespace Studio.Views.Shader
             InstrumentationVersion? version = null;
 
             // If validation, bind instrumentation
-            if (sourceObject is ValidationObject validationObject)
+            if (sourceObject is ValidationObject { ShaderViewModel: not null } validationObject )
             {
                 // Check if there's any detailed info at all
-                if (vm.DetailViewModel == null && !ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
+                if (vm.DetailViewModel == null && !ShaderDetailUtils.CanDetailCollect(validationObject, validationObject.ShaderViewModel))
                 {
-                    vm.DetailViewModel = new NoDetailViewModel()
+                    vm.DetailViewModel = new NoDetailViewModel
                     {
-                        Object = vm.Object,
+                        Object = validationObject.ShaderViewModel,
                         PropertyCollection = vm.PropertyCollection
                     };
                     return;
                 }
             
                 // Ensure detailed collection has started
-                version = ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
+                version = ShaderDetailUtils.BeginDetailedCollection(validationObject.ShaderViewModel, property);
             }
             
             // Set selection
@@ -239,24 +273,31 @@ namespace Studio.Views.Shader
             {
                 vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
-                    Object = vm.Object,
+                    // Multi-views do not have a specific shader
+                    Object =  GetSingleViewShader(vm),
                     PropertyCollection = vm.PropertyCollection,
                     Version = version
                 };
             }).DisposeWithClear(_detailDisposable);
         }
 
-        private void UpdateNavigationLocation(CodeShaderContentViewModel codeViewModel, NavigationLocation location)
+        private void UpdateNavigationLocation(CodeContentViewModel codeViewModel, NavigationLocation location)
         {
+            // Multi-view ignored
+            if (GetSingleViewShader(codeViewModel) is not {} shaderViewModel)
+            {
+                return;
+            }
+            
             // Attempt to find file vm
-            ShaderFileViewModel? fileViewModel = codeViewModel.Object?.FileViewModels.FirstOrDefault(x => x.UID == location.Location.FileUID);
+            ShaderFileViewModel? fileViewModel = shaderViewModel.FileViewModels.FirstOrDefault(x => x.UID == location.Location.FileUID);
             if (fileViewModel == null)
             {
                 return;
             }
 
             // Update selected file
-            codeViewModel.SelectedShaderFileViewModel = fileViewModel;
+            codeViewModel.SelectedFileViewModel = fileViewModel;
             codeViewModel.SelectedTextualSourceObject = location.Object;
 
             // Scroll to target
@@ -269,12 +310,20 @@ namespace Studio.Views.Shader
             // Invalidate marker layout
             MarkerCanvas.UpdateLayout();
         }
+
+        /// <summary>
+        /// Get the single shader view model
+        /// </summary>
+        private ShaderViewModel? GetSingleViewShader(CodeContentViewModel codeViewModel)
+        {
+            return codeViewModel.Content as  ShaderViewModel;
+        }
         
         /// <summary>
         /// Invoked on object added
         /// </summary>
         /// <param name="validationObject"></param>
-        private void OnValidationObjectAdded(CodeShaderContentViewModel viewModel, ValidationObject validationObject)
+        private void OnValidationObjectAdded(CodeContentViewModel viewModel, ValidationObject validationObject)
         {
             // Update services
             _validationTextMarkerService.Add(validationObject);
@@ -291,7 +340,7 @@ namespace Studio.Views.Shader
         /// Invoked on object removed
         /// </summary>
         /// <param name="validationObject"></param>
-        private void OnValidationObjectRemoved(CodeShaderContentViewModel viewModel, ValidationObject validationObject)
+        private void OnValidationObjectRemoved(CodeContentViewModel viewModel, ValidationObject validationObject)
         {
             // Update services
             _validationTextMarkerService.Remove(validationObject);
@@ -318,5 +367,10 @@ namespace Studio.Views.Shader
         /// Disposable for detailed data
         /// </summary>
         private CompositeDisposable _detailDisposable = new();
+
+        /// <summary>
+        /// Disposables for shader states
+        /// </summary>
+        private Dictionary<ShaderViewModel, CompositeDisposable> _shaderDisposables = new();
     }
 }

@@ -25,9 +25,9 @@
 // 
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.ViewModels.IL;
@@ -108,25 +108,13 @@ namespace Studio.ViewModels.Workspace.Objects
         /// </summary>
         public ObservableCollectionExtended<ShaderFileViewModel> FileViewModels { get; } = new();
 
-        /// <summary>
-        /// Add a new validation object to this shader
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="validationObject"></param>
-        public void AddValidationObject(uint key, ValidationObject validationObject)
+        public ShaderViewModel()
         {
-            _reducedValidationObjects.Add(key, validationObject);
-        }
-
-        /// <summary>
-        /// Get a validation object from this shader
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns>null if not found</returns>
-        public ValidationObject? GetValidationObject(uint key)
-        {
-            _reducedValidationObjects.TryGetValue(key, out ValidationObject? validationObject);
-            return validationObject;
+            // TODO: I hate this
+            ValidationObjects
+                .ToObservableChangeSet()
+                .OnItemAdded(x => x.ShaderViewModel = this)
+                .Subscribe();
         }
 
         /// <summary>
@@ -170,11 +158,6 @@ namespace Studio.ViewModels.Workspace.Objects
         /// </summary>
         private string _blockGraph = string.Empty;
         
-        /// <summary>
-        /// All reduced resource messages
-        /// </summary>
-        private Dictionary<uint, ValidationObject> _reducedValidationObjects = new();
-
         /// <summary>
         /// Internal asynchronous status
         /// </summary>

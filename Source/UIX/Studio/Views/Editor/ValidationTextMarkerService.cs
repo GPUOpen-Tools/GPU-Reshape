@@ -45,7 +45,7 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Current content view model
         /// </summary>
-        public ITextualShaderContentViewModel? ShaderContentViewModel { get; set; }
+        public ITextualContent? ShaderContentViewModel { get; set; }
 
         /// <summary>
         /// Invoked on line draws / colorization 
@@ -129,7 +129,11 @@ namespace Studio.Views.Editor
             _segments.Clear();
             
             // Add as new
-            ShaderContentViewModel?.Object?.ValidationObjects.ForEach(x => Add(x));
+            // TODO: This is the wrong place
+            if (ShaderContentViewModel?.Content is ShaderViewModel shaderViewModel)
+            {
+                shaderViewModel.ValidationObjects.ForEach(x => Add(x));
+            }
         }
 
         /// <summary>

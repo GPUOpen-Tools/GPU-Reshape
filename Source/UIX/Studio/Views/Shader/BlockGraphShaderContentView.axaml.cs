@@ -40,6 +40,7 @@ using Studio.Extensions;
 using Studio.Models.Logging;
 using Studio.Services;
 using Studio.ViewModels.Shader;
+using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.Views.Shader
 {
@@ -59,7 +60,7 @@ namespace Studio.Views.Shader
                 .CastNullable<BlockGraphShaderContentViewModel>()
                 .Subscribe(viewModel =>
             {
-                viewModel.WhenAnyValue(x => x.Object).WhereNotNull().Subscribe(x =>
+                viewModel.WhenAnyValue(y => y.Content).CastNullable<ShaderViewModel>().WhereNotNull().Subscribe(x =>
                 {
                     x.WhenAnyValue(y => y.BlockGraph).Subscribe(contents =>
                     {

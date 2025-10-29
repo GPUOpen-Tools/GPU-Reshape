@@ -26,10 +26,7 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Reactive;
-using System.Reactive.Subjects;
 using System.Windows.Input;
-using Avalonia;
 using Avalonia.Media;
 using DynamicData;
 using DynamicData.Binding;
@@ -38,6 +35,7 @@ using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
+using Studio.ViewModels.Code;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
@@ -47,21 +45,12 @@ using ShaderViewModel = Studio.ViewModels.Workspace.Objects.ShaderViewModel;
 
 namespace Studio.ViewModels.Shader
 {
-    public class CodeShaderContentViewModel : ReactiveObject, ITextualShaderContentViewModel
+    public class CodeContentViewModel : ReactiveObject, IShaderContentViewModel, ITextualContent
     {
         /// <summary>
         /// The owning navigation context
         /// </summary>
         public INavigationContext? NavigationContext { get; set; }
-
-        /// <summary>
-        /// The target shader
-        /// </summary>
-        public Workspace.Objects.ShaderViewModel? ShaderViewModel
-        {
-            get => _shaderViewModel;
-            set => this.RaiseAndSetIfChanged(ref _shaderViewModel, value);
-        }
 
         /// <summary>
         /// Given descriptor
@@ -155,16 +144,16 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
-        /// Underlying object
+        /// Assigned content
         /// </summary>
-        public Workspace.Objects.ShaderViewModel? Object
+        public object? Content
         {
-            get => _object;
+            get => _content;
             set
             {
-                this.RaiseAndSetIfChanged(ref _object, value);
-
-                if (_object != null)
+                this.RaiseAndSetIfChanged(ref _content, value);
+                
+                if (value != null)
                 {
                     OnObjectChanged();
                 }
@@ -181,7 +170,7 @@ namespace Studio.ViewModels.Shader
         /// </summary>
         public bool IsOverlayVisible()
         {
-            return SelectedShaderFileViewModel?.UID != null;
+            return SelectedFileViewModel != null;
         }
 
         /// <summary>
@@ -189,7 +178,13 @@ namespace Studio.ViewModels.Shader
         /// </summary>
         public bool IsLocationVisible(ShaderLocation location)
         {
-            return location.FileUID == SelectedShaderFileViewModel?.UID;
+            // Only shader files care about visibility
+            if (SelectedFileViewModel is ShaderFileViewModel shaderFileViewModel)
+            {
+                return location.FileUID == shaderFileViewModel.UID;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -203,45 +198,76 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Transform a shader line
         /// </summary>
-        public ShaderInstructionSourceAssociationViewModel? TransformInstructionLine(AssembledInstructionMapping mapping)
+        public ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? TransformInstructionLine(AssembledInstructionMapping mapping)
         {
-            // Association is non-trivial, we need to query it
-            if (_propertyCollection?.GetService<IShaderInstructionMappingService>() is { } service)
-            {
-                return service.GetOrCreateSourceAssociation(ShaderViewModel?.GUID ?? 0, mapping);
-            }
+            ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel> multiViewModel = new();
+            
+            // Subscribe to all shaders
+            this.GetObservableShaders()?
+                .AsObservableChangeSet()
+                .OnItemAdded(shaderViewModel =>
+                {
+                    // Association is non-trivial, we need to query it
+                    if (_propertyCollection?.GetService<IShaderInstructionMappingService>() is { } service)
+                    {
+                        multiViewModel.Associations.Add(
+                            new ShaderMultiAssociationPair<ShaderInstructionSourceAssociationViewModel>
+                            {
+                                ShaderViewModel = shaderViewModel,
+                                Association = service.GetOrCreateSourceAssociation(shaderViewModel.GUID, mapping)
+                            });
+                    }
+                })
+                .Subscribe();
 
-            return null;
+            return multiViewModel;
         }
 
         /// <summary>
         /// Transform a shader location line
         /// </summary>
-        public ShaderInstructionAssociationViewModel? TransformSourceLine(int line)
+        public ShaderMultiAssociationViewModel<ShaderInstructionAssociationViewModel>? TransformSourceLine(int line)
         {
-            if (_propertyCollection?.GetService<IShaderInstructionMappingService>() is { } service)
+            if (_propertyCollection?.GetService<IShaderInstructionMappingService>() is not { } service)
             {
-                return service.GetOrCreateInstructionAssociation(new ShaderShaderInstructionAssociationLocation()
-                {
-                    SGUID = _object?.GUID ?? 0,
-                    FileUID = (int)(_selectedSelectedShaderFileViewModel?.UID ?? 0),
-                    Line = line
-                });
+                return null;
             }
+            
+            ShaderMultiAssociationViewModel<ShaderInstructionAssociationViewModel> multiViewModel = new();
+            
+            // Subscribe to all shaders
+            this.GetObservableShaders()?
+                .AsObservableChangeSet()
+                .OnItemAdded(shaderViewModel =>
+                {
+                    multiViewModel.Associations.Add(
+                        new ShaderMultiAssociationPair<ShaderInstructionAssociationViewModel>
+                        {
+                            ShaderViewModel = shaderViewModel,
+                            Association = service.GetOrCreateInstructionAssociation(
+                                new ShaderShaderInstructionAssociationLocation()
+                                {
+                                    SGUID = shaderViewModel.GUID,
+                                    FileUID = (int)((_selectedFileViewModel as ShaderFileViewModel)?.UID ?? 0),
+                                    Line = line
+                                })
+                        });
+                })
+                .Subscribe();
 
-            return null;
+            return multiViewModel;
         }
 
         /// <summary>
         /// Selected file
         /// </summary>
-        public ShaderFileViewModel? SelectedShaderFileViewModel
+        public CodeFileViewModel? SelectedFileViewModel
         {
-            get => _selectedSelectedShaderFileViewModel;
-            set => this.RaiseAndSetIfChanged(ref _selectedSelectedShaderFileViewModel, value);
+            get => _selectedFileViewModel;
+            set => this.RaiseAndSetIfChanged(ref _selectedFileViewModel, value);
         }
 
-        public CodeShaderContentViewModel()
+        public CodeContentViewModel()
         {
             OnSelected = ReactiveCommand.Create(OnParentSelected);
             CloseDetail = ReactiveCommand.Create(OnCloseDetail);
@@ -253,18 +279,28 @@ namespace Studio.ViewModels.Shader
         /// </summary>
         private void OnParentSelected()
         {
-            if (ServiceRegistry.Get<IWorkspaceService>() is { } service)
+            // If a shader file, bind the selection
+            if (Content is ShaderViewModel shaderViewModel && _selectedFileViewModel is ShaderFileViewModel shaderFileViewModel)
             {
-                // Create navigation vm
-                service.SelectedShader = new ShaderNavigationViewModel()
+                if (ServiceRegistry.Get<IWorkspaceService>() is { } service)
                 {
-                    Shader = Object,
-                    SelectedFile = _selectedSelectedShaderFileViewModel
-                };
+                    // Create navigation vm
+                    service.SelectedShader = new ShaderNavigationViewModel()
+                    {
+                        Shader = shaderViewModel,
+                        SelectedFile = shaderFileViewModel
+                    };
 
-                // Bind selection
-                service.SelectedShader.WhenAnyValue(x => x.SelectedFile)
-                    .Subscribe(x => SelectedShaderFileViewModel = x);
+                    // Bind selection
+                    service.SelectedShader.WhenAnyValue(x => x.SelectedFile)
+                        .Subscribe(x => SelectedFileViewModel = x);
+                }
+            }
+
+            // If a code file, just assign it directly
+            else if (Content is CodeFileViewModel codeFileViewModel)
+            {
+                SelectedFileViewModel = codeFileViewModel;
             }
         }
 
@@ -290,26 +326,25 @@ namespace Studio.ViewModels.Shader
         /// </summary>
         private void OnObjectChanged()
         {
-            // Submit request if not already
-            if (Object!.Contents == string.Empty)
+            // If a shader view model, bind things
+            if (Content is ShaderViewModel shaderViewModel)
             {
-                PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderContents(Object);
-            }
-
-            // Set VM when available
-            Object.FileViewModels.ToObservableChangeSet().OnItemAdded(x =>
-            {
-                if (SelectedShaderFileViewModel == null)
+                // Submit request if not already
+                if (shaderViewModel!.Contents == string.Empty)
                 {
-                    SelectedShaderFileViewModel = x;
+                    PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderContents(shaderViewModel);
                 }
-            }).Subscribe();
-        }
 
-        /// <summary>
-        /// Internal object
-        /// </summary>
-        private Workspace.Objects.ShaderViewModel? _object;
+                // Set VM when available
+                shaderViewModel.FileViewModels.ToObservableChangeSet().OnItemAdded(x =>
+                {
+                    if (SelectedFileViewModel == null)
+                    {
+                        SelectedFileViewModel = x;
+                    }
+                }).Subscribe();
+            }
+        }
 
         /// <summary>
         /// Underlying view model
@@ -324,7 +359,7 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Selected file
         /// </summary>
-        private ShaderFileViewModel? _selectedSelectedShaderFileViewModel = null;
+        private CodeFileViewModel? _selectedFileViewModel = null;
 
         /// <summary>
         /// Internal location
@@ -350,5 +385,10 @@ namespace Studio.ViewModels.Shader
         /// Internal shader
         /// </summary>
         private ShaderViewModel? _shaderViewModel;
+
+        /// <summary>
+        /// Internal content
+        /// </summary>
+        private object? _content;
     }
 }

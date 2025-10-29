@@ -16,7 +16,7 @@ public class EditorService : ReactiveObject, IEditorService
     /// <summary>
     /// Install all extensions against an editor
     /// </summary>
-    public void InstallViewModel(IShaderContentViewModel viewModel)
+    public void InstallViewModel(IContentViewModel viewModel)
     {
         foreach (IEditorExtension extension in Extensions.Items)
         {
@@ -27,7 +27,7 @@ public class EditorService : ReactiveObject, IEditorService
     /// <summary>
     /// Install all extensions against an editor
     /// </summary>
-    public void InstallView(IShaderContentViewModel viewModel, TextEditor textEditor)
+    public void InstallView(IContentViewModel viewModel, TextEditor textEditor)
     {
         foreach (IEditorExtension extension in Extensions.Items)
         {

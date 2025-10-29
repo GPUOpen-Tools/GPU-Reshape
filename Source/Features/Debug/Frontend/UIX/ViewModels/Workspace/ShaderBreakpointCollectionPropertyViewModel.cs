@@ -15,7 +15,7 @@ using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
 
-public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstrumentationProperty
+public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel, IInstrumentationProperty
 {
     /// <summary>
     /// Feature info
@@ -36,19 +36,27 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
     }
 
     /// <summary>
-    /// All breakpoints for the shader
+    /// The underlying collection we're mirroring
     /// </summary>
-    public ObservableCollection<BreakpointViewModel> Breakpoints { get; } = new();
+    public required BreakpointCollectionViewModel CollectionViewModel
+    {
+        get => _collectionViewModel;
+        set => this.RaiseAndSetIfChanged(ref _collectionViewModel, value);
+    } 
 
     /// <summary>
     /// Constructor
     /// </summary>
-    public ShaderBreakpointCollectionViewModel() : base("Breakpoint", PropertyVisibility.WorkspaceTool)
+    public ShaderBreakpointCollectionPropertyViewModel() : base("Breakpoint", PropertyVisibility.WorkspaceTool)
     {
-        Breakpoints.ToObservableChangeSet()
-            .OnItemAdded(OnAdded)
-            .OnItemRemoved(OnRemoved)
-            .Subscribe();
+        // Bind to collection
+        this.WhenAnyValue(x => x.CollectionViewModel).WhereNotNull().Subscribe(x =>
+        {
+            x.Breakpoints.ToObservableChangeSet()
+                .OnItemAdded(OnAdded)
+                .OnItemRemoved(OnRemoved)
+                .Subscribe();
+        });
     }
 
     /// <summary>
@@ -89,7 +97,7 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
         
         // Store all breakpoints
         StaticMessageView<DebugBreakpointMessage, ReadWriteMessageStream> view = new(breakpointStream);
-        foreach (BreakpointViewModel breakpointViewModel in Breakpoints.Where(x => x.SourceBinding != null))
+        foreach (BreakpointViewModel breakpointViewModel in CollectionViewModel.Breakpoints.Where(x => x.SourceBinding != null))
         {
             BreakpointConfig breakpointConfig = breakpointViewModel.GetBreakpointConfig();
             
@@ -118,4 +126,9 @@ public class ShaderBreakpointCollectionViewModel : BasePropertyViewModel, IInstr
     /// Internal shader view model
     /// </summary>
     private ShaderPropertyViewModel _shaderPropertyProperty;
+
+    /// <summary>
+    /// Internal collection
+    /// </summary>
+    private BreakpointCollectionViewModel _collectionViewModel;
 }

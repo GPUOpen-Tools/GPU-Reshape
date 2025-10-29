@@ -1,0 +1,77 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2024 Advanced Micro Devices, Inc.,
+  Fatalist Development AB (Avalanche Studio Group),
+  and Miguel Petersen.
+  
+  All Rights Reserved.
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avaloniaEdit="https://github.com/avaloniaui/avaloniaedit"
+             xmlns:r="using:Studio.Resources"
+             xmlns:documents="clr-namespace:Studio.ViewModels.Documents"
+             xmlns:shader="clr-namespace:Studio.ViewModels.Shader"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
+             xmlns:controls1="https://github.com/avalonia_extendedtoolkit"
+             xmlns:svm="clr-namespace:Studio.ViewModels.Shader;assembly=UIX.Studio.Runtime"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Studio.Views.Documents.CodeView"
+             x:DataType="documents:CodeViewModel"
+             x:CompileBindings="True">
+    <Grid>
+        <ItemsControl
+            VerticalAlignment="Top"
+            HorizontalAlignment="Right"
+            Margin="0 10 25 0"
+            ItemsSource="{Binding ContentViewModels}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="svm:IShaderContentViewModel">
+                    <ToggleButton
+                        Margin="0,0,5,0" 
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Height="25"
+                        IsChecked="{Binding IsActive}"
+                        ToolTip.Tip="{Binding ToolTip}">
+                        <PathIcon Data="{Binding Icon}" Width="15" />
+                    </ToggleButton>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        
+        <controls:UniformViewHost
+            Margin="0,0,0,0" 
+            HorizontalAlignment="Stretch" 
+            VerticalAlignment="Stretch" 
+            DataContext="{Binding SelectedContentViewModel}" />
+    </Grid>
+</UserControl>

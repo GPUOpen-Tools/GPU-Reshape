@@ -31,7 +31,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Shader
 {
-    public interface ITextualShaderContentViewModel : IShaderContentViewModel
+    public interface ITextualContent : IShaderContentViewModel
     {
         /// <summary>
         /// The current selected object
@@ -61,11 +61,11 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Transform a shader instruction
         /// </summary>
-        public ShaderInstructionSourceAssociationViewModel? TransformInstructionLine(AssembledInstructionMapping mapping);
+        public ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? TransformInstructionLine(AssembledInstructionMapping mapping);
 
         /// <summary>
         /// Transform a shader line
         /// </summary>
-        public ShaderInstructionAssociationViewModel? TransformSourceLine(int line);
+        public ShaderMultiAssociationViewModel<ShaderInstructionAssociationViewModel>? TransformSourceLine(int line);
     }
 }

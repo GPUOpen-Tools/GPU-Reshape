@@ -43,21 +43,12 @@ using ShaderViewModel = Studio.ViewModels.Workspace.Objects.ShaderViewModel;
 
 namespace Studio.ViewModels.Shader
 {
-    public class ILShaderContentViewModel : ReactiveObject, ITextualShaderContentViewModel
+    public class ILShaderContentViewModel : ReactiveObject, IShaderContentViewModel, ITextualContent
     {
         /// <summary>
         /// The owning navigation context
         /// </summary>
         public INavigationContext? NavigationContext { get; set; }
-
-        /// <summary>
-        /// The target shader
-        /// </summary>
-        public Workspace.Objects.ShaderViewModel? ShaderViewModel
-        {
-            get => _shaderViewModel;
-            set => this.RaiseAndSetIfChanged(ref _shaderViewModel, value);
-        }
 
         /// <summary>
         /// Given descriptor
@@ -136,6 +127,23 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// Assigned content
+        /// </summary>
+        public object? Content
+        {
+            get => _content;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _content, value);
+                
+                if (_content != null)
+                {
+                    OnObjectChanged();
+                }
+            }
+        }
+
+        /// <summary>
         /// Selection command
         /// </summary>
         public ICommand? OnSelected { get; }
@@ -165,6 +173,11 @@ namespace Studio.ViewModels.Shader
         public ObservableCollection<IDestructableObject> Services { get; } = new();
 
         /// <summary>
+        /// Shader view model of the content
+        /// </summary>
+        public ShaderViewModel? ShaderViewModel => Content as ShaderViewModel;
+
+        /// <summary>
         /// Is this model active?
         /// </summary>
         public bool IsActive
@@ -172,24 +185,7 @@ namespace Studio.ViewModels.Shader
             get => _isActive;
             set => this.RaiseAndSetIfChanged(ref _isActive, value);
         }
-
-        /// <summary>
-        /// Underlying object
-        /// </summary>
-        public Workspace.Objects.ShaderViewModel? Object
-        {
-            get => _object;
-            set
-            {
-                this.RaiseAndSetIfChanged(ref _object, value);
-
-                if (_object != null)
-                {
-                    OnObjectChanged();
-                }
-            }
-        }
-
+        
         public ILShaderContentViewModel()
         {
             OnSelected = ReactiveCommand.Create(OnParentSelected);
@@ -207,7 +203,7 @@ namespace Studio.ViewModels.Shader
                 // Create navigation vm
                 service.SelectedShader = new ShaderNavigationViewModel()
                 {
-                    Shader = Object,
+                    Shader = ShaderViewModel,
                     SelectedFile = null
                 };
             }
@@ -227,7 +223,7 @@ namespace Studio.ViewModels.Shader
         private void OnShowInSource()
         {
             // Navigate to the currently selected validation object
-            NavigationContext?.Navigate(typeof(CodeShaderContentViewModel), SelectedTextualSourceObject?.Segment?.Location);
+            NavigationContext?.Navigate(typeof(CodeContentViewModel), SelectedTextualSourceObject?.Segment?.Location);
         }
 
         /// <summary>
@@ -264,46 +260,64 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Transform a shader line
         /// </summary>
-        public ShaderInstructionSourceAssociationViewModel? TransformInstructionLine(AssembledInstructionMapping mapping)
+        public ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? TransformInstructionLine(AssembledInstructionMapping mapping)
         {
+            ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel> viewModel = new();
+            
             // Association is trivial, just fetch the asssembled lookup
-            return new ShaderInstructionSourceAssociationViewModel()
-            {
-                Location = new ShaderLocation()
+            viewModel.Associations.Add(
+                new ShaderMultiAssociationPair<ShaderInstructionSourceAssociationViewModel>()
                 {
-                    BasicBlockId = mapping.BasicBlockId,
-                    InstructionIndex = mapping.InstructionIndex,
-                    Line = TransformLine(new ShaderLocation()
+                    ShaderViewModel = ShaderViewModel!,
+                    Association = new ShaderInstructionSourceAssociationViewModel()
                     {
-                        BasicBlockId = mapping.BasicBlockId,
-                        InstructionIndex = mapping.InstructionIndex
-                    })
+                        Location = new ShaderLocation()
+                        {
+                            BasicBlockId = mapping.BasicBlockId,
+                            InstructionIndex = mapping.InstructionIndex,
+                            Line = TransformLine(new ShaderLocation()
+                            {
+                                BasicBlockId = mapping.BasicBlockId,
+                                InstructionIndex = mapping.InstructionIndex
+                            })
+                        }
+                    }
                 }
-            };
+            );
+
+            return viewModel;
         }
 
         /// <summary>
         /// Transform a shader location line
         /// </summary>
-        public ShaderInstructionAssociationViewModel? TransformSourceLine(int line)
+        public ShaderMultiAssociationViewModel<ShaderInstructionAssociationViewModel>? TransformSourceLine(int line)
         {
             if (Assembler == null)
             {
                 throw new Exception("Transformation without an assembler");
             }
             
+            ShaderMultiAssociationViewModel<ShaderInstructionAssociationViewModel> multiViewModel = new();
+            
             // Transform instruction indices to line from assembler
-            return new ShaderInstructionAssociationViewModel
+            multiViewModel.Associations.Add(new ShaderMultiAssociationPair<ShaderInstructionAssociationViewModel>
             {
-                Mappings =
+                ShaderViewModel = ShaderViewModel!,
+                Association = new ShaderInstructionAssociationViewModel
                 {
-                    Assembler.GetInstructionMapping(new AssembledLineMapping()
+                    Mappings =
                     {
-                        Line = (uint)line
-                    })
-                },
-                Populated = true
-            };
+                        Assembler.GetInstructionMapping(new AssembledLineMapping()
+                        {
+                            Line = (uint)line
+                        })
+                    },
+                    Populated = true
+                }
+            });
+            
+            return multiViewModel;
         }
 
         /// <summary>
@@ -312,13 +326,13 @@ namespace Studio.ViewModels.Shader
         private void OnObjectChanged()
         {
             // Submit request if not already
-            if (Object!.Program == null)
+            if (ShaderViewModel!.Program == null)
             {
-                PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderIL(Object);
+                PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderIL(ShaderViewModel);
             }
 
             // Bind program, assemble when changed
-            Object.WhenAnyValue(x => x.Program).WhereNotNull().Subscribe(program =>
+            ShaderViewModel.WhenAnyValue(x => x.Program).WhereNotNull().Subscribe(program =>
             {
                 // Create assembler
                 _assembler = new Assembler(program);
@@ -327,11 +341,6 @@ namespace Studio.ViewModels.Shader
                 AssembledProgram = _assembler.Assemble();
             });
         }
-
-        /// <summary>
-        /// Internal object
-        /// </summary>
-        private Workspace.Objects.ShaderViewModel? _object;
 
         /// <summary>
         /// Underlying view model
@@ -374,8 +383,8 @@ namespace Studio.ViewModels.Shader
         private ISourceObjectDetailViewModel? _detailViewModel;
 
         /// <summary>
-        /// Internal shader
+        /// Internal content
         /// </summary>
-        private ShaderViewModel? _shaderViewModel;
+        private object? _content;
     }
 }

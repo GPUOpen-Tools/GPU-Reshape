@@ -49,7 +49,7 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Current content view model
         /// </summary>
-        public ITextualShaderContentViewModel? ShaderContentViewModel { get; set; }
+        public ITextualContent? ShaderContentViewModel { get; set; }
 
         /// <summary>
         /// Invoked on document draws

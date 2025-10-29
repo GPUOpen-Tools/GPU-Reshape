@@ -1,4 +1,5 @@
-﻿using ReactiveUI;
+﻿using System.IO;
+using ReactiveUI;
 using Runtime.ViewModels.Traits;
 
 namespace Studio.ViewModels.Code;
@@ -44,4 +45,18 @@ public class CodeFileViewModel : ReactiveObject, ISerializable
     /// Internal filename
     /// </summary>
     private string _filename = string.Empty;
+}
+
+public static class CodeFileViewModelExtensions
+{
+    /// <summary>
+    /// Instantiate a file as a system file
+    /// </summary>
+    public static void InstantiateSystemFileViewModel(this CodeFileViewModel self)
+    {
+        if (string.IsNullOrEmpty(self.Contents))
+        {
+            self.Contents = File.ReadAllText(self.Filename);
+        }
+    }
 }

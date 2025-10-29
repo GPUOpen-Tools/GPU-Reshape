@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.ObjectModel;
 using Runtime.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -22,5 +22,5 @@ public class CodeFileShaderMappingSetViewModel
     /// <summary>
     /// All mappings of this file
     /// </summary>
-    public List<CodeFileShaderMappingViewModel> Mappings { get; } = new();
+    public ObservableCollection<CodeFileShaderMappingViewModel> Mappings { get; } = new();
 }

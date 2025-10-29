@@ -130,7 +130,8 @@ namespace Studio.Views.Shader
                 });
                 
                 // Bind object model
-                ilViewModel.WhenAnyValue(y => y.Object).WhereNotNull().Subscribe(_object =>
+                // We're working with individual shaders here
+                ilViewModel.WhenAnyValue(y => y.Content).CastNullable<ShaderViewModel>().WhereNotNull().Subscribe(_object =>
                 {
                     // Bind objects
                     _object.ValidationObjects.ToObservableChangeSet()
@@ -164,7 +165,7 @@ namespace Studio.Views.Shader
             // Validation
             if (DataContext is not ILShaderContentViewModel
                 {
-                    Object: {} shaderViewModel, 
+                    Content: ShaderViewModel shaderViewModel, 
                     PropertyCollection: {} property
                 } vm)
             {
@@ -179,9 +180,9 @@ namespace Studio.Views.Shader
                 // Check if there's any detailed info at all
                 if (!ShaderDetailUtils.CanDetailCollect(validationObject, shaderViewModel))
                 {
-                    vm.DetailViewModel = new NoDetailViewModel()
+                    vm.DetailViewModel = new NoDetailViewModel
                     {
-                        Object = vm.Object,
+                        Object = vm.Content as ShaderViewModel,
                         PropertyCollection = vm.PropertyCollection
                     };
                     return;
@@ -199,24 +200,24 @@ namespace Studio.Views.Shader
             {
                 vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
-                    Object = vm.Object,
+                    Object = vm.Content as ShaderViewModel,
                     PropertyCollection = vm.PropertyCollection,
                     Version = version
                 };
             }).DisposeWithClear(_detailDisposable);
         }
 
-        private void UpdateNavigationLocation(ILShaderContentViewModel ilViewModel, NavigationLocation location)
+        private void UpdateNavigationLocation(ILShaderContentViewModel il, NavigationLocation location)
         {
             // Get assembled mapping
-            AssembledLineMapping? mapping = ilViewModel.Assembler?.GetLineMapping(location.Location.BasicBlockId, location.Location.InstructionIndex);
+            AssembledLineMapping? mapping = il.Assembler?.GetLineMapping(location.Location.BasicBlockId, location.Location.InstructionIndex);
             if (mapping == null)
             {
                 return;
             }
 
             // Update selected file
-            ilViewModel.SelectedTextualSourceObject = location.Object;
+            il.SelectedTextualSourceObject = location.Object;
                             
             // Scroll to target
             // TODO: 10 is a total guess, we need to derive it from the height, but that doesn't exist yet.

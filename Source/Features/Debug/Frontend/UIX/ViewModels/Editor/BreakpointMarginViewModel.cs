@@ -8,12 +8,12 @@ public class BreakpointMarginViewModel : ReactiveObject
     /// <summary>
     /// The textual view model
     /// </summary>
-    public required ITextualShaderContentViewModel ContentViewModel { get; set; }
+    public required ITextualContent Content { get; set; }
     
     /// <summary>
     /// The target collection
     /// </summary>
-    public required ShaderBreakpointCollectionViewModel CollectionViewModel { get; set; }
+    public required BreakpointCollectionViewModel CollectionViewModel { get; set; }
     
     /// <summary>
     /// The current breakpoint view model

@@ -40,6 +40,7 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.Documents.WhatsNewDescriptor), typeof(ViewModels.Documents.WhatsNewViewModel));
             AddDerived(typeof(ViewModels.Documents.WorkspaceOverviewDescriptor), typeof(ViewModels.Documents.WorkspaceOverviewViewModel));
             AddDerived(typeof(ViewModels.Documents.ShaderDescriptor), typeof(ViewModels.Documents.ShaderViewModel));
+            AddDerived(typeof(ViewModels.Documents.CodeFileDescriptor), typeof(ViewModels.Documents.CodeViewModel));
             
             // Setting types
             AddDerived(typeof(ViewModels.Setting.DiscoverySettingViewModel), typeof(Views.Setting.DiscoverySettingView));

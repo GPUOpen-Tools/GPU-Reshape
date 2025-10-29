@@ -7,13 +7,14 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Rendering;
+using DynamicData;
+using DynamicData.Binding;
 using GRS.Features.Debug.UIX.Models;
 using GRS.Features.Debug.UIX.ViewModels;
 using GRS.Features.Debug.UIX.ViewModels.Editor;
 using GRS.Features.Debug.UIX.ViewModels.Utils;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
-using Studio.Models.Workspace.Objects;
 
 namespace UIX.Views.Editor;
 
@@ -92,10 +93,10 @@ public class BreakpointMargin : AbstractMargin
     /// Bind an instruction line
     /// Invalidates when actually bound
     /// </summary>
-    private ShaderLocation? BindSourceInstructionLine(BreakpointViewModel breakpointViewModel)
+    private ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? BindSourceInstructionLineAssociations(BreakpointViewModel breakpointViewModel)
     {
         // Check cache
-        if (!_breakpointSourceAssociations.TryGetValue(breakpointViewModel, out ShaderInstructionSourceAssociationViewModel? association))
+        if (!_breakpointSourceAssociations.TryGetValue(breakpointViewModel, out ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? association))
         {
             if (breakpointViewModel.SourceBinding is not { })
             {
@@ -103,29 +104,37 @@ public class BreakpointMargin : AbstractMargin
             }
 
             // Let the content view model handle the instruction -> line of code
-            association = VM.ContentViewModel.TransformInstructionLine(breakpointViewModel.SourceBinding.Mapping);
+            association = VM.Content.TransformInstructionLine(breakpointViewModel.SourceBinding.Mapping);
             if (association is null)
             {
                 return null;
             }
-
-            // Invalidate visuals when the location has been mapped
-            if (!association.Location.HasValue)
-            {
-                association.WhenAnyValue(x => x.Location).Subscribe(_ =>
+            
+            // Subscribe to all future associations
+            association.Associations
+                .ToObservableChangeSet()
+                .OnItemAdded(pair =>
                 {
-                    // Make sure to invalidate it outside a render loop
-                    Dispatcher.UIThread.InvokeAsync(() =>
+                    // Invalidate visuals when the location has been mapped
+                    if (!pair.Association.Location.HasValue)
                     {
-                        InvalidateVisual();
-                    });
-                });
-            }
+                        pair.Association.WhenAnyValue(x => x.Location).Subscribe(_ =>
+                        {
+                            // Make sure to invalidate it outside a render loop
+                            Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                InvalidateVisual();
+                            });
+                        });
+                    }
+                })
+                .Subscribe()
+                .Dispose();
             
             _breakpointSourceAssociations.Add(breakpointViewModel, association);
         }
         
-        return association.Location;
+        return association;
     }
     
     /// <summary>
@@ -221,7 +230,7 @@ public class BreakpointMargin : AbstractMargin
         }
         else
         {
-            BreakpointUtils.AddBreakpoint(VM.CollectionViewModel, VM.ContentViewModel, lineBase0, BreakpointCaptureMode.FirstEvent);
+            BreakpointUtils.AddBreakpoint(VM.CollectionViewModel, VM.Content, lineBase0, BreakpointCaptureMode.FirstEvent);
         }
 
         InvalidateVisual();
@@ -232,13 +241,29 @@ public class BreakpointMargin : AbstractMargin
     /// </summary>
     private bool IsBreakpointVisible(BreakpointViewModel breakpointViewModel, int lineBase0)
     {
-        if (BindSourceInstructionLine(breakpointViewModel) is not { } location)
+        if (BindSourceInstructionLineAssociations(breakpointViewModel) is not { } associationViewModel)
         {
             return false;
         }
+        
+        // Check all associations
+        foreach (ShaderMultiAssociationPair<ShaderInstructionSourceAssociationViewModel> pair in associationViewModel.Associations)
+        {
+            // May not be bound yet
+            if (pair.Association.Location is not { } location)
+            {
+                continue;
+            }
+            
+            // Check the line
+            if (lineBase0 == location.Line && VM.Content.IsLocationVisible(location))
+            {
+                return true;
+            }
+        }
 
-        // Check the line
-        return lineBase0 == location.Line && VM.ContentViewModel.IsLocationVisible(location);
+        // Irrelevant
+        return false;
     }
 
     /// <summary>
@@ -277,7 +302,7 @@ public class BreakpointMargin : AbstractMargin
     /// <summary>
     /// All cached associations
     /// </summary>
-    private Dictionary<BreakpointViewModel, ShaderInstructionSourceAssociationViewModel> _breakpointSourceAssociations = new();
+    private Dictionary<BreakpointViewModel, ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>> _breakpointSourceAssociations = new();
 
     /// <summary>
     /// Current preview line

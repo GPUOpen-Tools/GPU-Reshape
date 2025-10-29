@@ -24,52 +24,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using System.Collections.ObjectModel;
-using System.Windows.Input;
-using DynamicData;
-using DynamicData.Binding;
-using ReactiveUI;
-using Studio.ViewModels.Shader;
-using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Documents;
 
-namespace Studio.ViewModels.Controls
+namespace Studio.ViewModels.Shader
 {
-    public class TextualSourceObjectMarkerViewModel : ReactiveObject
+    public interface IShaderContentViewModel : IContentViewModel
     {
         /// <summary>
-        /// Transformed source line
+        /// Given creation descriptor
         /// </summary>
-        public int SourceLine { get; set; }
-
-        /// <summary>
-        /// The textual view model
-        /// </summary>
-        public ITextualContent? ShaderContentViewModel
-        {
-            get => _shaderContentViewModel;
-            set => this.RaiseAndSetIfChanged(ref _shaderContentViewModel, value);
-        }
-
-        /// <summary>
-        /// The command to be invoked on details
-        /// </summary>
-        public ICommand? DetailCommand
-        {
-            get => _detailCommand;
-            set => this.RaiseAndSetIfChanged(ref _detailCommand, value);
-        }
-        
-        public ObservableCollection<TextualSourceObjectMarkerCategoryViewModel> CategoryObjects { get; } = new();
-
-        /// <summary>
-        /// Internal detail state
-        /// </summary>
-        private ICommand? _detailCommand;
-
-        /// <summary>
-        /// Internal content view model
-        /// </summary>
-        private ITextualContent? _shaderContentViewModel;
+        public ShaderDescriptor? Descriptor { set; }
     }
 }

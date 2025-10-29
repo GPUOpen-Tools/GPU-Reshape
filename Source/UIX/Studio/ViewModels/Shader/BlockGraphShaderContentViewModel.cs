@@ -47,15 +47,6 @@ namespace Studio.ViewModels.Shader
         public INavigationContext? NavigationContext { get; set; }
 
         /// <summary>
-        /// The target shader
-        /// </summary>
-        public Workspace.Objects.ShaderViewModel? ShaderViewModel
-        {
-            get => _shaderViewModel;
-            set => this.RaiseAndSetIfChanged(ref _shaderViewModel, value);
-        }
-
-        /// <summary>
         /// Given descriptor
         /// </summary>
         public ShaderDescriptor? Descriptor
@@ -118,21 +109,26 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
-        /// Underlying object
+        /// Assigned content
         /// </summary>
-        public Workspace.Objects.ShaderViewModel? Object
+        public object? Content
         {
-            get => _object;
+            get => _content;
             set
             {
-                this.RaiseAndSetIfChanged(ref _object, value);
-
-                if (_object != null)
+                this.RaiseAndSetIfChanged(ref _content, value);
+                
+                if (_content != null)
                 {
                     OnObjectChanged();
                 }
             }
         }
+
+        /// <summary>
+        /// Shader view model of the content
+        /// </summary>
+        public ShaderViewModel? ShaderViewModel => Content as ShaderViewModel;
 
         public BlockGraphShaderContentViewModel()
         {
@@ -149,7 +145,7 @@ namespace Studio.ViewModels.Shader
                 // Create navigation vm
                 service.SelectedShader = new ShaderNavigationViewModel()
                 {
-                    Shader = Object,
+                    Shader = ShaderViewModel,
                     SelectedFile = null
                 };
             }
@@ -177,16 +173,11 @@ namespace Studio.ViewModels.Shader
         private void OnObjectChanged()
         {
             // Submit request if not already
-            if (Object!.BlockGraph == string.Empty)
+            if (ShaderViewModel!.BlockGraph == string.Empty)
             {
-                PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderBlockGraph(Object);
+                PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderBlockGraph(ShaderViewModel);
             }
         }
-
-        /// <summary>
-        /// Internal object
-        /// </summary>
-        private Workspace.Objects.ShaderViewModel? _object;
 
         /// <summary>
         /// Underlying view model
@@ -212,5 +203,10 @@ namespace Studio.ViewModels.Shader
         /// Internal shader
         /// </summary>
         private ShaderViewModel? _shaderViewModel;
+
+        /// <summary>
+        /// Internal content
+        /// </summary>
+        private object? _content;
     }
 }

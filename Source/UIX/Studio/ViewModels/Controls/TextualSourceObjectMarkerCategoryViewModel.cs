@@ -58,7 +58,7 @@ public class TextualSourceObjectMarkerCategoryViewModel : ReactiveObject
     /// <summary>
     /// The textual view model
     /// </summary>
-    public ITextualShaderContentViewModel? ShaderContentViewModel
+    public ITextualContent? ShaderContentViewModel
     {
         get => _shaderContentViewModel;
         set
@@ -177,5 +177,5 @@ public class TextualSourceObjectMarkerCategoryViewModel : ReactiveObject
     /// <summary>
     /// Internal content view model
     /// </summary>
-    private ITextualShaderContentViewModel? _shaderContentViewModel;
+    private ITextualContent? _shaderContentViewModel;
 }

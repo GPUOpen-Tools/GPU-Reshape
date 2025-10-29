@@ -25,51 +25,31 @@
 // 
 
 using System;
-using System.Collections.ObjectModel;
-using System.Windows.Input;
-using DynamicData;
-using DynamicData.Binding;
-using ReactiveUI;
-using Studio.ViewModels.Shader;
-using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Code;
+using Studio.ViewModels.Workspace.Properties;
 
-namespace Studio.ViewModels.Controls
+namespace Studio.ViewModels.Documents
 {
-    public class TextualSourceObjectMarkerViewModel : ReactiveObject
+    public class CodeFileDescriptor : IDescriptor
     {
         /// <summary>
-        /// Transformed source line
+        /// Sortable identifier
         /// </summary>
-        public int SourceLine { get; set; }
+        public object? Identifier => Tuple.Create(typeof(CodeFileDescriptor), PropertyCollection, CodeFileViewModel);
 
         /// <summary>
-        /// The textual view model
+        /// Owner object
         /// </summary>
-        public ITextualContent? ShaderContentViewModel
-        {
-            get => _shaderContentViewModel;
-            set => this.RaiseAndSetIfChanged(ref _shaderContentViewModel, value);
-        }
-
-        /// <summary>
-        /// The command to be invoked on details
-        /// </summary>
-        public ICommand? DetailCommand
-        {
-            get => _detailCommand;
-            set => this.RaiseAndSetIfChanged(ref _detailCommand, value);
-        }
+        public object? Owner => typeof(CodeFileDescriptor);
         
-        public ObservableCollection<TextualSourceObjectMarkerCategoryViewModel> CategoryObjects { get; } = new();
-
         /// <summary>
-        /// Internal detail state
+        /// Workspace collection
         /// </summary>
-        private ICommand? _detailCommand;
-
+        public IPropertyViewModel? PropertyCollection { get; set; }
+        
         /// <summary>
-        /// Internal content view model
+        /// File view model
         /// </summary>
-        private ITextualContent? _shaderContentViewModel;
+        public CodeFileViewModel CodeFileViewModel { get; set; }
     }
 }

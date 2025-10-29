@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Reactive.Disposables;
+using DynamicData;
+using DynamicData.Binding;
 using GRS.Features.Debug.UIX.Models;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
@@ -55,7 +57,7 @@ public static class BreakpointMappingUtils
     /// <summary>
     /// Subscribe to a single line source mapping
     /// </summary>
-    public static void SubscribeSourceLineMapping(ITextualShaderContentViewModel content, int lineBase0, Action<ShaderInstructionAssociationViewModel> action)
+    public static void SubscribeSourceLineMapping(ITextualContent content, int lineBase0, Action<ShaderViewModel, ShaderInstructionAssociationViewModel> action)
     {
         // Get the association view model
         if (content.TransformSourceLine(lineBase0) is not { } associationViewModel)
@@ -63,25 +65,33 @@ public static class BreakpointMappingUtils
             Logging.Error($"Failed to associate line {lineBase0} against the shader GUID");
             return;
         }
-        
-        // Shared disposable
-        CompositeDisposable disposable = new();
 
-        // Wait for population
-        associationViewModel.WhenAnyValue(x => x.Populated).Subscribe(populated =>
-        {
-            if (populated)
+        // Subscribe to all future associations
+        associationViewModel.Associations
+            .ToObservableChangeSet()
+            .OnItemAdded(pair =>
             {
-                action(associationViewModel);
-                disposable.Dispose();
-            }
-        }).DisposeWith(disposable);
+                // Shared disposable
+                CompositeDisposable disposable = new();
+
+                // Wait for population
+                pair.Association.WhenAnyValue(x => x.Populated).Subscribe(populated =>
+                {
+                    if (populated)
+                    {
+                        action(pair.ShaderViewModel, pair.Association);
+                        disposable.Dispose();
+                    }
+                }).DisposeWith(disposable);
+            })
+            .Subscribe()
+            .Dispose();
     }
 
     /// <summary>
     /// Subscribe to a many instruction mapping
     /// </summary>
-    public static void SubscribeInstructionLineMapping(ITextualShaderContentViewModel content, AssembledInstructionMapping mapping, Action<ShaderInstructionSourceAssociationViewModel> action)
+    public static void SubscribeInstructionLineMapping(ITextualContent content, AssembledInstructionMapping mapping, Action<ShaderInstructionSourceAssociationViewModel> action)
     {
         // Get the association view model
         if (content.TransformInstructionLine(mapping) is not { } associationViewModel)
@@ -89,15 +99,23 @@ public static class BreakpointMappingUtils
             Logging.Error($"Failed to associate line {mapping} against the shader GUID");
             return;
         }
-        
-        // Shared disposable
-        CompositeDisposable disposable = new();
 
-        // Wait for population
-        associationViewModel.WhenAnyValue(x => x.Location).WhereNotNull().Subscribe(location =>
-        {
-            action(associationViewModel);
-            disposable.Dispose();
-        }).DisposeWith(disposable);
+        // Subscribe to all future associations
+        associationViewModel.Associations
+            .ToObservableChangeSet()
+            .OnItemAdded(pair =>
+            {
+                // Shared disposable
+                CompositeDisposable disposable = new();
+
+                // Wait for population
+                pair.Association.WhenAnyValue(x => x.Location).WhereNotNull().Subscribe(_ =>
+                {
+                    action(pair.Association);
+                    disposable.Dispose();
+                }).DisposeWith(disposable);
+            })
+            .Subscribe()
+            .Dispose();
     }
 }

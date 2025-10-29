@@ -137,7 +137,7 @@
         <DependentUpon>AboutWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\Shader\CodeShaderContentView.axaml.cs">
+      <Compile Update="Views\Shader\CodeContentView.axaml.cs">
         <DependentUpon>ShaderView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>

@@ -156,6 +156,9 @@ namespace Studio.ViewModels.Tools
             
             // Empty filter
             FilterFiles();
+            
+            // Suspension
+            this.BindTypedSuspension();
         }
 
         /// <summary>

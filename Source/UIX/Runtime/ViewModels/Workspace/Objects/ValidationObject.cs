@@ -69,6 +69,15 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Shader this breakpoint is assigned to
+        /// </summary>
+        public ShaderViewModel? ShaderViewModel
+        {
+            get => _shaderViewModel;
+            set => this.RaiseAndSetIfChanged(ref _shaderViewModel, value);
+        }
+
+        /// <summary>
         /// Associated detail view model, optional
         /// </summary>
         public ISourceObjectDetailViewModel? DetailViewModel
@@ -177,5 +186,10 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Internal severity, assume error
         /// </summary>
         private SourceObjectSeverity _severity = SourceObjectSeverity.Error;
+
+        /// <summary>
+        /// Internal shader
+        /// </summary>
+        private ShaderViewModel? _shaderViewModel;
     }
 }

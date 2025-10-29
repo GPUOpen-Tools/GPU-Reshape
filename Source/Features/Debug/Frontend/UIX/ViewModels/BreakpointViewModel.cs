@@ -33,11 +33,6 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     public BreakpointSourceObject TextualSourceObject { get; set; }
     
     /// <summary>
-    /// Locating source segment
-    /// </summary>
-    public ShaderSourceSegment ShaderSourceSegment { get; set; }
-
-    /// <summary>
     /// Currently assigned processor, owned by the archetype
     /// </summary>
     public IBreakpointProcessorViewModel? ProcessorViewModel

@@ -75,7 +75,7 @@ public class BreakpointContextViewModel : ReactiveObject, IContextViewModel
     {
         BreakpointUtils.AddBreakpoint(
             marginViewModel.CollectionViewModel,
-            marginViewModel.ContentViewModel,
+            marginViewModel.Content,
             marginViewModel.LineNumberBase0,
             captureMode
         );
