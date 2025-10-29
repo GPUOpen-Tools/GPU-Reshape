@@ -27,16 +27,15 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 using Studio.Extensions;
-using Studio.Models.Tools;
 using Studio.ViewModels;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
-using Studio.Views.Tools.Property;
 
 namespace Studio.Views
 {
@@ -51,9 +50,11 @@ namespace Studio.Views
 
             // Bind events
             this.ApplicationButton.Events().Click.Subscribe(OnApplicationPathButton);
+            this.HistoryDropdownButton.Events().Click.Subscribe(OnHistoryButton);
             this.WorkingDirectoryButton.Events().Click.Subscribe(OnWorkingDirectoryButton);
             this.WorkspaceTree.Events().SelectionChanged.Subscribe(OnWorkspaceSelectionChanged);
-
+            this.HistoryList.Events().SelectionChanged.Subscribe(OnHistorySelectionChanged);
+            
             // Bind data context
             this.WhenAnyValue(x => x.DataContext)
                 .CastNullable<LaunchViewModel>()
@@ -97,6 +98,22 @@ namespace Studio.Views
             {
                 _VM.SelectedProperty = propertyViewModel;
             }
+        }
+
+        /// <summary>
+        /// Invoked on history button
+        /// </summary>
+        private void OnHistoryButton(RoutedEventArgs x)
+        {
+            FlyoutBase.ShowAttachedFlyout(ApplicationPathBox);
+        }
+
+        /// <summary>
+        /// Invoked on history button
+        /// </summary>
+        private void OnHistorySelectionChanged(RoutedEventArgs x)
+        {
+            FlyoutBase.GetAttachedFlyout(ApplicationPathBox)?.Hide();
         }
 
         /// <summary>

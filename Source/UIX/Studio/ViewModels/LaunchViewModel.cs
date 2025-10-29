@@ -315,6 +315,24 @@ namespace Studio.ViewModels
         public Interaction<Unit, bool> AcceptLaunch { get; }
 
         /// <summary>
+        /// Current history keys
+        /// </summary>
+        public string[] SuspensionHistoryKeys
+        {
+            get => _suspensionHistoryKeys;
+            set => this.RaiseAndSetIfChanged(ref _suspensionHistoryKeys, value);
+        }
+
+        /// <summary>
+        /// Selected history key
+        /// </summary>
+        public string SelectedHistoryKey
+        {
+            get => _selectedHistoryKey;
+            set => this.RaiseAndSetIfChanged(ref _selectedHistoryKey, value);
+        }
+
+        /// <summary>
         /// Can a launch be performed now?
         /// </summary>
         public bool CanLaunch
@@ -373,6 +391,12 @@ namespace Studio.ViewModels
 
             // Suspension
             this.BindTypedSuspension();
+
+            // Get history
+            SuspensionHistoryKeys = this.GetSuspensionHistory();
+
+            // Bind on key changes
+            this.WhenAnyValue(x => x.SelectedHistoryKey).Skip(1).Subscribe(this.RecoverSuspendedHistory);
 
             // Try getting configuration from suspension
             if (!string.IsNullOrEmpty(SelectedConfigurationName))
@@ -590,6 +614,12 @@ namespace Studio.ViewModels
             {
                 return;
             }
+            
+            // Suspend all properties for this one
+            this.SuspendHistory(_applicationPath);
+
+            // Get history
+            SuspensionHistoryKeys = this.GetSuspensionHistory();
 
             // Prevent launches for now
             _canLaunch = false;
@@ -1031,5 +1061,15 @@ namespace Studio.ViewModels
         /// Instantiated process info
         /// </summary>
         private DiscoveryProcessInfo _discoveryProcessInfo = new();
+
+        /// <summary>
+        /// Internal history keys
+        /// </summary>
+        private string[] _suspensionHistoryKeys;
+        
+        /// <summary>
+        /// Internal key selection
+        /// </summary>
+        private string _selectedHistoryKey;
     }
 }

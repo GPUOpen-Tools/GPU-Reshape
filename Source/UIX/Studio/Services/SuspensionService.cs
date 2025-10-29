@@ -35,8 +35,8 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reflection;
-using Avalonia;
 using Avalonia.Controls;
+using DynamicData.Kernel;
 using Newtonsoft.Json;
 using ReactiveUI;
 using Runtime.ViewModels.Traits;
@@ -104,6 +104,75 @@ namespace Studio.Services
             
             // Restore
             _inLoader = false;
+        }
+
+        /// <summary>
+        /// Suspend the history of an object, stored with the given key
+        /// </summary>
+        public void SuspendHistory(INotifyPropertyChanged obj, string key)
+        {
+            if (!_typedSuspensions.TryGetValue(obj.GetType(), out ObjectSuspension? suspension))
+            {
+                return;
+            }
+
+            // Serialize the cold object
+            var item = KeyValuePair.Create(key, JsonConvert.SerializeObject(suspension.ColdObject, Formatting.Indented));
+
+            // May already have the key
+            int index = suspension.SuspensionHistory.FindIndex(x => x.Key == key);
+            if (index != -1)
+            {
+                suspension.SuspensionHistory[index] = item;
+                return;
+            }
+                
+            // Remove last if at capacity
+            if (suspension.SuspensionHistory.Count == MaxSuspendedHistory)
+            {
+                suspension.SuspensionHistory.RemoveAt(suspension.SuspensionHistory.Count - 1);
+            }
+
+            // Suspend the cold object
+            suspension.SuspensionHistory.Insert(0, item);
+        }
+
+        /// <summary>
+        /// Recover the history of an object with a given key
+        /// </summary>
+        public void RecoverHistory(INotifyPropertyChanged obj, string key)
+        {
+            if (!_typedSuspensions.TryGetValue(obj.GetType(), out ObjectSuspension? suspension))
+            {
+                return;
+            }
+
+            // Try to find existing key, ignore if not found
+            var item = suspension.SuspensionHistory.FirstOrOptional(x => x.Key == key);
+            if (!item.HasValue)
+            {
+                return;
+            }
+
+            // If valid, populate the cold object and rebind to assign properties
+            if (suspension.ColdObject != null)
+            {
+                JsonConvert.PopulateObject(item.Value.Value, suspension.ColdObject);
+                BindTypedSuspension(obj);
+            }
+        }
+
+        /// <summary>
+        /// Get the existing history of an object
+        /// </summary>
+        public string[] GetHistory(INotifyPropertyChanged obj)
+        {
+            if (!_typedSuspensions.TryGetValue(obj.GetType(), out ObjectSuspension? suspension))
+            {
+                return Array.Empty<string>();
+            }
+
+            return suspension.SuspensionHistory.Select(x => x.Key).ToArray();
         }
 
         /// <summary>
@@ -411,6 +480,11 @@ namespace Studio.Services
             public ColdObject? ColdObject;
             
             /// <summary>
+            /// All suspended history objects
+            /// </summary>
+            public List<KeyValuePair<string, string>> SuspensionHistory = new();
+            
+            /// <summary>
             /// Current hot object
             /// </summary>
             [JsonIgnore]
@@ -461,6 +535,11 @@ namespace Studio.Services
         /// Current object associations
         /// </summary>
         private Dictionary<object, ColdObject> _objectAssociations = new();
+
+        /// <summary>
+        /// Maximum number of history items
+        /// </summary>
+        private static readonly uint MaxSuspendedHistory = 10;
         
         /// <summary>
         /// Default json settings
@@ -477,10 +556,33 @@ namespace Studio.Services
         /// <summary>
         /// Bind object to typed suspension
         /// </summary>
-        /// <param name="self">object to be bound</param>
         public static void BindTypedSuspension(this INotifyPropertyChanged self)
         {
             ServiceRegistry.Get<ISuspensionService>()?.BindTypedSuspension(self);
+        }
+        
+        /// <summary>
+        /// Suspend the history of an object, stored with the given key
+        /// </summary>
+        public static void SuspendHistory(this INotifyPropertyChanged self, string key)
+        {
+            ServiceRegistry.Get<ISuspensionService>()?.SuspendHistory(self, key);
+        }
+        
+        /// <summary>
+        /// Recover the history of an object with a given key
+        /// </summary>
+        public static void RecoverSuspendedHistory(this INotifyPropertyChanged self, string key)
+        {
+            ServiceRegistry.Get<ISuspensionService>()?.RecoverHistory(self, key);
+        }
+        
+        /// <summary>
+        /// Get the existing history of an object
+        /// </summary>
+        public static string[] GetSuspensionHistory(this INotifyPropertyChanged self)
+        {
+            return ServiceRegistry.Get<ISuspensionService>()?.GetHistory(self) ?? Array.Empty<string>();
         }
     }
 }

@@ -73,17 +73,41 @@
                 <TextBlock Text="Application" />
 
                 <Grid Margin="0 5 0 0">
-                    <TextBox Text="{Binding ApplicationPath}" Padding="4 4 22 4"/>
+                    <TextBox 
+                        x:Name="ApplicationPathBox"
+                        Text="{Binding ApplicationPath}"
+                        Padding="4 4 45 4">
+                        <FlyoutBase.AttachedFlyout>
+                            <Flyout Placement="BottomEdgeAlignedRight" FlyoutPresenterClasses="Overlay">
+                                <ListBox 
+                                    x:Name="HistoryList"
+                                    ItemsSource="{Binding SuspensionHistoryKeys}"
+                                    SelectedItem="{Binding SelectedHistoryKey}"/>
+                            </Flyout>
+                        </FlyoutBase.AttachedFlyout>
+                    </TextBox>
 
-                    <Button
-                        x:Name="ApplicationButton"
-                        Classes="Icon"
+                    <StackPanel 
                         HorizontalAlignment="Right"
-                        Width="25"
-                        Height="25"
-                        Margin="0 0 0 0">
-                        <PathIcon ToolTip.Tip="{x:Static r:Resources.Launch_SelectFolder_Tooltip}" Data="{StaticResource Folder}" Margin="0 2 1 0" Width="15" />
-                    </Button>
+                        Orientation="Horizontal">
+                        <Button
+                            x:Name="HistoryDropdownButton"
+                            Classes="Icon"
+                            HorizontalAlignment="Right"
+                            Width="20"
+                            Height="25">
+                            <PathIcon Data="{StaticResource ChevronDown}" Margin="0 2 0 0" Width="10" />
+                        </Button>
+
+                        <Button
+                            x:Name="ApplicationButton"
+                            Classes="Icon"
+                            HorizontalAlignment="Right"
+                            Width="25"
+                            Height="25">
+                            <PathIcon ToolTip.Tip="{x:Static r:Resources.Launch_SelectFolder_Tooltip}" Data="{StaticResource Folder}" Margin="0 2 1 0" Width="15" />
+                        </Button>
+                    </StackPanel>
                 </Grid>
 
                 <TextBlock Text="Working directory" Margin="0 15 0 0" />

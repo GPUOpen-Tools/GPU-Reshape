@@ -61,6 +61,14 @@ namespace Studio.Extensions
         }, handler => _listBox.PointerWheelChanged += handler, handler => _listBox.PointerWheelChanged -= handler);
         
         /// <summary>
+        /// Observable selection changed
+        /// </summary>
+        public IObservable<SelectionChangedEventArgs> SelectionChanged => Observable.FromEvent<EventHandler<SelectionChangedEventArgs>, SelectionChangedEventArgs>(handler =>
+        {
+            return (s, e) => handler(e);
+        }, handler => _listBox.SelectionChanged += handler, handler => _listBox.SelectionChanged -= handler);
+        
+        /// <summary>
         /// Internal listbox
         /// </summary>
         private readonly ListBox _listBox;
