@@ -87,7 +87,7 @@ namespace Studio.ViewModels.Workspace.Services
             IPropertyViewModel targetPropertyViewModel = CreateProcessTree();
             
             // Add to target
-            bool isFirstDevice = !targetPropertyViewModel.Properties.Items.Cast<WorkspaceCollectionViewModel>().Any();
+            bool isFirstDevice = !targetPropertyViewModel.Properties.Items.OfType<WorkspaceCollectionViewModel>().Any();
             targetPropertyViewModel.Properties.Add(workspace.PropertyCollection);
             workspace.PropertyCollection.Parent = targetPropertyViewModel;
 
