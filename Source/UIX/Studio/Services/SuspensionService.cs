@@ -115,6 +115,9 @@ namespace Studio.Services
             {
                 return;
             }
+            
+            // Suspend from hot to cold
+            BindSuspensionTree(obj, suspension.ColdObject!, SuspensionFlag.None);
 
             // Serialize the cold object
             var item = KeyValuePair.Create(key, JsonConvert.SerializeObject(suspension.ColdObject, Formatting.Indented));
@@ -158,7 +161,7 @@ namespace Studio.Services
             if (suspension.ColdObject != null)
             {
                 JsonConvert.PopulateObject(item.Value.Value, suspension.ColdObject);
-                BindTypedSuspension(obj);
+                BindSuspensionTree(obj, suspension.ColdObject!, SuspensionFlag.None);
             }
         }
 
