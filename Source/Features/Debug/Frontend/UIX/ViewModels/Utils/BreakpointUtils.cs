@@ -41,17 +41,23 @@ public static class BreakpointUtils
         {
             return;
         }
-        
-        // A breakpoint has been added to a specific shader, so,
-        // create the property
-        ShaderBreakpointCollectionPropertyViewModel? property = FindOrCreateShaderCollectionProperty(collection, shaderViewModel);
-        if (property == null)
+
+        // We always create shader properties with the given shader collection
+        // The file collections are mere mirrors
+        if (collection.PropertyViewModel.GetProperty<BreakpointCollectionRegistryViewModel>()?.FindOrAdd(shaderViewModel) is not { } shaderCollection)
         {
             return;
         }
         
-        // None found, add it
-        collection.Breakpoints.Add(new BreakpointViewModel
+        // A breakpoint has been added to a specific shader, so, create the property
+        ShaderBreakpointCollectionPropertyViewModel? property = FindOrCreateShaderCollectionProperty(shaderCollection, shaderViewModel);
+        if (property == null)
+        {
+            return;
+        }
+
+        // Create breakpoint
+        BreakpointViewModel breakpointViewModel = new()
         {
             ShaderProperty = (ShaderPropertyViewModel)property.Parent!,
             CaptureMode = captureMode,
@@ -60,7 +66,16 @@ public static class BreakpointUtils
                 Mapping = mapping,
                 AssociationViewModel = associationViewModel
             }
-        });
+        };
+        
+        // Always add it to the physical collection
+        shaderCollection.Breakpoints.Add(breakpointViewModel);
+
+        // If this is a logical collection, mirror it
+        if (collection != shaderCollection)
+        {
+            collection.Breakpoints.Add(breakpointViewModel);
+        }
     }
 
     /// <summary>

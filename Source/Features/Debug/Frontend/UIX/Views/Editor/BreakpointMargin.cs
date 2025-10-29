@@ -15,6 +15,7 @@ using GRS.Features.Debug.UIX.ViewModels.Editor;
 using GRS.Features.Debug.UIX.ViewModels.Utils;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace UIX.Views.Editor;
 
@@ -226,7 +227,10 @@ public class BreakpointMargin : AbstractMargin
         // If there's a breakpoint, remove it
         if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => IsBreakpointVisible(x, lineBase0)) is { } breakpoint)
         {
-            VM.CollectionViewModel.Breakpoints.Remove(breakpoint);
+            // Let the registry handle it, it may be mirrored
+            VM.Content.PropertyCollection?
+                .GetProperty<BreakpointCollectionRegistryViewModel>()?
+                .Remove(breakpoint);
         }
         else
         {
