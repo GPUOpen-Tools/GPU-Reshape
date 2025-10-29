@@ -144,17 +144,6 @@ public static class BreakpointUtils
         }
 
         // Find or add view model
-        if (!collectionRegistry.ViewModels.TryGetValue(viewModel, out BreakpointCollectionViewModel? collection))
-        {
-            collection = new BreakpointCollectionViewModel()
-            {
-                PropertyViewModel = propertyViewModel
-            };
-            
-            collectionRegistry.ViewModels.Add(viewModel, collection);
-        }
-
-        // OK
-        return collection;
+        return collectionRegistry.FindOrAdd(viewModel);
     }
 }

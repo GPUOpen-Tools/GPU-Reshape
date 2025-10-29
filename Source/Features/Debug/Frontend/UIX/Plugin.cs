@@ -229,7 +229,10 @@ namespace GRS.Features.Debug.UIX
             });
             
             // Add view model collection registry
-            workspaceViewModel.PropertyCollection.Properties.Add(new BreakpointCollectionRegistryViewModel());
+            workspaceViewModel.PropertyCollection.Properties.Add(new BreakpointCollectionRegistryViewModel()
+            {
+                Parent = workspaceViewModel.PropertyCollection
+            });
             
             // Create service
             workspaceViewModel.PropertyCollection.Services.Add(new DebugService(workspaceViewModel));

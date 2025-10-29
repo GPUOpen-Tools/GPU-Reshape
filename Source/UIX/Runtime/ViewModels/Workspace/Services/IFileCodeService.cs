@@ -19,4 +19,9 @@ public interface IFileCodeService : IPropertyService
     /// Get the mapping set for a file
     /// </summary>
     public CodeFileShaderMappingSetViewModel GetOrAddMappingSet(CodeFileViewModel codeFileViewModel);
+    
+    /// <summary>
+    /// Instantiate a file and watch for changes
+    /// </summary>
+    public void InstantiateWithWatch(CodeFileViewModel codeFileViewModel);
 }

@@ -89,6 +89,99 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
         // Index from the settings and subscribe afterwards
         Studio.Logging.Info($"Indexing {sourceSettings.SourceDirectories.Count} source directories");
         IndexRecursive(sourceSettings).ContinueWith(_ => StartPooling());
+
+        // Start the watchers
+        CreateWatchers(sourceSettings);
+    }
+
+    /// <summary>
+    /// Create all source watchers
+    /// </summary>
+    private void CreateWatchers(SourceSettingViewModel settings)
+    {
+        foreach (string directory in settings.SourceDirectories)
+        {
+            // Create watcher
+            FileSystemWatcher watcher = new(directory)
+            {
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                IncludeSubdirectories = settings.IndexSubFolders,
+                Filter = "*.*"
+            };
+            
+            // Bind
+            watcher.Created += OnFileEvent;
+            watcher.Changed += OnFileEvent;
+            watcher.Deleted += OnFileEvent;
+            watcher.Renamed += OnFileEvent;
+            watcher.EnableRaisingEvents = true;
+
+            // OK
+            _fileRootWatches.Add(directory, watcher);
+        }
+    }
+
+    /// <summary>
+    /// Invoked on file events
+    /// </summary>
+    private void OnFileEvent(object sender, FileSystemEventArgs e)
+    {
+        if (_fileWatchEvents.TryGetValue(e.FullPath, out var functor))
+        {
+            functor.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Instantiate a file contents
+    /// </summary>
+    public void InstantiateWithWatch(CodeFileViewModel codeFileViewModel)
+    {
+        // Already instantiated?
+        if (!string.IsNullOrEmpty(codeFileViewModel.Contents))
+        {
+            return;
+        }
+
+        // Common instantiation
+        Action instantiate = async () =>
+        {
+            for (int i = 0; i < _instantiationAttempts; i++)
+            {
+                try
+                {
+                    // Read and catch
+                    string contents = File.ReadAllText(codeFileViewModel.Filename);
+                    
+                    // Always populate from the main thread
+                    if (Dispatcher.UIThread.CheckAccess())
+                    {
+                        codeFileViewModel.Contents = contents;
+                    }
+                    else
+                    {
+                        await Dispatcher.UIThread.InvokeAsync(() => codeFileViewModel.Contents = contents);
+                    }
+                    break;
+                }
+                catch (Exception)
+                {
+                    // Failed due to the external process still using it
+                }
+
+                // Wait until the next try
+                await Task.Delay(TimeSpan.FromMilliseconds(_instantiationAttemptWaitTimeMS));
+            }
+        };
+        
+        // Initial instantiation
+        instantiate();
+    
+        // Watch for new events
+        _fileWatchEvents.Add(codeFileViewModel.Filename, () =>
+        {
+            instantiate();
+        });
     }
 
     /// <summary>
@@ -180,7 +273,7 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
         _mappingSetLookup.Add(codeFileViewModel, mappingSet = new CodeFileShaderMappingSetViewModel());
         return mappingSet;
     }
-    
+
     /// <summary>
     /// Find the best matching file from a shader file
     /// </summary>
@@ -364,6 +457,16 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
     /// Internal mapping lookup
     /// </summary>
     private Dictionary<CodeFileViewModel, CodeFileShaderMappingSetViewModel> _mappingSetLookup = new();
+    
+    /// <summary>
+    /// All watchers
+    /// </summary>
+    private Dictionary<string, FileSystemWatcher> _fileRootWatches = new();
+
+    /// <summary>
+    /// All watched file events
+    /// </summary>
+    private Dictionary<string, Action> _fileWatchEvents = new();
 
     /// <summary>
     /// Internal view model
@@ -384,6 +487,16 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
     /// Last processed state head
     /// </summary>
     private uint _shaderObjectStateHead = 0;
+
+    /// <summary>
+    /// The number of attempts to try to read the file
+    /// </summary>
+    private static readonly uint _instantiationAttempts = 4;
+    
+    /// <summary>
+    /// The wait time between each attempt
+    /// </summary>
+    private static readonly uint _instantiationAttemptWaitTimeMS = 100;
 
     /// <summary>
     /// Internal indexing state

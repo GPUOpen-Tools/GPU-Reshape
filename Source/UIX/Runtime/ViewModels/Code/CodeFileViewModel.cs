@@ -46,17 +46,3 @@ public class CodeFileViewModel : ReactiveObject, ISerializable
     /// </summary>
     private string _filename = string.Empty;
 }
-
-public static class CodeFileViewModelExtensions
-{
-    /// <summary>
-    /// Instantiate a file as a system file
-    /// </summary>
-    public static void InstantiateSystemFileViewModel(this CodeFileViewModel self)
-    {
-        if (string.IsNullOrEmpty(self.Contents))
-        {
-            self.Contents = File.ReadAllText(self.Filename);
-        }
-    }
-}

@@ -141,25 +141,37 @@ namespace Studio.Views.Shader
                                 .Subscribe();
                         });
 
-                    // Bind selected contents
-                    codeViewModel.WhenAnyValue(y => y.SelectedFileViewModel, y => y?.Contents)
+                    // Bind to the selected file
+                    codeViewModel
+                        .WhenAnyValue(y => y.SelectedFileViewModel)
                         .WhereNotNull()
-                        .Subscribe(contents =>
+                        .Subscribe(file =>
                         {
-                            // Set offset to start
-                            Editor.TextArea.Caret.Line = 0;
-                            Editor.TextArea.Caret.Column = 0;
-                            Editor.TextArea.Caret.BringCaretToView();
+                            // Remove the last selection
+                            _selectionDisposable.Clear();
                             
-                            // Clear and set, avoids internal replacement reformatting hell
-                            Editor.Text = string.Empty;
-                            Editor.Text = contents;
+                            // Bind to contents
+                            // Bind to disposable, as we only want to react to a single file
+                            file.WhenAnyValue(x => x.Contents)
+                                .WhereNotNull()
+                                .Subscribe(contents =>
+                                {
+                                    // Set offset to start
+                                    Editor.TextArea.Caret.Line = 0;
+                                    Editor.TextArea.Caret.Column = 0;
+                                    Editor.TextArea.Caret.BringCaretToView();
+                            
+                                    // Clear and set, avoids internal replacement reformatting hell
+                                    Editor.Text = string.Empty;
+                                    Editor.Text = contents;
 
-                            // Invalidate services
-                            _validationTextMarkerService.ResumarizeValidationObjects();
+                                    // Invalidate services
+                                    _validationTextMarkerService.ResumarizeValidationObjects();
                     
-                            // Invalidate marker layout
-                            MarkerCanvas.UpdateLayout();
+                                    // Invalidate marker layout
+                                    MarkerCanvas.UpdateLayout();
+                                })
+                                .DisposeWith(_selectionDisposable);
                         });
 
                     // Reset front state
@@ -367,6 +379,11 @@ namespace Studio.Views.Shader
         /// Disposable for detailed data
         /// </summary>
         private CompositeDisposable _detailDisposable = new();
+
+        /// <summary>
+        /// Disposable for single-file content reacts
+        /// </summary>
+        private CompositeDisposable _selectionDisposable = new();
 
         /// <summary>
         /// Disposables for shader states

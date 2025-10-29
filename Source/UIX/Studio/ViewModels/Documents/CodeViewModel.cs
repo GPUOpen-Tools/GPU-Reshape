@@ -38,9 +38,9 @@ using Runtime.ViewModels.Traits;
 using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
-using Studio.ViewModels.Code;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Services;
 
 namespace Studio.ViewModels.Documents
 {
@@ -169,7 +169,9 @@ namespace Studio.ViewModels.Documents
             }
             
             // Lazy initialize file
-            codeFileDescriptor.CodeFileViewModel.InstantiateSystemFileViewModel();
+            codeFileDescriptor.PropertyCollection?
+                .GetService<IFileCodeService>()?
+                .InstantiateWithWatch(codeFileDescriptor.CodeFileViewModel);
 
             // Set content to file
             contentViewModel.Content = codeFileDescriptor.CodeFileViewModel;
