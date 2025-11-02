@@ -43,7 +43,7 @@ DXILDebugModule::DXILDebugModule(const Allocators &allocators, DXILModule* modul
       unresolvedDwarfValues(allocators),
       valueStrings(allocators.Tag(kAllocModuleDXILSymbols)),
       valueAllocations(allocators.Tag(kAllocModuleDXILSymbols)),
-      metadata(allocators),
+      thinMetadata(allocators),
       thinTypes(allocators),
       thinValues(allocators),
       thinFunctions(allocators),
@@ -374,8 +374,9 @@ void DXILDebugModule::ParseModuleFunction(const LLVMRecord& record) {
 }
 
 void DXILDebugModule::ParseFunction(LLVMBlock *block) {
-    // Keep current head
+    // Keep current heads
     const size_t valueHead = thinValues.size();
+    const size_t metadataHead = thinMetadata.size();
 
     // Get type, appears in linkage order
     const ThinFunction& function = thinFunctions[functionLinkIndex++];
@@ -411,7 +412,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
     }
 
     // Pending metadata
-    InstructionMetadata metadata;
+    InstructionMetadata instrMetadata;
 
     /// Was the last instruction semantically relevant?
     bool isSemanticInstruction = false;
@@ -481,17 +482,17 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
 
             case LLVMFunctionRecord::DebugLOC:
             case LLVMFunctionRecord::DebugLOC2: {
-                metadata.sourceAssociation.fileUID = 0;
-                metadata.sourceAssociation.line = record.OpAs<uint32_t>(0) - 1;
-                metadata.sourceAssociation.column = record.OpAs<uint32_t>(1) - 1;
+                instrMetadata.sourceAssociation.fileUID = 0;
+                instrMetadata.sourceAssociation.line = record.OpAs<uint32_t>(0) - 1;
+                instrMetadata.sourceAssociation.column = record.OpAs<uint32_t>(1) - 1;
 
                 // Has scope?
                 if (uint32_t scope = record.OpAs<uint32_t>(2); scope) {
-                    metadata.sourceAssociation.fileUID = static_cast<uint16_t>(GetLinearFileUID(scope - 1));
+                    instrMetadata.sourceAssociation.fileUID = static_cast<uint16_t>(GetLinearFileUID(scope - 1));
                 }
 
                 if (isSemanticInstruction && functionMd.instructionMetadata.size()) {
-                    functionMd.instructionMetadata.back() = metadata;
+                    functionMd.instructionMetadata.back() = instrMetadata;
                 }
                 break;
             }
@@ -499,7 +500,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
             case LLVMFunctionRecord::DebugLOCAgain: {
                 // Repush pending
                 if (isSemanticInstruction && functionMd.instructionMetadata.size()) {
-                    functionMd.instructionMetadata.back() = metadata;
+                    functionMd.instructionMetadata.back() = instrMetadata;
                 }
                 break;
             }
@@ -514,8 +515,9 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
     // Cleanup
     unresolvedDwarfValues.clear();
 
-    // Reset head, value indices reset after function blocks
+    // Reset heads, value indices reset after function blocks
     thinValues.resize(valueHead);
+    thinMetadata.resize(metadataHead);
 }
 
 void DXILDebugModule::ParseConstants(LLVMBlock *block) {
@@ -530,10 +532,10 @@ void DXILDebugModule::ParseConstants(LLVMBlock *block) {
 
 void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
     // Value anchor
-    uint32_t anchor = static_cast<uint32_t>(metadata.size());
+    uint32_t anchor = static_cast<uint32_t>(thinMetadata.size());
 
     // Preallocate
-    metadata.reserve(metadata.size() + block->records.size());
+    thinMetadata.reserve(thinMetadata.size() + block->records.size());
 
     // Visit records
     for (size_t i = 0; i < block->records.size(); i++) {
@@ -563,7 +565,7 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
         }
 
         // Setup md
-        Metadata& md = metadata.emplace_back();
+        Metadata& md = thinMetadata.emplace_back();
         md.type = static_cast<LLVMMetadataRecord>(record.id);
         md.record = &record;
 
@@ -995,7 +997,7 @@ void DXILDebugModule::FillCombinedSource(uint32_t fileUID, char *buffer) const {
 }
 
 uint32_t DXILDebugModule::GetLinearFileUID(uint32_t scopeMdId) {
-    Metadata& md = metadata[scopeMdId];
+    Metadata& md = thinMetadata[scopeMdId];
 
     // Handle scope
     uint32_t fileMdId;
@@ -1026,7 +1028,7 @@ uint32_t DXILDebugModule::GetLinearFileUID(uint32_t scopeMdId) {
     }
 
     // Get file uid
-    Metadata& fileMd = metadata[fileMdId - 1];
+    Metadata& fileMd = thinMetadata[fileMdId - 1];
     ASSERT(fileMd.type == LLVMMetadataRecord::File, "Unexpected node");
 
     // OK
@@ -1075,7 +1077,7 @@ const char* DXILDebugModule::GetValueAllocation(uint32_t id) {
 }
 
 const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(Backend::IL::TypeMap& typeMap, uint32_t typeMdId) {
-    Metadata& typeMd = metadata[typeMdId];
+    Metadata& typeMd = thinMetadata[typeMdId];
 
     switch (typeMd.type) {
         default: {
@@ -1118,7 +1120,7 @@ const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(Backend::IL::TypeMap&
 }
 
 const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::TypeMap &typeMap, const Metadata &typeMd) {
-    Metadata& memberListMd = metadata[typeMd.compositeType._class.elementsMdId - 1];
+    Metadata& memberListMd = thinMetadata[typeMd.compositeType._class.elementsMdId - 1];
 
     // All elements
     TrivialStackVector<const Backend::IL::Type*, 16> elements;
@@ -1128,7 +1130,7 @@ const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::Ty
 
     // Populate all elements
     for (uint32_t i = 0; i < memberListMd.record->opCount; i++) {
-        Metadata& memberMd = metadata[memberListMd.record->Op32(i) - 1];
+        Metadata& memberMd = thinMetadata[memberListMd.record->Op32(i) - 1];
         ASSERT(memberMd.type == LLVMMetadataRecord::DerivedType, "Unexpected type");
         ASSERT(memberMd.derivedType.tag == LLVMDwarfTag::Member, "Unexpected tag");
 
@@ -1155,7 +1157,7 @@ const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::Ty
     }
 
     // Name of the composite
-    LLVMRecordStringView name(*this->metadata[typeMd.compositeType._class.nameMdId - 1].record, 0);
+    LLVMRecordStringView name(*thinMetadata[typeMd.compositeType._class.nameMdId - 1].record, 0);
 
     // If vector, try to represent it as such
     if (name.StartsWith("vector")) {
@@ -1185,7 +1187,7 @@ const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::Ty
 }
 
 const Backend::IL::Type * DXILDebugModule::GetStructureTypeFromDwarf(Backend::IL::TypeMap &typeMap, const Metadata &typeMd) {
-    Metadata& memberListMd = metadata[typeMd.compositeType.structureType.elementsMdId - 1];
+    Metadata& memberListMd = thinMetadata[typeMd.compositeType.structureType.elementsMdId - 1];
 
     // All elements
     TrivialStackVector<const Backend::IL::Type*, 16> elements;
@@ -1195,7 +1197,7 @@ const Backend::IL::Type * DXILDebugModule::GetStructureTypeFromDwarf(Backend::IL
 
     // Populate all elements
     for (uint32_t i = 0; i < memberListMd.record->opCount; i++) {
-        Metadata& memberMd = metadata[memberListMd.record->Op32(i) - 1];
+        Metadata& memberMd = thinMetadata[memberListMd.record->Op32(i) - 1];
         ASSERT(memberMd.type == LLVMMetadataRecord::DerivedType, "Unexpected type");
         ASSERT(memberMd.derivedType.tag == LLVMDwarfTag::Member, "Unexpected tag");
 
@@ -1279,8 +1281,8 @@ void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LL
     uint32_t valueMdIndex    = anchor - static_cast<uint32_t>(record.Op(4));
     uint32_t byteOffset      = anchor - static_cast<uint32_t>(record.Op(5));
     uint32_t variableMdIndex = anchor - static_cast<uint32_t>(record.Op(6));
-    Metadata &variableMd     = this->metadata[variableMdIndex];
-    Metadata& expressionMd   = this->metadata[anchor - static_cast<uint32_t>(record.Op(7))];
+    Metadata &variableMd     = thinMetadata[variableMdIndex];
+    Metadata& expressionMd   = thinMetadata[anchor - static_cast<uint32_t>(record.Op(7))];
 
     // No instruction to associate with?
     if (!functionMd.instructionMetadata.size()) {
@@ -1306,7 +1308,7 @@ void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LL
 
         // Copy over name if possible
         if (variableMd.localVar.nameMdId) {
-            LLVMRecordStringView name(*this->metadata[variableMd.localVar.nameMdId - 1].record, 0);
+            LLVMRecordStringView name(*thinMetadata[variableMd.localVar.nameMdId - 1].record, 0);
             variableName = blockAllocator.AllocateArray<char>(name.Length() + 1);
             name.CopyTerminated(variableName);
         }
@@ -1322,7 +1324,7 @@ void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LL
     value->codeOffset = IL::InvalidID;
     value->kind = expressionMd.expression.op;
     
-    if (Metadata &valueMd = this->metadata[valueMdIndex]; valueMd.type == LLVMMetadataRecord::Value) {
+    if (Metadata &valueMd = thinMetadata[valueMdIndex]; valueMd.type == LLVMMetadataRecord::Value) {
         value->codeOffset = valueMd.value;
 
         // May not be resolved

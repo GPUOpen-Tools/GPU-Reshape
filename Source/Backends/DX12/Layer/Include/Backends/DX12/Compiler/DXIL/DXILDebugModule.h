@@ -360,7 +360,7 @@ private:
     };
 
     /// All metadata
-    Vector<Metadata> metadata;
+    Vector<Metadata> thinMetadata;
 
 private:
     /// Get the backend type from a dward type
