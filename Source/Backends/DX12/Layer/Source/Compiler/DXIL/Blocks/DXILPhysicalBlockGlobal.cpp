@@ -119,6 +119,20 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
                         });
                         break;
                     }
+                    case Backend::IL::TypeKind::Vector: {
+                        // TODO: This is in complete disarray to the above, there's a systematic issue here
+                        constant = constantMap.AddConstant(id, type->As<Backend::IL::VectorType>(), Backend::IL::NullConstant {
+                            
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Array: {
+                        // TODO: This is in complete disarray to the above, there's a systematic issue here
+                        constant = constantMap.AddConstant(id, type->As<Backend::IL::ArrayType>(), Backend::IL::NullConstant {
+                            
+                        });
+                        break;
+                    }
                 }
                 break;
             }
@@ -160,7 +174,11 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
                             uint32_t operand = record.Op32(i);
                         
                             if (table.idMap.IsMapped(operand)) {
-                                decl.members.push_back(program.GetConstants().GetConstant(table.idMap.GetMapped(operand)));
+                                const IL::Constant *memberConstant = program.GetConstants().GetConstant(table.idMap.GetMapped(operand));
+                                if (!memberConstant) {
+                                    memberConstant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
+                                }
+                                decl.members.push_back(memberConstant);
                             } else {
                                 isUnresolved = true;
                             
@@ -187,7 +205,11 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
                             uint32_t operand = record.Op32(i);
                         
                             if (table.idMap.IsMapped(operand)) {
-                                decl.elements.push_back(program.GetConstants().GetConstant(table.idMap.GetMapped(operand)));
+                                const IL::Constant *elementConstant = program.GetConstants().GetConstant(table.idMap.GetMapped(operand));
+                                if (!elementConstant) {
+                                    elementConstant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
+                                }
+                                decl.elements.push_back(elementConstant);
                             } else {
                                 isUnresolved = true;
                             
@@ -214,7 +236,11 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
                             uint32_t operand = record.Op32(i);
                         
                             if (table.idMap.IsMapped(operand)) {
-                                decl.elements.push_back(program.GetConstants().GetConstant(table.idMap.GetMapped(operand)));
+                                const IL::Constant *elementConstant = program.GetConstants().GetConstant(table.idMap.GetMapped(operand));
+                                if (!elementConstant) {
+                                    elementConstant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
+                                }
+                                decl.elements.push_back(elementConstant);
                             } else {
                                 isUnresolved = true;
                             
