@@ -799,7 +799,7 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, uint32_t anchor, cons
 
             // Parse all files
             for (uint32_t i = 0; i < record.opCount; i++) {
-                ParseContents(block, static_cast<uint32_t>(record.Op(i)));
+                ParseContentsRecord(block, static_cast<uint32_t>(record.Op(i)));
             }
             break;
         }
@@ -813,13 +813,8 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, uint32_t anchor, cons
     }
 }
 
-void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
-    const LLVMRecord& record = block->records[fileMdId];
-
-    // Get strings
-    LLVMRecordStringView filename(block->records[record.Op(0) - 1], 0);
-    LLVMRecordStringView contents(block->records[record.Op(1) - 1], 0);
-
+template<typename T>
+void DXILDebugModule::ParseContentsAdapter(const T &filename, const T &contents) {
     // Target fragment which may be derived
     SourceFragment* fragment = FindOrCreateSourceFragmentSanitized(filename);
 
@@ -971,6 +966,15 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
     }
 }
 
+void DXILDebugModule::ParseContentsRecord(LLVMBlock* block, uint32_t fileMdId) {
+    const LLVMRecord& record = block->records[fileMdId];
+
+    // Get strings
+    LLVMRecordStringView filename(block->records[record.Op(0) - 1], 0);
+    LLVMRecordStringView contents(block->records[record.Op(1) - 1], 0);
+    ParseContentsAdapter(filename, contents);
+}
+
 std::string_view DXILDebugModule::GetFilename() {
     if (sourceFragments.empty()) {
         return {};
@@ -1035,27 +1039,80 @@ uint32_t DXILDebugModule::GetLinearFileUID(uint32_t scopeMdId) {
     return fileMd.file.linearFileUID;
 }
 
+struct StringViewAdapter {
+    bool StartsWithOffset(uint32_t offset, std::string_view str) const {
+        if (str.length() > view.length() - offset) {
+            return false;
+        }
+
+        for (uint32_t i = 0; i < str.length(); i++) {
+            if (str[i] != static_cast<char>(view[offset + i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void SubStr(uint64_t begin, uint64_t end, char* buffer) const {
+        for (size_t i = begin; i < end; i++) {
+            buffer[i - begin] = static_cast<char>(view[i]);
+        }
+    }
+    
+    void SubStrTerminated(uint64_t begin, uint64_t end, char* buffer) const {
+        for (size_t i = begin; i < end; i++) {
+            buffer[i - begin] = static_cast<char>(view[i]);
+        }
+
+        // Terminator
+        buffer[end - begin] = '\0';
+    }
+            
+    template<typename F>
+    void CopyUntilTerminated(uint64_t begin, char* buffer, uint32_t length, F&& functor) const {
+        size_t i;
+        for (i = begin; i < std::min<size_t>(begin + length - 1, view.length()); i++) {
+            char ch = view[i];
+
+            // Break?
+            if (!functor(ch)) {
+                break;
+            }
+
+            // Append
+            buffer[i - begin] = ch;
+        }
+
+        // Terminator
+        buffer[i - begin] = '\0';
+    }
+
+    uint32_t Length() const {
+        return static_cast<uint32_t>(view.length());
+    }
+
+    char operator[](uint32_t i) const {
+        return view[i];
+    }
+
+    operator std::string_view() const {
+        return view;
+    }
+    
+    std::string_view view;
+};
+
 void DXILDebugModule::CreateFragmentsFromSourceBlock() {
     // Block contents should never need resolving 
     isContentsUnresolved = false;
 
     // Fill all files
     for (const DXBCPhysicalBlockShaderSourceInfo::SourceFile& file : shaderSourceInfo.sourceFiles) {
-        SourceFragment* fragment = FindOrCreateSourceFragmentSanitized(file.filename);
-
-        // Block contents shouldn't require any preprocessing
-        // TODO: Consider backing storage, avoids needless copies
-        fragment->contents = file.contents;
-
-        // Initial line
-        fragment->lineOffsets.push_back(0);
-        
-        // Summarize remaining line endings
-        for (size_t i = 0; i < fragment->contents.size(); i++) {
-            if (fragment->contents[i] == '\n') {
-                fragment->lineOffsets.push_back(static_cast<uint32_t>(i + 1));
-            }
-        }
+        ParseContentsAdapter(
+            StringViewAdapter{ file.filename },
+            StringViewAdapter{ file.contents }
+        );
     }
 }
 

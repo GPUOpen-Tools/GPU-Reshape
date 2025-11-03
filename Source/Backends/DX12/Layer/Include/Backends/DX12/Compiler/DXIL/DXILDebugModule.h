@@ -88,7 +88,13 @@ private:
     /// Parse operand contents
     /// \param block source block
     /// \param fileMdId file id
-    void ParseContents(LLVMBlock* block, uint32_t fileMdId);
+    void ParseContentsRecord(LLVMBlock* block, uint32_t fileMdId);
+    
+    /// Parse operand contents
+    /// \param filename base filename
+    /// \param contents combined contents
+    template<typename T>
+    void ParseContentsAdapter(const T& filename, const T& contents);
 
     /// Parse a function
     /// \param block source block
