@@ -279,7 +279,7 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
     /// </summary>
     private CodeFileViewModel? FindBestMatchFile(ShaderFileViewModel shaderFileViewModel)
     {
-        string searchPath = shaderFileViewModel.Filename;
+        string searchPath = StandardizePartialPath(shaderFileViewModel.Filename);
         while (!string.IsNullOrEmpty(searchPath))
         {
             // Has candidate?
@@ -289,7 +289,7 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
             }
             
             // Otherwise, move the base up
-            int separateIt = searchPath.IndexOf(Path.DirectorySeparatorChar);
+            int separateIt = searchPath.IndexOf('/');
             if (separateIt == -1)
             {
                 return null;
@@ -300,6 +300,23 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
 
         // Nothing
         return null;
+    }
+
+    /// <summary>
+    /// Standardize a path
+    /// </summary>
+    private string StandardizePartialPath(string path)
+    {
+        // Standardize directory
+        path = path.Replace("\\", "/");
+
+        // Remove leading directories
+        if (path[0] == '/')
+        {
+            path = path.Substring(1);
+        }
+
+        return path;
     }
 
     /// <summary>
@@ -425,6 +442,8 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
     /// </summary>
     private void InsertFileHierarchyNaive(string file, CodeFileViewModel codeFileViewModel)
     {
+        file = StandardizePartialPath(file);
+        
         // This is obviously "naive", hence the name
         // It's a start
         while (true)
@@ -433,7 +452,7 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
             _fileLookup.TryAdd(file, codeFileViewModel);
             
             // Otherwise, move the base up
-            int separateIt = file.IndexOf(Path.DirectorySeparatorChar);
+            int separateIt = file.IndexOf('/');
             if (separateIt == -1)
             {
                 return;
