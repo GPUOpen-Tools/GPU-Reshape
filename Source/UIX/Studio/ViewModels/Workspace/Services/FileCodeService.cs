@@ -14,6 +14,7 @@ using ReactiveUI;
 using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
 using Studio.Services;
+using Studio.Utils;
 using Studio.ViewModels.Code;
 using Studio.ViewModels.Setting;
 using Studio.ViewModels.Workspace.Objects;
@@ -279,7 +280,7 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
     /// </summary>
     private CodeFileViewModel? FindBestMatchFile(ShaderFileViewModel shaderFileViewModel)
     {
-        string searchPath = StandardizePartialPath(shaderFileViewModel.Filename);
+        string searchPath = PathUtils.StandardizePartialPath(shaderFileViewModel.Filename);
         while (!string.IsNullOrEmpty(searchPath))
         {
             // Has candidate?
@@ -288,35 +289,11 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
                 return file;
             }
             
-            // Otherwise, move the base up
-            int separateIt = searchPath.IndexOf('/');
-            if (separateIt == -1)
-            {
-                return null;
-            }
-            
-            searchPath = searchPath.Substring(separateIt + 1);
+            searchPath = PathUtils.RemoveLeadingDirectory(searchPath);
         }
 
         // Nothing
         return null;
-    }
-
-    /// <summary>
-    /// Standardize a path
-    /// </summary>
-    private string StandardizePartialPath(string path)
-    {
-        // Standardize directory
-        path = path.Replace("\\", "/");
-
-        // Remove leading directories
-        if (path[0] == '/')
-        {
-            path = path.Substring(1);
-        }
-
-        return path;
     }
 
     /// <summary>
@@ -442,7 +419,7 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
     /// </summary>
     private void InsertFileHierarchyNaive(string file, CodeFileViewModel codeFileViewModel)
     {
-        file = StandardizePartialPath(file);
+        file = PathUtils.StandardizePartialPath(file);
         
         // This is obviously "naive", hence the name
         // It's a start

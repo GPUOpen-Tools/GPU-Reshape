@@ -31,6 +31,7 @@ using Avalonia.Media;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
@@ -240,6 +241,9 @@ namespace Studio.ViewModels.Shader
                 .AsObservableChangeSet()
                 .OnItemAdded(shaderViewModel =>
                 {
+                    // Try to find the best match
+                    ShaderFileViewModel? fileViewModel = ShaderPathUtils.FindBestMatchContainedFile(shaderViewModel, _selectedFileViewModel!.Filename);
+                    
                     multiViewModel.Associations.Add(
                         new ShaderMultiAssociationPair<ShaderInstructionAssociationViewModel>
                         {
@@ -248,7 +252,7 @@ namespace Studio.ViewModels.Shader
                                 new ShaderShaderInstructionAssociationLocation()
                                 {
                                     SGUID = shaderViewModel.GUID,
-                                    FileUID = (int)((_selectedFileViewModel as ShaderFileViewModel)?.UID ?? 0),
+                                    FileUID = (int)(fileViewModel?.UID ?? 0),
                                     Line = line
                                 })
                         });
