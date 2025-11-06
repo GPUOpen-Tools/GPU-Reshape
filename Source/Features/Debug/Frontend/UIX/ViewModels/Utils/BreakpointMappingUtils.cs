@@ -90,8 +90,7 @@ public static class BreakpointMappingUtils
                     }
                 }).DisposeWith(disposable);
             })
-            .Subscribe()
-            .Dispose();
+            .Subscribe();
     }
 
     /// <summary>
@@ -121,12 +120,11 @@ public static class BreakpointMappingUtils
                     {
                         action(pair.Association);
                     });
-                    
+
                     disposable.Dispose();
                 }).DisposeWith(disposable);
             })
-            .Subscribe()
-            .Dispose();
+            .Subscribe();
     }
 
     /// <summary>

@@ -205,7 +205,7 @@ namespace Studio.ViewModels.Shader
             
             // Subscribe to all shaders
             this.GetObservableShaders()?
-                .AsObservableChangeSet()
+                .ToObservableChangeSet()
                 .OnItemAdded(shaderViewModel =>
                 {
                     // Association is non-trivial, we need to query it
@@ -238,7 +238,7 @@ namespace Studio.ViewModels.Shader
             
             // Subscribe to all shaders
             this.GetObservableShaders()?
-                .AsObservableChangeSet()
+                .ToObservableChangeSet()
                 .OnItemAdded(shaderViewModel =>
                 {
                     // Try to find the best match
