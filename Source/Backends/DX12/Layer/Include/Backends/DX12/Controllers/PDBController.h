@@ -57,6 +57,7 @@ public:
     COMPONENT(PDBController);
 
     PDBController(DeviceState* device);
+    ~PDBController();
 
     /// Install the controller
     bool Install();
@@ -98,6 +99,21 @@ private:
     void AppendCandidates(const std::string_view& view, PDBCandidateList& candidates);
 
 private:
+    /// File watcher thread entry
+    /// @param dirHandle handle
+    /// @param path path to watch
+    void FilePoolingThreadWorker(void* dirHandle, const std::string& path);
+
+private:
+    struct WatcherState {
+        /// Owning thread
+        std::thread thread;
+
+        /// Directory handle
+        void* dirHandle = nullptr;
+    };
+    
+private:
     DeviceState* device;
 
     /// Owning bridge, stored as naked pointer for referencing reasons
@@ -111,6 +127,12 @@ private:
 
     /// All indexed paths
     std::unordered_map<uint64_t, std::vector<std::string>> indexed;
+
+    /// All watchers
+    std::vector<WatcherState> watcherStates;
+
+    /// Thread exit flag
+    std::atomic_bool watcherExitFlag;
 
     /// Shared lock
     std::mutex mutex;

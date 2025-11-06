@@ -43,11 +43,31 @@
 #include <Common/FileSystem.h>
 #include <Common/Format.h>
 
+// System
+#include <Windows.h>
+
 // Std
 #include <filesystem>
 
 PDBController::PDBController(DeviceState *device) : device(device), pdbPaths(device->allocators) {
 
+}
+
+PDBController::~PDBController() {
+    // Flag exit
+    watcherExitFlag = true;
+
+    // Close blocking handles
+    for (WatcherState& state : watcherStates) {
+        CancelSynchronousIo(state.thread.native_handle());
+    }
+
+    // Wait for all threads
+    for (WatcherState& state : watcherStates) {
+        if (state.thread.joinable()) {
+            state.thread.join();
+        }
+    }
 }
 
 bool PDBController::Install() {
@@ -140,6 +160,55 @@ void PDBController::AppendCandidates(const std::string_view &path, PDBCandidateL
     }
 }
 
+void PDBController::FilePoolingThreadWorker(HANDLE dirHandle, const std::string& path) {
+    std::vector<uint8_t> workingMemory(64 * 1024);
+
+    // Keep polling until requested
+    while (!watcherExitFlag) {
+        DWORD byteCount = 0;
+        if (!ReadDirectoryChangesW(
+            dirHandle,
+            workingMemory.data(),
+            static_cast<DWORD>(workingMemory.size()),
+            recursive ? TRUE : FALSE,
+            FILE_NOTIFY_CHANGE_FILE_NAME |
+                FILE_NOTIFY_CHANGE_DIR_NAME |
+                FILE_NOTIFY_CHANGE_ATTRIBUTES |
+                FILE_NOTIFY_CHANGE_SIZE |
+                FILE_NOTIFY_CHANGE_LAST_WRITE,
+            &byteCount,
+            nullptr,
+            nullptr
+        )) {
+            break;
+        }
+
+        // Process all events
+        for (size_t offset = 0;;) {
+            auto *event = reinterpret_cast<FILE_NOTIFY_INFORMATION *>(workingMemory.data() + offset);
+
+            // Relevant event?
+            if (event->Action != FILE_ACTION_REMOVED && event->Action != FILE_ACTION_RENAMED_OLD_NAME) {
+                std::wstring filename(event->FileName, event->FileNameLength / sizeof(WCHAR));
+                
+                // Serial
+                std::lock_guard guard(mutex);
+                IndexPathCandidates(path, std::filesystem::path(path) / filename);
+            }
+
+            // Last entry?
+            if (event->NextEntryOffset == 0) {
+                break;
+            }
+
+            offset += event->NextEntryOffset;
+        }
+    }
+
+    // Cleanup
+    CloseHandle(dirHandle);
+}
+
 void PDBController::GetCandidateList(const char* path, PDBCandidateList& candidates) {
     /** TODO: Is there some universally accepted way to index debug files? */
     
@@ -184,6 +253,24 @@ void PDBController::OnMessage(const struct IndexPDPathsMessage &message) {
     // Visit all paths
     for (const std::string &path: pdbPaths) {
         std::error_code error;
+
+        // Open handle for watching
+        HANDLE dirHandle = CreateFileA(
+            path.c_str(),
+            FILE_LIST_DIRECTORY,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS,
+            nullptr
+        );
+        if (dirHandle != INVALID_HANDLE_VALUE) {
+            // Start watcher
+            watcherStates.push_back(WatcherState {
+                .thread = std::thread(&PDBController::FilePoolingThreadWorker, this, dirHandle, path),
+                .dirHandle = dirHandle
+            });
+        }
         
         // Recursive?
         if (recursive) {
