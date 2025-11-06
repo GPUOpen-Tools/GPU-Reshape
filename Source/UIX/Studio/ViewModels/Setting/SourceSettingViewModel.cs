@@ -103,6 +103,6 @@ namespace Studio.ViewModels.Setting
         /// <summary>
         /// Internal extensions
         /// </summary>
-        private string _extensions = "hlsl,hlsli,glsl,glsli";
+        private string _extensions = "hlsl,hlsli,glsl,glsli,usf,ush";
     }
 }
