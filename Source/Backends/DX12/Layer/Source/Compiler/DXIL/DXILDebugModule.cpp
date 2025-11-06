@@ -1104,8 +1104,9 @@ struct StringViewAdapter {
 };
 
 void DXILDebugModule::CreateFragmentsFromSourceBlock() {
-    // Block contents should never need resolving 
-    isContentsUnresolved = false;
+    // A single file either indicates that there's a single file, or, that the contents are unresolved
+    // f.x. line directives that need to be mapped
+    isContentsUnresolved = (shaderSourceInfo.sourceFiles.size() == 1);
 
     // Fill all files
     for (const DXBCPhysicalBlockShaderSourceInfo::SourceFile& file : shaderSourceInfo.sourceFiles) {
