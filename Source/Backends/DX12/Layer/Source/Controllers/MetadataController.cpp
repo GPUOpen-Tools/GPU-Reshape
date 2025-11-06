@@ -544,6 +544,16 @@ void MetadataController::OnMessage(const struct GetShaderInstructionMappingMessa
         shaderCompiler->InitializeModule(shader);
     }
 
+    // Failed?
+    if (!shader || !shader->module) {
+        auto&& response = view.Add<ShaderInstructionMappingSetMessage>(ShaderInstructionMappingSetMessage::AllocationInfo { .mappingsByteSize = 0 });
+        response->shaderGUID = message.shaderGUID;
+        response->fileUID = message.fileUID;
+        response->line = message.line;
+        response->found = false;
+        return;
+    }
+
     // Get debug module
     IDXDebugModule* debugModule = shader->module->GetDebug();
 
@@ -590,6 +600,17 @@ void MetadataController::OnMessage(const struct GetShaderSourceInstructionMappin
     // Create module if not present
     if (shaderCompiler && shader && !shader->module) {
         shaderCompiler->InitializeModule(shader);
+    }
+
+    // Failed?
+    if (!shader || !shader->module) {
+        auto&& response = view.Add<ShaderSourceInstructionMappingMessage>();
+        response->shaderGUID = message.shaderGUID;
+        response->basicBlockId = message.basicBlockId;
+        response->instructionIndex = message.instructionIndex;
+        response->codeOffset = message.codeOffset;
+        response->found = false;
+        return;
     }
 
     // Get debug module
