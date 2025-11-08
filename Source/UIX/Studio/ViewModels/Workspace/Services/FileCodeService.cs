@@ -213,23 +213,28 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
                         break;
                     }
 
+                    ObjectStatesMessage.FlatInfo flat = typed.Flat;
+
                     // Start indexing all the added shaders
-                    for (uint i = _shaderObjectStateHead; i < typed.shaderUIDHead; i++)
+                    Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        if (_shaderCollectionViewModel?.GetOrAddShader(i) is { } shaderViewModel)
+                        for (uint i = _shaderObjectStateHead; i < flat.shaderUIDHead; i++)
                         {
-                            // Let the code service handle it
-                            // Fully deferred for interactivity
-                            _shaderCodeService?.EnqueueShaderContents(shaderViewModel, true);
+                            if (_shaderCollectionViewModel?.GetOrAddShader(i) is { } shaderViewModel)
+                            {
+                                // Let the code service handle it
+                                // Fully deferred for interactivity
+                                _shaderCodeService?.EnqueueShaderContents(shaderViewModel, true);
                             
-                            // Subscribe to indexed files
-                            shaderViewModel.FileViewModels.ToObservableChangeSet()
-                                .AsObservableList()
-                                .Connect()
-                                .OnItemAdded(x => IndexShaderFile(shaderViewModel, x))
-                                .Subscribe();
+                                // Subscribe to indexed files
+                                shaderViewModel.FileViewModels.ToObservableChangeSet()
+                                    .AsObservableList()
+                                    .Connect()
+                                    .OnItemAdded(x => IndexShaderFile(shaderViewModel, x))
+                                    .Subscribe();
+                            }
                         }
-                    }
+                    });
                     
                     // Set new head
                     _shaderObjectStateHead = typed.shaderUIDHead;
