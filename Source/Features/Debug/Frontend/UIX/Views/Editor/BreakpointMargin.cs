@@ -13,6 +13,7 @@ using GRS.Features.Debug.UIX.Models;
 using GRS.Features.Debug.UIX.ViewModels;
 using GRS.Features.Debug.UIX.ViewModels.Editor;
 using GRS.Features.Debug.UIX.ViewModels.Utils;
+using GRS.Features.Debug.UIX.Workspace;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Properties;
@@ -222,6 +223,11 @@ public class BreakpointMargin : AbstractMargin
         // If there's a breakpoint, remove it
         if (VM.CollectionViewModel.Bindings.FirstOrDefault(x => IsBreakpointVisible(x, lineBase0)) is { } breakpoint)
         {
+            // Deregister against registry
+            VM.Content.PropertyCollection?
+                .GetService<BreakpointRegistryService>()?
+                .Deregister(breakpoint.BreakpointViewModel);
+            
             // Let the registry handle it, it may be mirrored
             VM.Content.PropertyCollection?
                 .GetProperty<BreakpointCollectionRegistryViewModel>()?
