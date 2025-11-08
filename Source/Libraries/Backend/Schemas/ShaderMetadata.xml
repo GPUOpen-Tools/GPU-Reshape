@@ -41,6 +41,7 @@
     <message name="GetShaderCode">
         <field name="shaderUID" type="uint64"/>
         <field name="poolCode" type="bool"/>
+        <field name="deferred" type="bool"/>
     </message>
 
     <message name="GetShaderIL">

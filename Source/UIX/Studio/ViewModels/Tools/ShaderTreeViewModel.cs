@@ -575,6 +575,7 @@ namespace Studio.ViewModels.Tools
                     {
                         var request = bus.Add<GetShaderCodeMessage>();
                         request.poolCode = 0;
+                        request.deferred = 1;
                         request.shaderUID = flat.shaderUID;
                     }
                 }

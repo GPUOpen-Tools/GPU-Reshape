@@ -32,30 +32,20 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Studio.ViewModels.Status"
-             xmlns:vc="using:Studio.ValueConverters"
              xmlns:controls="clr-namespace:Studio.Views.Controls"
              VerticalAlignment="Stretch"
              mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="20"
-             x:Class="Studio.Views.Status.InstrumentationStatusView"
-             x:DataType="vm:InstrumentationStatusViewModel">
+             x:Class="Studio.Views.Status.IndexingStatusView"
+             x:DataType="vm:IndexingStatusViewModel">
     <UserControl.DataContext>
-        <vm:InstrumentationStatusViewModel />
+        <vm:IndexingStatusViewModel />
     </UserControl.DataContext>
-    <UserControl.Resources>
-        <vc:InstrumentationStageConverter x:Key="InstrumentationStageConverter" />
-    </UserControl.Resources>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 0 5 0">
         <TextBlock
             VerticalAlignment="Center"
-            IsVisible="{Binding AnyJobs}">
-            <TextBlock.Text>
-                <MultiBinding Converter="{StaticResource InstrumentationStageConverter}">
-                    <Binding Path="Stage"/>  
-                    <Binding Path="JobCount"/>
-                </MultiBinding>  
-            </TextBlock.Text>
-        </TextBlock>
+            IsVisible="{Binding AnyJobs}"
+            Text="{Binding JobCount, StringFormat='Indexing {0}'}"/>
         
-        <controls:InstrumentationBlockProgressBar x:Name="BlockBar" Width="100" Height="15" />
+        <controls:IndexingBlockProgressBar x:Name="BlockBar" Width="100" Height="15" />
     </StackPanel>
 </UserControl>

@@ -42,6 +42,12 @@
             Total number of compute jobs
         </field>
     </message>
+    
+    <message name="IndexingJobDiagnostic">
+        <field name="remaining" type="uint32">
+            Number of remaining indexing jobs
+        </field>
+    </message>
 
     <message name="CompilationDiagnostic">
         <field name="content" type="string"/>

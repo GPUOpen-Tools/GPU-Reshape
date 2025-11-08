@@ -24,30 +24,25 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using DynamicData;
-using DynamicData.Binding;
+using Avalonia.Controls;
+using ReactiveUI;
 using Studio.ViewModels.Status;
 
-namespace Studio.Services
+namespace Studio.Views.Status
 {
-    public class StatusService : IStatusService
+    public partial class IndexingStatusView : UserControl, IViewFor
     {
         /// <summary>
-        /// All status view models
+        /// Assigned view model
         /// </summary>
-        public ObservableCollection<IStatusViewModel> ViewModels { get; } = new();
-
-        public StatusService()
+        public object? ViewModel { get => DataContext; set => DataContext = value; }
+        
+        public IndexingStatusView()
         {
-            // Standard objects
-            ViewModels.AddRange(new IStatusViewModel[]
-            {
-                new LogStatusViewModel(),
-                new NetworkStatusViewModel(),
-                new InstrumentationStatusViewModel(),
-                new IndexingStatusViewModel()
-            });
+            InitializeComponent();
+                
+            // Set VM
+            BlockBar.ViewModel = (IndexingStatusViewModel)DataContext!;
         }
     }
 }

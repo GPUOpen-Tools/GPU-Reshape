@@ -84,6 +84,10 @@ public:
     /// \param state shader state
     bool InitializeModule(ShaderState* state);
 
+    /// Ensure a module is initialized
+    /// \param state shader state
+    bool InitializeModuleNoLock(ShaderState* state);
+
 protected:
     /// Compile a given job
     /// \return success state

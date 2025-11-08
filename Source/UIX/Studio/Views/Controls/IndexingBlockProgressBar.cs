@@ -25,25 +25,20 @@
 // 
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media;
-using Avalonia.Media.Immutable;
 using ReactiveUI;
-using Studio.Models.Diagnostic;
 using Studio.ViewModels.Status;
 
 namespace Studio.Views.Controls
 {
-    public class BlockProgressBar : Control
+    public class IndexingBlockProgressBar : Control
     {
         /// <summary>
         /// View model
         /// </summary>
-        public InstrumentationStatusViewModel ViewModel
+        public IndexingStatusViewModel ViewModel
         {
             get => _viewModel;
             set
@@ -53,16 +48,14 @@ namespace Studio.Views.Controls
             }
         }
 
-        public BlockProgressBar()
+        public IndexingBlockProgressBar()
         {
-            AffectsRender<BlockProgressBar>(BoundsProperty);
+            AffectsRender<IndexingBlockProgressBar>(BoundsProperty);
         }
 
         /// <summary>
         /// Invoked on UI control arrangement
         /// </summary>
-        /// <param name="finalSize"></param>
-        /// <returns></returns>
         protected override Size ArrangeOverride(Size finalSize)
         {
             // Cache the size
@@ -93,10 +86,7 @@ namespace Studio.Views.Controls
                 int x = (MaxBlockX - 1) - i / MaxBlockY;
                 int y = i % MaxBlockY;
 
-                // Select pending brush
-                IBrush? pendingBlock = i < _brushes.Count ? _brushes[i] : _brushIncomplete;
-
-                context.FillRectangle(isIncomplete ? pendingBlock : _brushCompleted, new Rect(
+                context.FillRectangle(isIncomplete ? _brushIncomplete : _brushCompleted, new Rect(
                     BlockPadding / 2.0 + x * (blockWidth + BlockPadding),
                     BlockPadding / 2.0 + y * (blockHeight + BlockPadding),
                     blockWidth,
@@ -117,15 +107,6 @@ namespace Studio.Views.Controls
             if (value == 0 || value > _jobCount)
             {
                 _jobPeak = value;
-                
-                // Remove previous brush distribution
-                _brushes.Clear();
-                
-                // Re-distribute the colors
-                if (ViewModel.Stage != InstrumentationStage.Shaders)
-                {
-                    Distribute();
-                }
             }
                 
             // Set value
@@ -134,37 +115,6 @@ namespace Studio.Views.Controls
             // Force redraw
             this.InvalidateMeasure();
             this.InvalidateArrange();
-        }
-
-        /// <summary>
-        /// Perform pseudo distribution
-        /// </summary>
-        private void Distribute()
-        {
-            // Limit block count
-            int blockCount = Math.Min(MaxBlocks, ViewModel.JobCount);
-
-            // Sum the job counts for normalization
-            int sourcedJobCount = ViewModel.GraphicsCount + ViewModel.ComputeCount;
-            if (sourcedJobCount == 0)
-            {
-                return;
-            }
-
-            // Normalize by stage
-            int normalizedGraphics = (int)(ViewModel.GraphicsCount / (float)sourcedJobCount * blockCount);
-            int normalizedCompute  = (int)(ViewModel.ComputeCount / (float)sourcedJobCount * blockCount);
-
-            // Safety bound to normalized job count
-            int totalNormalized = normalizedGraphics + normalizedCompute;
-            normalizedGraphics += blockCount - totalNormalized;
-            
-            // Initial distribution
-            _brushes.AddRange(Enumerable.Repeat(_brushGraphics, normalizedGraphics));
-            _brushes.AddRange(Enumerable.Repeat(_brushCompute, normalizedCompute));
-
-            // Ordering queries keys exactly once, sorting guaranteed to exit
-            _brushes = _brushes.OrderBy(x => _random.Next()).ToList();
         }
 
         /// <summary>
@@ -177,8 +127,6 @@ namespace Studio.Views.Controls
         /// </summary>
         private IBrush? _brushIncomplete = ResourceLocator.GetBrush("DockApplicationAccentBrushHigh");
         private IBrush? _brushCompleted  = ResourceLocator.GetBrush("DockApplicationAccentBrushLow");
-        private IBrush? _brushGraphics   = ResourceLocator.GetBrush("InstrumentationStageGraphics");
-        private IBrush? _brushCompute    = ResourceLocator.GetBrush("InstrumentationStageCompute");
 
         /// <summary>
         /// Current number of jobs
@@ -191,19 +139,9 @@ namespace Studio.Views.Controls
         private int _jobPeak = 0;
 
         /// <summary>
-        /// Pending job distribution
-        /// </summary>
-        private List<IBrush?> _brushes = new();
-        
-        /// <summary>
-        /// Random device
-        /// </summary>
-        private static Random _random = new();
-
-        /// <summary>
         /// Internal view model
         /// </summary>
-        private InstrumentationStatusViewModel _viewModel;
+        private IndexingStatusViewModel _viewModel;
         
         /// <summary>
         /// Maximum number of blocks vertically

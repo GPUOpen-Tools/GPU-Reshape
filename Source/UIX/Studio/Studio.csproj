@@ -286,6 +286,10 @@
         <DependentUpon>SourceSettingView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Status\IndexingStatusView.axaml.cs">
+        <DependentUpon>IndexingStatusView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

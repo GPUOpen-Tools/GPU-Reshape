@@ -35,6 +35,9 @@
 // Bridge
 #include <Bridge/IBridgeListener.h>
 
+// Schemas
+#include <Schemas/ShaderMetadata.h>
+
 // Common
 #include <Common/ComRef.h>
 
@@ -93,6 +96,38 @@ protected:
     void OnMessage(const struct GetShaderSourceInstructionMappingMessage& message);
 
 private:
+    struct DeferredJobData {
+        /// Shader we're processing
+        ShaderState* shader = nullptr;
+
+        /// Message to post
+        GetShaderCodeMessage message;
+    };
+
+    /// Initialize a module or defer it
+    template<typename T>
+    bool InitializeModuleDeferred(ShaderState* shader, const T& message, bool allowDeferred);
+
+    /// Initialize a module
+    void InitializeModule(ShaderState* shader);
+
+    /// Worker callbacks
+    void WorkerDeferredInitializeModule(void* userData);
+
+private:
+    /// Job lock
+    std::mutex jobMutex;
+
+    /// Current number of async jobs
+    std::atomic<uint32_t> jobCount = 0;
+
+    /// Last pooled job count
+    uint32_t lastPooledCount = 0;
+
+    /// All completed jobs
+    std::vector<DeferredJobData*> completedJobs;
+
+private:
     DeviceState* device;
 
     /// Owning bridge, stored as naked pointer for referencing reasons
@@ -100,6 +135,7 @@ private:
 
     /// Components
     ComRef<ShaderCompiler> shaderCompiler;
+    ComRef<Dispatcher> dispatcher;
 
     /// If true, each shader has an external reference that must be released manually
     bool useShaderExternalReference = false;

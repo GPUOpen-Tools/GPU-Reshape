@@ -219,7 +219,8 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
                         if (_shaderCollectionViewModel?.GetOrAddShader(i) is { } shaderViewModel)
                         {
                             // Let the code service handle it
-                            _shaderCodeService?.EnqueueShaderContents(shaderViewModel);
+                            // Fully deferred for interactivity
+                            _shaderCodeService?.EnqueueShaderContents(shaderViewModel, true);
                             
                             // Subscribe to indexed files
                             shaderViewModel.FileViewModels.ToObservableChangeSet()

@@ -230,8 +230,7 @@ namespace Studio.ViewModels.Workspace.Services
         /// <summary>
         /// Enqueue a request for shader contents
         /// </summary>
-        /// <param name="shaderViewModel"></param>
-        public void EnqueueShaderContents(ShaderViewModel shaderViewModel)
+        public void EnqueueShaderContents(ShaderViewModel shaderViewModel, bool deferred)
         {
             lock (this)
             {
@@ -247,11 +246,12 @@ namespace Studio.ViewModels.Workspace.Services
                 // Update entry
                 entry.State |= ShaderCodePoolingState.Contents;
                 entry.ShaderViewModel = shaderViewModel;
-
+                
                 // Add request
                 var request = ConnectionViewModel.GetSharedBus().Add<GetShaderCodeMessage>();
                 request.poolCode = 1;
                 request.shaderUID = shaderViewModel.GUID;
+                request.deferred = deferred ? 1 : 0;
             }
         }
 

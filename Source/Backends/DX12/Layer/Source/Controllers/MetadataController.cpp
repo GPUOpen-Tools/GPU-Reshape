@@ -41,16 +41,19 @@
 
 // Backend
 #include <Backend/IL/PrettyPrint.h>
+#include <Backend/IL/Program.h>
 
 // Schemas
 #include <Schemas/SGUID.h>
 #include <Schemas/ShaderMetadata.h>
 #include <Schemas/PipelineMetadata.h>
 #include <Schemas/Object.h>
+#include <Schemas/Diagnostic.h>
+
+// Common
+#include <Common/Dispatcher/Dispatcher.h>
 
 // Std
-#include "Backend/IL/Program.h"
-
 #include <sstream>
 
 MetadataController::MetadataController(DeviceState* device) : device(device) {
@@ -69,6 +72,7 @@ bool MetadataController::Install() {
 
     // Get components
     shaderCompiler = registry->Get<ShaderCompiler>();
+    dispatcher = registry->Get<Dispatcher>();
 
     // OK
     return true;
@@ -203,15 +207,64 @@ void MetadataController::OnMessage(const GetShaderNameMessage &message) {
     file->found = false;
 }
 
+template<typename T>
+bool MetadataController::InitializeModuleDeferred(ShaderState *shader, const T& message, bool allowDeferred) {
+    std::lock_guard moduleGuad(shader->mutex);
+
+    // Already initialized?
+    if (shader->module) {
+        return true;
+    }
+
+    // Async handling?
+    if (allowDeferred) {
+        shader->AddUser();
+        jobCount++;
+
+        // Submit job
+        dispatcher->Add(
+            BindDelegate(this, MetadataController::WorkerDeferredInitializeModule),
+            new (registry->GetAllocators()) DeferredJobData{
+                .shader = shader,
+                .message = message
+            }
+        );
+
+        // Handle it later
+        return false;
+    }
+    
+    // Otherwise, sync create it
+    if (shaderCompiler) {
+        shaderCompiler->InitializeModuleNoLock(shader);
+    }
+
+    return true;
+}
+
+void MetadataController::InitializeModule(ShaderState *shader) {
+    std::lock_guard moduleGuad(shader->mutex);
+
+    // Already initialized?
+    if (shader->module) {
+        return;
+    }
+    
+    // Otherwise, sync create it
+    if (shaderCompiler) {
+        shaderCompiler->InitializeModuleNoLock(shader);
+    }
+}
+
 void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     MessageStreamView view(stream);
 
     // Attempt to find shader with given UID
     ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID);
 
-    // Create module if not present
-    if (shaderCompiler && shader && !shader->module) {
-        shaderCompiler->InitializeModule(shader);
+    // Module initialization
+    if (shader && !InitializeModuleDeferred(shader, message, message.deferred)) {
+        return;
     }
 
     // Failed?
@@ -285,9 +338,9 @@ void MetadataController::OnMessage(const GetShaderILMessage& message) {
     // Attempt to find shader with given UID
     ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID);
 
-    // Create module if not present
-    if (shaderCompiler && shader && !shader->module) {
-        shaderCompiler->InitializeModule(shader);
+    // Module initialization
+    if (shader) {
+        InitializeModule(shader);
     }
 
     // Failed?
@@ -400,10 +453,10 @@ void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
 
     // Attempt to find shader with given UID
     ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID);
-
-    // Create module if not present
-    if (shaderCompiler && shader && !shader->module) {
-        shaderCompiler->InitializeModule(shader);
+    
+    // Module initialization
+    if (shader) {
+        InitializeModule(shader);
     }
 
     // Failed?
@@ -539,9 +592,9 @@ void MetadataController::OnMessage(const struct GetShaderInstructionMappingMessa
     // Attempt to find shader with given UID
     ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderGUID);
 
-    // Create module if not present
-    if (shaderCompiler && shader && !shader->module) {
-        shaderCompiler->InitializeModule(shader);
+    // Module initialization
+    if (shader) {
+        InitializeModule(shader);
     }
 
     // Failed?
@@ -597,9 +650,9 @@ void MetadataController::OnMessage(const struct GetShaderSourceInstructionMappin
     // Attempt to find shader with given UID
     ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderGUID);
 
-    // Create module if not present
-    if (shaderCompiler && shader && !shader->module) {
-        shaderCompiler->InitializeModule(shader);
+    // Module initialization
+    if (shader) {
+        InitializeModule(shader);
     }
 
     // Failed?
@@ -656,8 +709,42 @@ void MetadataController::OnMessage(const struct GetShaderSourceInstructionMappin
     response->line = association.line;
 }
 
+void MetadataController::WorkerDeferredInitializeModule(void *userData) {
+    auto* jobData = static_cast<DeferredJobData*>(userData);
+    shaderCompiler->InitializeModule(jobData->shader);
+
+    // Post is sync now
+    jobData->message.deferred = false;
+
+    // Mark as completed
+    std::lock_guard guard(jobMutex);
+    completedJobs.push_back(jobData);
+}
+
 void MetadataController::Commit() {
     std::lock_guard guard(mutex);
+
+    // Handle all async jobs
+    {
+        std::lock_guard jobGuard(jobMutex);
+
+        // Process messages out of order, and release ref
+        for (DeferredJobData* job : completedJobs) {
+            OnMessage(job->message);
+            destroyRef(job->shader, allocators);
+            destroy(job, registry->GetAllocators());
+        }
+
+        jobCount -= static_cast<uint32_t>(completedJobs.size());
+        completedJobs.clear();
+    }
+
+    // Any job change since last?
+    if (uint32_t count = jobCount.load(std::memory_order::relaxed); lastPooledCount != count) {
+        auto message = MessageStreamView(stream).Add<IndexingJobDiagnosticMessage>();
+        message->remaining = count;
+        lastPooledCount = count;
+    }
 
     // Export general to bridge
     bridge->GetOutput()->AddStreamAndSwap(stream);

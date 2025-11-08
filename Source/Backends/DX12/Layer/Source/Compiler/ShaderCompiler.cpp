@@ -129,7 +129,10 @@ void ShaderCompiler::Worker(void *data) {
 bool ShaderCompiler::InitializeModule(ShaderState *state) {
     // Instrumented pipelines are unique, however, originating modules may not be
     std::lock_guard moduleGuad(state->mutex);
+    return InitializeModuleNoLock(state);
+}
 
+bool ShaderCompiler::InitializeModuleNoLock(ShaderState *state) {
     // Create the module on demand
     if (state->module) {
         return true;
