@@ -45,6 +45,15 @@ namespace Studio.ViewModels.Status
         public StatusOrientation Orientation => StatusOrientation.Right;
 
         /// <summary>
+        /// Is this status visible?
+        /// </summary>
+        public bool IsVisible
+        {
+            get => _isVisible;
+            set =>  this.RaiseAndSetIfChanged(ref _isVisible, value);
+        }
+
+        /// <summary>
         /// Current instrumentation stage
         /// </summary>
         public InstrumentationStage Stage
@@ -157,6 +166,9 @@ namespace Studio.ViewModels.Status
                 GraphicsCount = (int)flat.graphicsJobs;
                 ComputeCount  = (int)flat.computeJobs;
                 JobCount      = (int)flat.remaining;
+                
+                // Update visibility
+                IsVisible = JobCount > 0;
             });
         }
 
@@ -184,5 +196,10 @@ namespace Studio.ViewModels.Status
         /// Internal compute count
         /// </summary>
         private int _computeCount = 0;
+
+        /// <summary>
+        /// Internal visibility
+        /// </summary>
+        private bool _isVisible;
     }
 }

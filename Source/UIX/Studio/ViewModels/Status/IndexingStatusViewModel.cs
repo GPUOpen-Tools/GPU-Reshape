@@ -42,6 +42,15 @@ namespace Studio.ViewModels.Status
         public StatusOrientation Orientation => StatusOrientation.Right;
 
         /// <summary>
+        /// Is this status visible?
+        /// </summary>
+        public bool IsVisible
+        {
+            get => _isVisible;
+            set =>  this.RaiseAndSetIfChanged(ref _isVisible, value);
+        }
+
+        /// <summary>
         /// Number of jobs in flight
         /// </summary>
         public int JobCount
@@ -121,6 +130,9 @@ namespace Studio.ViewModels.Status
             Dispatcher.UIThread.InvokeAsync(() =>
             {
                 JobCount = (int)flat.remaining;
+                
+                // Update visibility
+                IsVisible = JobCount > 0;
             });
         }
 
@@ -133,5 +145,10 @@ namespace Studio.ViewModels.Status
         /// The last connection we registered to
         /// </summary>
         private IBridge? _lastBridge;
+
+        /// <summary>
+        /// Internal visibility
+        /// </summary>
+        private bool _isVisible;
     }
 }

@@ -32,5 +32,10 @@ namespace Studio.ViewModels.Status
         /// Horizontal visual orientation of the status
         /// </summary>
         public StatusOrientation Orientation { get; }
+        
+        /// <summary>
+        /// Is this status visible?
+        /// </summary>
+        public bool IsVisible { get; }
     }
 }

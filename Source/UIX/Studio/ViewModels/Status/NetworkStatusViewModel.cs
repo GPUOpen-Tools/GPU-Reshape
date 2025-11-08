@@ -44,6 +44,11 @@ namespace Studio.ViewModels.Status
         public StatusOrientation Orientation => StatusOrientation.Right;
 
         /// <summary>
+        /// Is this status visible?
+        /// </summary>
+        public bool IsVisible => true;
+
+        /// <summary>
         /// Read string
         /// </summary>
         public string ReadAmount

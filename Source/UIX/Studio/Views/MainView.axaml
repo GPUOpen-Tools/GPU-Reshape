@@ -118,7 +118,10 @@
                 ItemsSource="{Binding StatusLeft}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="status:IStatusViewModel">
-                        <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
+                        <controls:UniformViewHost 
+                            VerticalAlignment="Stretch" 
+                            IsVisible="{Binding (status:IStatusViewModel).IsVisible}"
+                            DataContext="{Binding}" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
                 <ItemsControl.ItemsPanel>
@@ -134,7 +137,10 @@
                 ItemsSource="{Binding StatusRight}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="status:IStatusViewModel">
-                        <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
+                        <controls:UniformViewHost 
+                            VerticalAlignment="Stretch"
+                            IsVisible="{Binding (status:IStatusViewModel).IsVisible}"
+                            DataContext="{Binding}" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
                 <ItemsControl.ItemsPanel>
