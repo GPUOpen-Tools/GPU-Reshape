@@ -42,7 +42,7 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
     {
         get => _collectionViewModel;
         set => this.RaiseAndSetIfChanged(ref _collectionViewModel, value);
-    } 
+    }
 
     /// <summary>
     /// Constructor
@@ -52,7 +52,7 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
         // Bind to collection
         this.WhenAnyValue(x => x.CollectionViewModel).WhereNotNull().Subscribe(x =>
         {
-            x.Breakpoints.ToObservableChangeSet()
+            x.Bindings.ToObservableChangeSet()
                 .OnItemAdded(OnAdded)
                 .OnItemRemoved(OnRemoved)
                 .Subscribe();
@@ -64,24 +64,22 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
     /// </summary>
     private void OnShaderChanged()
     {
-        _breakpointRegistryService = ShaderPropertyProperty.GetWorkspaceCollection()?.GetService<BreakpointRegistryService>();
+        
     }
 
     /// <summary>
     /// Invoked on breakpoint addition
     /// </summary>
-    private void OnAdded(BreakpointViewModel obj)
+    private void OnAdded(BreakpointViewModelBinding obj)
     {
-        _breakpointRegistryService?.Register(obj);
         ShaderPropertyProperty.EnqueueBus();
     }
 
     /// <summary>
     /// Invoked on breakpoint removal
     /// </summary>
-    private void OnRemoved(BreakpointViewModel obj)
+    private void OnRemoved(BreakpointViewModelBinding obj)
     {
-        _breakpointRegistryService?.Deregister(obj);
         ShaderPropertyProperty.EnqueueBus();
     }
 
@@ -97,13 +95,13 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
         
         // Store all breakpoints
         StaticMessageView<DebugBreakpointMessage, ReadWriteMessageStream> view = new(breakpointStream);
-        foreach (BreakpointViewModel breakpointViewModel in CollectionViewModel.Breakpoints.Where(x => x.SourceBinding != null))
+        foreach (BreakpointViewModelBinding binding in CollectionViewModel.Bindings)
         {
-            BreakpointConfig breakpointConfig = breakpointViewModel.GetBreakpointConfig();
+            BreakpointConfig breakpointConfig = binding.BreakpointViewModel.GetBreakpointConfig();
             
             var breakpoint = view.Add();
-            breakpoint.codeOffset = breakpointViewModel.SourceBinding!.Mapping.CodeOffset;
-            breakpoint.uid = breakpointViewModel.UID;
+            breakpoint.codeOffset = binding.Source!.Mapping.CodeOffset;
+            breakpoint.uid = binding.BreakpointViewModel.UID;
             breakpoint.flags = (uint)breakpointConfig.Flags;
         }
 
@@ -117,11 +115,6 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
         config.breakpoints.Store(breakpointStream);
     }
 
-    /// <summary>
-    /// Workspace breakpoint registry
-    /// </summary>
-    private BreakpointRegistryService? _breakpointRegistryService;
-    
     /// <summary>
     /// Internal shader view model
     /// </summary>

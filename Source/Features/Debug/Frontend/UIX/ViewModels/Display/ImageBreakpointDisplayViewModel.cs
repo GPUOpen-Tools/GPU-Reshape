@@ -1,9 +1,12 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using ReactiveUI;
 using Avalonia.Media;
 using GRS.Features.Debug.UIX.Models;
+using Studio.Extensions;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
@@ -25,13 +28,14 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     public IImageInspector? Inspector { get; set; }
 
     /// <summary>
-    /// Shader property
+    /// All shader properties that are using this breakpoint
     /// </summary>
-    public ShaderPropertyViewModel? ShaderProperty
-    {
-        get => _shaderProperty;
-        set => this.RaiseAndSetIfChanged(ref _shaderProperty, value);
-    }
+    public ObservableCollection<ShaderPropertyViewModel>? ShaderProperties { get; set; }
+
+    /// <summary>
+    /// Property collection
+    /// </summary>
+    public IPropertyViewModel PropertyViewModel { get; set; }
 
     /// <summary>
     /// Should the aspect ratio be maintained? i.e., stretch or not
@@ -131,7 +135,7 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     public ImageBreakpointDisplayViewModel()
     {
         // Values that require reinstrumentation
-        this.WhenAnyValue(x => x.Compress, x => x.ShaderProperty, x=> x.EarlyDepthStencil)
+        this.WhenAnyValue(x => x.Compress, x=> x.EarlyDepthStencil)
             .Subscribe(_ => OnInstrumentChanged());
 
         // Create color mask command
@@ -153,7 +157,7 @@ public class ImageBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     /// </summary>
     private void OnInstrumentChanged()
     {
-        ShaderProperty?.EnqueueFirstParentBus();
+        ShaderProperties?.ForEach(x => x.EnqueueFirstParentBus());
     }
 
     /// <summary>

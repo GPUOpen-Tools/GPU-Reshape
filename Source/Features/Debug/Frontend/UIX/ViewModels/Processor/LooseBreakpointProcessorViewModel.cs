@@ -1,5 +1,6 @@
 using System;
 using Message.CLR;
+using Type = Studio.Models.IL.Type;
 
 namespace GRS.Features.Debug.UIX.ViewModels.Processor;
 
@@ -24,6 +25,7 @@ public class LooseBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         return new Payload()
         {
             Flat = message.Flat,
+            Type = breakpointViewModel.TinyType,
             Data = data
         };
     }
@@ -40,6 +42,7 @@ public class LooseBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         {
             looseDisplayViewModel.FlatInfo = typed.Flat;
             looseDisplayViewModel.DWords = typed.Data;
+            looseDisplayViewModel.Type = typed.Type;
             looseDisplayViewModel.Items = new LooseVirtualObservableCollection()
             {
                 BreakpointDisplayViewModel = looseDisplayViewModel
@@ -53,6 +56,11 @@ public class LooseBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         /// Flat streaming info
         /// </summary>
         public DebugBreakpointStreamMessage.FlatInfo Flat;
+
+        /// <summary>
+        /// Tiny type
+        /// </summary>
+        public Type Type;
         
         /// <summary>
         /// Owned data

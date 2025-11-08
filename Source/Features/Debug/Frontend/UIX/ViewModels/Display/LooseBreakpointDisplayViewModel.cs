@@ -3,6 +3,8 @@ using System.Collections.ObjectModel;
 using GRS.Features.Debug.UIX.Models;
 using Studio.ViewModels.Workspace.Properties.Instrumentation;
 using Message.CLR;
+using Studio.Models.IL;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
 
@@ -32,9 +34,19 @@ public class LooseBreakpointDisplayViewModel : ReactiveObject, IBreakpointDispla
     }
 
     /// <summary>
-    /// Shader property
+    /// All shader properties that are using this breakpoint
     /// </summary>
-    public ShaderPropertyViewModel? ShaderProperty { get; set; }
+    public ObservableCollection<ShaderPropertyViewModel> ShaderProperties { get; set; }
+
+    /// <summary>
+    /// Property collection
+    /// </summary>
+    public IPropertyViewModel PropertyViewModel { get; set; }
+    
+    /// <summary>
+    /// Thin type
+    /// </summary>
+    public Type Type { get; set; }
     
     /// <summary>
     /// Apply all local breakpoint config

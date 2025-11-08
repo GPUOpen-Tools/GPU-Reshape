@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
+using DynamicData;
 using Runtime.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -42,7 +44,7 @@ public class BreakpointCollectionRegistryViewModel : BasePropertyViewModel
     {
         foreach (BreakpointCollectionViewModel collectionViewModel in ViewModels.Values)
         {
-            collectionViewModel.Breakpoints.Remove(breakpointViewModel);
+            collectionViewModel.Bindings.RemoveMany(collectionViewModel.Bindings.Where(x => x.BreakpointViewModel == breakpointViewModel));
         }
     }
 }

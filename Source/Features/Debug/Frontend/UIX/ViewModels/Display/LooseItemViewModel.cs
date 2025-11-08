@@ -208,37 +208,19 @@ public class LooseItemViewModel : ReactiveObject
         
         LooseTreeItemViewModel item = new() { Text = $"Value : Raw [{rawBuffer}]" };
 
-        // If possible, bind the value deserialization to the given type id
-        if (breakpointDisplayViewModel.ShaderProperty?.GetWorkspaceCollection() is { } workspaceCollection &&
-            workspaceCollection.GetProperty<IShaderCollectionViewModel>() is { } collection &&
-            workspaceCollection.GetService<IShaderCodeService>() is { } pooling)
-        {
-            ShaderViewModel shaderViewModel = collection.GetOrAddShader(breakpointDisplayViewModel.ShaderProperty.Shader.GUID);
-            
-            // Make sure it's pooling
-            pooling.EnqueueShaderIL(shaderViewModel);
+        // Due to Span GC rules, create it anew here
+        // The underlying memory is guaranteed to exist
+        Span<uint> dwordSpan = new(breakpointDisplayViewModel.DWords, (int)dwordOffset, (int)breakpointDisplayViewModel.FlatInfo.dataDWordStride);
+        
+        // Just keep it under its own category
+        item.Text = $"Value {Assembler.AssembleInlineType(breakpointDisplayViewModel.Type, true)} ";
+        
+        // Format the bytes according to its type
+        Span<byte> dataSpan = MemoryMarshal.AsBytes(dwordSpan);
+        FormatValue(item, breakpointDisplayViewModel.Type, ref dataSpan, true);
 
-            // Bind on changes
-            shaderViewModel.WhenAnyValue(x => x.Program).WhereNotNull().Subscribe(program =>
-            {
-                Type type = (Type)program.Lookup[breakpointDisplayViewModel.FlatInfo.dataTypeId];
-
-                // Due to Span GC rules, create it anew here
-                // The underlying memory is guaranteed to exist
-                Span<uint> dwordSpan = new(breakpointDisplayViewModel.DWords, (int)dwordOffset, (int)breakpointDisplayViewModel.FlatInfo.dataDWordStride);
-                
-                // Just keep it under its own category
-                Assembler assembler = new(program);
-                item.Text = $"Value {assembler.AssembleInlineOperand(type.ID)} ";
-                
-                // Format the bytes according to its type
-                Span<byte> dataSpan = MemoryMarshal.AsBytes(dwordSpan);
-                FormatValue(item, type, ref dataSpan, true);
-
-                // Update the flat string
-                Flatten();
-            });
-        }
+        // Update the flat string
+        Flatten();
 
         return item;
     }
@@ -251,9 +233,8 @@ public class LooseItemViewModel : ReactiveObject
         LooseTreeItemViewModel item = new() { Text = $"Pipeline : {header.executionInfo.pipelineUID}" };
 
         // If possible, bind the name
-        if (breakpointDisplayViewModel.ShaderProperty?.GetWorkspaceCollection() is { } workspaceCollection &&
-            workspaceCollection.GetProperty<IPipelineCollectionViewModel>() is { } collection &&
-            workspaceCollection.GetService<IPipelinePoolingService>() is { } pooling)
+        if (breakpointDisplayViewModel.PropertyViewModel.GetProperty<IPipelineCollectionViewModel>() is { } collection &&
+            breakpointDisplayViewModel.PropertyViewModel.GetService<IPipelinePoolingService>() is { } pooling)
         {
             PipelineViewModel pipelineViewModel = collection.GetOrAddPipeline(header.executionInfo.pipelineUID);
             

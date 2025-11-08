@@ -118,6 +118,19 @@ namespace Runtime.ViewModels.IL
         }
 
         /// <summary>
+        /// Assemble an inline type
+        /// </summary>
+        public static string AssembleInlineType(Type type, bool shortType)
+        {
+            // Assemble into builder
+            StringBuilder builder = new();
+            AssembleInlineType(type, builder, shortType);
+            
+            // To string
+            return builder.ToString();
+        }
+
+        /// <summary>
         /// Get an associated mapping from the instruction index
         /// </summary>
         public AssembledLineMapping GetLineMapping(uint basicBlockId, uint instructionIndex)
@@ -1050,7 +1063,7 @@ namespace Runtime.ViewModels.IL
         /// <summary>
         /// Assemble an inline type
         /// </summary>
-        private void AssembleInlineType(Type type, StringBuilder builder, bool shortType = false)
+        private static void AssembleInlineType(Type type, StringBuilder builder, bool shortType = false)
         {
             switch (type.Kind)
             {

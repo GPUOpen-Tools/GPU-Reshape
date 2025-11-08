@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using DynamicData;
 using DynamicData.Binding;
 using GRS.Features.Debug.UIX.ViewModels;
@@ -35,7 +36,7 @@ public class ContentBreakpointServiceViewModel : ReactiveObject, IDestructableOb
     /// </summary>
     public void Bind()
     {
-        _breakpointCollectionViewModel.Breakpoints
+        _breakpointCollectionViewModel.Bindings
             .ToObservableChangeSet()
             .OnItemAdded(OnAdded)
             .OnItemRemoved(OnRemoved)
@@ -45,15 +46,28 @@ public class ContentBreakpointServiceViewModel : ReactiveObject, IDestructableOb
     /// <summary>
     /// Invoked on item adds
     /// </summary>
-    private void OnAdded(BreakpointViewModel breakpointViewModel)
+    private void OnAdded(BreakpointViewModelBinding binding)
     {
-        BreakpointMappingUtils.SubscribeInstructionLineMapping(Content, breakpointViewModel.SourceBinding!.Mapping, associationViewModel =>
+        BreakpointMappingUtils.SubscribeInstructionLineMapping(Content, binding.Source.Mapping, associationViewModel =>
         {
+            // Create source key
+            var key = Tuple.Create(
+                binding.BreakpointViewModel,
+                associationViewModel.Location!.Value.Line,
+                associationViewModel.Location!.Value.Column
+            );
+
+            // Ignore source-wise duplicates
+            if (!_sourceObjects.Add(key))
+            {
+                return;
+            }
+
             // Create and register source object
-            Content.MarkerCanvasViewModel.SourceObjects.Add(breakpointViewModel.TextualSourceObject = new BreakpointSourceObject()
+            Content.MarkerCanvasViewModel.SourceObjects.Add(binding.BreakpointViewModel.TextualSourceObject = new BreakpointSourceObject()
             {
                 Content = "Breakpoint",
-                DetailViewModel = breakpointViewModel,
+                DetailViewModel = binding.BreakpointViewModel,
                 Segment = new ShaderSourceSegment
                 {
                     Location = associationViewModel.Location!.Value
@@ -61,18 +75,21 @@ public class ContentBreakpointServiceViewModel : ReactiveObject, IDestructableOb
             });
             
             // Always select by default
-            Content.SelectedTextualSourceObject = breakpointViewModel.TextualSourceObject;
-            Content.MarkerCanvasViewModel.DetailCommand?.Execute(breakpointViewModel.TextualSourceObject);
+            Content.SelectedTextualSourceObject = binding.BreakpointViewModel.TextualSourceObject;
+            Content.MarkerCanvasViewModel.DetailCommand?.Execute(binding.BreakpointViewModel.TextualSourceObject);
         });
     }
 
     /// <summary>
     /// Invoked on item removed
     /// </summary>
-    private void OnRemoved(BreakpointViewModel breakpointViewModel)
+    private void OnRemoved(BreakpointViewModelBinding binding)
     {
+        // Slow remove
+        _sourceObjects.RemoveWhere(x => x.Item1 == binding.BreakpointViewModel);
+        
         // Remove source object
-        Content.MarkerCanvasViewModel.SourceObjects.Remove(breakpointViewModel.TextualSourceObject);
+        Content.MarkerCanvasViewModel.SourceObjects.Remove(binding.BreakpointViewModel.TextualSourceObject);
     }
 
     /// <summary>
@@ -84,4 +101,9 @@ public class ContentBreakpointServiceViewModel : ReactiveObject, IDestructableOb
     /// Internal breakpoint collection
     /// </summary>
     private BreakpointCollectionViewModel _breakpointCollectionViewModel;
+
+    /// <summary>
+    /// All source-wise objects
+    /// </summary>
+    private HashSet<Tuple<BreakpointViewModel, int, int>> _sourceObjects = new();
 }

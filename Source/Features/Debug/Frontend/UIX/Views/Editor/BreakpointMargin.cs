@@ -55,7 +55,7 @@ public class BreakpointMargin : AbstractMargin
             int lineNumberBase1 = visualLine.FirstDocumentLine.LineNumber;
 
             // Has an assigned breakpoint?
-            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(b => IsBreakpointVisible(b, lineNumberBase1 - 1)) is { } breakpoint)
+            if (VM.CollectionViewModel.Bindings.FirstOrDefault(b => IsBreakpointVisible(b, lineNumberBase1 - 1)) is { } breakpoint)
             {
                 // Draw breakpoint
                 context.FillRectangle(
@@ -94,18 +94,13 @@ public class BreakpointMargin : AbstractMargin
     /// Bind an instruction line
     /// Invalidates when actually bound
     /// </summary>
-    private ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? BindSourceInstructionLineAssociations(BreakpointViewModel breakpointViewModel)
+    private ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? BindSourceInstructionLineAssociations(BreakpointViewModelBinding binding)
     {
         // Check cache
-        if (!_breakpointSourceAssociations.TryGetValue(breakpointViewModel, out ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? association))
+        if (!_breakpointSourceAssociations.TryGetValue(binding, out ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? association))
         {
-            if (breakpointViewModel.SourceBinding is not { })
-            {
-                return null;
-            }
-
             // Let the content view model handle the instruction -> line of code
-            association = VM.Content.TransformInstructionLine(breakpointViewModel.SourceBinding.Mapping);
+            association = VM.Content.TransformInstructionLine(binding.Source.Mapping);
             if (association is null)
             {
                 return null;
@@ -132,7 +127,7 @@ public class BreakpointMargin : AbstractMargin
                 .Subscribe()
                 .Dispose();
             
-            _breakpointSourceAssociations.Add(breakpointViewModel, association);
+            _breakpointSourceAssociations.Add(binding, association);
         }
         
         return association;
@@ -150,9 +145,9 @@ public class BreakpointMargin : AbstractMargin
             VM.LineNumberBase0 = (int)(_previewLineBase1 - 1);
             
             // Assign highlighted breakpoint
-            if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => IsBreakpointVisible(x, VM.LineNumberBase0)) is { } breakpoint)
+            if (VM.CollectionViewModel.Bindings.FirstOrDefault(x => IsBreakpointVisible(x, VM.LineNumberBase0)) is { } breakpoint)
             {
-                VM.HighlightedBreakpointViewModel = breakpoint;
+                VM.HighlightedBreakpointViewModel = breakpoint.BreakpointViewModel;
             }
         }
         else
@@ -225,12 +220,12 @@ public class BreakpointMargin : AbstractMargin
     private void HandleNewBreakpoint(int lineBase0)
     {
         // If there's a breakpoint, remove it
-        if (VM.CollectionViewModel.Breakpoints.FirstOrDefault(x => IsBreakpointVisible(x, lineBase0)) is { } breakpoint)
+        if (VM.CollectionViewModel.Bindings.FirstOrDefault(x => IsBreakpointVisible(x, lineBase0)) is { } breakpoint)
         {
             // Let the registry handle it, it may be mirrored
             VM.Content.PropertyCollection?
                 .GetProperty<BreakpointCollectionRegistryViewModel>()?
-                .Remove(breakpoint);
+                .Remove(breakpoint.BreakpointViewModel);
         }
         else
         {
@@ -243,9 +238,9 @@ public class BreakpointMargin : AbstractMargin
     /// <summary>
     /// Check if a breakpoint is visible
     /// </summary>
-    private bool IsBreakpointVisible(BreakpointViewModel breakpointViewModel, int lineBase0)
+    private bool IsBreakpointVisible(BreakpointViewModelBinding binding, int lineBase0)
     {
-        if (BindSourceInstructionLineAssociations(breakpointViewModel) is not { } associationViewModel)
+        if (BindSourceInstructionLineAssociations(binding) is not { } associationViewModel)
         {
             return false;
         }
@@ -306,7 +301,7 @@ public class BreakpointMargin : AbstractMargin
     /// <summary>
     /// All cached associations
     /// </summary>
-    private Dictionary<BreakpointViewModel, ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>> _breakpointSourceAssociations = new();
+    private Dictionary<BreakpointViewModelBinding, ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>> _breakpointSourceAssociations = new();
 
     /// <summary>
     /// Current preview line

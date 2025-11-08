@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using Avalonia.Threading;
@@ -9,8 +10,8 @@ using GRS.Features.Debug.UIX.ViewModels.Processor;
 using Message.CLR;
 using Studio.Services;
 using Studio;
-using Studio.Models.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
+using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Properties.Instrumentation;
 using Type = Studio.Models.IL.Type;
 
@@ -112,20 +113,16 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// Intermediate tiny type
     /// </summary>
     public Type TinyType { get; set; }
-    
-    /// <summary>
-    /// Shader property
-    /// </summary>
-    public ShaderPropertyViewModel? ShaderProperty { get; set; }
 
     /// <summary>
-    /// The source location of the breakpoint
+    /// All shader properties that are using this breakpoint
     /// </summary>
-    public SourceBinding? SourceBinding
-    {
-        get => _sourceBinding;
-        set => this.RaiseAndSetIfChanged(ref _sourceBinding, value);
-    }
+    public ObservableCollection<ShaderPropertyViewModel> ShaderProperties { get; } = new();
+
+    /// <summary>
+    /// All shader properties that are using this breakpoint
+    /// </summary>
+    public IPropertyViewModel PropertyViewModel { get; set; }
 
     /// <summary>
     /// Assigned capture mode
@@ -263,7 +260,8 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
                     
                     // Create view model
                     _displayViewModel = archetypeViewModel.CreateDisplay();
-                    _displayViewModel.ShaderProperty = ShaderProperty;
+                    _displayViewModel.ShaderProperties = ShaderProperties;
+                    _displayViewModel.PropertyViewModel = PropertyViewModel;
                 }
                 
                 // Decorate the flat
@@ -301,7 +299,8 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         // Create the processor and display
         _processorViewModel = archetypeViewModel.CreateProcessor();
         _displayViewModel = archetypeViewModel.CreateDisplay();
-        _displayViewModel.ShaderProperty = ShaderProperty;
+        _displayViewModel.ShaderProperties = ShaderProperties;
+        _displayViewModel.PropertyViewModel = PropertyViewModel;
         
         // Raise
         this.RaisePropertyChanged(nameof(DisplayViewModel));
@@ -338,11 +337,6 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// </summary>
     private IBreakpointDisplayViewModel? _displayViewModel;
 
-    /// <summary>
-    /// Internal source binding
-    /// </summary>
-    private SourceBinding? _sourceBinding;
-    
     /// <summary>
     /// Internal frame rate
     /// </summary>

@@ -1,5 +1,6 @@
 ﻿using DynamicData;
 using GRS.Features.Debug.UIX.Models;
+using GRS.Features.Debug.UIX.Workspace;
 using Runtime.Models.Objects;
 using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
@@ -19,16 +20,27 @@ public static class BreakpointUtils
     /// </summary>
     public static void AddBreakpoint(BreakpointCollectionViewModel collection, ITextualContent content, int lineBase0, BreakpointCaptureMode captureMode)
     {
+        // Create breakpoint
+        BreakpointViewModel breakpointViewModel = new()
+        {
+            PropertyViewModel = collection.PropertyViewModel,
+            CaptureMode = captureMode
+        };
+        
+        // Register against registry
+        collection.PropertyViewModel.GetService<BreakpointRegistryService>()?.Register(breakpointViewModel);
+        
+        // Bind the breakpoint
         BreakpointMappingUtils.SubscribeSourceLineMapping(content, lineBase0, (shaderViewModel, associationViewModel) =>
         {
-            AddBreakpoint(shaderViewModel, collection, associationViewModel, captureMode);
+            AddBreakpoint(breakpointViewModel, shaderViewModel, collection, associationViewModel, captureMode);
         });
     }
     
     /// <summary>
     /// Add a new breakpoint on a mapped instruction
     /// </summary>
-    public static void AddBreakpoint(ShaderViewModel shaderViewModel, BreakpointCollectionViewModel collection, ShaderInstructionAssociationViewModel associationViewModel, BreakpointCaptureMode captureMode)
+    public static void AddBreakpoint(BreakpointViewModel breakpointViewModel, ShaderViewModel shaderViewModel, BreakpointCollectionViewModel collection, ShaderInstructionAssociationViewModel associationViewModel, BreakpointCaptureMode captureMode)
     {
         // No relevant mappings
         if (associationViewModel.Mappings.Count == 0)
@@ -56,12 +68,14 @@ public static class BreakpointUtils
             return;
         }
 
-        // Create breakpoint
-        BreakpointViewModel breakpointViewModel = new()
+        // Keep track of property
+        breakpointViewModel.ShaderProperties.Add((ShaderPropertyViewModel)property.Parent!);
+
+        // Create binding
+        BreakpointViewModelBinding binding = new()
         {
-            ShaderProperty = (ShaderPropertyViewModel)property.Parent!,
-            CaptureMode = captureMode,
-            SourceBinding = new SourceBinding
+            BreakpointViewModel = breakpointViewModel,
+            Source = new()
             {
                 Mapping = mapping,
                 AssociationViewModel = associationViewModel
@@ -69,12 +83,12 @@ public static class BreakpointUtils
         };
         
         // Always add it to the physical collection
-        shaderCollection.Breakpoints.Add(breakpointViewModel);
+        shaderCollection.Bindings.Add(binding);
 
         // If this is a logical collection, mirror it
         if (collection != shaderCollection)
         {
-            collection.Breakpoints.Add(breakpointViewModel);
+            collection.Bindings.Add(binding);
         }
     }
 

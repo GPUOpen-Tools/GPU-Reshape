@@ -1,4 +1,6 @@
-﻿using GRS.Features.Debug.UIX.ViewModels.Traits;
+﻿using System.Collections.ObjectModel;
+using GRS.Features.Debug.UIX.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
@@ -6,7 +8,12 @@ namespace GRS.Features.Debug.UIX.ViewModels;
 public interface IBreakpointDisplayViewModel : IBreakpointInstrumentationObject
 {
     /// <summary>
-    /// Shader property
+    /// All shader properties that are using this breakpoint
     /// </summary>
-    public ShaderPropertyViewModel? ShaderProperty { get; set; }
+    public ObservableCollection<ShaderPropertyViewModel> ShaderProperties { get; set; }
+    
+    /// <summary>
+    /// Collection property
+    /// </summary>
+    public IPropertyViewModel PropertyViewModel { get; set; }
 }
