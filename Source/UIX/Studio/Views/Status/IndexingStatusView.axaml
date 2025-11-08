@@ -44,7 +44,7 @@
         <TextBlock
             VerticalAlignment="Center"
             IsVisible="{Binding AnyJobs}"
-            Text="{Binding JobCount, StringFormat='Indexing {0}'}"/>
+            Text="{Binding JobCount, StringFormat='Indexing {0} shaders...'}"/>
         
         <controls:IndexingBlockProgressBar x:Name="BlockBar" Width="100" Height="15" />
     </StackPanel>

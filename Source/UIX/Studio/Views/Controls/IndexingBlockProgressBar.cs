@@ -125,7 +125,7 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Default brushes
         /// </summary>
-        private IBrush? _brushIncomplete = ResourceLocator.GetBrush("DockApplicationAccentBrushHigh");
+        private IBrush? _brushIncomplete = ResourceLocator.GetBrush("InfoMediumLowForeground");
         private IBrush? _brushCompleted  = ResourceLocator.GetBrush("DockApplicationAccentBrushLow");
 
         /// <summary>
