@@ -213,12 +213,14 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
                         break;
                     }
 
+                    // Captured state
                     ObjectStatesMessage.FlatInfo flat = typed.Flat;
+                    uint lastStateHead = _shaderObjectStateHead;
 
                     // Start indexing all the added shaders
                     Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        for (uint i = _shaderObjectStateHead; i < flat.shaderUIDHead; i++)
+                        for (uint i = lastStateHead; i < flat.shaderUIDHead; i++)
                         {
                             if (_shaderCollectionViewModel?.GetOrAddShader(i) is { } shaderViewModel)
                             {
