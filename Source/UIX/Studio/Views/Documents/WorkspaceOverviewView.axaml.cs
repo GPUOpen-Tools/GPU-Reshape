@@ -66,7 +66,7 @@ namespace Studio.Views.Documents
                     new()
                     {
                         Name = "HTML files",
-                        Extensions = { "html", "htm" }
+                        Extensions = { "html" }
                     },
                     new()
                     {
