@@ -27,15 +27,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
-using System.Reflection;
-using Avalonia;
+using System.Runtime.CompilerServices;
 using Avalonia.Controls;
-using Avalonia.Input;
-using AvaloniaEdit.Highlighting.Xshd;
+using Avalonia.Controls.Primitives;
+using Avalonia.VisualTree;
 using AvaloniaEdit.TextMate;
 using DynamicData;
 using DynamicData.Binding;
@@ -46,9 +43,9 @@ using Studio.Extensions;
 using Studio.Models.Instrumentation;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
+using Studio.ViewModels.Code;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
-using Studio.ViewModels.Workspace.Properties;
 using Studio.Views.Editor;
 using TextMateSharp.Grammars;
 
@@ -98,6 +95,9 @@ namespace Studio.Views.Shader
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationTextMarkerService);
             Editor.TextArea.TextView.LineTransformers.Add(_validationTextMarkerService);
 
+            // Bind editor events
+            Editor.TemplateApplied += OnEditorTemplateApplied;
+            
             // Add services
             var services = AvaloniaEdit.Utils.ServiceExtensions.GetService<AvaloniaEdit.Utils.IServiceContainer>(Editor.Document);
             services?.AddService(typeof(ValidationTextMarkerService), _validationTextMarkerService);
@@ -149,6 +149,18 @@ namespace Studio.Views.Shader
                         {
                             // Remove the last selection
                             _selectionDisposable.Clear();
+
+                            // Create navigation state if missing
+                            if (!_navigationStates.TryGetValue(file, out var navigationState))
+                            {
+                                _navigationStates.Add(file, navigationState = new NavigationState()
+                                {
+                                    Line = 0,
+                                    Column = 0
+                                });
+                            }
+
+                            _selectedCodeFileViewModel = file;
                             
                             // Bind to contents
                             // Bind to disposable, as we only want to react to a single file
@@ -156,14 +168,14 @@ namespace Studio.Views.Shader
                                 .WhereNotNull()
                                 .Subscribe(contents =>
                                 {
-                                    // Set offset to start
-                                    Editor.TextArea.Caret.Line = 0;
-                                    Editor.TextArea.Caret.Column = 0;
-                                    Editor.TextArea.Caret.BringCaretToView();
-                            
                                     // Clear and set, avoids internal replacement reformatting hell
                                     Editor.Text = string.Empty;
                                     Editor.Text = contents;
+
+                                    // Set offset to last known position
+                                    Editor.TextArea.Caret.Line = navigationState.Line;
+                                    Editor.TextArea.Caret.Column = navigationState.Column;
+                                    Editor.TextArea.Caret.BringCaretToView();
 
                                     // Invalidate services
                                     _validationTextMarkerService.ResumarizeValidationObjects();
@@ -183,6 +195,47 @@ namespace Studio.Views.Shader
                         .WhereNotNull()
                         .Subscribe(location => UpdateNavigationLocation(codeViewModel, location!));
                 });
+        }
+
+        /// <summary>
+        /// Editor template bindings
+        /// </summary>
+        private void OnEditorTemplateApplied(object? sender, TemplateAppliedEventArgs e)
+        {
+            // Bind scrolling
+            if (Editor
+                    .GetVisualDescendants()
+                    .OfType<ScrollViewer>()
+                    .FirstOrDefault() is { } scroller)
+            {
+                scroller.ScrollChanged += OnScrollChanged;
+            }
+        }
+
+        /// <summary>
+        /// On scroll changes
+        /// </summary>
+        private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
+        {
+            if (_selectedCodeFileViewModel == null)
+            {
+                return;
+            }
+            
+            // Get navigation state
+            if (!_navigationStates.TryGetValue(_selectedCodeFileViewModel, out var navigationState))
+            {
+                return;
+            }
+
+            // First visual line
+            if (Editor.TextArea.TextView.VisualLines.FirstOrDefault() is not { } line)
+            {
+                return;
+            }
+
+            navigationState.Line = line.FirstDocumentLine.LineNumber;
+            navigationState.Column = 0;
         }
 
         /// <summary>
@@ -389,5 +442,21 @@ namespace Studio.Views.Shader
         /// Disposables for shader states
         /// </summary>
         private Dictionary<ShaderViewModel, CompositeDisposable> _shaderDisposables = new();
+
+        private class NavigationState
+        {
+            public int Line;
+            public int Column;
+        }
+        
+        /// <summary>
+        /// Shared weak navigation states
+        /// </summary>
+        private static ConditionalWeakTable<CodeFileViewModel, NavigationState> _navigationStates = new();
+
+        /// <summary>
+        /// Current file model
+        /// </summary>
+        private CodeFileViewModel? _selectedCodeFileViewModel;
     }
 }
