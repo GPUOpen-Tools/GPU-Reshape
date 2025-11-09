@@ -254,7 +254,11 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
         // Try to match it against indexed
         if (FindBestMatchFile(shaderFileViewModel) is not { } codeFileViewModel)
         {
-            Studio.Logging.Warning($"Failed to index shader file {shaderFileViewModel.Filename} against indexed");
+            string message = $"Failed to index shader file {shaderFileViewModel.Filename} against sources";
+            if (_indexingMessageSet.Add(message))
+            {
+                Studio.Logging.Warning(message);
+            }
             return;
         }
         
@@ -501,6 +505,11 @@ public class FileCodeService : ReactiveObject, IFileCodeService, IBridgeListener
     /// The wait time between each attempt
     /// </summary>
     private static readonly uint _instantiationAttemptWaitTimeMS = 100;
+
+    /// <summary>
+    /// Deduplication set
+    /// </summary>
+    private HashSet<string> _indexingMessageSet = new();
 
     /// <summary>
     /// Internal indexing state
