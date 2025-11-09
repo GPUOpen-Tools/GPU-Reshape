@@ -26,13 +26,14 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Reactive;
-using Avalonia;
 using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
-using Runtime.ViewModels.Shader;
+using Studio.App.Commands.Export;
+using Studio.App.Commands.Render;
 using Studio.Services;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
@@ -111,6 +112,44 @@ namespace Studio.ViewModels.Documents
         /// All properties of this view
         /// </summary>
         public ObservableCollection<IPropertyViewModel> Properties { get; } = new();
+        
+        /// <summary>
+        /// Invoked on exports
+        /// </summary>
+        public void ExportWorkspace(string path)
+        {
+            // Create model
+            ExportReportModel model = new()
+            {
+                Workspaces = new[]
+                {
+                    Workspace!
+                },
+                WorkspaceConfiguration = null
+            };
+
+            // Serialize the json alongside
+            string jsonPath = Path.ChangeExtension(path, "json");
+            if (!model.WriteReport(jsonPath))
+            {
+                return;
+            }
+            
+            // Deserialize and model the report
+            if (RenderReportModel.DeserializeFile(jsonPath) is not { } renderModel)
+            {
+                return;
+            }
+
+            // Setup template model
+            RenderReportTemplateModel template = new()
+            {
+                Model = renderModel
+            };
+
+            // Finally, render the actual report
+            template.Render(path);
+        }
 
         /// <summary>
         /// Invoked on selection

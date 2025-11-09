@@ -24,16 +24,10 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using System.Windows.Input;
-using Avalonia;
-using DynamicData;
-using DynamicData.Binding;
 using ReactiveUI;
+using Studio.Models.Workspace;
 using Studio.Services;
 using Studio.ViewModels.Documents;
-using Studio.ViewModels.Workspace;
-using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace
@@ -58,6 +52,16 @@ namespace Studio.ViewModels.Workspace
                 OnConnectionChanged();
             }
         }
+
+        /// <summary>
+        /// Launch configuration
+        /// </summary>
+        public IWorkspaceConfigurationViewModel? Configuration { get; set; }
+        
+        /// <summary>
+        /// Launch state
+        /// </summary>
+        public WorkspaceLaunchState? LaunchState { get; set; }
 
         public WorkspaceViewModel()
         {

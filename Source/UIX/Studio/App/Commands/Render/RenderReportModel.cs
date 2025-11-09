@@ -113,7 +113,7 @@ public class RenderReportModel
         
         // Set the primary info
         Summary.PrimaryProcessName = process.Name;
-        Summary.PrimaryProcessConfiguration = device.Value.WorkspaceConfiguration;
+        Summary.PrimaryProcessConfiguration = device.WorkspaceConfiguration;
 
         // Set the general configuration, if possible
         if (process.Value.Detail != null)
@@ -131,12 +131,18 @@ public class RenderReportModel
     /// </summary>
     private dynamic? GetFirstActiveDevice(dynamic process)
     {
+        // May be single device
+        if (process.Devices == null)
+        {
+            return process;
+        }
+        
         // If the configuration hasn't been set, it's not primary
         foreach (dynamic child in process.Devices)
         {
             if (!string.IsNullOrWhiteSpace((string)child.Value.WorkspaceConfiguration))
             {
-                return child;
+                return child.Value;
             }
         }
 
@@ -172,8 +178,14 @@ public class RenderReportModel
     /// </summary>
     private void VisitProcessNode(dynamic process)
     {
-        VisitProcessCollectionNode(process);
+        if (process.Devices == null)
+        {
+            VisitDeviceNode(process);
+            return;
+        }
         
+        VisitProcessCollectionNode(process);
+
         foreach (dynamic device in process.Devices)
         {
             VisitDeviceNode(device.Value);

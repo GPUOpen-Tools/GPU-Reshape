@@ -62,7 +62,6 @@ public class RenderCommand : IBaseCommand
     public async Task<int> InvokeAsync(InvocationContext context)
     {
         string outPath = context.ParseResult.GetValueForOption(Out)!;
-        string outExt = Path.GetExtension(outPath).ToLowerInvariant();
 
         // Deserialize and model the report
         if (RenderReportModel.DeserializeFile(context.ParseResult.GetValueForOption(Report)!) is not { } model)
@@ -70,80 +69,19 @@ public class RenderCommand : IBaseCommand
             return 1;
         }
 
-        // Render contents
-        string? contents;
-        switch (outExt)
+        RenderReportTemplateModel template = new()
         {
-            default:
-                Logging.Error($"Unsupported file extension {outExt}, must be one of [html]");
-                return 1;
-            case ".html":
-                contents = RenderHtml(context, model);
-                break;
-        }
-        
-        // Try to write contents
-        try
+            Model = model
+        };
+
+        // Try to render
+        if (!template.Render(outPath))
         {
-            File.WriteAllText(outPath, contents);
-            Logging.Info($"Render serialized to '{outPath}'");
-        }
-        catch
-        {
-            Logging.Error("Failed to write rendered report");
             return 1;
         }
-        
+
         // OK
         return 0;
-    }
-
-    /// <summary>
-    /// Render the html contents
-    /// </summary>
-    private string? RenderHtml(InvocationContext context, RenderReportModel model)
-    {
-        // Load embedded template
-        if (LoadTemplateContents("StaticTemplate.scriban.html") is not { } templateContents)
-        {
-            return null;
-        }
-
-        // Try to parse the template
-        if (Template.Parse(templateContents) is not { } template)
-        {
-            return null;
-        }
-        
-        // Try to render the template
-        try
-        {
-            return template.Render(new
-            {
-                Model = model
-            }, m => m.Name);
-        }
-        catch (Exception e)
-        {
-            Logging.Error($"Failed to render template: {e}");
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Load a template
-    /// </summary>
-    private string? LoadTemplateContents(string templateName)
-    {
-        // All templates are embedded resources
-        if (AssetLoader.Open(new Uri($"avares://GPUReshape/Resources/Render/{templateName}")) is not {} templateStream)
-        {
-            Logging.Error("Failed to open template");
-            return null;
-        }
-
-        using var reader = new StreamReader(templateStream);
-        return reader.ReadToEnd();
     }
 
     /// <summary>

@@ -838,13 +838,30 @@ namespace Studio.ViewModels
                 // Create workspace
                 var workspace = new ViewModels.Workspace.WorkspaceViewModel()
                 {
-                    Connection = _connectionViewModel
+                    Connection = _connectionViewModel,
+                    Configuration = SelectedConfiguration,
+                    LaunchState = CreateLaunchState()
                 };
                 
                 // Configure and register workspace
                 provider?.Install(workspace);
                 provider?.Add(workspace, true);
             });
+        }
+
+        /// <summary>
+        /// Create a launch state
+        /// </summary>
+        public WorkspaceLaunchState? CreateLaunchState()
+        {
+            return new()
+            {
+                Coverage = Coverage,
+                Detail = Detail,
+                SafeGuard = SafeGuard,
+                SynchronousRecording = SynchronousRecording,
+                TexelAddressing = TexelAddressing
+            };
         }
 
         /// <summary>

@@ -26,7 +26,7 @@
 
 using System;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
 using ReactiveUI;
 using Studio.Extensions;
 using Studio.ViewModels.Controls;
@@ -47,6 +47,45 @@ namespace Studio.Views.Documents
                     Workspace = vm.Workspace
                 };
             });
+
+            // Bind events
+            this.ExportButton.Events().Click.Subscribe(OnExportButton);
+        }
+
+        /// <summary>
+        /// Invoked on export
+        /// </summary>
+        async void OnExportButton(EventArgs _)
+        {
+            var dialog = new SaveFileDialog()
+            {
+                DefaultExtension = "html",
+                InitialFileName = "Report.html",
+                Filters = 
+                {
+                    new()
+                    {
+                        Name = "HTML files",
+                        Extensions = { "html", "htm" }
+                    },
+                    new()
+                    {
+                        Name = "All files",
+                        Extensions = { "*" }
+                    }
+                }
+            };
+
+            string? result = await dialog.ShowAsync((Window)this.GetVisualRoot()!);
+            if (result == null)
+            {
+                return;
+            }
+
+            if (DataContext is WorkspaceOverviewViewModel vm)
+            {
+                vm.ExportWorkspace(result);
+            }
         }
     }
 }

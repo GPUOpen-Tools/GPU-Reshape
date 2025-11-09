@@ -75,6 +75,16 @@
                             Padding="0"
                             Margin="0 0 -60 0"
                             HorizontalAlignment="Right"/>
+                        
+                        <Button 
+                            x:Name="ExportButton"
+                            Classes="Icon"
+                            Margin="0 -30 0 0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Height="22">
+                            <PathIcon Data="{StaticResource OpenInNew}" Width="13" />
+                        </Button>
                     </Grid>
                 </controls:SectionView>
                 
