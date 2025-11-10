@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Collections.ObjectModel;
 using AvaloniaEdit.Utils;
@@ -52,7 +53,10 @@ public class BreakpointDisplayRegistryService
     {
         return Archetypes
             .ToList()
-            .OrderByDescending(x => x.Selector.GetPriority(message))
+            .Select(x => Tuple.Create(x.Selector.GetPriority(message), x))
+            .Where(x => x.Item1 != BreakpointDisplaySelectorPriority.Unsupported)
+            .OrderByDescending(x => x.Item1)
+            .Select(x  => x.Item2)
             .ToArray();
     }
 }
