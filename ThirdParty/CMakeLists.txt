@@ -61,6 +61,7 @@ if (NOT THIN_X86_BUILD)
     include(BTree.cmake)
     include(ZLIB.cmake)
     include(MD5.cmake)
+    include(WinPixEventRuntime.cmake)
 
     if (${ENABLE_EXPERIMENTAL})
         include(Eigen.cmake)
