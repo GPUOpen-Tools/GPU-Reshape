@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
 using GRS.Features.Debug.UIX.Models;
@@ -59,7 +60,7 @@ public static class BreakpointMappingUtils
     /// <summary>
     /// Subscribe to a single line source mapping
     /// </summary>
-    public static void SubscribeSourceLineMapping(ITextualContent content, int lineBase0, Action<ShaderViewModel, ShaderInstructionAssociationViewModel> action)
+    public static void SubscribeSourceLineMapping(ITextualContent content, CompositeDisposable disposable, int lineBase0, Action<ShaderViewModel, ShaderInstructionAssociationViewModel> action)
     {
         // Get the association view model
         if (content.TransformSourceLine(lineBase0) is not { } associationViewModel)
@@ -73,30 +74,27 @@ public static class BreakpointMappingUtils
             .ToObservableChangeSet()
             .OnItemAdded(pair =>
             {
-                // Shared disposable
-                CompositeDisposable disposable = new();
-
                 // Wait for population
-                pair.Association.WhenAnyValue(x => x.Populated).Subscribe(populated =>
+                pair.Association
+                    .WhenAnyValue(x => x.Populated)
+                    .Where(x => x)
+                    .Take(1)
+                    .Subscribe(populated =>
                 {
-                    if (populated)
+                    SubscribeDeferredProgram(content.PropertyCollection!, pair.ShaderViewModel, () =>
                     {
-                        SubscribeDeferredProgram(content.PropertyCollection!, pair.ShaderViewModel, () =>
-                        {
-                            action(pair.ShaderViewModel, pair.Association);
-                        });
-
-                        disposable.Dispose();
-                    }
+                        action(pair.ShaderViewModel, pair.Association);
+                    });
                 }).DisposeWith(disposable);
             })
-            .Subscribe();
+            .Subscribe()
+            .DisposeWith(disposable);
     }
 
     /// <summary>
     /// Subscribe to a many instruction mapping
     /// </summary>
-    public static void SubscribeInstructionLineMapping(ITextualContent content, AssembledInstructionMapping mapping, Action<ShaderInstructionSourceAssociationViewModel> action)
+    public static void SubscribeInstructionLineMapping(ITextualContent content, CompositeDisposable disposable, AssembledInstructionMapping mapping, Action<ShaderInstructionSourceAssociationViewModel> action)
     {
         // Get the association view model
         if (content.TransformInstructionLine(mapping) is not { } associationViewModel)
@@ -114,17 +112,20 @@ public static class BreakpointMappingUtils
                 CompositeDisposable disposable = new();
 
                 // Wait for population
-                pair.Association.WhenAnyValue(x => x.Location).WhereNotNull().Subscribe(_ =>
+                pair.Association
+                    .WhenAnyValue(x => x.Location)
+                    .WhereNotNull()
+                    .Take(1)
+                    .Subscribe(_ =>
                 {
                     SubscribeDeferredProgram(content.PropertyCollection!, pair.ShaderViewModel, () =>
                     {
                         action(pair.Association);
                     });
-
-                    disposable.Dispose();
                 }).DisposeWith(disposable);
             })
-            .Subscribe();
+            .Subscribe()
+            .DisposeWith(disposable);
     }
 
     /// <summary>

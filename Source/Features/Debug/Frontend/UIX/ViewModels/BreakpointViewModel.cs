@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Disposables;
 using System.Windows.Input;
 using Avalonia.Threading;
 using GRS.Features.Debug.UIX.Models;
@@ -27,11 +28,6 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         get => MonitorRead(() => _displayViewModel);
         set => MonitorWrite(() => this.RaiseAndSetIfChanged(ref _displayViewModel, value));
     }
-
-    /// <summary>
-    /// Source object of this breakpoint
-    /// </summary>
-    public BreakpointSourceObject TextualSourceObject { get; set; }
     
     /// <summary>
     /// Currently assigned processor, owned by the archetype
@@ -161,6 +157,11 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// Current streaming size
     /// </summary>
     public ulong StreamSize { get; set; }
+    
+    /// <summary>
+    /// Shared disposable
+    /// </summary>
+    public CompositeDisposable Disposable { get; } = new();
 
     public BreakpointViewModel()
     {

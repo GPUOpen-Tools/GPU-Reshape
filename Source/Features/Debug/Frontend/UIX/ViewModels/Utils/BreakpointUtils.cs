@@ -31,7 +31,7 @@ public static class BreakpointUtils
         collection.PropertyViewModel.GetService<BreakpointRegistryService>()?.Register(breakpointViewModel);
         
         // Bind the breakpoint
-        BreakpointMappingUtils.SubscribeSourceLineMapping(content, lineBase0, (shaderViewModel, associationViewModel) =>
+        BreakpointMappingUtils.SubscribeSourceLineMapping(content, breakpointViewModel.Disposable, lineBase0, (shaderViewModel, associationViewModel) =>
         {
             AddBreakpoint(breakpointViewModel, shaderViewModel, collection, associationViewModel, captureMode);
         });

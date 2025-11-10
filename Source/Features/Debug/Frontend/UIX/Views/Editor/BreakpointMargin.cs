@@ -232,6 +232,9 @@ public class BreakpointMargin : AbstractMargin
             VM.Content.PropertyCollection?
                 .GetProperty<BreakpointCollectionRegistryViewModel>()?
                 .Remove(breakpoint.BreakpointViewModel);
+            
+            // Remove all bound events
+            breakpoint.BreakpointViewModel.Disposable.Clear();
         }
         else
         {
