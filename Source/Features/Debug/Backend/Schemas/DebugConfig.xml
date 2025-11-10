@@ -60,6 +60,7 @@
     <message name="DebugBreakpointStream">
         <field name="request" type="uint32"/>
         <field name="uid" type="uint32"/>
+        <field name="captureMode" type="uint32"/>
         <field name="data" type="array" element="uint8"/>
         <field name="dataFormat" type="uint32"/>
         <field name="dataTypeId" type="uint32"/>

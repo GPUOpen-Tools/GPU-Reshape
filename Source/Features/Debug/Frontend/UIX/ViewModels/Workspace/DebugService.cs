@@ -116,6 +116,12 @@ namespace GRS.Features.Debug.UIX.Workspace
                 {
                     continue;
                 }
+                
+                // May have changed capture mode
+                if ((BreakpointCaptureMode)message.captureMode != breakpointViewModel.CaptureMode)
+                {
+                    continue;
+                }
 
                 // Update tiny type if needed
                 if (message.dataTinyType.Count != 0)

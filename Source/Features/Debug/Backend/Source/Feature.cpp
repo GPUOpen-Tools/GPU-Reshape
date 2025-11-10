@@ -590,6 +590,7 @@ void DebugFeature::OnSyncPoint() {
             // Write out request data
             message->request = ++defaultController.requestIndex;
             message->uid = breakpoint.uid;
+            message->captureMode = static_cast<uint32_t>(breakpoint.captureMode);
             message->dataFormat = static_cast<uint32_t>(hostLayout.format);
             message->dataTypeId = hostLayout.typeId;
             message->dataCompression = static_cast<uint32_t>(hostLayout.compression);
@@ -910,8 +911,10 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
     }
 
     // Supports 8-8-8-8 compression?
-    if (breakpointData.flags & BreakpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, valueType)) {
-        breakpointData.hostLayout.compression = BreakpointCompression::FPUnorm8888;
+    if (breakpoint->captureMode != BreakpointCaptureMode::AllEvents) {
+        if (breakpointData.flags & BreakpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, valueType)) {
+            breakpointData.hostLayout.compression = BreakpointCompression::FPUnorm8888;
+        }
     }
 
     // Try to get the format
