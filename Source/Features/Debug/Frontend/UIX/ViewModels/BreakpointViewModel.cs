@@ -11,6 +11,8 @@ using GRS.Features.Debug.UIX.ViewModels.Processor;
 using Message.CLR;
 using Studio.Services;
 using Studio;
+using Studio.Extensions;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Properties.Instrumentation;
@@ -123,8 +125,17 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// <summary>
     /// Assigned capture mode
     /// </summary>
-    public BreakpointCaptureMode CaptureMode { get; set; } = BreakpointCaptureMode.FirstEvent;
-    
+    public BreakpointCaptureMode CaptureMode
+    {
+        get => _captureMode;
+        set => this.RaiseAndSetIfChanged(ref _captureMode, value);
+    }
+
+    /// <summary>
+    /// All allowed capture modes
+    /// </summary>
+    public Array CaptureModeTypes { get; } = Enum.GetValues<BreakpointCaptureMode>();
+
     /// <summary>
     /// Framerate of the streamed data
     /// </summary>
@@ -151,7 +162,7 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// <summary>
     /// Statically allocated UID
     /// </summary>
-    public uint UID { get; set; }
+    public uint UID { get; set; } = uint.MaxValue;
 
     /// <summary>
     /// Current streaming size
@@ -169,6 +180,14 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
 
         // Create commands
         OpenInNewCommand = ReactiveCommand.Create(OnOpenInNew);
+    }
+
+    /// <summary>
+    /// Enqueue all parent buses of bound shaders
+    /// </summary>
+    public void EnqueueAllShaderParentBus()
+    {
+        ShaderProperties.ForEach(x => x.EnqueueFirstParentBus());
     }
 
     private void OnOpenInNew()
@@ -387,4 +406,9 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// Internal status state
     /// </summary>
     private bool _hasStatusMessage;
+
+    /// <summary>
+    /// Internal capture mode
+    /// </summary>
+    private BreakpointCaptureMode _captureMode = BreakpointCaptureMode.FirstEvent;
 }

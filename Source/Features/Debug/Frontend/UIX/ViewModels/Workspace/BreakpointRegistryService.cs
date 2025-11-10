@@ -1,6 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using GRS.Features.Debug.UIX.ViewModels;
 using Message.CLR;
+using ReactiveUI;
 using Studio.ViewModels.Workspace;
 
 namespace GRS.Features.Debug.UIX.Workspace;
@@ -32,12 +36,39 @@ public class BreakpointRegistryService : IPropertyService
             msg.streamSize = (uint)breakpointViewModel.StreamSize;
             msg.captureMode = (uint)breakpointViewModel.CaptureMode;
         }
+        
+        BindRegistrationProperties(breakpointViewModel);
+    }
+
+    /// <summary>
+    /// Bind all properties
+    /// </summary>
+    private void BindRegistrationProperties(BreakpointViewModel breakpointViewModel)
+    {
+        // Bind re-registration events
+        breakpointViewModel
+            .WhenAnyValue(x => x.CaptureMode)
+            .Skip(1)
+            .Subscribe(_ => Reregister(breakpointViewModel))
+            .DisposeWith(breakpointViewModel.Disposable);
+    }
+
+    /// <summary>
+    /// Reregister a breakpoint
+    /// </summary>
+    public void Reregister(BreakpointViewModel breakpointViewModel)
+    {
+        // Re-allocate the UID, avoids timing issues
+        Deregister(breakpointViewModel);
+        Register(breakpointViewModel);
+
+        // Reinstrument with the new capture mode
+        breakpointViewModel.EnqueueAllShaderParentBus();
     }
     
     /// <summary>
     /// Deregister a breakpoint
     /// </summary>
-    /// <param name="breakpointViewModel"></param>
     public void Deregister(BreakpointViewModel breakpointViewModel)
     {
         lock (_lookup)
@@ -56,7 +87,6 @@ public class BreakpointRegistryService : IPropertyService
     /// <summary>
     /// Reallocate the backing memory for a breakpoint
     /// </summary>
-    /// <param name="breakpointViewModel"></param>
     public void Reallocate(BreakpointViewModel breakpointViewModel)
     {
         if (WorkspaceViewModel.Connection?.GetSharedBus() is { } bus)
