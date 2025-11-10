@@ -1345,12 +1345,20 @@ void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandLis
     ReconstructState(device, commandList, streamState, flags);
 }
 
-struct PIXEvent3Header {
-    uint64_t Encoding;
-    uint64_t Color;
-    uint64_t FormatEncoding;
-    wchar_t  Format[1];
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif // _MSC_VER
+
+struct ALIGN_PACK PIXEvent3Header {
+    uint64_t encoding;
+    uint64_t color;
+    uint64_t formatEncoding;
+    wchar_t  format[1];
 };
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif // _MSC_VER
 
 static void DecodeAndPushMarker(ShaderExportStreamMarkerState& markers, UINT Metadata, const void *pData, UINT Size, bool hierarchical ) {
     switch (Metadata) {
@@ -1383,6 +1391,7 @@ static void DecodeAndPushMarker(ShaderExportStreamMarkerState& markers, UINT Met
         }
         case D3D12_EVENT_METADATA: {
             auto* dataU8 = static_cast<const uint8_t*>(pData);
+            auto* endU8  = dataU8 + Size;
             if (Size < sizeof(PIXEvent3Header)) {
                 return;
             }
@@ -1391,17 +1400,73 @@ static void DecodeAndPushMarker(ShaderExportStreamMarkerState& markers, UINT Met
             auto* header = reinterpret_cast<const PIXEvent3Header*>(dataU8);
             dataU8 += sizeof(PIXEvent3Header);
 
-            // Destination format string
-            char* dest = ALLOCA_ARRAY(char, Size / sizeof(wchar_t));
+            // Get format
+            const wchar_t* format = header->format;
+            size_t formatLength = std::wcslen(format);
+            dataU8 += formatLength * sizeof(wchar_t);
 
-            // Convert
-            size_t length = std::wcslen(header->Format) + 1;
-            wcstombs_s(&length, dest, length * sizeof(char), header->Format, length * sizeof(wchar_t));
-            
+            // To Qword
+            if (reinterpret_cast<uint64_t>(dataU8) % sizeof(uint64_t)) {
+                dataU8 += sizeof(uint64_t) - reinterpret_cast<uint64_t>(dataU8) % sizeof(uint64_t);
+            }
+
+            // Get all arguments
+            TrivialStackVector<const wchar_t*, 16> args;
+            while (dataU8 < endU8 && (endU8 - dataU8) >= sizeof(uint64_t) + sizeof(wchar_t)) {
+                uint64_t encoding = *reinterpret_cast<const uint64_t*>(dataU8);
+                dataU8 += sizeof(uint64_t);
+
+                // Get argument
+                const wchar_t* argBegin = reinterpret_cast<const wchar_t*>(dataU8);
+                args.Add(argBegin);
+
+                // Skip
+                size_t lengthTerm = std::wcslen(argBegin) + 1;
+                dataU8 += lengthTerm * sizeof(wchar_t);
+
+                // To Qword
+                if (reinterpret_cast<uint64_t>(dataU8) % sizeof(uint64_t)) {
+                    dataU8 += sizeof(uint64_t) - reinterpret_cast<uint64_t>(dataU8) % sizeof(uint64_t);
+                }
+            }
+
+            // Current argument offset
+            uint32_t argumentOffset = 0;
+
+            // Format the text
+            TrivialStackVector<char, 1024> formatted;
+            for (uint32_t i = 0; i < formatLength; i++) {
+                if (format[i] != '%' || i >= formatLength - 1) {
+                    formatted.Add(static_cast<char>(format[i]));
+                    continue;
+                }
+
+                i++;
+
+                // Bad format?
+                if (argumentOffset >= args.Size()) {
+                    break;
+                }
+
+                // Handle formatting
+                switch (format[i]) {
+                    case L's':
+                    case L'S': {
+                        uint64_t len = std::wcslen(args[argumentOffset]);
+                        formatted.Reserve(formatted.Size() + len);
+
+                        for (uint32_t argChIndex = 0; argChIndex < len; argChIndex++) {
+                            formatted.Add(static_cast<char>(args[argumentOffset][argChIndex]));
+                        }
+                        break;
+                    }
+                }
+            }
+
             // Just a plain string
             markers.stack.Add(ShaderExportStreamMarkerEntryState {
                 .hierarchical = hierarchical,
-                .hash32 = BufferCRC32Short(dest, length - 1)
+                .hash32 = BufferCRC32Short(formatted.Data(), formatted.Size())
             });
             break;
         }
