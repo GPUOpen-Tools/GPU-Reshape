@@ -32,6 +32,7 @@
         <field name="codeOffset" type="uint32"/>
         <field name="uid" type="uint32"/>
         <field name="flags" type="uint32"/>
+        <field name="markerHash32" type="uint32"/>
     </message>
     
     <message name="DebugConfig">

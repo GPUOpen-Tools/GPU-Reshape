@@ -128,6 +128,9 @@ void WINAPI HookID3D12CommandListSetComputeRoot32BitConstant(ID3D12CommandList *
 void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstant(ID3D12CommandList *list, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues);
 void WINAPI HookID3D12CommandListSetComputeRoot32BitConstants(ID3D12CommandList *list, UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues);
 void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstants(ID3D12CommandList *list, UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues);
+void WINAPI HookID3D12CommandListSetMarker(ID3D12CommandList *list, UINT Metadata, const void *pData, UINT Size);
+void WINAPI HookID3D12CommandListBeginEvent(ID3D12CommandList *list, UINT Metadata, const void *pData, UINT Size);
+void WINAPI HookID3D12CommandListEndEvent(ID3D12CommandList *list);
 HRESULT WINAPI HookID3D12CommandListGetDevice(ID3D12CommandList *_this, REFIID riid, void **ppDevice);
 D3D12_COMMAND_LIST_TYPE WINAPI HookID3D12CommandListGetType(ID3D12CommandList *_this);
 

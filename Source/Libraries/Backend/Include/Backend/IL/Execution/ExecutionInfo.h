@@ -29,6 +29,9 @@
 // Backend
 #include <Backend/IL/Execution/ExecutionFlag.h>
 
+/// Max number of marker hashes we track
+static constexpr uint32_t kMaxExecutionInfoMarkerCount = 5;
+
 struct ExecutionInfo {
     /// Rolling counter UIDs
     /// This is typically atomically allocated, and is expected to roll on the numerical limit
@@ -42,8 +45,8 @@ struct ExecutionInfo {
     /// UID of the pipeline being executed
     uint32_t pipelineUID;
 
-    /// UID of the active scope
-    uint32_t scopeUID;
+    /// Local hashes of markers
+    uint32_t markerHashes32[kMaxExecutionInfoMarkerCount];
 
     /// UID of the queue this is currently executing on
     uint32_t queueUID;
@@ -85,4 +88,4 @@ struct ExecutionInfo {
 static constexpr uint32_t kExecutionInfoDWordCount = sizeof(ExecutionInfo) / sizeof(uint32_t);
 
 /// Sanity check
-static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 20);
+static_assert(sizeof(ExecutionInfo) == sizeof(uint32_t) * 24);

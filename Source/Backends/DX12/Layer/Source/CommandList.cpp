@@ -55,6 +55,9 @@
 #include <Backend/IL/Execution/ExecutionInfo.h>
 #include <Backend/IFeature.h>
 
+// WinPixEventRuntime
+#include <WinPixEventRuntime/pix3.h>
+
 static D3D12_COMMAND_LIST_TYPE GetEmulatedCommandListType(D3D12_COMMAND_LIST_TYPE type) {
     switch (type) {
         default:
@@ -1342,6 +1345,130 @@ void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandLis
     ReconstructState(device, commandList, streamState, flags);
 }
 
+struct PIXEvent3Header {
+    uint64_t Encoding;
+    uint64_t Color;
+    uint64_t FormatEncoding;
+    wchar_t  Format[1];
+};
+
+static void DecodeAndPushMarker(ShaderExportStreamMarkerState& markers, UINT Metadata, const void *pData, UINT Size, bool hierarchical ) {
+    switch (Metadata) {
+        default: {
+            // Not implemented
+            break;
+        }
+        case WINPIX_EVENT_ANSI_VERSION: {
+            // Just a plain string
+            markers.stack.Add(ShaderExportStreamMarkerEntryState {
+                .hierarchical = hierarchical,
+                .hash32 = BufferCRC32Short(pData, Size)
+            });
+            break;
+        }
+        case WINPIX_EVENT_UNICODE_VERSION: {
+            const wchar_t* source = static_cast<const wchar_t*>(pData);
+            char*          dest   = ALLOCA_ARRAY(char, Size / sizeof(wchar_t));
+
+            // Convert
+            size_t length = std::wcslen(static_cast<const wchar_t *>(pData)) + 1;
+            wcstombs_s(&length, dest, length * sizeof(char), source, length * sizeof(wchar_t));
+
+            // Just a plain string
+            markers.stack.Add(ShaderExportStreamMarkerEntryState {
+                .hierarchical = hierarchical,
+                .hash32 = BufferCRC32Short(dest, Size)
+            });
+            break;
+        }
+        case D3D12_EVENT_METADATA: {
+            auto* dataU8 = static_cast<const uint8_t*>(pData);
+            if (Size < sizeof(PIXEvent3Header)) {
+                return;
+            }
+
+            // Always header
+            auto* header = reinterpret_cast<const PIXEvent3Header*>(dataU8);
+            dataU8 += sizeof(PIXEvent3Header);
+
+            // Destination format string
+            char* dest = ALLOCA_ARRAY(char, Size / sizeof(wchar_t));
+
+            // Convert
+            size_t length = std::wcslen(header->Format) + 1;
+            wcstombs_s(&length, dest, length * sizeof(char), header->Format, length * sizeof(wchar_t));
+            
+            // Just a plain string
+            markers.stack.Add(ShaderExportStreamMarkerEntryState {
+                .hierarchical = hierarchical,
+                .hash32 = BufferCRC32Short(dest, length - 1)
+            });
+            break;
+        }
+    }
+}
+
+void WINAPI HookID3D12CommandListSetMarker(ID3D12CommandList *list, UINT Metadata, const void *pData, UINT Size) {
+    auto table = GetTable(list);
+
+    // Pass down
+    table.next->SetMarker(Metadata, pData, Size);
+    
+    // Accommodation check
+    ShaderExportStreamMarkerState &markers = table.state->streamState->markers;
+    if (markers.stack.Size()) {
+        ShaderExportStreamMarkerEntryState &last = markers.stack[markers.stack.Size() - 1];
+
+        // If hierarchical and out of space? Bail.
+        if (!last.hierarchical && markers.stack.Size() >= kMaxExecutionInfoMarkerCount) {
+            return;
+        }
+    }
+
+    // Actually decode it
+    DecodeAndPushMarker(markers, Metadata, pData, Size, false);
+}
+
+void WINAPI HookID3D12CommandListBeginEvent(ID3D12CommandList *list, UINT Metadata, const void *pData, UINT Size) {
+    auto table = GetTable(list);
+
+    // Pass down
+    table.next->BeginEvent(Metadata, pData, Size);
+    
+    // Accommodation check
+    ShaderExportStreamMarkerState &markers = table.state->streamState->markers;
+    if (markers.stack.Size() >= kMaxExecutionInfoMarkerCount) {
+        return;
+    }
+
+    // Actually decode it
+    DecodeAndPushMarker(markers, Metadata, pData, Size, true);
+}
+
+void WINAPI HookID3D12CommandListEndEvent(ID3D12CommandList *list) {
+    auto table = GetTable(list);
+
+    // Pass down
+    table.next->EndEvent();
+
+    // Accommodation check
+    ShaderExportStreamMarkerState &markers = table.state->streamState->markers;
+    if (!markers.stack.Size()) {
+        return;
+    }
+
+    // If non-hierarchical, pop that too  
+    ShaderExportStreamMarkerEntryState &last = markers.stack[markers.stack.Size() - 1];
+    if (!last.hierarchical) {
+        markers.stack.PopBack();
+    }
+
+    // Pop the hierarchical event
+    if (markers.stack.Size()) {
+        markers.stack.PopBack();
+    }
+}
+
 static ExecutionInfo GetBaseExecutionInfo(CommandListState* state) {
     DeviceState* device = GetState(state->parent);
 
@@ -1355,8 +1482,14 @@ static ExecutionInfo GetBaseExecutionInfo(CommandListState* state) {
     // Pipeline is optional
     info.pipelineUID = state->streamState->pipeline ? static_cast<uint32_t>(state->streamState->pipeline->uid) : 0;
 
-    // Scope is not implemented yet
-    info.scopeUID = 0;
+    // Fill marker hashes
+    for (uint32_t i = 0; i < kMaxExecutionInfoMarkerCount; i++) {
+        if (i < state->streamState->markers.stack.Size()) {
+            info.markerHashes32[i] = state->streamState->markers.stack[i].hash32;
+        } else {
+            info.markerHashes32[i] = 0;
+        }
+    }
 
     // Set the viewport
     info.viewport.width = static_cast<uint32_t>(state->streamState->viewport.state.Width);

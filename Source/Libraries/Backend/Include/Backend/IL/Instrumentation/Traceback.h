@@ -48,9 +48,13 @@ namespace IL {
         // Kernel info
         message.traceback.executionFlag = execution.Get<&ExecutionInfo::executionFlags>(emitter);
         message.traceback.pipelineUid = execution.Get<&ExecutionInfo::pipelineUID>(emitter);
-        message.traceback.scopeUid = execution.Get<&ExecutionInfo::scopeUID>(emitter);
         message.traceback.queueUid = execution.Get<&ExecutionInfo::queueUID>(emitter);
 
+        // Marker info
+        for (uint32_t i = 0; i < kMaxExecutionInfoMarkerCount; i++) {
+            message.traceback.markerHashes32[i] = execution.Get<&ExecutionInfo::markerHashes32>(emitter, i);
+        }
+        
         // Group counts
         message.traceback.kernelLaunchX = execution.Get<&ExecutionInfo::dispatch>(emitter, 0);
         message.traceback.kernelLaunchY = execution.Get<&ExecutionInfo::dispatch>(emitter, 1);

@@ -26,7 +26,11 @@
 
 #include <ShaderExportGenerator.h>
 
+// Backend
+#include <Backend/IL/Execution/ExecutionInfo.h>
 #include <Backend/ShaderExport.h>
+
+// Std
 #include <sstream>
 #include <iostream>
 
@@ -48,7 +52,7 @@ bool ShaderExportGenerator::Generate(Schema &schema, Language language, SchemaSt
             chunk.name = "Traceback";
             chunk.fields.emplace_back(Field { .name = "executionFlag", .type = "uint32" });
             chunk.fields.emplace_back(Field { .name = "pipelineUid", .type = "uint32" });
-            chunk.fields.emplace_back(Field { .name = "scopeUid", .type = "uint32" });
+            chunk.fields.emplace_back(Field { .name = "markerHashes32", .type = "array", .attributes = { { { "element", "uint32" }, { "length", std::to_string(kMaxExecutionInfoMarkerCount) } } } });
             chunk.fields.emplace_back(Field { .name = "queueUid", .type = "uint32" });
             chunk.fields.emplace_back(Field { .name = "kernelLaunchX", .type = "uint32" });
             chunk.fields.emplace_back(Field { .name = "kernelLaunchY", .type = "uint32" });

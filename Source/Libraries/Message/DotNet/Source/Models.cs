@@ -67,7 +67,7 @@ namespace Message.CLR
         /// <summary>
         /// Combined scope
         /// </summary>
-        public uint scopeUid { get; set; }
+        public uint[] markerHashes32 { get; set; }
     
         /// <summary>
         /// Scheduled queue

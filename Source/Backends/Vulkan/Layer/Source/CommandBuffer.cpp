@@ -400,8 +400,8 @@ ExecutionInfo GetBaseExecutionInfo(CommandBufferObject* object, PipelineType typ
     // Pipeline is optional
     info.pipelineUID = bindState.pipeline ? static_cast<uint32_t>(bindState.pipeline->uid) : 0;
 
-    // Scope is not implemented yet
-    info.scopeUID = 0;
+    // Markers are not implemented yet
+    std::fill_n(info.markerHashes32, kMaxExecutionInfoMarkerCount, 0);
     
     return info;
 }

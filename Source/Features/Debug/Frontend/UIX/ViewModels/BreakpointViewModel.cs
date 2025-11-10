@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Windows.Input;
 using Avalonia.Threading;
 using GRS.Features.Debug.UIX.Models;
@@ -153,6 +154,15 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         get => _decoration;
         set => this.RaiseAndSetIfChanged(ref _decoration, value);
     }
+    
+    /// <summary>
+    /// Optional marker
+    /// </summary>
+    public string Marker
+    {
+        get => _marker;
+        set => this.RaiseAndSetIfChanged(ref _marker, value);
+    }
 
     /// <summary>
     /// Last time it was requested
@@ -180,6 +190,11 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
 
         // Create commands
         OpenInNewCommand = ReactiveCommand.Create(OnOpenInNew);
+        
+        // Update shaders on marker changes
+        this.WhenAnyValue(x => x.Marker)
+            .Throttle(TimeSpan.FromMilliseconds(500))
+            .Subscribe(_ => EnqueueAllShaderParentBus());
     }
 
     /// <summary>
@@ -411,4 +426,9 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// Internal capture mode
     /// </summary>
     private BreakpointCaptureMode _captureMode = BreakpointCaptureMode.FirstEvent;
+
+    /// <summary>
+    /// Internal marker
+    /// </summary>
+    private string _marker;
 }

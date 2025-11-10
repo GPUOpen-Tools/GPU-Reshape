@@ -40,6 +40,7 @@
 // Backend
 #include <Backend/CommandContextHandle.h>
 #include <Backend/CommandContext.h>
+#include <Backend/IL/Execution/ExecutionInfo.h>
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
@@ -211,6 +212,19 @@ struct ShaderExportStreamViewportState {
     uint32_t rollingUID{0};
 };
 
+struct ShaderExportStreamMarkerEntryState {
+    /// Is this hierarhical?
+    bool hierarchical = false;
+
+    /// CRC32 hash
+    uint32_t hash32{0};
+};
+
+struct ShaderExportStreamMarkerState {
+    /// All markers
+    TrivialStackVector<ShaderExportStreamMarkerEntryState, kMaxExecutionInfoMarkerCount> stack;
+};
+
 /// Single stream state
 struct ShaderExportStreamState {
     ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators), referencedHeaps(allocators) {
@@ -242,6 +256,9 @@ struct ShaderExportStreamState {
     /// Currently set viewport
     ShaderExportStreamViewportState viewport;
 
+    /// Currently set markers
+    ShaderExportStreamMarkerState markers;
+    
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};
 

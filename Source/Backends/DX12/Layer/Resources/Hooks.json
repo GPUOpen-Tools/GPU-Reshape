@@ -229,6 +229,9 @@
         "CopyTiles",
         "DispatchMesh",
         "DispatchRays",
+        "SetMarker",
+        "BeginEvent",
+        "EndEvent",
         "GetDevice",
         "GetType"
       ],

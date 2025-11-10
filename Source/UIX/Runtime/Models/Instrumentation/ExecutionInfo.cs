@@ -4,7 +4,7 @@ using Message.CLR;
 namespace Studio.Models.Instrumentation;
 
 [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
-public struct ExecutionInfo
+public unsafe struct ExecutionInfo
 {
     public static uint DWordCount = (uint)(Marshal.SizeOf(typeof(ExecutionInfo)) / sizeof(uint));
 
@@ -41,7 +41,7 @@ public struct ExecutionInfo
     public uint rollingViewportUID;
     public ExecutionFlag executionFlags;
     public uint pipelineUID;
-    public uint scopeUID;
+    public fixed uint markerHashes32[5];
     public uint queueUID;
     public DrawInfo drawInfo;
     public DispatchInfo dispatchInfo;

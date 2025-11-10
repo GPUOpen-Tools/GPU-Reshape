@@ -1205,6 +1205,7 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     // Intermediate data
     BreakpointData breakpointData;
     breakpointData.flags = static_cast<BreakpointFlag>(breakpointMessage.flags);
+    breakpointData.markerHash32 = breakpointMessage.markerHash32;
     breakpointData.shaderInstrumentationHash32 = ShaderInstrumentationHashWideTo32(context.program.GetShaderInstrumentationHash());
 
     // Try to determine the data layout
@@ -1340,12 +1341,35 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
     IL::ID acquiredHeader = headerEmitter.Equal(acquiredUID, rollingUID);
     IL::ID acquiredCAS       = IL::InvalidID;
 
+    // See branch
+    IL::ID canAllocateHeader = headerEmitter.Equal(acquiredUID, headerEmitter.UInt32(0));
+
+    // Supplied hash?
+    if (breakpointData.markerHash32) {
+        IL::ID hash32         = headerEmitter.UInt32(breakpointData.markerHash32);
+        IL::ID anyHashMatched = headerEmitter.Bool(false);
+
+        // Check if any of the scopes match
+        for (uint32_t i = 0; i < kMaxExecutionInfoMarkerCount; i++) {
+            anyHashMatched = headerEmitter.Or(
+                anyHashMatched,
+                headerEmitter.Equal(
+                    execution.Get<&ExecutionInfo::markerHashes32>(headerEmitter, i),
+                    hash32
+                )
+            );
+        }
+
+        // Must pass both
+        canAllocateHeader = headerEmitter.And(canAllocateHeader, anyHashMatched);
+    }
+
     // If not acquired, and it's equal to zero (i.e., unallocated), enter the CAS block
     // With this we've validated that we don't hold the lock and nothing else does.
     // Of course, the cache lines may not represent the real state, but in case of mismatches
     // we'll enter the CAS block anyhow.
     headerEmitter.BranchConditional(
-        headerEmitter.Equal(acquiredUID, headerEmitter.UInt32(0)),
+        canAllocateHeader,
         casBlock,
         casMerge,
         IL::ControlFlow::Selection(casMerge)

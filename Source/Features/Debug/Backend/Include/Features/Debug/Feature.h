@@ -165,6 +165,9 @@ private:
         /// Flags for this breakpoint
         BreakpointFlag flags{BreakpointFlag::None};
 
+        /// Optional, marker hash
+        uint32_t markerHash32{0};
+
         /// Current instrumentation hash
         uint32_t shaderInstrumentationHash32{0};
 

@@ -59,8 +59,7 @@ public class LooseItemViewModel : ReactiveObject
             [
                 new LooseTreeItemViewModel { Text = $"{TracebackUtils.Format(header.executionInfo.executionFlags)}" },
                 GetPipelineItemViewModel(breakpointDisplayViewModel, header),
-                new LooseTreeItemViewModel { Text = $"Queue : {header.executionInfo.queueUID}" },
-                new LooseTreeItemViewModel { Text = $"Scope : {header.executionInfo.scopeUID}" }
+                new LooseTreeItemViewModel { Text = $"Queue : {header.executionInfo.queueUID}" }
             ]
         };
 

@@ -77,6 +77,7 @@
         <PackageReference Include="Projektanker.Icons.Avalonia.FontAwesome" Version="9.4.0" />
         <PackageReference Include="Scriban" Version="6.1.0" />
         <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+        <PackageReference Include="System.IO.Hashing" Version="10.0.0-rc.2.25502.107" />
         <PackageReference Include="TextMateSharp" Version="1.0.56" />
         <PackageReference Include="TextMateSharp.Grammars" Version="1.0.56" />
     </ItemGroup>

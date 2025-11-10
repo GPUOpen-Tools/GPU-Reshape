@@ -49,6 +49,12 @@
                     ItemsSource="{Binding Archetypes}"
                     DisplayMemberBinding="{Binding Name}"/>
                 
+                <!-- Marker -->
+                <TextBox
+                    Text="{Binding Marker}"
+                    Watermark="Marker Filter"
+                    ToolTip.Tip="Optional marker name (full name, case-sensitive), only hits if any marker hierarchy (max 5 nested) contains this name"/>
+                
                 <!-- Config -->
                 <controls:LocatorViewHost 
                     HorizontalAlignment="Stretch" 

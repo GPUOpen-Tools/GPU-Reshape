@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.ObjectModel;
-using System.Linq;
+using System.Text;
 using DynamicData;
 using DynamicData.Binding;
 using GRS.Features.Debug.UIX.Models;
-using GRS.Features.Debug.UIX.Workspace;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
@@ -103,6 +101,13 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
             breakpoint.codeOffset = binding.Source!.Mapping.CodeOffset;
             breakpoint.uid = binding.BreakpointViewModel.UID;
             breakpoint.flags = (uint)breakpointConfig.Flags;
+            breakpoint.markerHash32 = 0;
+
+            // Hash marker if requested
+            if (!string.IsNullOrEmpty(binding.BreakpointViewModel.Marker))
+            {
+                breakpoint.markerHash32 = System.IO.Hashing.Crc32.HashToUInt32(Encoding.ASCII.GetBytes(binding.BreakpointViewModel.Marker));
+            }
         }
 
         // Create config
