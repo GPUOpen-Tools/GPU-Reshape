@@ -5,11 +5,13 @@
              xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
              xmlns:controls="clr-namespace:Studio.Views.Controls;assembly=UIX.Studio.Runtime"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters;assembly=UIX.Studio.Runtime"
+             xmlns:valueConvertersLocal="clr-namespace:Studio.ValueConverters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="UIX.Views.BreakpointDisplayView"
              x:DataType="viewModels:BreakpointViewModel">
     <UserControl.Resources>
         <valueConverters:ConditionalComboConverter x:Key="ComboConverter" />
+        <valueConvertersLocal:CaptureModeNameConverter x:Key="CaptureModeNameConverter" />
     </UserControl.Resources>
     
     <Grid Background="{StaticResource InfoBackgroundColor}">
@@ -29,7 +31,16 @@
                 <ComboBox 
                     IsVisible="{Binding CaptureModeTypes, Converter={StaticResource ComboConverter}}"
                     SelectedItem="{Binding CaptureMode}" 
-                    ItemsSource="{Binding CaptureModeTypes}"/>
+                    ItemsSource="{Binding CaptureModeTypes}"
+                    ToolTip.Tip="{Binding CaptureMode, Converter={StaticResource CaptureModeNameConverter}, ConverterParameter=tooltip}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock 
+                                Text="{Binding Converter={StaticResource CaptureModeNameConverter}}"
+                                ToolTip.Tip="{Binding Converter={StaticResource CaptureModeNameConverter}, ConverterParameter=tooltip}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
                 
                 <!-- Archetype -->
                 <ComboBox 
