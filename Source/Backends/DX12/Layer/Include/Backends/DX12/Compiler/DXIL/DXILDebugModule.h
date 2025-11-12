@@ -353,7 +353,7 @@ private:
             struct {
                 uint32_t nameMdId;
                 uint32_t typeMdId;
-                uint32_t value;
+                uint32_t valueMdId;
             } templateValue;
 
             struct {
@@ -426,6 +426,9 @@ private:
 
         /// Offset of the declaring record
         uint32_t recordOffset{0};
+
+        /// Literal value if relevant
+        uint64_t literal{0};
 
         /// Is this value non-semantic? Meaning, stripped from the canonical module?
         bool bIsNonSemantic{false};

@@ -526,7 +526,18 @@ void DXILDebugModule::ParseConstants(LLVMBlock *block) {
             continue;
         }
 
-        thinValues.emplace_back();
+        ThinValue &value = thinValues.emplace_back();
+
+        // Handle special values
+        switch (static_cast<LLVMConstantRecord>(record.id)) {
+            default: {
+                break;
+            }
+            case LLVMConstantRecord::Integer: {
+                value.literal = LLVMBitStreamReader::DecodeSigned(record.Op(0));
+                break;
+            }
+        }
     }
 }
 
@@ -711,7 +722,7 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
             case LLVMMetadataRecord::TemplateValue: {
                 md.templateValue.nameMdId = static_cast<uint32_t>(record.Op(2));
                 md.templateValue.typeMdId = static_cast<uint32_t>(record.Op(3));
-                md.templateValue.value = static_cast<uint32_t>(record.Op(4));
+                md.templateValue.valueMdId = static_cast<uint32_t>(record.Op(4));
                 break;
             }
 
@@ -1231,6 +1242,58 @@ const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::Ty
             return typeMap.FindTypeOrAdd(Backend::IL::VectorType {
                 .containedType = elements[0],
                 .dimension = static_cast<uint8_t>(elements.Size())
+            });
+        }
+    }
+
+    // If matrix, try to represent it as such
+    if (name.StartsWith("matrix")) {
+        ASSERT(elements.Size() <= 16, "Unexpected matrix length");
+
+        // Attributes
+        uint32_t rows    = 0;
+        uint32_t columns = 0;
+        
+        Metadata& templateListMd = thinMetadata[typeMd.compositeType._class.templateParamsMdId - 1];
+
+        // Parse all arguments
+        for (uint32_t i = 0; i < templateListMd.record->opCount; i++) {
+            Metadata& argMd = thinMetadata[templateListMd.record->Op32(i) - 1];
+            switch (argMd.type) {
+                default: {
+                    break;
+                }
+                case LLVMMetadataRecord::TemplateType: {
+                    break;
+                }
+                case LLVMMetadataRecord::TemplateValue: {
+                    LLVMRecordStringView argName(*thinMetadata[argMd.templateValue.nameMdId - 1].record, 0);
+
+                    if (argName.StartsWith("row_count")) {
+                        Metadata& valueMd = thinMetadata[argMd.templateValue.valueMdId - 1];
+                        ASSERT(valueMd.type == LLVMMetadataRecord::Value, "Unexpected record");
+                        rows = static_cast<uint32_t>(thinValues[valueMd.value].literal);
+                    } else if (argName.StartsWith("col_count")) {
+                        Metadata& valueMd = thinMetadata[argMd.templateValue.valueMdId - 1];
+                        ASSERT(valueMd.type == LLVMMetadataRecord::Value, "Unexpected record");
+                        columns = static_cast<uint32_t>(thinValues[valueMd.value].literal);
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Matrix elements must all match
+        bool bAllMatching = true;
+        for (uint64_t i = 1; i < elements.Size(); i++) {
+            bAllMatching &= elements[i] == elements[0];
+        }
+
+        if (bAllMatching) {
+            return typeMap.FindTypeOrAdd(Backend::IL::MatrixType {
+                .containedType = elements[0],
+                .rows = static_cast<uint8_t>(rows),
+                .columns = static_cast<uint8_t>(columns)
             });
         }
     }
