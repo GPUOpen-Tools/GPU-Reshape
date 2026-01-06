@@ -361,6 +361,9 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
         // Reset the header
         syncBuilder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
         breakpoint.pendingHeader = false;
+        
+        // Always sync header resets
+        hasSyncRequest = true;
     }
 
     if (hasSyncRequest) {
