@@ -1,11 +1,7 @@
-﻿using System.Linq;
-using System.Reactive;
-using Avalonia;
+﻿using System.Diagnostics;
 using DynamicData;
 using ReactiveUI;
 using Studio.Services;
-using Studio.ViewModels.Documents;
-using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Workspace.Services;
 
@@ -70,6 +66,21 @@ namespace Studio.ViewModels.Workspace
         {
             // Destroy the connection
             _connection?.Destruct();
+
+            // Close process tree if possible, owned by this workspace
+            if (_connection?.Application?.Pid is { } processId)
+            {
+                try
+                {
+                    // TODO: Graceful exit?
+                    using Process process = Process.GetProcessById((int)processId);
+                    process.Kill(entireProcessTree: true);
+                }
+                catch
+                {
+                    Studio.Logging.Error($"Failed to close workspace '{_connection.Application.DecoratedName} process");
+                }
+            }
             
             // Remove from service
             ServiceRegistry.Get<IWorkspaceService>()?.Remove(this);
