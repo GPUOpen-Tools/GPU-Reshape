@@ -11,7 +11,6 @@
 // Std
 #include <cstdint>
 
-
 /**
  * Source Mirrors
  * - Source/Features/Debug/Frontend/UIX/Models/BreakpointHeader.cs
@@ -35,12 +34,15 @@ enum class BreakpointCompression {
 
 enum class BreakpointCaptureMode {
     /// Capture the first event only
+    /// Synchronization: Per-event, on acq. it's guaranteed
     FirstEvent,
 
     /// Capture the first viewport only
+    /// Synchronization: Per-viewport, on acq. it's guaranteed
     FirstViewport,
 
     /// Capture all events
+    /// Synchronization: Free form, on acq. up to range N.
     AllEvents
 };
 

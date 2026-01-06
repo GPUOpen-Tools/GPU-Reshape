@@ -628,7 +628,14 @@ void DebugFeature::OnSyncPoint() {
 
     // Any commands?
     if (buffer.Count()) {
-        scheduler->Schedule(Queue::ExclusiveTransfer, buffer, nullptr);
+        // Allocate the next sync value
+        ++exclusiveTransferPrimitiveMonotonicCounter;
+        
+        // Submit to the transfer queue
+        SchedulerPrimitiveEvent event;
+        event.id = exclusiveTransferPrimitiveID;
+        event.value = exclusiveTransferPrimitiveMonotonicCounter;
+        scheduler->Schedule(Queue::ExclusiveTransfer, buffer, &event);
     }
     
     // Any immediate streams?
