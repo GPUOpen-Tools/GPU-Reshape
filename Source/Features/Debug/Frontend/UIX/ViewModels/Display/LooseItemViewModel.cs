@@ -191,28 +191,15 @@ public class LooseItemViewModel : ReactiveObject
     /// </summary>
     private LooseTreeItemViewModel GetValueItem(LooseBreakpointDisplayViewModel breakpointDisplayViewModel, LooseBreakpointHeader header, Span<uint> dataDWordSpan, uint dwordOffset)
     {
-        StringBuilder rawBuffer = new();
-
-        // By default, format the raw data in hex
-        for (int i = 0; i < dataDWordSpan.Length; i++)
-        {
-            if (i != 0)
-            {
-                rawBuffer.Append(", ");
-            }
-            
-            rawBuffer.Append("0x");
-            rawBuffer.Append(dataDWordSpan[i].ToString("X"));
-        }
-        
-        LooseTreeItemViewModel item = new() { Text = $"Value : Raw [{rawBuffer}]" };
-
         // Due to Span GC rules, create it anew here
         // The underlying memory is guaranteed to exist
         Span<uint> dwordSpan = new(breakpointDisplayViewModel.DWords, (int)dwordOffset, (int)breakpointDisplayViewModel.FlatInfo.dataDWordStride);
         
         // Just keep it under its own category
-        item.Text = $"Value {Assembler.AssembleInlineType(breakpointDisplayViewModel.Type, true)} ";
+        LooseTreeItemViewModel item = new()
+        {
+            Text = $"Value {Assembler.AssembleInlineType(breakpointDisplayViewModel.Type, true)} "
+        };
         
         // Format the bytes according to its type
         Span<byte> dataSpan = MemoryMarshal.AsBytes(dwordSpan);
