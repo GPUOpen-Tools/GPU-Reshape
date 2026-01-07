@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using GRS.Features.Debug.UIX.Models;
@@ -39,9 +40,9 @@ using Studio;
 using Studio.Models.IL.Tiny;
 using Studio.Models.Instrumentation;
 using Studio.Services;
-using Studio.ViewModels;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
+using Type = Studio.Models.IL.Type;
 
 namespace GRS.Features.Debug.UIX.Workspace
 {
@@ -72,6 +73,7 @@ namespace GRS.Features.Debug.UIX.Workspace
             ViewModel = viewModel;
             
             // Add listener to bridge
+            viewModel.Connection?.Bridge?.Register(DebugBreakpointMetadataMessage.ID, this);
             viewModel.Connection?.Bridge?.Register(DebugBreakpointStreamMessage.ID, this);
 
             // Get the breakpoint registry for the workspace
@@ -95,8 +97,22 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// </summary>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            var view = new DynamicMessageView<DebugBreakpointStreamMessage>(streams);
-            
+            switch (streams.Schema.id)
+            {
+                case DebugBreakpointStreamMessage.ID:
+                    HandleStream(new DynamicMessageView<DebugBreakpointStreamMessage>(streams));
+                    break;
+                case DebugBreakpointMetadataMessage.ID:
+                    HandleMetadata(new DynamicMessageView<DebugBreakpointMetadataMessage>(streams));
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Bridge handler
+        /// </summary>
+        private void HandleStream(DynamicMessageView<DebugBreakpointStreamMessage> view)
+        {
             foreach (DebugBreakpointStreamMessage message in view)
             {
                 // Get the breakpoint
@@ -160,6 +176,62 @@ namespace GRS.Features.Debug.UIX.Workspace
 
                     // Internal stream handling
                     ProcessStreamRequest(breakpointViewModel, flat, byteCount);
+                });
+            }
+        }
+
+        /// <summary>
+        /// Bridge handler
+        /// </summary>
+        private void HandleMetadata(DynamicMessageView<DebugBreakpointMetadataMessage> view)
+        {
+            foreach (DebugBreakpointMetadataMessage md in view)
+            {
+                // Get the breakpoint
+                if (_breakpointRegistryService?.GetBreakpoint(md.uid) is not {} breakpointViewModel)
+                {
+                    continue;
+                }
+
+                List<BreakpointDebugVariable> remoteVariables = new();
+
+                // Parse all variables
+                foreach (DebugBreakpointVariableMetadataMessage variable in
+                         new DynamicMessageView<DebugBreakpointVariableMetadataMessage>(md.variables.Stream))
+                {
+                    // Unpack the type
+                    Type type = TinyTypePacking.UnpackTinyType(
+                        variable.dataTinyType,
+                        new TinyTypePacking.TinyTypeResolver()
+                    );
+                    
+                    remoteVariables.Add(new BreakpointDebugVariable()
+                    {
+                        Name = variable.name.String,
+                        Type = type,
+                        Handle = variable.handle
+                    });
+                }
+                
+                // The rest needs to happen on the UI thread
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    breakpointViewModel.DebugVariables.Clear();
+                    
+                    // TODO: This is not correct, it's a multi-subscriber situation, again
+                    foreach (BreakpointDebugVariable variable in remoteVariables)
+                    {
+                        if (!breakpointViewModel.DebugVariables.Any(x => x.Handle == variable.Handle))
+                        {
+                            breakpointViewModel.DebugVariables.Add(variable);
+                        }
+                    }
+                    
+                    // Default select first
+                    if (breakpointViewModel.SelectedDebugVariable == null && breakpointViewModel.DebugVariables.Count > 0)
+                    {
+                        breakpointViewModel.SelectedDebugVariable = breakpointViewModel.DebugVariables[0];
+                    }
                 });
             }
         }

@@ -27,28 +27,17 @@
 #pragma once
 
 // Backend
-#include <Backend/IL/Debug/DebugVariable.h>
-#include <Backend/IL/Emitters/Emitter.h>
-
-// Common
-#include <Common/Containers/TrivialStackVector.h>
+#include <Backend/IL/Type.h>
 
 namespace IL {
-    class IDebugEmitter : public TComponent<IDebugEmitter> {
-    public:
-        COMPONENT(IDebugEmitter);
-
-        /// Reconstruct the debugging value type
-        /// @param program owning program
-        /// @param instr instruction to reconstruct for
-        /// @param variables all associated variables
-        virtual void GetVariables(Program& program, const Instruction* instr, TrivialStackVector<DebugVariable, 4u>& variables) = 0;
-
-        /// Reconstruct the debugging value
-        /// @param emitter the emitter used for reconstruction
-        /// @param handle variable handle chosen to reconstruct
-        /// @param instr instruction to reconstruct for
-        /// @return invalid if failed
-        virtual ID ReconstructValue(Emitter<>& emitter, uint32_t handle, const Instruction* instr) = 0;
+    struct DebugVariable {
+        /// Name of this variable
+        const char* name = nullptr;
+        
+        /// Type of this variable
+        const Backend::IL::Type* type = nullptr;
+        
+        /// Internal handle
+        uint32_t handle = 0;
     };
 }

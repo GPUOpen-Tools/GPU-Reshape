@@ -45,7 +45,7 @@ public class BreakpointRegistryService : IPropertyService
     /// </summary>
     private void BindRegistrationProperties(BreakpointViewModel breakpointViewModel)
     {
-        // Bind re-registration events
+        // Bind capture re-registration
         breakpointViewModel
             .WhenAnyValue(x => x.CaptureMode)
             .Skip(1)

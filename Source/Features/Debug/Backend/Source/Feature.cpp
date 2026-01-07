@@ -795,10 +795,57 @@ static IL::ID CompressFPUnorm8888(const IL::VisitContext &context, IL::Emitter<>
     }
 }
 
-const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction *instr) {
+const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction *instr, Breakpoint* breakpoint, const DebugBreakpointMessage& breakpointMessage) {
     // Try to reconstruct the source value first
-    if (const Backend::IL::Type* reconstructed = debugEmitter->ReconstructValueType(context.program, instr)) {
-        return reconstructed;
+    TrivialStackVector<IL::DebugVariable, 4> variables;
+    debugEmitter->GetVariables(context.program, instr, variables);
+    
+    // Anything?
+    if (variables.Size()) {
+        // Variable stream
+        MessageStream  variableStream;
+        MessageStreamView<DebugBreakpointVariableMetadataMessage> variableView(variableStream);
+        
+        // Report all variables and their representations
+        for (uint64_t i = 0; i < variables.Size(); i++) {
+            const IL::DebugVariable &src = variables[i];
+
+            // Pack the tiny type down
+            std::vector<uint8_t> tinyType;
+            Backend::IL::Tiny::Pack(src.type, tinyType);
+            
+            // Allocate metadata
+            DebugBreakpointVariableMetadataMessage *metadata = variableView.Add(DebugBreakpointVariableMetadataMessage::AllocationInfo {
+                .nameLength = std::strlen(src.name),
+                .dataTinyTypeCount = tinyType.size()
+            });
+            
+            // Copy over tiny type
+            std::memcpy(metadata->dataTinyType.Get(), tinyType.data(), tinyType.size());
+            
+            // Copy over the info
+            metadata->name.Set(src.name);
+            metadata->handle = src.handle;
+        }
+        
+        // Empty out last stream
+        MessageStream metadataStream;
+        MessageStreamView<DebugBreakpointMetadataMessage> view(metadataStream);
+
+        // Allocate breakpoint metadata
+        auto message = view.Add(DebugBreakpointMetadataMessage::AllocationInfo {
+            .variablesByteSize = variableStream.GetByteSize()
+        });
+        
+        // Write out all variables
+        message->variables.Set(variableStream);
+        message->uid = breakpoint->uid;
+        
+        // Push metadata
+        bridge->GetOutput()->AddStreamAndSwap(metadataStream);
+        
+        // Report the chosen type
+        return variables[breakpointMessage.variableHandle].type;
     }
 
     // Try to get the raw type
@@ -809,12 +856,12 @@ const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitCo
     return nullptr;
 }
 
-IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, IL::BasicBlock::Iterator& insertIt) {
+IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, const DebugBreakpointMessage& breakpointMessage, IL::BasicBlock::Iterator& insertIt) {
     // Emit after the instruction
     IL::Emitter<> emitter(context.program, context.basicBlock, insertIt);
 
     // Try to reconstruct the source value first
-    if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, instr); reconstructed != IL::InvalidID) {
+    if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, breakpointMessage.variableHandle, instr); reconstructed != IL::InvalidID) {
         // Split after the constructed debug value
         insertIt = emitter.GetIterator();
         return reconstructed;
@@ -1207,7 +1254,7 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
     }
 
     // Get the value to be debugged
-    const Backend::IL::Type *valueType = GetInstructionDebugType(context, it);
+    const Backend::IL::Type *valueType = GetInstructionDebugType(context, it, breakpoint, breakpointMessage);
     if (!valueType) {
         return it;
     }
@@ -1239,7 +1286,7 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
 
     // Get the value to be debugged
     // This may modify the program, so do it after
-    IL::ID value = GetInstructionDebugValue(context, it, insertIt);
+    IL::ID value = GetInstructionDebugValue(context, it, breakpointMessage, insertIt);
     ASSERT(value != IL::InvalidID, "Type without value");
     
     // Emit in the interrupt block

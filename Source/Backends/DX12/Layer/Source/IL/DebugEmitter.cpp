@@ -38,11 +38,11 @@ DebugEmitter::DebugEmitter(DeviceState *device) : device(device) {
     
 }
 
-const Backend::IL::Type * DebugEmitter::ReconstructValueType(IL::Program &program, const IL::Instruction *instr) {
+void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *instr, TrivialStackVector<IL::DebugVariable, 4u>& variables) {
     // Get shader state
     ShaderState* shaderState = device->states_Shaders.GetFromUID(program.GetShaderGUID());
     if (!shaderState || !shaderState->module) {
-        return nullptr;
+        return;
     }
 
     // Get traceback
@@ -51,7 +51,7 @@ const Backend::IL::Type * DebugEmitter::ReconstructValueType(IL::Program &progra
     // Try to get the function
     IL::Function *fn = program.GetFunctionList().GetFunction(traceback.functionID);
     if (!fn) {
-        return nullptr;
+        return;
     }
 
     // Get the dwarf info for the code offset
@@ -59,23 +59,33 @@ const Backend::IL::Type * DebugEmitter::ReconstructValueType(IL::Program &progra
 
     // No values? No reconstruction
     if (info.variables.empty()) {
-        return nullptr;
+        return;
     }
+    
+    // Copy over variables
+    for (uint64_t i = 0; i < info.variables.size(); ++i) {
+        const DXDwarfVariableValue& source = info.variables[i];
+        
+        // Create info
+        IL::DebugVariable& dest = variables.Add();
+        dest.name = source.name;
+        dest.handle = static_cast<uint32_t>(i);
+         
+        // Target type
+        const Backend::IL::Type *type = source.type;
 
-    // Target type
-    const Backend::IL::Type *type = info.variables[0].type;
+        // TODO: Bit extraction?
+        ASSERT(source.values[0].bitWise.bitStart % 8 == 0, "Non-byte aligned");
 
-    // TODO: Bit extraction?
-    ASSERT(info.variables[0].values[0].bitWise.bitStart % 8 == 0, "Non-byte aligned");
-
-    // For now, report the first decomposed type at location
-    return Backend::IL::GetStructuredTypeAtOffset(
-        type,
-        info.variables[0].values[0].bitWise.bitStart / 8
-    );
+        // For now, report the first decomposed type at location
+        dest.type = Backend::IL::GetStructuredTypeAtOffset(
+            type,
+            source.values[0].bitWise.bitStart / 8
+        );
+    }
 }
 
-IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruction *instr) {
+IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, uint32_t handle, const IL::Instruction *instr) {
     IL::Program &program = *emitter.GetProgram();
     
     // Get shader state
@@ -102,15 +112,15 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::Instruct
     }
 
     // Assumes the first one
-    DXDwarfVariableValue& variableValue = info.variables[0];
+    DXDwarfVariableValue& variableValue = info.variables[handle];
 
     // TODO: Bit extraction?
-    ASSERT(info.variables[0].values[0].bitWise.bitStart % 8 == 0, "Non-byte aligned");
+    ASSERT(variableValue.values[0].bitWise.bitStart % 8 == 0, "Non-byte aligned");
 
     // For now, report the first decomposed type at location
     const Backend::IL::Type *type = Backend::IL::GetStructuredTypeAtOffset(
         variableValue.type,
-        info.variables[0].values[0].bitWise.bitStart / 8
+        variableValue.values[0].bitWise.bitStart / 8
     );
 
     // All values

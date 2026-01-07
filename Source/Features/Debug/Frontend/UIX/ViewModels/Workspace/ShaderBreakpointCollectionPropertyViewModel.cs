@@ -101,6 +101,7 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
             breakpoint.codeOffset = binding.Source!.Mapping.CodeOffset;
             breakpoint.uid = binding.BreakpointViewModel.UID;
             breakpoint.flags = (uint)breakpointConfig.Flags;
+            breakpoint.variableHandle = binding.BreakpointViewModel.SelectedDebugVariable?.Handle ?? 0;
             breakpoint.markerHash32 = 0;
 
             // Hash marker if requested

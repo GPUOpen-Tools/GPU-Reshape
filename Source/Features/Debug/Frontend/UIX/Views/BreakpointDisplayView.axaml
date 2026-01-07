@@ -42,6 +42,17 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
                 
+                <!-- Variables -->
+                <ComboBox 
+                    SelectedItem="{Binding SelectedDebugVariable}" 
+                    ItemsSource="{Binding DebugVariables}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Decoration}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                
                 <!-- Archetype -->
                 <ComboBox 
                     IsVisible="{Binding Archetypes, Converter={StaticResource ComboConverter}}"

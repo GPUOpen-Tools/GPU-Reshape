@@ -39,8 +39,8 @@ public:
     DebugEmitter(DeviceState* device);
 
     /// Overrides
-    const Backend::IL::Type * ReconstructValueType(IL::Program &program, const IL::Instruction *instr) override;
-    IL::ID ReconstructValue(IL::Emitter<> &emitter, const IL::Instruction *instr) override;
+    void GetVariables(IL::Program& program, const IL::Instruction* instr, TrivialStackVector<IL::DebugVariable, 4u>& variables) override;
+    IL::ID ReconstructValue(IL::Emitter<> &emitter, uint32_t handle, const IL::Instruction *instr) override;
 
 private:
     DeviceState* device;

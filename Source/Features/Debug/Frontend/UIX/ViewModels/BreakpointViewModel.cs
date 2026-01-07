@@ -138,6 +138,20 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     public Array CaptureModeTypes { get; } = Enum.GetValues<BreakpointCaptureMode>();
 
     /// <summary>
+    /// All debug variables
+    /// </summary>
+    public ObservableCollection<BreakpointDebugVariable> DebugVariables { get; } = new();
+
+    /// <summary>
+    /// Selected debug variable
+    /// </summary>
+    public BreakpointDebugVariable? SelectedDebugVariable
+    {
+        get => _selectedDebugVariable;
+        set => this.RaiseAndSetIfChanged(ref _selectedDebugVariable, value);
+    }
+
+    /// <summary>
     /// Framerate of the streamed data
     /// </summary>
     public float FrameRate
@@ -193,6 +207,14 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         
         // Update shaders on marker changes
         this.WhenAnyValue(x => x.Marker)
+            .Skip(1)
+            .Throttle(TimeSpan.FromMilliseconds(500))
+            .Subscribe(_ => EnqueueAllShaderParentBus());
+        
+        // Update shaders on variable changes
+        this.WhenAnyValue(x => x.SelectedDebugVariable)
+            .WhereNotNull()
+            .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(500))
             .Subscribe(_ => EnqueueAllShaderParentBus());
     }
@@ -431,4 +453,9 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     /// Internal marker
     /// </summary>
     private string _marker;
+
+    /// <summary>
+    /// Internal variable
+    /// </summary>
+    private BreakpointDebugVariable? _selectedDebugVariable;
 }

@@ -258,14 +258,14 @@ private:
     /// @param context parent context
     /// @param instr debug instruction
     /// @return invalid if failed
-    const Backend::IL::Type* GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction* instr);
+    const Backend::IL::Type* GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction* instr, Breakpoint* breakpoint, const DebugBreakpointMessage& breakpointMessage);
     
     /// Get the debug value for an instruction
     /// @param context parent context
     /// @param instr debug instruction
     /// @param insertIt the insertion iterator for reconstruction
     /// @return invalid if failed
-    IL::ID GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, IL::BasicBlock::Iterator& insertIt);
+    IL::ID GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, const DebugBreakpointMessage& breakpointMessage, IL::BasicBlock::Iterator& insertIt);
     
     /// Try to get the texel format of a breakpoint
     /// @return true if a format is appropriate, over structured data
