@@ -197,7 +197,7 @@ namespace GRS.Features.Debug.UIX
             textEditor.TextArea.TextView.BackgroundRenderers.Add(new ValidationTextMarkerService());
             
             // Add breakpoint margin
-            textEditor.TextArea.LeftMargins.Insert(0, new BreakpointMargin
+            textEditor.TextArea.LeftMargins[0] = new BreakpointMargin(textEditor.TextArea.LeftMargins[0])
             {
                 ContextMenu = textEditor.ContextMenu,
                 DataContext = new BreakpointMarginViewModel
@@ -205,7 +205,7 @@ namespace GRS.Features.Debug.UIX
                     Content = textualShaderViewModel,
                     CollectionViewModel = collectionViewModel
                 }
-            });
+            };
         }
 
         /// <summary>

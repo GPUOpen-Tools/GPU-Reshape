@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -20,7 +22,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace UIX.Views.Editor;
 
-public class BreakpointMargin : AbstractMargin
+public class BreakpointMargin : LineNumberMargin
 {
     /// <summary>
     /// Constructor
@@ -28,6 +30,15 @@ public class BreakpointMargin : AbstractMargin
     static BreakpointMargin()
     {
         FocusableProperty.OverrideDefaultValue(typeof(BreakpointMargin), true);
+    }
+
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    public BreakpointMargin(Control bottom)
+    {
+        SetValue(TextBlock.ForegroundProperty, bottom.GetValue(TextBlock.ForegroundProperty));
+        SetValue(TextBlock.FontSizeProperty, 14);
     }
 
     /// <summary>
@@ -40,34 +51,41 @@ public class BreakpointMargin : AbstractMargin
             return;
         }
      
-        // TODO[dbg]: Either remove the margin entirely, or actually fill it out right
-        context.FillRectangle(new SolidColorBrush(Colors.Black), Bounds);
-        context.DrawLine(new Pen(new SolidColorBrush(Colors.White), 0.5), Bounds.TopRight, Bounds.BottomRight);
-
         // Must have a valid line
         if (TextView.VisualLines.Count <= 0 || TextView.VisualLines.FirstOrDefault() is not { } firstLine)
         {
             return;
         }
         
+        // Comply with hit tests
+        // TODO: I'm not entirely sure why it's missing otherwise when it should hit
+        context.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, Bounds.Width, Bounds.Height));
+
+        // Default breakpoint radius
+        double radius = Bounds.Size.Width * 0.75f / 2;
+        
         // Iterate all lines
         foreach (VisualLine visualLine in TextView.VisualLines)
         {
             int lineNumberBase1 = visualLine.FirstDocumentLine.LineNumber;
 
+            // Get text positions
+            double lineTextTop    = visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.TextTop);
+            double lineTextMiddle = visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.TextMiddle);
+            
             // Has an assigned breakpoint?
             if (VM.CollectionViewModel.Bindings.FirstOrDefault(b => IsBreakpointVisible(b, lineNumberBase1 - 1)) is { } breakpoint)
             {
                 // Draw breakpoint
-                context.FillRectangle(
+                context.DrawEllipse(
                     _breakpointBrush,
-                    new Rect(
-                        Bounds.Size.Width / 4 - 1,
-                        visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.LineTop) + (Bounds.Size.Width / 4) - TextView.VerticalOffset,
-                        Bounds.Size.Width / 1.5, 
-                        firstLine.Height / 1.5
+                    new Pen(_breakpointBrush),
+                    new Point(
+                        Bounds.Size.Width / 2,
+                        lineTextMiddle - TextView.VerticalOffset - 3
                     ),
-                    (float)firstLine.Height
+                    radius,
+                    radius
                 );
 
                 // Do not render preview
@@ -77,17 +95,33 @@ public class BreakpointMargin : AbstractMargin
             // Breakpoint preview
             if (_previewLineBase1 != null && _previewLineBase1.Value == lineNumberBase1)
             {
-                context.FillRectangle(
+                context.DrawEllipse(
                     _breakpointPreviewBrush,
-                    new Rect(
-                        Bounds.Size.Width / 4 - 1,
-                        visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.LineTop) + Bounds.Size.Width / 4 - TextView.VerticalOffset,
-                        Bounds.Size.Width / 1.5,
-                        firstLine.Height / 1.5
+                    new Pen(_breakpointBrush),
+                    new Point(
+                        Bounds.Size.Width / 2,
+                        lineTextMiddle - TextView.VerticalOffset - 3
                     ),
-                    (float)firstLine.Height
+                    radius,
+                    radius
                 );
+                
+                // Do not render line
+                continue;
             }
+            
+            // Format the line number
+            FormattedText text = new FormattedText(
+                visualLine.FirstDocumentLine.LineNumber.ToString(CultureInfo.CurrentCulture),
+                CultureInfo.CurrentCulture, 
+                FlowDirection.LeftToRight, 
+                Typeface,
+                EmSize,
+                GetValue<IBrush>(TextBlock.ForegroundProperty)
+            );
+            
+            // Render it!
+            context.DrawText(text, new Point(Bounds.Size.Width - text.Width, lineTextTop - TextView.VerticalOffset));
         }
     }
 
@@ -133,7 +167,7 @@ public class BreakpointMargin : AbstractMargin
         
         return association;
     }
-    
+
     /// <summary>
     /// Invoked on pointer moves
     /// </summary>
@@ -159,6 +193,15 @@ public class BreakpointMargin : AbstractMargin
         }
 
         InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Invoked on enters
+    /// </summary>
+    protected override void OnPointerEntered(PointerEventArgs e)
+    {
+        base.OnPointerEntered(e);
+        Cursor = new Cursor(StandardCursorType.Hand);
     }
 
     /// <summary>
@@ -275,14 +318,6 @@ public class BreakpointMargin : AbstractMargin
     }
 
     /// <summary>
-    /// Get the control measure
-    /// </summary>
-    protected override Size MeasureOverride(Size availableSize)
-    {
-        return TextView != null ? new Size(TextView.DefaultLineHeight, 0) : new Size(0, 0);
-    }
-
-    /// <summary>
     /// Mode types
     /// </summary>
     private enum PlacementMode
@@ -290,7 +325,7 @@ public class BreakpointMargin : AbstractMargin
         None,
         New
     }
-    
+
     /// <summary>
     /// Current placement mode
     /// </summary>
