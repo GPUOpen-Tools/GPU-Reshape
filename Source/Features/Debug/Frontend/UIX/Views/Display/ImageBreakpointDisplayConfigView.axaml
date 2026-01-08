@@ -8,15 +8,6 @@
              x:Class="UIX.Views.Display.ImageBreakpointDisplayConfigView"
              x:DataType="viewModels:ImageBreakpointDisplayViewModel">
     <StackPanel Orientation="Horizontal">
-        <CheckBox 
-            Content="Maintain Aspect Ratio" 
-            IsChecked="{Binding MaintainAspectRatio}"/>
-        
-        <CheckBox 
-            Content="Compress" 
-            Margin="5 0 0 0"
-            IsChecked="{Binding Compress}"/>
-        
         <!-- Display Range -->
         
         <Border 

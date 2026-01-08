@@ -26,6 +26,30 @@
             <PathIcon Data="{StaticResource MagnifyExpand}" Width="15" />
         </ToggleButton>
         
+        <Button
+            Classes="Overlay"
+            ToolTip.Tip="Display settings">
+            <PathIcon Data="{StaticResource Image}" Width="15" />
+
+            <Button.Flyout>
+                <Flyout Placement="Right" FlyoutPresenterClasses="Overlay">
+                    <Grid Margin="3">
+                        <StackPanel Orientation="Vertical" Spacing="5">
+                            <CheckBox 
+                                Content="Maintain Aspect Ratio" 
+                                IsChecked="{Binding MaintainAspectRatio}"
+                                ToolTip.Tip="When locked, maintain the aspect ratio"/>
+        
+                            <CheckBox 
+                                Content="Compress" 
+                                IsChecked="{Binding Compress}"
+                                ToolTip.Tip="Enable image compression for faster streaming"/>
+                        </StackPanel>
+                    </Grid>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+        
         <Button 
             Classes="Overlay"
             ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_Palette}">
