@@ -62,7 +62,7 @@ public class BreakpointMargin : LineNumberMargin
         context.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, Bounds.Width, Bounds.Height));
 
         // Default breakpoint radius
-        double radius = Bounds.Size.Width * 0.75f / 2;
+        double radius = TextView.DefaultLineHeight * 0.75f / 2;
         
         // Iterate all lines
         foreach (VisualLine visualLine in TextView.VisualLines)
@@ -202,6 +202,19 @@ public class BreakpointMargin : LineNumberMargin
     {
         base.OnPointerEntered(e);
         Cursor = new Cursor(StandardCursorType.Hand);
+    }
+
+    /// <summary>
+    /// Invoked on leaves
+    /// </summary>
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        _previewLineBase1 = null;
+        VM.LineNumberBase0 = 0;
+        VM.HighlightedBreakpointViewModel = null;
+        
+        // Re-render the lines
+        this.InvalidateVisual();
     }
 
     /// <summary>
