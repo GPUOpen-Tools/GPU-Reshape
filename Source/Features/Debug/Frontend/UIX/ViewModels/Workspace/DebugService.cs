@@ -216,8 +216,6 @@ namespace GRS.Features.Debug.UIX.Workspace
                 // The rest needs to happen on the UI thread
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    breakpointViewModel.DebugVariables.Clear();
-                    
                     // TODO: This is not correct, it's a multi-subscriber situation, again
                     foreach (BreakpointDebugVariable variable in remoteVariables)
                     {
