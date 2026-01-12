@@ -195,6 +195,7 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
             {
                 Text = GetDisplayName(obj.Key),
                 ViewModel = obj.Key,
+                LookupKey = obj.Key,
                 IsExpanded = true
             };
             
@@ -216,7 +217,7 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
         private void OnCollectionRemoved(KeyValuePair<object, BreakpointCollectionViewModel> obj)
         {
             // Remove matching view model
-            if (Root.Items.FirstOrDefault(x => x.ViewModel == obj.Value) is {} child)
+            if (Root.Items.FirstOrDefault(x => ((BreakpointTreeItemViewModel)x).LookupKey == obj.Key) is {} child)
             {
                 Root.Items.Remove(child);
             }
@@ -233,6 +234,7 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
             var breakpointItem = new BreakpointTreeItemViewModel()
             {
                 ViewModel = item.ViewModel,
+                LookupKey = binding.BreakpointViewModel,
                 Text = $"Breakpoint {binding.BreakpointViewModel.UID}",
                 IsExpanded = true
             };
@@ -241,6 +243,7 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
             breakpointItem.Items.Add(new BreakpointTreeItemViewModel()
             {
                 ViewModel = item.ViewModel,
+                LookupKey = binding.BreakpointViewModel,
                 Text = $"Instruction - BB: {binding.Source.Mapping.BasicBlockId}, I: {binding.Source.Mapping.InstructionIndex}",
                 IsExpanded = true
             });
@@ -253,7 +256,7 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
         /// </summary>
         private void OnBindingRemoved(BreakpointTreeItemViewModel item, BreakpointViewModelBinding binding)
         {
-            if (item.Items.FirstOrDefault(x => x.ViewModel == binding.BreakpointViewModel) is {} child)
+            if (item.Items.FirstOrDefault(x => ((BreakpointTreeItemViewModel)x).LookupKey == binding.BreakpointViewModel) is {} child)
             {
                 item.Items.Remove(child);
             }

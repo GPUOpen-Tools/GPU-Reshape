@@ -24,6 +24,11 @@ public class BreakpointTreeItemViewModel : ReactiveObject, IObservableTreeItem
         get => _viewModel;
         set => this.RaiseAndSetIfChanged(ref _viewModel, value);
     }
+    
+    /// <summary>
+    /// Internal lookup key
+    /// </summary>
+    public object? LookupKey { get; set; }
 
     /// <summary>
     /// Expansion state

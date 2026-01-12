@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.Reactive.Disposables;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
@@ -27,6 +28,11 @@ public class BreakpointCollectionViewModel : BasePropertyViewModel
     /// Workspace collection property
     /// </summary>
     public required IPropertyViewModel PropertyViewModel { get; set; }
+    
+    /// <summary>
+    /// Shared disposable
+    /// </summary>
+    public CompositeDisposable Disposable { get; } = new();
 
     public BreakpointCollectionViewModel() : base("Collection", PropertyVisibility.Default)
     {

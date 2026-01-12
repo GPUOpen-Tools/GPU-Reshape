@@ -1,4 +1,5 @@
-﻿using DynamicData;
+﻿using System.Reactive.Disposables;
+using DynamicData;
 using GRS.Features.Debug.UIX.Models;
 using GRS.Features.Debug.UIX.Workspace;
 using Runtime.Models.Objects;
@@ -140,6 +141,12 @@ public static class BreakpointUtils
                 CollectionViewModel = collectionViewModel,
                 Parent = shaderPropertyViewModel
             });
+
+            // Remove on collection destruction
+            collectionViewModel.Disposable.Add(Disposable.Create(() =>
+            {
+                shaderPropertyViewModel.Properties.Remove(collectionProperty);
+            }));
         }
 
         return collectionProperty;

@@ -49,9 +49,12 @@ public class BreakpointCollectionRegistryViewModel : BasePropertyViewModel
     /// </summary>
     public void Remove(BreakpointViewModel breakpointViewModel)
     {
-        foreach (BreakpointCollectionViewModel collectionViewModel in ViewModels.Values)
+        foreach (KeyValuePair<object, BreakpointCollectionViewModel> pair in ViewModels)
         {
-            collectionViewModel.Bindings.RemoveMany(collectionViewModel.Bindings.Where(x => x.BreakpointViewModel == breakpointViewModel));
+            pair.Value.Bindings.RemoveMany(pair.Value.Bindings.Where(x => x.BreakpointViewModel == breakpointViewModel));
+            
+            // Remove all bound events
+            pair.Value.Disposable.Clear();
         }
     }
 }
