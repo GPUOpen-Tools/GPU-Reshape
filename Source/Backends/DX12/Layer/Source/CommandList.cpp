@@ -2118,6 +2118,9 @@ static ID3D12GraphicsCommandList* RecordExecutePreCommandList(const CommandQueue
         
         // Clear all commands
         context.commandContext.buffer.Clear();
+        
+        // Create streamer allocation association
+        device.state->exportStreamer->MapSegment(context.streamState, patchList, segment);
     }
 
     // Done
@@ -2159,6 +2162,9 @@ static ID3D12GraphicsCommandList* RecordExecutePostCommandList(const CommandQueu
         
         // Clear all commands
         context.commandContext.buffer.Clear();
+        
+        // Create streamer allocation association
+        device.state->exportStreamer->MapSegment(context.streamState, patchList, segment);
     }
 
     // Done

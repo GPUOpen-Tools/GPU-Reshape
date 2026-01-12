@@ -1092,9 +1092,10 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ID3D12Grap
         }
     }
 
-    // Add context handle
-    ASSERT(state->commandContextHandle != kInvalidCommandContextHandle, "Unmapped command context handle");
-    segment->commandContextHandles.push_back(state->commandContextHandle);
+    // Add context handle, may be unmapped on user contexts
+    if (state->commandContextHandle != kInvalidCommandContextHandle) {
+        segment->commandContextHandles.push_back(state->commandContextHandle);
+    }
 
     // Move ownership to the segment
     segment->referencedHeaps.insert(segment->referencedHeaps.end(), state->referencedHeaps.begin(), state->referencedHeaps.end());
