@@ -51,7 +51,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=5, Converter={StaticResource GridVisibilityConverter}}"/>
-            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=150, Converter={StaticResource GridVisibilityConverter}}"/>
+            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=200, Converter={StaticResource GridVisibilityConverter}}"/>
         </Grid.RowDefinitions>
 
         <avaloniaEdit:TextEditor
