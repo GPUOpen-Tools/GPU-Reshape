@@ -135,12 +135,12 @@ struct BreakpointHeader {
     uint32_t paddingPayload[4];
 };
 
-struct BreakpointPatchData {
+struct BreakpointLooseAcquisitionData {
     /// The allocation offset
     uint32_t allocationDWordOffset{0};
 
-    /// The total number of offsets for the stream
-    uint32_t streamDWordCount{0};
+    /// The breakpoint uid
+    uint32_t breakpointUid{0};
 };
 
 /// Number of dwords

@@ -33,6 +33,10 @@
             <field name="instrumentationHash32" type="uint32"/>
         </chunk>
 
+        <chunk name="LooseCounter">
+            <field name="streamedDynamicCounter" type="uint32"/>
+        </chunk>
+
         <field name="uid" type="uint32" bits="24"/>
         <field name="magic" type="uint32" bits="6"/>
     </shader-export>

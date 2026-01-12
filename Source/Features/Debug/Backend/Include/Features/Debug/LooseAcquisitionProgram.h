@@ -32,11 +32,12 @@
 // Backend
 #include <Backend/ShaderProgram/IShaderProgram.h>
 #include <Backend/ShaderData/ShaderData.h>
+#include <Backend/ShaderExport.h>
 
-class ChecksumShaderProgram final : public IShaderProgram {
+class LooseAcquisitionProgram final : public IShaderProgram {
 public:
     /// Constructor
-    ChecksumShaderProgram(ShaderDataID streamBufferID);
+    LooseAcquisitionProgram(ShaderDataID streamBufferID, ShaderExportID exportID);
 
     /// Install the checksum program
     /// \return
@@ -57,9 +58,9 @@ public:
         return nullptr;
     }
 
-    /// Get the allocation offset ID
-    ShaderDataID GetPatchDataID() const {
-        return patchID;
+    /// Get the data ID
+    ShaderDataID GetDataID() const {
+        return dataID;
     }
 
 private:
@@ -67,7 +68,8 @@ private:
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
 
     ShaderDataID streamBufferID{InvalidShaderDataID};
+    ShaderExportID exportID{InvalidShaderDataID};
 
     /// Shader data
-    ShaderDataID patchID{InvalidShaderDataID};
+    ShaderDataID dataID{InvalidShaderDataID};
 };

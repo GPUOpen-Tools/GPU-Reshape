@@ -24,7 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#include <Features/Debug/ChecksumShaderProgram.h>
+#include <Features/Debug/LooseAcquisitionProgram.h>
 #include <Features/Debug/BreakpointHeader.h>
 
 // Backend
@@ -35,25 +35,28 @@
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Metadata/KernelMetadata.h>
 
+// Schemas
+#include <Schemas/Features/Debug.h>
+
 // Common
 #include <Common/Registry.h>
 
-ChecksumShaderProgram::ChecksumShaderProgram(ShaderDataID streamBufferID) : streamBufferID(streamBufferID) {
+LooseAcquisitionProgram::LooseAcquisitionProgram(ShaderDataID streamBufferID, ShaderExportID exportID) : streamBufferID(streamBufferID), exportID(exportID) {
     
 }
 
-bool ChecksumShaderProgram::Install() {
+bool LooseAcquisitionProgram::Install() {
     // Shader data host
     shaderDataHost = registry->Get<IShaderDataHost>();
 
     // Create patch data
-    patchID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointPatchData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointLooseAcquisitionData>());
 
     // OK
     return true;
 }
 
-void ChecksumShaderProgram::Inject(IL::Program &program) {
+void LooseAcquisitionProgram::Inject(IL::Program &program) {
     // Get entry point
     IL::Function* entryPoint = program.GetEntryPoint();
     
@@ -65,7 +68,7 @@ void ChecksumShaderProgram::Inject(IL::Program &program) {
 
     // Launch in shared configuration
     program.GetMetadataMap().AddMetadata(entryPoint->GetID(), IL::KernelWorkgroupSizeMetadata {
-        .threadsX = 256,
+        .threadsX = 1,
         .threadsY = 1,
         .threadsZ = 1
     });
@@ -77,7 +80,7 @@ void ChecksumShaderProgram::Inject(IL::Program &program) {
     IL::ID streamDataID = program.GetShaderDataMap().Get(streamBufferID)->id;
     
     // Get shader data
-    IL::ShaderStruct<BreakpointPatchData> patch = program.GetShaderDataMap().Get(patchID)->id;
+    IL::ShaderStruct<BreakpointLooseAcquisitionData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
     
     // Split the entry point for early out
     entryBlock->Split(exitBlock, entryBlock->GetTerminator());
@@ -85,30 +88,15 @@ void ChecksumShaderProgram::Inject(IL::Program &program) {
     // Breakpoint header
     IL::ShaderBufferStruct<BreakpointHeader> header;
 
-    // Thread id
-    IL::ID threadID{IL::InvalidID};
-
     IL::Emitter<> entryEmitter(program, *entryBlock);
     {
-        // Get TID.x
-        threadID = entryEmitter.Extract(entryEmitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID), entryEmitter.UInt32(0));
-        
         // Get the header
-        header = IL::ShaderBufferStruct<BreakpointHeader>(streamDataID, patch.Get<&BreakpointPatchData::allocationDWordOffset>(entryEmitter));
+        header = IL::ShaderBufferStruct<BreakpointHeader>(streamDataID, acquisitionData.Get<&BreakpointLooseAcquisitionData::allocationDWordOffset>(entryEmitter));
 
         // Was this acquired?
-        IL::ID acquired = header.Get<&BreakpointHeader::acquiredExecutionUID>(entryEmitter);
+        IL::ID acquired = header.Get<&BreakpointHeader::dynamicCounter>(entryEmitter);
         IL::ID validDWord = entryEmitter.NotEqual(acquired, entryEmitter.UInt32(0));
         
-        // Check the copy is out of bounds
-        validDWord = entryEmitter.And(
-            validDWord,
-            entryEmitter.LessThan(
-                threadID,
-                patch.Get<&BreakpointPatchData::streamDWordCount>(entryEmitter)
-            )
-        );
-
         // If acquired, branch out
         entryEmitter.BranchConditional(
             validDWord,
@@ -120,20 +108,14 @@ void ChecksumShaderProgram::Inject(IL::Program &program) {
     
     IL::Emitter<> bodyEmitter(program, *bodyBlock);
     {
-        // Load the payload data
-        IL::ID value = bodyEmitter.Extract(
-            bodyEmitter.LoadBuffer(
-                bodyEmitter.Load(streamDataID),
-                bodyEmitter.Add(threadID, bodyEmitter.UInt32(BreakpointStreamingHeaderDWordCount))
-            ),
-            bodyEmitter.UInt32(0)
-        );
-
-        // Dumb checksum
-        bodyEmitter.AtomicXOr(
-            header.AddressOf<&BreakpointHeader::streamingChecksum>(bodyEmitter),
-            value
-        );
+        // Send acquisition event
+        BreakpointAcquisitionMessage::ShaderExport msg;
+        msg.chunks |= BreakpointAcquisitionMessage::Chunk::ExtraData | BreakpointAcquisitionMessage::Chunk::LooseCounter;
+        msg.uid = acquisitionData.Get<&BreakpointLooseAcquisitionData::breakpointUid>(bodyEmitter);
+        msg.magic = bodyEmitter.UInt32(42);
+        msg.extraData.instrumentationHash32 = header.Get<&BreakpointHeader::shaderInstrumentationHash32>(bodyEmitter);
+        msg.looseCounter.streamedDynamicCounter = header.Get<&BreakpointHeader::dynamicCounter>(bodyEmitter);
+        bodyEmitter.Export(exportID, msg);
         
         // Fin!
         bodyEmitter.Branch(exitBlock);

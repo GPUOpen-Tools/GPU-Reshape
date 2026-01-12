@@ -46,7 +46,7 @@ bool LockShaderProgram::Install() {
     shaderDataHost = registry->Get<IShaderDataHost>();
 
     // Create patch data
-    patchID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointPatchData>());
+    patchID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointLooseAcquisitionData>());
 
     // OK
     return true;

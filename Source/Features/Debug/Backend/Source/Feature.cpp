@@ -27,7 +27,7 @@
 // Feature
 #include <Features/Debug/Feature.h>
 #include <Features/Debug/BreakpointHeader.h>
-#include <Features/Debug/ChecksumShaderProgram.h>
+#include <Features/Debug/LooseAcquisitionProgram.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -113,22 +113,20 @@ bool DebugFeature::Install() {
     // Create residency handler for the streaming buffer
     tileResidencyAllocator.Install(kDebugStreamBufferSize);
     
-#if 0 // TODO[dbg]: Use or not?
     // Must have program host
     auto programHost = registry->Get<IShaderProgramHost>();
     if (!programHost) {
         return false;
     }
 
-    // Create the signal program
-    patchShaderProgram = registry->New<ChecksumShaderProgram>(streamBufferID);
-    if (!patchShaderProgram->Install()) {
+    // Create the acq. program
+    looseAcquisitionProgram = registry->New<LooseAcquisitionProgram>(streamBufferID, exportID);
+    if (!looseAcquisitionProgram->Install()) {
         return false;
     }
 
-    // Register signaller
-    patchShaderProgramID = programHost->Register(patchShaderProgram);
-#endif
+    // Register programs
+    looseAcquisitionProgramID = programHost->Register(looseAcquisitionProgram);
 
     // Register for messages
     bridge = registry->Get<IBridge>().GetUnsafe();
@@ -385,24 +383,28 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
     
     CommandBuilder postBuilder(submitContext.postContext->buffer);
     {
-#if 0 // TODO[dbg]: Use or not?
         // Wait for any ongoing shaders
-        builder.UAVBarrier();
-        
-        builder.SetShaderProgram(patchShaderProgramID);
+        postBuilder.UAVBarrier();
+        postBuilder.SetShaderProgram(looseAcquisitionProgramID);
 
+        // Loose updates require gpu visibility
         for (Breakpoint& breakpoint: breakpoints) {
-            BreakpointPatchData patchData;
-            patchData.allocationDWordOffset = static_cast<uint32_t>(breakpoint.allocation.offset / sizeof(uint32_t));
-            patchData.streamDWordCount = static_cast<uint32_t>(breakpoint.allocation.length / sizeof(uint32_t)) - BreakpointStreamingHeaderDWordCount;
+            if (breakpoint.captureMode != BreakpointCaptureMode::AllEvents) {
+                continue;
+            }
+           
+            // Setup data
+            BreakpointLooseAcquisitionData patchData;
+            patchData.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            patchData.breakpointUid = breakpoint.uid;
 
-            //  TODO[dbg]: Indirect support is a must
-            builder.SetDescriptorData(patchShaderProgram->GetPatchDataID(), patchData);
-            builder.Dispatch((patchData.streamDWordCount + 255) / 256, 1, 1);
+            // Dispatch loose update
+            postBuilder.SetDescriptorData(looseAcquisitionProgram->GetDataID(), patchData);
+            postBuilder.Dispatch(1, 1, 1);
         }
 
-        builder.UAVBarrier();
-#endif
+        // Wait for updates
+        postBuilder.UAVBarrier();
 
         // Copy the debug streaming buffer to host
         // TODO[dbg]: This is incorrect, of course
@@ -493,7 +495,7 @@ bool DebugFeature::HasBreakpointStreambackData(const Breakpoint& breakpoint, con
         case BreakpointCaptureMode::FirstViewport:
             return true;
         case BreakpointCaptureMode::AllEvents:
-            return header->dynamicCounter > 0;
+            return breakpoint.pendingAcqDynamicCounter > 0;
     }
 }
 
@@ -508,7 +510,7 @@ uint64_t DebugFeature::GetBreakpointStreamRequestSize(const Breakpoint &breakpoi
             return header->dwordStreamCount * sizeof(uint32_t);
         case BreakpointCaptureMode::AllEvents:
             // Stream back the actual contents
-            return header->dynamicCounter * (sizeof(BreakpointLooseHeader) + hostLayout.dataDWordStride * sizeof(uint32_t));
+            return breakpoint.pendingAcqDynamicCounter * (sizeof(BreakpointLooseHeader) + hostLayout.dataDWordStride * sizeof(uint32_t));
     }
 }
 
@@ -602,7 +604,7 @@ void DebugFeature::OnSyncPoint() {
             message->dataStaticWidth = header->staticWidth;
             message->dataStaticHeight = header->staticHeight;
             message->dataStaticDepth = header->staticDepth;
-            message->dataDynamicCounter = header->dynamicCounter;
+            message->dataDynamicCounter = breakpoint.pendingAcqDynamicCounter;
             message->dataRequestStreamSize = static_cast<uint32_t>(requestedStreamSize);
         }
 
@@ -649,12 +651,22 @@ void DebugFeature::OnBreakpointAcquired(const BreakpointAcquisitionMessage *acqM
     
     // If it failed to resolve, it may have been removed
     if (Breakpoint *breakpoint = FindBreakpointNoLock(acqMessage->uid)) {
-        ASSERT(!breakpoint->pendingCollection, "GPU double-signalled breakpoint for collection");
-        breakpoint->pendingCollection = true;
+        if (breakpoint->captureMode == BreakpointCaptureMode::AllEvents) {
+            // Loose events may double-signal
+            breakpoint->pendingCollection = true;
         
-        // Read beyond primary key
-        // TODO[init]: Add support for reading chunks in C++
-        breakpoint->pendingCollectionHash = *(reinterpret_cast<const uint32_t*>(acqMessage) + 1);
+            // Read beyond primary key
+            // TODO[init]: Add support for reading chunks in C++
+            breakpoint->pendingCollectionHash = *(reinterpret_cast<const uint32_t*>(acqMessage) + 1);
+            breakpoint->pendingAcqDynamicCounter = *(reinterpret_cast<const uint32_t*>(acqMessage) + 2);
+        } else {
+            ASSERT(!breakpoint->pendingCollection, "GPU double-signalled breakpoint for collection");
+            breakpoint->pendingCollection = true;
+        
+            // Read beyond primary key
+            // TODO[init]: Add support for reading chunks in C++
+            breakpoint->pendingCollectionHash = *(reinterpret_cast<const uint32_t*>(acqMessage) + 1);
+        }
     }
 }
 

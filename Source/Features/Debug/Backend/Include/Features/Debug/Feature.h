@@ -66,7 +66,7 @@
 class IBridge;
 class IScheduler;
 class IShaderSGUIDHost;
-class ChecksumShaderProgram;
+class LooseAcquisitionProgram;
 struct CommandBuilder;
 
 namespace IL {
@@ -142,8 +142,11 @@ private:
         /// Allocated stream size
         uint64_t streamSize = 0;
 
-        /// Not valid for loose data order
+        /// Gpu produced hash
         uint32_t pendingCollectionHash = 0;
+        
+        /// Gpu produced counter
+        uint32_t pendingAcqDynamicCounter = 0;
 
         /// Is this breakpoint pending collection?
         bool pendingCollection = false;
@@ -429,10 +432,10 @@ private:
     ShaderDataID streamBufferID{InvalidShaderDataID};
 
     /// Programs
-    ComRef<ChecksumShaderProgram> patchShaderProgram;
+    ComRef<LooseAcquisitionProgram> looseAcquisitionProgram;
 
     /// Program ids
-    ShaderProgramID patchShaderProgramID{InvalidShaderProgramID};
+    ShaderProgramID looseAcquisitionProgramID{InvalidShaderProgramID};
 
     /// Export id for this feature
     ShaderExportID exportID{};
