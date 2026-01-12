@@ -112,6 +112,9 @@ namespace Studio.App
         
         public override async void OnFrameworkInitializationCompleted()
         {
+            // Install all user plugins
+            _serviceProvider.InstallPlugins();
+            
             // Create view model
             var vm = new MainWindowViewModel();
 
@@ -153,9 +156,6 @@ namespace Studio.App
                     break;
                 }
             }
-            
-            // Install all user plugins
-            _serviceProvider.InstallPlugins();
 
             // Invoke command line if requested
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { Args: { Length: > 0 } args })

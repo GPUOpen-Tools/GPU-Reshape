@@ -24,34 +24,23 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Runtime.ViewModels.Traits;
-using Studio.ViewModels.Code;
+using System.Collections.ObjectModel;
+using Dock.Model.Core;
+using ReactiveUI;
+using Studio.ViewModels.Traits;
 
-namespace Runtime.ViewModels.Shader
+namespace Studio.Services
 {
-    public class ShaderFileViewModel : CodeFileViewModel
+    public interface IDockingService : IReactiveObject
     {
         /// <summary>
-        /// Contents of this shader
+        /// All extensions
         /// </summary>
-        public uint UID { get; set; }
+        public ObservableCollection<IDockingExtension> Extensions { get; }
         
         /// <summary>
-        /// Shader GUID
+        /// Install this extension
         /// </summary>
-        public uint ShaderGUID { get; set; }
-
-        /// <summary>
-        /// Serialize this object
-        /// </summary>
-        public new object Serialize()
-        {
-            return new SerializationMap()
-            {
-                { "Filename", Filename },
-                { "Contents", Contents },
-                { "UID", UID }
-            };
-        }
+        public IDockable[] Install(DockingSlot slot);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using DynamicData;
 using Runtime.ViewModels.Traits;
@@ -12,6 +13,11 @@ public class BreakpointCollectionRegistryViewModel : BasePropertyViewModel
     /// All collections within this registry
     /// </summary>
     public Dictionary<object, BreakpointCollectionViewModel> ViewModels { get; } = new();
+
+    /// <summary>
+    /// All collections, observable
+    /// </summary>
+    public ObservableCollection<KeyValuePair<object, BreakpointCollectionViewModel>> Collections { get; } = new();
     
     public BreakpointCollectionRegistryViewModel() : base("Registry", PropertyVisibility.Default)
     {
@@ -32,6 +38,7 @@ public class BreakpointCollectionRegistryViewModel : BasePropertyViewModel
             };
             
             ViewModels.Add(viewModel, value);
+            Collections.Add(KeyValuePair.Create(viewModel, value));
         }
 
         return value;

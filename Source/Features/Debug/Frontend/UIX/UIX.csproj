@@ -43,6 +43,7 @@
       <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
       <PackageReference Include="Avalonia.Diagnostics" Version="11.1.1" />
       <PackageReference Include="Dock.Model" Version="11.3.0.1" />
+      <PackageReference Include="Dock.Model.ReactiveUI" Version="11.1.0.1" />
       <PackageReference Include="System.IO.Hashing" Version="10.0.0-rc.2.25502.107" />
     </ItemGroup>
 
@@ -118,6 +119,10 @@
       </Compile>
       <Compile Update="Views\Display\ImageBreakpointDisplayOverlayView.axaml.cs">
         <DependentUpon>ImageBreakpointDisplayOverlayView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Tools\BreakpointTreeView.axaml.cs">
+        <DependentUpon>BreakpointTreeView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
     </ItemGroup>

@@ -26,49 +26,45 @@
 
 using System;
 using Avalonia.Controls;
-using Avalonia.Controls.Templates;
-using Dock.Model.Core;
+using Avalonia.Interactivity;
+using GRS.Features.Debug.UIX.ViewModels.Tools;
 using ReactiveUI;
-using Studio.Services;
+using Studio.Extensions;
 
-namespace Studio
+namespace UIX.Views.Tools
 {
-    public class ViewLocator : IDataTemplate
+    public partial class BreakpointTreeView : UserControl
     {
-        // TODO: We need to replace this locator entirely
-        //       we already have a locator pattern that's much better,
-        //       migrate the remaining things.
-
-        public Control Build(object data)
+        public BreakpointTreeView()
         {
-            var name = data.GetType().FullName?.Replace("ViewModel", "View");
-            if (name is null)
-            {
-                return new TextBlock { Text = "Invalid Data Type" };
-            }
-            var type = Type.GetType(name);
-            if (type is { })
-            {
-                var instance = Activator.CreateInstance(type);
-                if (instance is { })
-                {
-                    return (Control)instance;
-                }
-                else
-                {
-                    return new TextBlock { Text = "Create Instance Failed: " + type.FullName };
-                }
-            }
-            else
-            {
-                return ServiceRegistry.Get<ILocatorService>()?.InstantiateDerived<Control>(data) ?? 
-                       new TextBlock { Text = "Not Found: " + name };
-            }
-        }
+            InitializeComponent();
 
-        public bool Match(object data)
-        {
-            return data is ReactiveObject || data is IDockable;
+            this.WhenAnyValue(x => x.DataContext)
+                .CastNullable<BreakpointTreeViewModel>()
+                .WhereNotNull()
+                .Subscribe(x =>
+                {
+                    // Bind signals
+                    BreakpointTree.AddHandler(
+                        PointerPressedEvent,
+                        (s, e) =>
+                        {
+                            if (e.ClickCount != 2)
+                            {
+                                return;
+                            }
+                        
+                            if (BreakpointTree.SelectedItem != null)
+                            {
+                                x.OpenBreakpointDocument.Execute(BreakpointTree.SelectedItem);
+                            }
+                            
+                            e.Handled = true;
+                        },
+                        RoutingStrategies.Tunnel,
+                        handledEventsToo: true
+                    );
+                });
         }
     }
 }

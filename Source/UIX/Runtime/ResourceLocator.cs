@@ -24,8 +24,6 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Media;
@@ -45,7 +43,7 @@ namespace Studio
         {
             object? value = null;
             
-            if (!App.DesktopApp.DefaultStyle.TryGetResource(name, null, out value) || value == null)
+            if (!Application.Current!.Styles.TryGetResource(name, null, out value) || value == null)
             {
 #if DEBUG
                 Debug.WriteLine($"ResourceLocator - Failed to find resource '{name}'");
@@ -88,7 +86,7 @@ namespace Studio
             }
             
             // May not exist
-            if (!Application.Current!.Styles.TryGetResource(name, null, out object? resource))
+            if (!Application.Current.Styles.TryGetResource(name, null, out object? resource))
             {
 #if DEBUG
                 Debug.WriteLine($"ResourceLocator - Failed to find icon '{name}'");

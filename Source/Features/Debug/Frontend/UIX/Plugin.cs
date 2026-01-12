@@ -30,10 +30,12 @@ using Avalonia.Media;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
+using Dock.Model.Core;
 using DynamicData;
 using GRS.Features.Debug.UIX.Settings;
 using GRS.Features.Debug.UIX.ViewModels;
 using GRS.Features.Debug.UIX.ViewModels.Editor;
+using GRS.Features.Debug.UIX.ViewModels.Tools;
 using GRS.Features.Debug.UIX.ViewModels.Utils;
 using GRS.Features.Debug.UIX.Workspace;
 using ReactiveUI;
@@ -48,10 +50,11 @@ using Studio.Views.Setting;
 using UIX.Views;
 using UIX.Views.Display;
 using UIX.Views.Editor;
+using UIX.Views.Tools;
 
 namespace GRS.Features.Debug.UIX
 {
-    public class Plugin : IPlugin, IWorkspaceExtension, IEditorExtension
+    public class Plugin : IPlugin, IWorkspaceExtension, IEditorExtension, IDockingExtension
     {
         public PluginInfo Info { get; } = new()
         {
@@ -85,6 +88,7 @@ namespace GRS.Features.Debug.UIX
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(DebugSettingViewModel), typeof(DebugSettingView));
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointViewModel), typeof(BreakpointDisplayView));
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointViewModel), typeof(BreakpointWindow), ViewType.Window);
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointTreeViewModel), typeof(BreakpointTreeView));
             
             // Display locators
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayView));
@@ -98,6 +102,9 @@ namespace GRS.Features.Debug.UIX
             ServiceRegistry.Get<IContextMenuService>()?.ViewModels.AddRange([
                 new BreakpointContextViewModel()
             ]);
+            
+            // Register docking extensions
+            ServiceRegistry.Get<IDockingService>()?.Extensions.Add(this);
 
             // OK
             return true;
@@ -206,6 +213,20 @@ namespace GRS.Features.Debug.UIX
                     CollectionViewModel = collectionViewModel
                 }
             };
+        }
+
+        /// <summary>
+        /// Install extensions against the dock layout
+        /// </summary>
+        public IDockable[] Install(DockingSlot slot)
+        {
+            switch (slot)
+            {
+                case DockingSlot.Right:
+                    return [new BreakpointTreeViewModel()];
+            }
+            
+            return Array.Empty<IDockable>();
         }
 
         /// <summary>

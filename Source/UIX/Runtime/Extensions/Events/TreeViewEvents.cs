@@ -59,7 +59,15 @@ namespace Studio.Extensions
         {
             return (s, e) => handler(e);
         }, handler => _treeView.SelectionChanged += handler, handler => _treeView.SelectionChanged -= handler);
-        
+
+        /// <summary>
+        /// Observable pointer pressed changed
+        /// </summary>
+        public IObservable<PointerPressedEventArgs> PointerPressed => Observable.FromEvent<EventHandler<PointerPressedEventArgs>, PointerPressedEventArgs>(handler =>
+        {
+            return (s, e) => handler(e);
+        }, handler => _treeView.PointerPressed += handler, handler => _treeView.PointerPressed -= handler);
+
         /// <summary>
         /// Internal tree view
         /// </summary>

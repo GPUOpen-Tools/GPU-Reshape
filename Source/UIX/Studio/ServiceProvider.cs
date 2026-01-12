@@ -53,8 +53,11 @@ public class ServiceProvider
         // Hosts all settings objects
         ServiceRegistry.Add<ISettingsService>(new SettingsService());
 
-        // Hosts all settings objects
+        // Hosts all editor extension objects
         ServiceRegistry.Add<IEditorService>(new EditorService());
+
+        // Hosts all docking extension objects
+        ServiceRegistry.Add<IDockingService>(new DockingService());
     }
 
     /// <summary>

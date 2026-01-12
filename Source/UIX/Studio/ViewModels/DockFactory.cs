@@ -26,7 +26,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reactive.Linq;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Studio.Models.Documents;
 using Studio.Models.Tools;
@@ -39,8 +39,12 @@ using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.ReactiveUI;
 using Dock.Model.ReactiveUI.Controls;
+using DynamicData;
 using ReactiveUI;
-using Runtime.ViewModels;
+using Studio.Services;
+using Studio.ViewModels.Traits;
+
+// TODO: Refactor this file, it's a mess from the early days
 
 namespace Studio.ViewModels
 {
@@ -131,7 +135,7 @@ namespace Studio.ViewModels
                     {
                         ActiveDockable = workspace,
                         IsExpanded = true,
-                        VisibleDockables = CreateList<IDockable>(workspace, files),
+                        VisibleDockables = CreateDockables(DockingSlot.Left, workspace, files),
                         Alignment = Alignment.Left
                     }
                 )
@@ -151,7 +155,7 @@ namespace Studio.ViewModels
                     {
                         ActiveDockable = shaders,
                         IsExpanded = true,
-                        VisibleDockables = CreateList<IDockable>(properties, shaders, pipelines),
+                        VisibleDockables = CreateDockables(DockingSlot.Right, properties, shaders, pipelines),
                         Alignment = Alignment.Right,
                         GripMode = GripMode.Visible
                     }
@@ -169,7 +173,7 @@ namespace Studio.ViewModels
                     {
                         ActiveDockable = log,
                         IsExpanded = true,
-                        VisibleDockables = CreateList<IDockable>(log),
+                        VisibleDockables = CreateDockables(DockingSlot.Bottom, log),
                         Alignment = Alignment.Bottom,
                         GripMode = GripMode.Visible
                     }
@@ -233,6 +237,20 @@ namespace Studio.ViewModels
             _rootDock = rootDock;
             
             return rootDock;
+        }
+
+        /// <summary>
+        /// Create a set of dockables
+        /// </summary>
+        private ObservableCollection<IDockable> CreateDockables(DockingSlot slot, params IDockable[] items)
+        {
+            // Must have service installed
+            var service = ServiceRegistry.Get<IDockingService>() ?? throw new InvalidOperationException();
+
+            // Install on requested set
+            ObservableCollection<IDockable> collection = new(items);
+            collection.AddRange(service.Install(slot));
+            return collection;
         }
 
         public override void InitLayout(IDockable layout)
