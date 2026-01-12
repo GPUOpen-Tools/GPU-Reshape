@@ -608,9 +608,6 @@ void DebugFeature::OnSyncPoint() {
 
         // Done!
         shaderDataHost->Unmap(breakpoint.hostStreamingBuffer, mapped);
-    
-        // Patch the header
-        builder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
 
         // Clear the buffer, if needed
         if (breakpoint.captureMode == BreakpointCaptureMode::FirstEvent || breakpoint.captureMode == BreakpointCaptureMode::FirstViewport) {
@@ -621,6 +618,9 @@ void DebugFeature::OnSyncPoint() {
                 0x0
             );
         }
+    
+        // Patch the header
+        builder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
 
         // Collected!
         breakpoint.pendingCollection = false;
