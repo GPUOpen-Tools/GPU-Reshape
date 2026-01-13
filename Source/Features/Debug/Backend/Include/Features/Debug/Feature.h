@@ -67,6 +67,7 @@ class IBridge;
 class IScheduler;
 class IShaderSGUIDHost;
 class LooseAcquisitionProgram;
+class ResetHeaderProgram;
 struct CommandBuilder;
 
 namespace IL {
@@ -152,7 +153,10 @@ private:
         bool pendingCollection = false;
 
         /// Do we have a pending header upload?
-        bool pendingHeader = true;
+        bool pendingTransferHeader = true;
+
+        /// Do we have a pending header reset?
+        bool pendingHeaderReset = false;
 
         /// The templated header for blitting
         BreakpointHeader header{};
@@ -433,9 +437,11 @@ private:
 
     /// Programs
     ComRef<LooseAcquisitionProgram> looseAcquisitionProgram;
+    ComRef<ResetHeaderProgram> resetHeaderProgram;
 
     /// Program ids
     ShaderProgramID looseAcquisitionProgramID{InvalidShaderProgramID};
+    ShaderProgramID resetHeaderProgramID{InvalidShaderProgramID};
 
     /// Export id for this feature
     ShaderExportID exportID{};

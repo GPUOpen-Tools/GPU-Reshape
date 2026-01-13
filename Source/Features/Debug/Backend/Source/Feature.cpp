@@ -28,6 +28,7 @@
 #include <Features/Debug/Feature.h>
 #include <Features/Debug/BreakpointHeader.h>
 #include <Features/Debug/LooseAcquisitionProgram.h>
+#include <Features/Debug/ResetHeaderProgram.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -125,8 +126,15 @@ bool DebugFeature::Install() {
         return false;
     }
 
+    // Create the reset program
+    resetHeaderProgram = registry->New<ResetHeaderProgram>(streamBufferID);
+    if (!resetHeaderProgram->Install()) {
+        return false;
+    }
+
     // Register programs
     looseAcquisitionProgramID = programHost->Register(looseAcquisitionProgram);
+    resetHeaderProgramID = programHost->Register(resetHeaderProgram);
 
     // Register for messages
     bridge = registry->Get<IBridge>().GetUnsafe();
@@ -352,13 +360,13 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
 
     // Handle header mappings
     for (Breakpoint& breakpoint : breakpoints) {
-        if (!breakpoint.pendingHeader) {
+        if (!breakpoint.pendingTransferHeader) {
             continue;
         }
 
         // Reset the header
         syncBuilder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
-        breakpoint.pendingHeader = false;
+        breakpoint.pendingTransferHeader = false;
         
         // Always sync header resets
         hasSyncRequest = true;
@@ -381,6 +389,28 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
         .value = exclusiveTransferPrimitiveMonotonicCounter
     });
     
+    // Pre-context, used for atomically resetting headers
+    CommandBuilder preBuilder(submitContext.preContext->buffer);
+    {
+        // Reset all pending headers
+        for (Breakpoint& breakpoint: breakpoints) {
+            if (!breakpoint.pendingHeaderReset) {
+                continue;
+            }
+           
+            // Setup data
+            BreakpointResetHeaderData data;
+            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+
+            // Dispatch loose update
+            preBuilder.SetShaderProgram(resetHeaderProgramID);
+            preBuilder.SetDescriptorData(resetHeaderProgram->GetDataID(), data);
+            preBuilder.Dispatch(1, 1, 1);
+            breakpoint.pendingHeaderReset = false;
+        }
+    }
+    
+    // Post-context, used for post signalling and copies
     CommandBuilder postBuilder(submitContext.postContext->buffer);
     {
         // Wait for any ongoing shaders
@@ -620,9 +650,10 @@ void DebugFeature::OnSyncPoint() {
                 0x0
             );
         }
-    
-        // Patch the header
-        builder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
+
+        // Patch the header on next submission
+        // TODO: We could submit it separately if too slow
+        breakpoint.pendingHeaderReset = true;
 
         // Collected!
         breakpoint.pendingCollection = false;

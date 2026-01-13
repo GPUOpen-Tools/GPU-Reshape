@@ -143,6 +143,14 @@ struct BreakpointLooseAcquisitionData {
     uint32_t breakpointUid{0};
 };
 
+struct BreakpointResetHeaderData {
+    /// The allocation offset
+    uint32_t allocationDWordOffset{0};
+    
+    /// Structural pad
+    uint32_t pad{0};
+};
+
 /// Number of dwords
 static constexpr uint32_t BreakpointHeaderDWordCount          = sizeof(BreakpointHeader) / sizeof(uint32_t);
 static constexpr uint32_t BreakpointDynamicHeaderDWordCount   = sizeof(BreakpointDynamicHeader) / sizeof(uint32_t);
