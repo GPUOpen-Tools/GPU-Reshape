@@ -13,7 +13,7 @@ public class LooseBreakpointProcessorViewModel : IBreakpointProcessorViewModel
     /// <returns>optional payload data</returns>
     public unsafe object? Process(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage message)
     {
-        var data = new uint[message.data.Count];
+        var data = new uint[message.data.Count / sizeof(uint)];
         
         // Lifetime is owned by the stream, so copy it over
         // Really, we shouldn't have to do this, the processing should happen entirely async
