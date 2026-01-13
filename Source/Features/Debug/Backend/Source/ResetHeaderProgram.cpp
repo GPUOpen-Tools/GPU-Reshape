@@ -86,7 +86,7 @@ void ResetHeaderProgram::Inject(IL::Program &program) {
     );
     
     // Reset header state
-    header.AtomicExchange<&BreakpointHeader::dataOrder>(entryEmitter, entryEmitter.UInt32(0));
+    // Note: Do not reset data order, immutable in some capture modes
     header.AtomicExchange<&BreakpointHeader::staticWidth>(entryEmitter, entryEmitter.UInt32(0));
     header.AtomicExchange<&BreakpointHeader::staticHeight>(entryEmitter, entryEmitter.UInt32(0));
     header.AtomicExchange<&BreakpointHeader::staticDepth>(entryEmitter, entryEmitter.UInt32(0));

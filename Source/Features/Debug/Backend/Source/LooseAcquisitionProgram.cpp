@@ -93,13 +93,33 @@ void LooseAcquisitionProgram::Inject(IL::Program &program) {
         // Get the header
         header = IL::ShaderBufferStruct<BreakpointHeader>(streamDataID, acquisitionData.Get<&BreakpointLooseAcquisitionData::allocationDWordOffset>(entryEmitter));
 
-        // Was this acquired?
-        IL::ID acquired = header.Get<&BreakpointHeader::dynamicCounter>(entryEmitter);
-        IL::ID validDWord = entryEmitter.NotEqual(acquired, entryEmitter.UInt32(0));
+        // Was this produced?
+        IL::ID hasProducer = entryEmitter.NotEqual(
+            header.Get<&BreakpointHeader::dynamicCounter>(entryEmitter),
+            entryEmitter.UInt32(0)
+        );
+        
+        // Only for valid hashes (not sync-safe, but, better than nothing)
+        hasProducer = entryEmitter.And(
+            hasProducer,
+            entryEmitter.NotEqual(
+                header.Get<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter),
+                entryEmitter.UInt32(0)
+            )
+        );
+        
+        // Skip locked (not thread safe, just to reduce spam)
+        hasProducer = entryEmitter.And(
+            hasProducer,
+            entryEmitter.NotEqual(
+                header.Get<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter),
+                entryEmitter.UInt32(kBreakpointInstrumentationHashLocked)
+            )
+        );
         
         // If acquired, branch out
         entryEmitter.BranchConditional(
-            validDWord,
+            hasProducer,
             bodyBlock,
             exitBlock,
             IL::ControlFlow::Selection(exitBlock)
@@ -108,12 +128,15 @@ void LooseAcquisitionProgram::Inject(IL::Program &program) {
     
     IL::Emitter<> bodyEmitter(program, *bodyBlock);
     {
+        // Pseudo lock the breakpoint by re-acquiring the hash
+        IL::ID previousHash = header.AtomicExchange<&BreakpointHeader::shaderInstrumentationHash32>(bodyEmitter, bodyEmitter.UInt32(kBreakpointInstrumentationHashLocked));
+        
         // Send acquisition event
         BreakpointAcquisitionMessage::ShaderExport msg;
         msg.chunks |= BreakpointAcquisitionMessage::Chunk::ExtraData | BreakpointAcquisitionMessage::Chunk::LooseCounter;
         msg.uid = acquisitionData.Get<&BreakpointLooseAcquisitionData::breakpointUid>(bodyEmitter);
         msg.magic = bodyEmitter.UInt32(42);
-        msg.extraData.instrumentationHash32 = header.Get<&BreakpointHeader::shaderInstrumentationHash32>(bodyEmitter);
+        msg.extraData.instrumentationHash32 = previousHash;
         msg.looseCounter.streamedDynamicCounter = header.Get<&BreakpointHeader::dynamicCounter>(bodyEmitter);
         bodyEmitter.Export(exportID, msg);
         

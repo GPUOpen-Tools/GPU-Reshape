@@ -151,6 +151,16 @@ struct BreakpointResetHeaderData {
     uint32_t pad{0};
 };
 
+struct BreakpointLockDynamicData {
+    /// The allocation offset
+    uint32_t allocationDWordOffset{0};
+    
+    /// Structural pad
+    uint32_t pad{0};
+};
+
+static constexpr uint32_t kBreakpointInstrumentationHashLocked = UINT32_MAX;
+
 /// Number of dwords
 static constexpr uint32_t BreakpointHeaderDWordCount          = sizeof(BreakpointHeader) / sizeof(uint32_t);
 static constexpr uint32_t BreakpointDynamicHeaderDWordCount   = sizeof(BreakpointDynamicHeader) / sizeof(uint32_t);

@@ -104,6 +104,10 @@ public:
 
         return nullptr;
     }
+    
+private:
+    /// Create all programs
+    bool CreatePrograms();
 
 private:
     /// Hook tables

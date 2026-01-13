@@ -114,6 +114,30 @@ bool DebugFeature::Install() {
     // Create residency handler for the streaming buffer
     tileResidencyAllocator.Install(kDebugStreamBufferSize);
     
+    // Try to create programs
+    if (!CreatePrograms()) {
+        return false;
+    }
+
+    // Register for messages
+    bridge = registry->Get<IBridge>().GetUnsafe();
+    bridge->Register(BreakpointAcquisitionMessage::kID, this);
+
+    // Get state voter, used primarily for scheduler changes
+    stateVote = registry->Get<IDeviceStateVote>();
+
+    // Get the debug emitter
+    debugEmitter = registry->Get<IL::IDebugEmitter>();
+
+    // Allocate breakpoint headers
+    buddyAllocator.Allocate(kMaxBreakpoints * sizeof(BreakpointHeader));
+    tileResidencyAllocator.Allocate(0, kMaxBreakpoints * sizeof(BreakpointHeader));
+    
+    // OK
+    return true;
+}
+
+bool DebugFeature::CreatePrograms() {
     // Must have program host
     auto programHost = registry->Get<IShaderProgramHost>();
     if (!programHost) {
@@ -135,22 +159,6 @@ bool DebugFeature::Install() {
     // Register programs
     looseAcquisitionProgramID = programHost->Register(looseAcquisitionProgram);
     resetHeaderProgramID = programHost->Register(resetHeaderProgram);
-
-    // Register for messages
-    bridge = registry->Get<IBridge>().GetUnsafe();
-    bridge->Register(BreakpointAcquisitionMessage::kID, this);
-
-    // Get state voter, used primarily for scheduler changes
-    stateVote = registry->Get<IDeviceStateVote>();
-
-    // Get the debug emitter
-    debugEmitter = registry->Get<IL::IDebugEmitter>();
-
-    // Allocate breakpoint headers
-    buddyAllocator.Allocate(kMaxBreakpoints * sizeof(BreakpointHeader));
-    tileResidencyAllocator.Allocate(0, kMaxBreakpoints * sizeof(BreakpointHeader));
-    
-    // OK
     return true;
 }
 
@@ -497,9 +505,8 @@ bool DebugFeature::CanCollectBreakpoint(const Breakpoint &breakpoint) {
             return false;
         case BreakpointCaptureMode::FirstEvent:
         case BreakpointCaptureMode::FirstViewport:
-            return breakpoint.pendingCollection;
         case BreakpointCaptureMode::AllEvents:
-            return true;
+            return breakpoint.pendingCollection;
     }
 }
 
@@ -510,9 +517,8 @@ uint32_t DebugFeature::GetBreakpointInstrumentationHash(const Breakpoint &breakp
             return 0u;
         case BreakpointCaptureMode::FirstEvent:
         case BreakpointCaptureMode::FirstViewport:
-            return breakpoint.pendingCollectionHash;
         case BreakpointCaptureMode::AllEvents:
-            return header->shaderInstrumentationHash32;
+            return breakpoint.pendingCollectionHash;
     }
 }
 
@@ -683,12 +689,19 @@ void DebugFeature::OnBreakpointAcquired(const BreakpointAcquisitionMessage *acqM
     // If it failed to resolve, it may have been removed
     if (Breakpoint *breakpoint = FindBreakpointNoLock(acqMessage->uid)) {
         if (breakpoint->captureMode == BreakpointCaptureMode::AllEvents) {
+            uint32_t instrumentationHash32 = *(reinterpret_cast<const uint32_t*>(acqMessage) + 1);
+            
+            // TODO: We could move this to a double-exchange on the GPU
+            if (instrumentationHash32 == kBreakpointInstrumentationHashLocked) {
+                return;
+            }
+            
             // Loose events may double-signal
             breakpoint->pendingCollection = true;
         
             // Read beyond primary key
             // TODO[init]: Add support for reading chunks in C++
-            breakpoint->pendingCollectionHash = *(reinterpret_cast<const uint32_t*>(acqMessage) + 1);
+            breakpoint->pendingCollectionHash = instrumentationHash32;
             breakpoint->pendingAcqDynamicCounter = *(reinterpret_cast<const uint32_t*>(acqMessage) + 2);
         } else {
             ASSERT(!breakpoint->pendingCollection, "GPU double-signalled breakpoint for collection");
@@ -1704,6 +1717,7 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
         IL::Emitter<> emitter(context.program, *hashMergeBlock);
 
         // Check if the hash is matching
+        // TOOD: Not thread safe, obviously
         IL::ID isMatchingHash = emitter.Equal(
             breakpointHeader.Get<&BreakpointHeader::shaderInstrumentationHash32>(emitter),
             emitter.UInt32(breakpointData.shaderInstrumentationHash32)
@@ -1823,6 +1837,9 @@ void DebugFeature::CreateAndUpdatePayload(Breakpoint &breakpoint) {
         breakpoint.streamAllocation.offset,
         breakpoint.streamAllocation.length
     );
+    
+    // Update the header when possible
+    breakpoint.pendingTransferHeader = true;
 
     // Create streaming counter-part
     breakpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
