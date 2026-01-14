@@ -27,19 +27,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
-using Avalonia.Metadata;
-using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.Extensions;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 
 namespace Studio.Views.Controls
 {
-    public partial class ContextMenuView : ContextMenu
+    public partial class ContextMenuView : ContextMenu, IContextMenu
     {
         public ContextMenuView()
         {
@@ -64,6 +60,11 @@ namespace Studio.Views.Controls
                     control.AddHandler(ContextRequestedEvent, OnContextRequested, handledEventsToo: true);
                 }
             });
+        }
+
+        public void PopulateViewModels(object? sender)
+        {
+            OnContextRequested(sender, new ContextRequestedEventArgs());
         }
 
         private static void OnContextRequested(object? sender, ContextRequestedEventArgs e)

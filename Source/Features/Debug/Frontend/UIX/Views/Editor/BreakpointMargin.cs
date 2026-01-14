@@ -18,6 +18,7 @@ using GRS.Features.Debug.UIX.ViewModels.Utils;
 using GRS.Features.Debug.UIX.Workspace;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
+using Runtime.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace UIX.Views.Editor;
@@ -230,12 +231,6 @@ public class BreakpointMargin : LineNumberMargin
              _mode = PlacementMode.New;
             e.Handled = true;
         }
-
-        // Otherwise pass down
-        if (!e.Handled)
-        {
-            base.OnPointerPressed(e);
-        }
     }
 
     /// <summary>
@@ -246,6 +241,19 @@ public class BreakpointMargin : LineNumberMargin
         // Pass down if not our event
         if (_mode == PlacementMode.None)
         {
+            // Handle context manually
+            if (e.InitialPressMouseButton == MouseButton.Right)
+            {
+                if (ContextMenu is IContextMenu contextMenu)
+                {
+                    contextMenu.PopulateViewModels(this);
+                    ContextMenu.Placement = Avalonia.Controls.PlacementMode.Pointer;
+                    ContextMenu.Open(this);
+                    e.Handled = true;
+                    return;
+                }
+            }
+            
             base.OnPointerReleased(e);
             return;
         }
