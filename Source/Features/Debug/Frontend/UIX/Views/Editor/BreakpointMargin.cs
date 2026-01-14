@@ -179,6 +179,7 @@ public class BreakpointMargin : LineNumberMargin
         {
             _previewLineBase1  = visualLine.FirstDocumentLine.LineNumber;
             VM.LineNumberBase0 = (int)(_previewLineBase1 - 1);
+            VM.LastFocusLineNumberBase0 = VM.LineNumberBase0;
             
             // Assign highlighted breakpoint
             if (VM.CollectionViewModel.Bindings.FirstOrDefault(x => IsBreakpointVisible(x, VM.LineNumberBase0)) is { } breakpoint)

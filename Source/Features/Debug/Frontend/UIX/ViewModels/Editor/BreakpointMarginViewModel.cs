@@ -24,4 +24,9 @@ public class BreakpointMarginViewModel : ReactiveObject
     /// The current line number
     /// </summary>
     public int LineNumberBase0 { get; set; }
+    
+    /// <summary>
+    /// The current or last focused line number
+    /// </summary>
+    public int LastFocusLineNumberBase0 { get; set; }
 }
