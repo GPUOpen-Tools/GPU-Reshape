@@ -322,6 +322,10 @@ private:
                         uint32_t align;
                         uint32_t offset;
                     } member;
+                    
+                    struct {
+                        uint32_t baseTypeMdId;
+                    } _const;
                 };
             } derivedType;
 
@@ -342,6 +346,13 @@ private:
                         uint32_t align;
                         uint32_t elementsMdId;
                     } structureType;
+                    
+                    struct {
+                        uint32_t nameMdId;
+                        uint32_t size;
+                        uint32_t align;
+                        uint32_t elementsMdId;
+                    } arrayType;
                 };
             } compositeType;
 

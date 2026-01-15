@@ -680,6 +680,10 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                             md.derivedType.member.offset = static_cast<uint32_t>(record.Op(9));
                             break;
                         }
+                        case LLVMDwarfTag::Const: {
+                            md.derivedType._const.baseTypeMdId = static_cast<uint32_t>(record.Op(6));
+                            break;
+                        }
                     }
                 }
                 break;
@@ -706,6 +710,13 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                             md.compositeType.structureType.size = static_cast<uint32_t>(record.Op(7));
                             md.compositeType.structureType.align = static_cast<uint32_t>(record.Op(8));
                             md.compositeType.structureType.elementsMdId = static_cast<uint32_t>(record.Op(11));
+                            break;
+                        }
+                        case LLVMDwarfTag::Array: {
+                            md.compositeType.arrayType.nameMdId = static_cast<uint32_t>(record.Op(2));
+                            md.compositeType.arrayType.size = static_cast<uint32_t>(record.Op(7));
+                            md.compositeType.arrayType.align = static_cast<uint32_t>(record.Op(8));
+                            md.compositeType.arrayType.elementsMdId = static_cast<uint32_t>(record.Op(11));
                             break;
                         }
                     }
@@ -1162,6 +1173,9 @@ const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(Backend::IL::TypeMap&
                 case LLVMDwarfTag::Typedef: {
                     return GetTypeFromDwarf(typeMap, typeMd.derivedType._typedef.baseTypeMdId - 1);
                 }
+                case LLVMDwarfTag::Const: {
+                    return GetTypeFromDwarf(typeMap, typeMd.derivedType._const.baseTypeMdId - 1);
+                }
             }
             break;
         }
@@ -1176,6 +1190,9 @@ const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(Backend::IL::TypeMap&
                 }
                 case LLVMDwarfTag::StructureType: {
                     return GetStructureTypeFromDwarf(typeMap, typeMd);
+                }
+                case LLVMDwarfTag::Array: {
+                    return nullptr;
                 }
             }
             break;

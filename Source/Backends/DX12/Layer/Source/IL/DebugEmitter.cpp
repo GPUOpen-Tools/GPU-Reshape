@@ -65,14 +65,17 @@ void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *ins
     // Copy over variables
     for (uint64_t i = 0; i < info.variables.size(); ++i) {
         const DXDwarfVariableValue& source = info.variables[i];
+         
+        // Target type
+        const Backend::IL::Type *type = source.type;
+        if (!type) {
+            continue;
+        }
         
         // Create info
         IL::DebugVariable& dest = variables.Add();
         dest.name = source.name;
         dest.handle = static_cast<uint32_t>(i);
-         
-        // Target type
-        const Backend::IL::Type *type = source.type;
 
         // TODO: Bit extraction?
         ASSERT(source.values[0].bitWise.bitStart % 8 == 0, "Non-byte aligned");

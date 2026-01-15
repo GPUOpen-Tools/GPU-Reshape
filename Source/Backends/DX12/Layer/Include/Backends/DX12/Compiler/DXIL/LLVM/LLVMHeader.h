@@ -479,10 +479,12 @@ enum class LLVMDwarfOpKind {
 };
 
 enum class LLVMDwarfTag {
+    Array = 1,
     ClassType = 2,
     Member = 13,
     StructureType = 19,
-    Typedef = 22
+    Typedef = 22,
+    Const = 38
 };
 
 enum class LLVMDwarfTypeEncoding {
