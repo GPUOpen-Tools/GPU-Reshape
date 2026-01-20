@@ -6777,11 +6777,11 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     table.type.typeMap.GetType(tokenMetadataStruct);
 
     // General data offset
-    uint32_t controlDataDWord;
+    uint32_t controlDataDWord = UINT32_MAX;
     if (userMapping.physicalMapping == job.instrumentationKey.physicalMapping) {
         // Follows a control structure
         controlDataDWord = DescriptorDataHeaderDWordCount + userMapping.source->dwordOffset;
-    } else {
+    } else if (userMapping.source) {
         // No control structure
         controlDataDWord = userMapping.source->dwordOffset;
     }
