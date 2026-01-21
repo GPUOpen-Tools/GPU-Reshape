@@ -91,7 +91,6 @@ enum class SBTRootParameterType {
 
 HLSL_CONSTEXPR uint ResourceHeapIndex = 0;
 HLSL_CONSTEXPR uint SamplerHeapIndex  = 1;
-HLSL_CONSTEXPR uint SBTInlineTokenMetadatDWordCount = 13;
 
 struct SBTRootParameterTypeInfo {
     // 0:2   Type

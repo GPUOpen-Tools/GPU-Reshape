@@ -152,8 +152,12 @@ static D3D12_DISPATCH_RAYS_DESC PatchShaderRecordsImmediate(DeviceTable& device,
     D3D12_DISPATCH_RAYS_DESC patched = SBTContextPatch(ctx, allocation.allocation.resource->GetGPUVirtualAddress());
 
     // Create a single descriptor heap allocation, allows us to share the heap instead of constantly bouncing
-    ShaderExportOwnedHeapAllocation heapAllocation = state->streamState->heapAllocator.Allocate(device.state, 3u);
+    ShaderExportOwnedHeapAllocation heapAllocation = state->streamState->heapAllocator.Allocate(device.state, 4u);
     CreateImmutablePatchDescriptors(device, pipeline, patchTable, heapAllocation);
+    
+    // Mark the last descriptor as VAMT
+    // TODO: These magic offsets are a terrible idea
+    state->streamState->persistentState.vamtVersionDescriptorHandles.Add(heapAllocation.CPU(3));
 
     // Setup command state
     state->object->SetDescriptorHeaps(1u, &heapAllocation.heap);

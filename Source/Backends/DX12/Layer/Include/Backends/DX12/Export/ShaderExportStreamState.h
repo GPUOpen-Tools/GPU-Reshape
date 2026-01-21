@@ -43,18 +43,17 @@
 #include <Backend/IL/Execution/ExecutionInfo.h>
 
 // Common
-#include <Common/Containers/BucketPoolAllocator.h>
 #include <Common/Containers/LinearBlockAllocator.h>
 
 // Std
 #include <vector>
-#include <Backends/DX12/Resource/DescriptorDataSegment.h>
 
 // Forward declarations
 struct RootSignatureState;
 struct ShaderExportSegmentInfo;
 struct ShaderExportStreamStateRaytracingCache;
 struct ShaderExportStreamStateBarrierTracking;
+struct VirtualAddressMappingTablePersistentVersion;
 struct IncrementalFence;
 class ShaderExportFixedTwoSidedDescriptorAllocator;
 struct FenceState;
@@ -225,6 +224,11 @@ struct ShaderExportStreamMarkerState {
     TrivialStackVector<ShaderExportStreamMarkerEntryState, kMaxExecutionInfoMarkerCount> stack;
 };
 
+struct ShaderExportStreamPersistentState {
+    /// All host descriptor handles
+    TrivialStackVector<D3D12_CPU_DESCRIPTOR_HANDLE, 4u> vamtVersionDescriptorHandles;
+};
+
 /// Single stream state
 struct ShaderExportStreamState {
     ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators), referencedHeaps(allocators) {
@@ -298,6 +302,9 @@ struct ShaderExportStreamState {
 
     /// All backend messages
     ShaderExportStreamStateBackendMessages backendMessages;
+    
+    /// All persistent state
+    ShaderExportStreamPersistentState persistentState;
 
     /// Top level context handle
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
@@ -356,6 +363,9 @@ struct ShaderExportStreamSegment {
 
     /// Synchronization fence (optional)
     IncrementalFence* fence{nullptr};
+    
+    /// Persistent versions
+    VirtualAddressMappingTablePersistentVersion* vamtPersistentVersion{nullptr};
 
     /// Segmentation point during submission
     VersionSegmentationPoint versionSegPoint{};

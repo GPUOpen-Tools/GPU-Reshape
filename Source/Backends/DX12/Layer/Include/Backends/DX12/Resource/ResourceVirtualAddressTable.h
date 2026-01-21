@@ -37,6 +37,11 @@ struct ResourceState;
 
 class ResourceVirtualAddressTable {
 public:
+    struct AddressEntry {
+        ResourceState *state{nullptr};
+        uint64_t length{0};
+    };
+    
     /// Constructor
     ResourceVirtualAddressTable(const Allocators &allocators) : entries(allocators) {
 
@@ -87,12 +92,33 @@ public:
         return it->second.state;
     }
 
-private:
-    struct AddressEntry {
-        ResourceState *state{nullptr};
-        uint64_t length{0};
-    };
+    /// Lock this map
+    void Lock() {
+        lock.lock();
+    }
+    
+    /// Unlock this map
+    void Unlock() {
+        lock.unlock();
+    }
+    
+    /// Get all entries without a lock
+    const BTreeMap<uint64_t, AddressEntry>& GetEntriesNoLock() const {
+        return entries;
+    }
+    
+    /// Get the number of entries
+    uint64_t Count() {
+        std::lock_guard guard(lock);
+        return CountNoLock();
+    }
+    
+    /// Get the number of entries without a lock
+    uint64_t CountNoLock() const {
+        return entries.size();
+    }
 
+private:
     /// Shared lock
     std::mutex lock;
 

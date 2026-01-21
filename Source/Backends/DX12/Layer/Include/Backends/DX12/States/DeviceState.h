@@ -75,6 +75,7 @@ class ShaderSGUIDHost;
 class QueueSegmentAllocator;
 class DeviceAllocator;
 class ShaderProgramHost;
+class VirtualAddressMappingTable;
 class Scheduler;
 
 struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
@@ -147,6 +148,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     /// Sorted virtual address table
     ResourceVirtualAddressTable virtualAddressTable;
 
+    /// Device virtual address mapping table
+    ComRef<VirtualAddressMappingTable> virtualAddressMappingTable;
+    
     /// Physical identifier map
     PhysicalResourceIdentifierMap physicalResourceIdentifierMap;
 

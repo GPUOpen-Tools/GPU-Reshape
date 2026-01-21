@@ -400,6 +400,7 @@ add_library(
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
+    Layer/Source/Resource/VirtualAddressMappingTable.cpp
     Layer/Source/ShaderData/ShaderDataHost.cpp
     Layer/Source/Programs/StateObjectPrograms.cpp
     Layer/Source/Programs/Programs.cpp

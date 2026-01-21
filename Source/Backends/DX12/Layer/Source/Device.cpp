@@ -27,9 +27,7 @@
 #include <Backends/DX12/Device.h>
 #include <Backends/DX12/DeviceStateVote.h>
 #include <Backends/DX12/Resource.h>
-#include <Backends/DX12/Fence.h>
-#include <Backends/DX12/RootSignature.h>
-#include <Backends/DX12/Pipeline.h>
+#include <Backends/DX12/Resource/VirtualAddressMappingTable.h>
 #include <Backends/DX12/CommandList.h>
 #include <Backends/DX12/Detour.Gen.h>
 #include <Backends/DX12/Table.Gen.h>
@@ -383,6 +381,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Install the streamer
         state->exportStreamer = state->registry.AddNew<ShaderExportStreamer>(state);
         ENSURE(state->exportStreamer->Install(), "Failed to install shader export streamer");
+        
+        // Create vaddr mapping table
+        state->virtualAddressMappingTable = state->registry.AddNew<VirtualAddressMappingTable>(state, state->deviceAllocator);
 
         // Create all internal programs
         state->programs = CreatePrograms(allocators, state->object);

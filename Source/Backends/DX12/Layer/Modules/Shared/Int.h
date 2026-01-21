@@ -101,4 +101,8 @@ UInt64 DivUInt64_64_Low(UInt64 a, UInt64 b) {
 UInt64 MulUInt64_64_Low(UInt64 a, UInt64 b) {
     return UInt64(Low(a) * Low(b), 0);
 }
+
+bool LessEqUInt64_64(UInt64 a, UInt64 b) {
+    return High(a) < High(b) || (High(a) == High(b) && Low(a) <= Low(b));
+}
 #endif // __cplusplus

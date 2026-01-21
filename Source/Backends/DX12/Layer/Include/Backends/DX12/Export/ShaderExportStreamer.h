@@ -32,10 +32,12 @@
 #include <Backends/DX12/Export/ShaderExportDescriptorLayout.h>
 #include <Backends/DX12/Export/ShaderExportConstantAllocator.h>
 #include <Backends/DX12/Export/ShaderExportDeviceAllocator.h>
+#include <Backends/DX12/Resource/DescriptorDataSegment.h>
 
 // Common
 #include <Common/IComponent.h>
 #include <Common/ComRef.h>
+#include <Common/Containers/BucketPoolAllocator.h>
 
 // Common
 #include <Common/Containers/Vector.h>

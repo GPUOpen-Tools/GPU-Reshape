@@ -31,7 +31,6 @@
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/CommandQueueState.h>
-#include <Backends/DX12/States/FenceState.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/States/RootSignatureState.h>
 #include <Backends/DX12/States/DescriptorHeapState.h>
@@ -42,9 +41,7 @@
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 #include <Backends/DX12/IncrementalFence.h>
-#include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Controllers/VersioningController.h>
-#include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/States/RootSignaturePhysicalMapping.h>
 #include <Backends/DX12/Resource/DescriptorResourceMapping.h>
 #include <Backends/DX12/Resource/DescriptorData.h>
@@ -53,6 +50,8 @@
 #include <Backends/DX12/Export/ShaderExportStreamStateBarrierTracking.h>
 #include <Backends/DX12/Export/ShaderExportStreamStateRaytracingCache.h>
 #include <Backends/DX12/Controllers/ConfigController.h>
+#include <Backends/DX12/Resource/VirtualAddressMappingTable.h>
+#include <Backends/DX12/Resource/VirtualAddressMappingTablePersistentVersion.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -875,6 +874,7 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
 
     // Cleanup
     state->referencedHeaps.clear();
+    state->persistentState.vamtVersionDescriptorHandles.Clear();
 
     // Remove from owning state
     if (ShaderExportStreamSegment* segment = state->segment) {
@@ -1090,6 +1090,25 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ID3D12Grap
                 );
             }
         }
+    }
+    
+    // Any persistent VAMT descriptors?
+    if (state->persistentState.vamtVersionDescriptorHandles.Size()) {
+        // Lazy allocate version
+        if (!segment->vamtPersistentVersion) {
+            segment->vamtPersistentVersion = device->virtualAddressMappingTable->Allocate();
+
+            // Immediately commit it, mappings are done at sequence points
+            device->virtualAddressMappingTable->Commit(segment->vamtPersistentVersion);
+        }
+        
+        // Map all handles
+        for (D3D12_CPU_DESCRIPTOR_HANDLE handle : state->persistentState.vamtVersionDescriptorHandles) {
+            device->virtualAddressMappingTable->MapHandle(segment->vamtPersistentVersion, handle);
+        }
+        
+        // Empty out
+        state->persistentState.vamtVersionDescriptorHandles.Clear();
     }
 
     // Add context handle, may be unmapped on user contexts
@@ -1647,6 +1666,12 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     for (ShaderExportStreamState* state : segment->streamStates) {
         state->segment = nullptr;
     } 
+    
+    // Free VAMT version
+    if (segment->vamtPersistentVersion) {
+        device->virtualAddressMappingTable->Free(segment->vamtPersistentVersion);
+        segment->vamtPersistentVersion = nullptr;
+    }
 
     // Cleanup
     segment->referencedHeaps.clear();

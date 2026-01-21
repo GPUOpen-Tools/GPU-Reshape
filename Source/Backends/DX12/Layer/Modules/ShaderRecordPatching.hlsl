@@ -26,6 +26,7 @@
 
 #include "Shared/ShaderRecordPatching.h"
 #include "Shared/ShaderBackendMessage.h"
+#include "Shared/VirtualAddressMapping.h"
 
 ///
 /// SBT's are just an array of shader identifiers followed by the local root signature specific user data.
@@ -74,17 +75,20 @@ StructuredBuffer<SBTIdentifierTableEntry> SBTIdentifierList : register(t2);
 /// The linear patch identifiers
 StructuredBuffer<SBTIdentifierPatch> SBTPatchedIdentifiers : register(t3);
 
+/// Binary VADDR lookup table
+StructuredBuffer<uint> VirtualAddressMappings : register(t4);
+
 /// The user / source shader binding table
-StructuredBuffer<uint> SBTSourceDWords : register(t4);
+StructuredBuffer<uint> SBTSourceDWords : register(t5);
 
 /// The patched shader binding table
-RWStructuredBuffer<uint> RWSBTPatchedDWords : register(u5);
+RWStructuredBuffer<uint> RWSBTPatchedDWords : register(u6);
 
 /// The PRM descriptor data buffer
-RWStructuredBuffer<uint> RWDescriptorData : register(u6);
+RWStructuredBuffer<uint> RWDescriptorData : register(u7);
 
 /// Backend messages for diagnostics
-RWStructuredBuffer<uint> RWBackendMessageBuffer : register(u7);
+RWStructuredBuffer<uint> RWBackendMessageBuffer : register(u8);
 
 /// Check if a dword is set in the addressing masks
 bool IsSet(in uint Masks[2], uint dword) {
@@ -142,6 +146,60 @@ SBTIdentifierTableEntry GetShaderIdentifierIndex(in SBTIdentifier Identifier) {
 uint GetAlignedVAddrDWord(uint DWord) {
     // VAddr's need to be aligned to 64 bits, which is two dwords
     return (DWord + 1) & ~1;
+}
+
+uint FindVirtualAddressMappingOrDefault(UInt64 VAddr) {
+    uint ContainerCount = VirtualAddressMappings[VirtualAddressTableHeaderLengthDWord];
+    if (!ContainerCount) {
+        return 0;
+    }
+    
+    // Current iterators
+    uint Count = ContainerCount;
+    uint First = 0u;
+    
+    // Binary search
+    while (Count > 0) {
+        uint Half     = Count >> 1;
+        uint MidIndex = First + Half;
+        
+        // LO | HI
+        UInt64 MappingVAddr;
+        MappingVAddr.x = VirtualAddressMappings[VirtualAddressTableHeaderSizeDWord + MidIndex * VirtualAddressMappingDWordCount + 0];
+        MappingVAddr.y = VirtualAddressMappings[VirtualAddressTableHeaderSizeDWord + MidIndex * VirtualAddressMappingDWordCount + 1];
+        
+        // Right side?
+        if (LessEqUInt64_64(MappingVAddr, VAddr)) {
+            First += Half + 1;
+            Count -= Half + 1;
+        } else {
+            // Left side
+            Count = Half;
+        }
+    }
+    
+    First--;
+    
+    // Starting dword offset
+    uint DWordStart = VirtualAddressTableHeaderSizeDWord + First * VirtualAddressMappingDWordCount;
+    
+    // Read mapped VAddr
+    UInt64 MappingVAddr;
+    MappingVAddr.x = VirtualAddressMappings[DWordStart + 0];
+    MappingVAddr.y = VirtualAddressMappings[DWordStart + 1];
+    
+    // Read mapping length
+    UInt64 MappingLength;
+    MappingLength.x = VirtualAddressMappings[DWordStart + 2];
+    MappingLength.y = VirtualAddressMappings[DWordStart + 3];
+    
+    // Validate length
+    if (LessEqUInt64_64(AddUInt64_64(MappingVAddr, MappingLength), VAddr)) {
+        return 0;
+    }
+    
+    // Skip to PRM
+    return DWordStart + VirtualAddressMappingHeaderDWordCount;
 }
 
 [numthreads(32, 1, 1)]
@@ -207,13 +265,17 @@ void main(uint ShaderRecordIndex : SV_DispatchThreadID) {
                     // Write the offset linearly
                     RWDescriptorData[Parameter.GetPRMTOffset()] = PRMOffset;
                 } else {
-                    DWordArray<1> Data = { __LINE__ };
-                    SendAssertionMessage(RWBackendMessageBuffer, Data);
-                    
-                    // TODO[rt]: Actually fetch the PRMT and write it inline based on the PRMOffset
-                    [unroll]
-                    for (uint i = 0; i < SBTInlineTokenMetadatDWordCount; i++) {
-                        RWDescriptorData[Parameter.GetPRMTOffset() + i] = 0;
+                    // Find the mapping
+                    uint VirtualMappingDWordOffset = FindVirtualAddressMappingOrDefault(VAddr);
+                    if (VirtualMappingDWordOffset != 0) {
+                        // Found a valid mapping, copy over PRM
+                        [unroll]
+                        for (uint i = 0; i < VirtualMappingDWordCount; i++) {
+                            RWDescriptorData[Parameter.GetPRMTOffset() + i] = VirtualAddressMappings[VirtualMappingDWordOffset + i];
+                        }
+                    } else {
+                        // Mark as undefined
+                        RWDescriptorData[Parameter.GetPRMTOffset()] = VirtualMappingPUIDInvalidUndefined;
                     }
                 }
                 
