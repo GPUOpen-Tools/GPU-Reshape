@@ -1670,25 +1670,27 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
         case DXILOpcodes::CreateHandleForLib: {
             uint32_t handleId = reader.GetMappedRelative(anchor);
 
-            // Expecting load
-            auto loadInstr = IL::InstructionRef<>(program.GetIdentifierMap().Get(handleId))->Cast<IL::LoadInstruction>();
-            ASSERT(loadInstr, "Expected source load for CreateHandleForLib");
-
-            // May be addressing into the array
-            IL::ID loadId = loadInstr->address;
-            if (auto instr = IL::InstructionRef<>(program.GetIdentifierMap().Get(loadId))) {
-                if (auto gepInstr = instr->Cast<IL::AddressChainInstruction>()) {
-                    loadId = gepInstr->composite;
-                }
-            }
+            auto handleInstr = IL::InstructionRef<>(program.GetIdentifierMap().Get(handleId));
+            ASSERT(handleInstr, "Expected source for CreateHandleForLib");
             
-            // Expecting load on variable
-            const Backend::IL::Variable *variable = program.GetVariableList().GetVariable(loadId);
-            ASSERT(variable, "Expected variable address for CreateHandleForLib source load");
+            // From load?
+            if (handleInstr->Is<IL::LoadInstruction>()) {
+                // May be addressing into the array
+                IL::ID loadId = handleInstr->Cast<IL::LoadInstruction>()->address;
+                if (auto instr = IL::InstructionRef<>(program.GetIdentifierMap().Get(loadId))) {
+                    if (auto gepInstr = instr->Cast<IL::AddressChainInstruction>()) {
+                        loadId = gepInstr->composite;
+                    }
+                }
+            
+                // Expecting load on variable
+                const Backend::IL::Variable *variable = program.GetVariableList().GetVariable(loadId);
+                ASSERT(variable, "Expected variable address for CreateHandleForLib source load");
 
-            // Set as pointee type
-            const DXILMetadataHandleEntry *mdHandle = table.metadata.GetHandleFromVariable(variable);
-            ilTypeMap.SetType(result, mdHandle->type);
+                // Set as pointee type
+                const DXILMetadataHandleEntry *mdHandle = table.metadata.GetHandleFromVariable(variable);
+                ilTypeMap.SetType(result, mdHandle->type);
+            }
 
             // TODO[rt]: Handle divergence in libs
             // IL::MetadataMap& metadata = program.GetMetadataMap();
