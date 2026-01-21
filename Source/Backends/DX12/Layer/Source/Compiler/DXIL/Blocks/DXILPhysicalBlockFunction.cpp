@@ -6703,9 +6703,8 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
         return out;
     }
 
-    // Failed
-    ASSERT(false, "Failed to associate register space to physical space");
-    return out;
+    // Failed to find any
+    return {};
 }
 
 bool DXILPhysicalBlockFunction::TryGetResourceUserMappingFromPhysicalSpace(LLVMBlock* block, RootSignaturePhysicalMapping* physicalMapping, RootParameterVisibility rootVisibility, RootSignatureUserClassType classType, const HandleMetadata& metadata, DynamicRootSignatureUserMapping& out) {
@@ -6769,7 +6768,6 @@ bool DXILPhysicalBlockFunction::TryGetResourceUserMappingFromPhysicalSpace(LLVMB
 
 void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
     DynamicRootSignatureUserMapping userMapping = GetResourceUserMapping(job, block, source, _instr->resource);
-    ASSERT(userMapping.source || userMapping.dynamicOffset != IL::InvalidID, "Fallback user mappings not supported yet");
 
     // Total number of metadata dwords
     static constexpr uint32_t kMetadataDWordCount = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
@@ -6777,6 +6775,31 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     // Use shared representation
     auto tokenMetadataStruct = program.GetTypeMap().GetResourceToken();
     table.type.typeMap.GetType(tokenMetadataStruct);
+
+    // All dwords
+    TrivialStackVector<uint32_t, kMetadataDWordCount> metadataMap;
+    
+    // May fail if the root signature doesn't match
+    if (!userMapping.source && userMapping.dynamicOffset == IL::InvalidID) {
+        // Assign packed token as unbound
+        metadataMap.Add(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = VirtualResourceMapping {
+                ResourceToken {
+                    .puid = IL::kResourceTokenPUIDInvalidTableNotBound,
+                }
+            }.token.packedToken}
+        )->id);
+
+        // Just zero out the rest
+        for (uint32_t i = 1; i < kMetadataDWordCount; i++) {
+            metadataMap.Add(program.GetConstants().UInt(0)->id);
+        }
+
+        // Allocate the struct
+        table.idRemapper.SetUserRedirect(_instr->result, AllocateSVOStructSequential(tokenMetadataStruct, metadataMap.Data(), kMetadataDWordCount));
+        return;
+    }
 
     // General data offset
     uint32_t controlDataDWord = UINT32_MAX;
@@ -6787,9 +6810,6 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         // No control structure
         controlDataDWord = userMapping.source->dwordOffset;
     }
-
-    // All dwords
-    TrivialStackVector<uint32_t, kMetadataDWordCount> metadataMap;
     
     // Static samplers are valid by default, however have no "real" data
     if (userMapping.source && userMapping.source->isStaticSampler) {
