@@ -34,8 +34,9 @@ Project_AddShaderSchema(Generated Schemas/Debug.xml Include/Schemas/Features)
 add_library(
     GRS.Features.Debug.Backend SHARED
     Source/Feature.cpp
-    Source/ChecksumShaderProgram.cpp
     Source/LockShaderProgram.cpp
+    Source/LooseAcquisitionProgram.cpp
+    Source/ResetHeaderProgram.cpp
     Source/Plugin.cpp
 
     # Generated
