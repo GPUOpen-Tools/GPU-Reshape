@@ -36,6 +36,9 @@
 #   define DX12_DIAGNOSTIC 0
 #endif
 
+/// Enables the tracked allocator for memory debugging
+#define USE_TRACKED_ALLOCATOR 0
+
 /// Enable all shader compilation debug options
 #define SHADER_COMPILER_ALL_DEBUG 0
 

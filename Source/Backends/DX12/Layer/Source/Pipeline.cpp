@@ -59,7 +59,7 @@ ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTE
     std::lock_guard guard(device->states_Shaders.GetLock());
 
     // Debugging helper
-#ifndef NDEBUG
+#if USE_TRACKED_ALLOCATOR
     if (false) {
         extern TrackedAllocator trackedAllocator;
 
@@ -70,7 +70,7 @@ ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTE
         // Dump to console
         OutputDebugStringA(stream.str().c_str());
     }
-#endif // NDEBUG
+#endif // USE_TRACKED_ALLOCATOR
 
     // Attempt existing state
     ShaderState* shaderState = device->shaderSet.Get(key);

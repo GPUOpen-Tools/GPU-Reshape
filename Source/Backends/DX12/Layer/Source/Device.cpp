@@ -74,9 +74,9 @@
 #include <Message/IMessageStorage.h>
 
 // Common
-#ifndef NDEBUG
+#if USE_TRACKED_ALLOCATOR
 #include <Common/Allocator/TrackedAllocator.h>
-#endif // NDEBUG
+#endif // USE_TRACKED_ALLOCATOR
 #include <Common/IComponentTemplate.h>
 #include <Common/GlobalUID.h>
 #include <Common/IntervalActionThread.h>
@@ -94,9 +94,9 @@
 #include <fstream>
 
 // Debugging allocator
-#ifndef NDEBUG
+#ifndef USE_TRACKED_ALLOCATOR
 TrackedAllocator trackedAllocator;
-#endif // NDEBUG
+#endif // USE_TRACKED_ALLOCATOR
 
 /// Known GUIDs
 static const GUID D3D12ExperimentalShadingModelGUID = GlobalUID::FromString("{76f5573e-f13a-40f5-b297-81ce9e18933f}").AsPlatformGUID();
@@ -214,11 +214,11 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 #endif // NDEBUG
     
     // Set allocators
-#if !defined(NDEBUG)
+#if USE_TRACKED_ALLOCATOR
     Allocators allocators = trackedAllocator.GetAllocators();
-#else // !defined(NDEBUG)
+#else // USE_TRACKED_ALLOCATOR
     Allocators allocators = {};
-#endif // !defined(NDEBUG)
+#endif // USE_TRACKED_ALLOCATOR
 
     // Create state
     auto *state = new (allocators, kAllocStateDevice) DeviceState(allocators.Tag(kAllocStateDevice));
@@ -618,11 +618,11 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
 DX12_C_LINKAGE HRESULT WINAPI HookD3D12GetInterface(REFCLSID rclsid, REFIID riid, void** ppvDebug) {
     // Set allocators
-#if !defined(NDEBUG)
+#if USE_TRACKED_ALLOCATOR
     Allocators allocators = trackedAllocator.GetAllocators();
-#else // !defined(NDEBUG)
+#else // USE_TRACKED_ALLOCATOR
     Allocators allocators = {};
-#endif // !defined(NDEBUG)
+#endif // USE_TRACKED_ALLOCATOR
     
     // Pass down callchain
     void* handle{nullptr};
@@ -921,7 +921,7 @@ void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
     }
 
     // Debugging helper
-#ifndef NDEBUG
+#if USE_TRACKED_ALLOCATOR
     if (false) {
         // Format
         std::stringstream stream;
@@ -930,5 +930,5 @@ void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
         // Dump to console
         OutputDebugStringA(stream.str().c_str());
     }
-#endif // NDEBUG
+#endif // USE_TRACKED_ALLOCATOR
 }
