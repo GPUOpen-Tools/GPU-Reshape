@@ -134,10 +134,11 @@ bool ShaderCompilerDebug::Validate(const uint32_t* spirvCode, uint64_t spirvSize
     }
 
 #ifdef _MSC_VER
+    OutputDebugString("Validation failed: ");
     OutputDebugString(disassembled.c_str());
 #endif
 
-    fprintf(stderr, "%s\n", disassembled.c_str());
+    fprintf(stderr, "Validation failed: %s\n", disassembled.c_str());
     return false;
 }
 
