@@ -54,8 +54,14 @@ void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *ins
         return;
     }
 
+    // May not have debug module
+    IDXDebugModule *module = shaderState->module->GetDebug();
+    if (!module) {
+        return;
+    }
+
     // Get the dwarf info for the code offset
-    DXDwarfInfo info = shaderState->module->GetDebug()->GetDwarfInfo(program.GetTypeMap(), fn, instr->source.codeOffset);
+    DXDwarfInfo info = module->GetDwarfInfo(program.GetTypeMap(), fn, instr->source.codeOffset);
 
     // No values? No reconstruction
     if (info.variables.empty()) {
@@ -106,8 +112,14 @@ IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, uint32_t handle, c
         return IL::InvalidID;
     }
 
+    // May not have debug module
+    IDXDebugModule *module = shaderState->module->GetDebug();
+    if (!module) {
+        return IL::InvalidID;
+    }
+
     // Get the dwarf info for the code offset
-    DXDwarfInfo info = shaderState->module->GetDebug()->GetDwarfInfo(program.GetTypeMap(), fn, instr->source.codeOffset);
+    DXDwarfInfo info = module->GetDwarfInfo(program.GetTypeMap(), fn, instr->source.codeOffset);
 
     // No values? No reconstruction
     if (info.variables.empty()) {
