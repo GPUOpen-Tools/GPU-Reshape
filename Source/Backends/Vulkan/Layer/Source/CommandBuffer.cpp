@@ -470,6 +470,19 @@ static void CommitGraphics(CommandBufferObject* commandBuffer) {
     }
 }
 
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginDebugUtilsLabelEXT(CommandBufferObject *commandBuffer, const VkDebugUtilsLabelEXT* pLabelInfo) {
+    // Just a plain string
+    commandBuffer->streamState->markers.stack.Add(ShaderExportStreamMarkerEntryState {
+        .hash32 = BufferCRC32Short(pLabelInfo->pLabelName, std::strlen(pLabelInfo->pLabelName))
+    });
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdEndDebugUtilsLabelEXT(CommandBufferObject *commandBuffer) {
+    if (commandBuffer->streamState->markers.stack.Size()) {
+        commandBuffer->streamState->markers.stack.PopBack();
+    }
+}
+
 bool UsesExecutionInfo(CommandBufferObject* object, PipelineType type) {
     const ShaderExportPipelineBindState& bindState = object->streamState->pipelineBindPoints[static_cast<uint32_t>(type)];
     

@@ -129,5 +129,7 @@ VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdSetEvent2(CommandBufferObject *commandB
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdWaitEvents2(CommandBufferObject *commandBuffer, uint32_t eventCount, const VkEvent *pEvents, const VkDependencyInfo *pDependencyInfos);
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdPipelineBarrier2(CommandBufferObject *commandBuffer, const VkDependencyInfo *pDependencyInfo);
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdDrawMeshTasksEXT(CommandBufferObject *commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
-VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride);
-VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectCountEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride);
+VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride);
+VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectCountEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride);
+VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdBeginDebugUtilsLabelEXT(CommandBufferObject *commandBuffer, const VkDebugUtilsLabelEXT* pLabelInfo);
+VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdEndDebugUtilsLabelEXT(CommandBufferObject *commandBuffer);

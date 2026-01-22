@@ -142,7 +142,10 @@ set(
     vkCmdDrawMeshTasksIndirectEXT
     vkCmdDrawMeshTasksIndirectCountEXT
     vkCmdTraceRaysKHR
+    vkCmdBeginDebugUtilsLabelEXT
+    vkCmdEndDebugUtilsLabelEXT
 )
+
 # Generated hooks
 set(
     VkManualProxies

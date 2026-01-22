@@ -38,6 +38,7 @@
 #include <Backends/Vulkan/Export/ShaderExportFreeDescriptorAllocator.h>
 
 // Backend
+#include <Backend/IL/Execution/ExecutionInfo.h>
 #include <Backend/CommandContextHandle.h>
 #include <Backend/CommandContext.h>
 
@@ -115,6 +116,16 @@ struct ShaderExportRenderPassState {
     bool insideRenderPass{false};
 };
 
+struct ShaderExportStreamMarkerEntryState {
+    /// CRC32 hash
+    uint32_t hash32{0};
+};
+
+struct ShaderExportStreamMarkerState {
+    /// All markers
+    TrivialStackVector<ShaderExportStreamMarkerEntryState, kMaxExecutionInfoMarkerCount> stack;
+};
+
 #ifndef NDEBUG
 struct ShaderExportStreamStateDebugStream {
     /// Identifying name
@@ -141,6 +152,9 @@ struct ShaderExportStreamState {
 
     /// Graphics render pass
     ShaderExportRenderPassState renderPass;
+
+    /// Currently set markers
+    ShaderExportStreamMarkerState markers;
 
     /// All segment descriptors, lifetime bound to deferred segment
     std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
