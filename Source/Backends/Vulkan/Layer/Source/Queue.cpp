@@ -219,6 +219,9 @@ static VkCommandBuffer RecordExecutePreCommandBuffer(DeviceDispatchTable* device
         
         // Clear all commands
         context.commandContext.buffer.Clear();
+        
+        // Create streamer allocation association
+        device->exportStreamer->MapSegment(context.streamState, segment);
     }
 
     // Done
@@ -256,6 +259,9 @@ static VkCommandBuffer RecordExecutePostCommandBuffer(DeviceDispatchTable* devic
         
         // Clear all commands
         context.commandContext.buffer.Clear();
+        
+        // Create streamer allocation association
+        device->exportStreamer->MapSegment(context.streamState, segment);
     }
 
     // Done

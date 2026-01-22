@@ -751,9 +751,10 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
         descriptorAllocator->Update(allocation.info, segment->allocation, segment->prmtPersistentVersion);
     }
 
-    // Add context handle
-    ASSERT(state->commandContextHandle != kInvalidCommandContextHandle, "Unmapped command context handle");
-    segment->commandContextHandles.push_back(state->commandContextHandle);
+    // Add context handle, may be unmapped on user contexts
+    if (state->commandContextHandle != kInvalidCommandContextHandle) {
+        segment->commandContextHandles.push_back(state->commandContextHandle);
+    }
 }
 
 void ShaderExportStreamer::ProcessSegmentsNoQueueLock(ShaderExportQueueState* queue, TrivialStackVector<CommandContextHandle, 32u>& completedHandles) {
