@@ -130,6 +130,8 @@ namespace GRS.Features.Debug.UIX.Workspace
                 // Do we have a processor?
                 if (breakpointViewModel.GetOrCreateProcessor(message, out IDisposable? processorCommit) is not { } processorViewModel)
                 {
+                    // Always commit if needed
+                    Dispatcher.UIThread.InvokeAsync(() => processorCommit?.Dispose());
                     continue;
                 }
                 

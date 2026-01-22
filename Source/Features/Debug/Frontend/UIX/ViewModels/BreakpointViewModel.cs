@@ -287,10 +287,20 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
 
             // Always try to find a new archetype that's a better fit
             // The underlying data format may change depending on what's happening
-            if (ServiceRegistry.Get<BreakpointDisplayRegistryService>()?.FindOptimalArchetypes(message) is not { Length: > 0 } archetypes || 
+            var registryService = ServiceRegistry.Get<BreakpointDisplayRegistryService>();
+            if (registryService?.FindOptimalArchetypes(message) is not { Length: > 0 } archetypes || 
                 archetypes.First() == _archetypeViewModel)
             {
-                disposable = new ActionDisposable(() => Decorate(flat));
+                disposable = new ActionDisposable(() =>
+                {
+                    // Special case, if the ordering failed entirely, fallback on loose streaming
+                    if (Archetypes.Length == 0)
+                    {
+                        CaptureMode = BreakpointCaptureMode.AllEvents;
+                    }
+                    
+                    Decorate(flat);
+                });
                 return _processorViewModel;
             }
 
