@@ -400,8 +400,14 @@ ExecutionInfo GetBaseExecutionInfo(CommandBufferObject* object, PipelineType typ
     // Pipeline is optional
     info.pipelineUID = bindState.pipeline ? static_cast<uint32_t>(bindState.pipeline->uid) : 0;
 
-    // Markers are not implemented yet
-    std::fill_n(info.markerHashes32, kMaxExecutionInfoMarkerCount, 0);
+    // Fill marker hashes
+    for (uint32_t i = 0; i < kMaxExecutionInfoMarkerCount; i++) {
+        if (i < object->streamState->markers.stack.Size()) {
+            info.markerHashes32[i] = object->streamState->markers.stack[i].hash32;
+        } else {
+            info.markerHashes32[i] = 0;
+        }
+    }
     
     return info;
 }
