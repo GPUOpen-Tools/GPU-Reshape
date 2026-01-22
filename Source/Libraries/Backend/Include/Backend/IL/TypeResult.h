@@ -244,8 +244,8 @@ namespace Backend::IL {
             }
             case KernelValue::PixelPosition: {
                 return program.GetTypeMap().FindTypeOrAdd(VectorType{
-                    .containedType = program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false }),
-                    .dimension = 2
+                    .containedType = program.GetTypeMap().FindTypeOrAdd(FPType { .bitWidth = 32 }),
+                    .dimension = 4
                 });
             }
             case KernelValue::VertexID: {

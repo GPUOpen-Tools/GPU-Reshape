@@ -156,5 +156,6 @@ void SpvPhysicalBlockAnnotation::Parse() {
 void SpvPhysicalBlockAnnotation::CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockAnnotation &out) {
     out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::Annotation);
     out.boundDescriptorSets = boundDescriptorSets;
+    out.builtinMap = builtinMap;
     out.entries = entries;
 }

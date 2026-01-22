@@ -2090,7 +2090,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                     case Backend::IL::KernelValue::PixelPosition: {
                         const Backend::IL::Type *type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{
                             .containedType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 32}),
-                            .dimension = 2
+                            .dimension = 4
                         });
 
                         IL::ID varId = table.typeConstantVariable.FindOrCreateInput(SpvBuiltInFragCoord, type);
@@ -2104,7 +2104,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                     case Backend::IL::KernelValue::VertexID: {
                         const Backend::IL::Type *type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = false});
 
-                        IL::ID varId = table.typeConstantVariable.FindOrCreateInput(SpvBuiltInVertexId, type);
+                        IL::ID varId = table.typeConstantVariable.FindOrCreateInput(SpvBuiltInVertexIndex, type);
 
                         SpvInstruction &spv = stream.Allocate(SpvOpLoad, 4);
                         spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
