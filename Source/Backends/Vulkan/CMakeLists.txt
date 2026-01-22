@@ -309,6 +309,7 @@ add_library(
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp
     Layer/Source/IL/DeviceCommandEmitter.cpp
+    Layer/Source/IL/DebugEmitter.cpp
     Layer/Source/Debug.cpp
 
     # VMA implementation

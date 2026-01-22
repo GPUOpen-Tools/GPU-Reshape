@@ -32,6 +32,7 @@
 #include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/IL/DeviceCommandEmitter.h>
+#include <Backends/Vulkan/IL/DebugEmitter.h>
 
 // Backend
 #include <Backend/ShaderProgram/IShaderProgram.h>
@@ -60,6 +61,7 @@ bool ShaderProgramHost::Install() {
 
     // Install general command format
     registry->AddNew<DeviceCommandFormat>();
+    registry->AddNew<DebugEmitter>(table);
 
     // OK
     return true;
