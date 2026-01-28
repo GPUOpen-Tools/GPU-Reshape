@@ -29,7 +29,7 @@
 // Common
 #include <Common/FileSystem.h>
 
-SpvSourceMap::SpvSourceMap(const Allocators &allocators) : allocators(allocators) {
+SpvSourceMap::SpvSourceMap(const Allocators &allocators, IL::Program& program) : allocators(allocators), program(program) {
     
 }
 
@@ -56,6 +56,13 @@ uint32_t SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, u
 void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
     PhysicalSource *source = physicalSources.at(sourceMappings.at(id));
     source->pendingSourceChunks.push_back(code);
+}
+
+void SpvSourceMap::CopyTo(SpvSourceMap &out) {
+    out.physicalSources = physicalSources;
+    out.sourceAssociations = sourceAssociations;
+    out.instructionAssociations = instructionAssociations;
+    out.sourceMappings = sourceMappings;
 }
 
 void SpvSourceMap::Finalize() {
@@ -182,6 +189,41 @@ void SpvSourceMap::FinalizeFragments(PhysicalSource* source) {
     }
 }
 
+void SpvSourceMap::FinalizeReverseAssociations() {
+    for (IL::Function* fn : program.GetFunctionList()) {
+        for (IL::BasicBlock* bb : fn->GetBasicBlocks()) {
+            uint32_t instructionIndex = 0;
+            
+            for (const IL::Instruction* instr : *bb) {
+                // May not have association
+                auto it = sourceAssociations.find(instr->source.codeOffset);
+                if (it == sourceAssociations.end()) {
+                    continue;
+                }
+                
+                // Unmapped or invalid?
+                if (it->second.fileUID == UINT16_MAX || it->second.fileUID >= physicalSources.size()) {
+                    continue;
+                }
+
+                // Get the set
+                InstructionAssociationSet &instructionSet = instructionAssociations[SpvSourceAssociation {
+                    .fileUID = it->second.fileUID,
+                    .line = it->second.line
+                }.GetKey()];
+
+                // Add to set
+                instructionSet.set.push_back(SpvInstructionAssociation {
+                    .functionId = fn->GetID(),
+                    .basicBlockId = bb->GetID(),
+                    .instructionIndex = instructionIndex++,
+                    .codeOffset = instr->source.codeOffset
+                });
+            }
+        } 
+    }
+}
+
 uint32_t SpvSourceMap::Find(const std::string_view &view) {
     // Sanitize the input path
     std::string sanitized = SanitizeCompilerPath(view);
@@ -282,6 +324,22 @@ std::string_view SpvSourceMap::GetSourceFilename(uint32_t fileUID) const {
 
 void SpvSourceMap::AddSourceAssociation(uint32_t sourceOffset, const SpvSourceAssociation &association) {
     sourceAssociations[sourceOffset] = association;
+}
+    
+std::span<const SpvInstructionAssociation> SpvSourceMap::GetInstructionAssociations(uint16_t fileUID, uint32_t line) const {
+    // Find all associations
+    auto it = instructionAssociations.find(SpvSourceAssociation{
+        .fileUID = fileUID,
+        .line = line
+    }.GetKey());
+
+    // May not exist
+    if (it == instructionAssociations.end()) {
+        return {};
+    }
+
+    // Get view
+    return std::span(it->second.set.data(), it->second.set.size());
 }
 
 SpvSourceAssociation SpvSourceMap::GetSourceAssociation(uint32_t sourceOffset) const {

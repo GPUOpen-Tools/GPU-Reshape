@@ -30,6 +30,9 @@
 #include "Spv.h"
 #include "SpvSourceAssociation.h"
 
+// Backend
+#include <Backend/IL/Program.h>
+
 // Common
 #include <Common/Allocators.h>
 #include <Common/Assert.h>
@@ -38,10 +41,11 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <span>
 
 struct SpvSourceMap {
     /// Constructor
-    SpvSourceMap(const Allocators& allocators);
+    SpvSourceMap(const Allocators& allocators, IL::Program& program);
     
     /// Add a new physical source section, may represent a single file
     /// \param id the spv identifier used
@@ -55,9 +59,15 @@ struct SpvSourceMap {
     /// \param id the spv identifier, must have an associated physical source
     /// \param source the source code to be added
     void AddSource(SpvId id, const std::string_view& source);
+    
+    /// Copy this source map
+    void CopyTo(SpvSourceMap& out);
 
     /// Finalize the source map
     void Finalize();
+
+    /// Finalize all reverse associations
+    void FinalizeReverseAssociations();
 
     /// Get a specific line from this source map
     /// \param fileIndex the file index
@@ -69,6 +79,12 @@ struct SpvSourceMap {
     /// \param id spirv identifier
     /// \param mapping the mapping
     void AddSourceAssociation(uint32_t sourceOffset, const SpvSourceAssociation& association);
+
+    /// Get all instruction associations
+    /// \param fileUID given file index
+    /// \param line line number
+    /// \return association span
+    std::span<const SpvInstructionAssociation> GetInstructionAssociations(uint16_t fileUID, uint32_t line) const;
 
     /// Get the source association for an id
     /// \param id spv identifier
@@ -172,12 +188,21 @@ private:
 
 private:
     Allocators allocators;
+    IL::Program& program;
+
+    struct InstructionAssociationSet {
+        /// All instructions that are associated to this location
+        std::vector<SpvInstructionAssociation> set;
+    };
     
     /// All sections
     std::vector<PhysicalSource*> physicalSources;
 
     /// All mappings
     std::unordered_map<uint32_t, SpvSourceAssociation> sourceAssociations;
+
+    /// Reverse instruction associations
+    std::unordered_map<uint64_t, InstructionAssociationSet> instructionAssociations;
 
     /// All section mappings, to have monotonically incrementing sections
     std::vector<uint32_t> sourceMappings;

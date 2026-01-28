@@ -139,6 +139,14 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetShaderStatusMessage>());
                     break;
                 }
+                case GetShaderInstructionMappingMessage::kID: {
+                    OnMessage(*it.Get<GetShaderInstructionMappingMessage>());
+                    break;
+                }
+                case GetShaderSourceInstructionMappingMessage::kID: {
+                    OnMessage(*it.Get<GetShaderSourceInstructionMappingMessage>());
+                    break;
+                }
             }
         }
     }
@@ -385,6 +393,109 @@ void MetadataController::OnMessage(const struct GetShaderStatusMessage &message)
     // Submit response
     auto&& response = MessageStreamView(stream).Add<ShaderStatusCollectionMessage>(ShaderStatusCollectionMessage::AllocationInfo { .statusByteSize = statusStream.GetByteSize() });
     response->status.Set(statusStream);
+}
+
+void MetadataController::OnMessage(const struct GetShaderInstructionMappingMessage& message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderGUID);
+
+    // Module initialization
+    if (shaderCompiler && shader && !shader->spirvModule) {
+        shaderCompiler->InitializeModule(shader);
+    }
+
+    // Failed?
+    if (!shader || !shader->spirvModule) {
+        auto&& response = view.Add<ShaderInstructionMappingSetMessage>(ShaderInstructionMappingSetMessage::AllocationInfo { .mappingsByteSize = 0 });
+        response->shaderGUID = message.shaderGUID;
+        response->fileUID = message.fileUID;
+        response->line = message.line;
+        response->found = false;
+        return;
+    }
+
+    // Get source map
+    const SpvSourceMap *sourceMap = shader->spirvModule->GetSourceMap();
+
+    // No sources available?
+    if (!sourceMap) {
+        auto&& response = view.Add<ShaderInstructionMappingSetMessage>(ShaderInstructionMappingSetMessage::AllocationInfo { .mappingsByteSize = 0 });
+        response->shaderGUID = message.shaderGUID;
+        response->fileUID = message.fileUID;
+        response->line = message.line;
+        response->found = false;
+        return;
+    }
+
+    // Create mappings set
+    MessageStream streamMappings;
+    for (SpvInstructionAssociation association : sourceMap->GetInstructionAssociations(static_cast<uint16_t>(message.fileUID), message.line)) {
+        // Append to set
+        auto* status = MessageStreamView<ShaderInstructionMappingMessage>(streamMappings).Add();
+        status->basicBlockId = association.basicBlockId;
+        status->instructionIndex = association.instructionIndex;
+        status->codeOffset = association.codeOffset;
+    }
+
+    // Report all mappings
+    auto&& response = view.Add<ShaderInstructionMappingSetMessage>(ShaderInstructionMappingSetMessage::AllocationInfo { .mappingsByteSize = streamMappings.GetByteSize() });
+    response->shaderGUID = message.shaderGUID;
+    response->fileUID = message.fileUID;
+    response->line = message.line;
+    response->found = true;
+    response->mappings.Set(streamMappings);
+}
+
+void MetadataController::OnMessage(const struct GetShaderSourceInstructionMappingMessage &message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderGUID);
+
+    // Module initialization
+    if (shaderCompiler && shader && !shader->spirvModule) {
+        shaderCompiler->InitializeModule(shader);
+    }
+
+    // Failed?
+    if (!shader || !shader->spirvModule) {
+        auto&& response = view.Add<ShaderSourceInstructionMappingMessage>();
+        response->shaderGUID = message.shaderGUID;
+        response->basicBlockId = message.basicBlockId;
+        response->instructionIndex = message.instructionIndex;
+        response->codeOffset = message.codeOffset;
+        response->found = false;
+        return;
+    }
+
+    // Get source map
+    const SpvSourceMap *sourceMap = shader->spirvModule->GetSourceMap();
+
+    // Standard response
+    auto&& response = view.Add<ShaderSourceInstructionMappingMessage>();
+    response->shaderGUID = message.shaderGUID;
+    response->basicBlockId = message.basicBlockId;
+    response->instructionIndex = message.instructionIndex;
+    response->codeOffset = message.codeOffset;
+    response->found = false;
+    
+    // No sources available?
+    if (!sourceMap) {
+        return;
+    }
+
+    // Get association
+    SpvSourceAssociation sourceAssociation = sourceMap->GetSourceAssociation(message.codeOffset);
+    if (!sourceAssociation) {
+        return;
+    }
+
+    // Compose message
+    response->found = true;
+    response->fileUID = sourceAssociation.fileUID;
+    response->line = sourceAssociation.line;
 }
 
 void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {

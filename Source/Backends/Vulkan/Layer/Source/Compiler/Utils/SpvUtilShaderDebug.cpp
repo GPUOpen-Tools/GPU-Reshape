@@ -40,7 +40,7 @@ SpvUtilShaderDebug::SpvUtilShaderDebug(const Allocators &allocators, IL::Program
     allocators(allocators),
     program(program),
     table(table),
-    sourceMap(allocators) {
+    sourceMap(allocators, program) {
 
 }
 
@@ -56,6 +56,11 @@ void SpvUtilShaderDebug::Parse() {
 void SpvUtilShaderDebug::FinalizeSource() {
     // Finalize all sources
     sourceMap.Finalize();
+}
+
+void SpvUtilShaderDebug::FinalizeReverseSources() {
+    // Finalize all associations
+    sourceMap.FinalizeReverseAssociations();
 }
 
 void SpvUtilShaderDebug::ParseInstruction(SpvParseContext &ctx) {
@@ -274,7 +279,7 @@ void SpvUtilShaderDebug::AddPendingAssociation(uint32_t codeOffset) {
 
 void SpvUtilShaderDebug::CopyTo(SpvPhysicalBlockTable &remote, SpvUtilShaderDebug &out) {
     out.debugMap = debugMap;
-    out.sourceMap = sourceMap;
+    sourceMap.CopyTo(out.sourceMap);
 }
 
 SpvUtilShaderDebug::Debug100Metadata & SpvUtilShaderDebug::GetDebug100Metadata(SpvId id) {

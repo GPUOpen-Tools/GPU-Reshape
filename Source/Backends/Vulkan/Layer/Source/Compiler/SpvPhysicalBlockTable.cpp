@@ -68,8 +68,11 @@ bool SpvPhysicalBlockTable::Parse(const uint32_t *code, uint32_t count) {
     // Function parsing depends on this
     shaderDebug.FinalizeSource();
 
-    // Finally, parse the functions
+    // Parse the functions
     function.Parse();
+    
+    // Create reverse associations
+    shaderDebug.FinalizeReverseSources();
 
     // OK
     return true;

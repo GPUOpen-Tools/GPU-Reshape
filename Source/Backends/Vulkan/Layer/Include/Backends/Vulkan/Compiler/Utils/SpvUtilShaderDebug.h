@@ -54,7 +54,11 @@ struct SpvUtilShaderDebug {
     /// Finalize all sources
     /// Should be done before function parsing
     void FinalizeSource();
-
+    
+    /// Finalize all source associations
+    /// Should be done after function parsing
+    void FinalizeReverseSources();
+    
 public:
     /// Parse a module debug100 instruction
     /// \param ctx record context
