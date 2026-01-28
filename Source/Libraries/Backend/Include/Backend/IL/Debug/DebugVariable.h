@@ -29,10 +29,13 @@
 // Backend
 #include <Backend/IL/Type.h>
 
+// Std
+#include <string_view>
+
 namespace IL {
     struct DebugVariable {
         /// Name of this variable
-        const char* name = nullptr;
+        std::string_view name;
         
         /// Type of this variable
         const Backend::IL::Type* type = nullptr;

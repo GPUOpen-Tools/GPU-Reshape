@@ -26,18 +26,56 @@
 
 #include <Backends/Vulkan/IL/DebugEmitter.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
-
-// Backend
-#include <Backend/IL/TypeSize.h>
+#include <Backends/Vulkan/States/ShaderModuleState.h>
+#include <Backends/Vulkan/Compiler/SpvDebugMap.h>
+#include <Backends/Vulkan/Compiler/SpvModule.h>
 
 DebugEmitter::DebugEmitter(DeviceDispatchTable* table) : table(table) {
     
 }
 
 void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *instr, TrivialStackVector<IL::DebugVariable, 4u>& variables) {
+    // Get shader state
+    ShaderModuleState* shaderState = table->states_shaderModule.GetFromUID(program.GetShaderGUID());
+    if (!shaderState || !shaderState->spirvModule) {
+        return;
+    }
+
+    // Must have debug map
+    const SpvDebugMap *debugMap = shaderState->spirvModule->GetDebugMap();
+    if (!debugMap) {
+        return;
+    }
     
+    // If store, find the delegating variable
+    if (auto* storeInstr = instr->Cast<IL::StoreInstruction>()) {
+        if (auto it = debugMap->bindingInfos.find(storeInstr->address); it != debugMap->bindingInfos.end()) {
+            const SpvDebugVariableInfo &variableInfo = debugMap->variableInfos.at(it->second.debugVariable);
+            
+            // Create variable
+            IL::DebugVariable &dest = variables.Add();
+            dest.type = program.GetTypeMap().GetType(variableInfo.typeId);
+            dest.name = debugMap->Get(variableInfo.nameId, SpvOpString);
+            dest.handle = storeInstr->value;
+        }
+    }
+    
+    // Has direct value info?
+    auto it = debugMap->instructionValueInfos.find(instr->source.codeOffset);
+    if (it != debugMap->instructionValueInfos.end()) {
+        for (const InstructionValueInfo &valueInfo: it->second.values) {
+            const SpvDebugVariableInfo &variableInfo = debugMap->variableInfos.at(valueInfo.debugVariableId);
+
+            // Create variable
+            IL::DebugVariable &dest = variables.Add();
+            dest.type = program.GetTypeMap().GetType(variableInfo.typeId);
+            dest.name = debugMap->Get(variableInfo.nameId, SpvOpString);
+            dest.handle = valueInfo.value;
+        }
+    }
 }
 
 IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, uint32_t handle, const IL::Instruction *instr) {
-    return IL::InvalidID;
+    // Nothing to reconstruct
+    return handle;
 }

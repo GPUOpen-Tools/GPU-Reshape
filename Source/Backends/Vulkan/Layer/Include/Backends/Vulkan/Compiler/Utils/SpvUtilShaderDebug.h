@@ -65,9 +65,17 @@ public:
     /// \param sourceAssociation current source association, may be changed
     void ParseDebug100FunctionInstruction(SpvParseContext& ctx, SpvSourceAssociation& sourceAssociation);
 
+    /// Add a pending association to a given code offset
+    void AddPendingAssociation(uint32_t codeOffset);
+
     /// Check if an instruction set is debug100
     bool IsDebug100(IL::ID set) const {
         return set == extDebugInfo100;
+    }
+
+    /// Any pending associations to apply?
+    bool HasPendingAssociations() const {
+        return pendingInfo.anyState;
     }
     
 public:
@@ -89,6 +97,10 @@ public:
     SpvSourceMap sourceMap;
 
 private:
+    /// Parse a module debug100 instruction
+    template<typename T>
+    void ParseDebug100InstructionCommon(T& ctx, uint32_t opCode);
+    
     /// Shared allocators
     Allocators allocators;
 
@@ -122,6 +134,15 @@ private:
 
     /// All debug100 metadata
     std::vector<Debug100Metadata> debug100Metadata;
+    
+private:
+    struct PendingInfo {
+        /// Any state to apply?
+        bool anyState = false;
+        
+        /// Pending value info
+        SpvDebugInstructionValueSetInfo valueInfo;
+    } pendingInfo;
 
 private:
     // Current source being processed

@@ -218,6 +218,9 @@ private:
         
         /// The payload data dword offset
         IL::ID payloadDataOffset{IL::InvalidID};
+        
+        /// Chosen variable
+        uint32_t variableHandle = UINT32_MAX;
     };
 
     struct PendingDestruction {
@@ -269,14 +272,14 @@ private:
     /// @param context parent context
     /// @param instr debug instruction
     /// @return invalid if failed
-    const Backend::IL::Type* GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction* instr, Breakpoint* breakpoint, const DebugBreakpointMessage& breakpointMessage);
+    const Backend::IL::Type* GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction* instr, const DebugBreakpointMessage& breakpointMessage, BreakpointData& breakpointData, Breakpoint* breakpoint);
     
     /// Get the debug value for an instruction
     /// @param context parent context
     /// @param instr debug instruction
     /// @param insertIt the insertion iterator for reconstruction
     /// @return invalid if failed
-    IL::ID GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, const DebugBreakpointMessage& breakpointMessage, IL::BasicBlock::Iterator& insertIt);
+    IL::ID GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, BreakpointData& breakpointData, IL::BasicBlock::Iterator& insertIt);
     
     /// Try to get the texel format of a breakpoint
     /// @return true if a format is appropriate, over structured data

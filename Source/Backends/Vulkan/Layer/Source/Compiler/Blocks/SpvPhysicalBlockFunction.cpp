@@ -188,6 +188,11 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
         if (sourceAssociation) {
             table.shaderDebug.sourceMap.AddSourceAssociation(source.codeOffset, sourceAssociation);
         }
+        
+        // Commit pending debug associations
+        if (table.shaderDebug.HasPendingAssociations()) {
+            table.shaderDebug.AddPendingAssociation(source.codeOffset);
+        }
 
         // Handle instruction
         switch (ctx->GetOp()) {

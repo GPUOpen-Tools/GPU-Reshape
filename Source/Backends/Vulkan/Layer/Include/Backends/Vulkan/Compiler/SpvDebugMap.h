@@ -36,6 +36,41 @@
 #include <vector>
 #include <string_view>
 
+struct SpvDebugVariableInfo {
+    /// Name of this variable
+    SpvId nameId = IL::InvalidID;
+    
+    /// Type of this variable
+    SpvId typeId = IL::InvalidID;
+};
+    
+struct InstructionValueInfo {
+    /// Debug variable were storing to
+    SpvId debugVariableId = IL::InvalidID;
+    
+    /// Value being stored
+    SpvId value = IL::InvalidID;
+    
+    /// Originating expression
+    SpvId expression = IL::InvalidID;
+    
+    /// Optional structural indices
+    const SpvId* accessIndices = nullptr;
+    
+    /// Number of indices
+    uint32_t accessCount = 0;
+};
+    
+struct SpvDebugInstructionValueSetInfo {
+    /// All values associated with this instruction
+    std::vector<InstructionValueInfo> values;
+};
+    
+struct SpvDebugBindingInfo {
+    /// Debug variable bound to this instance
+    SpvId debugVariable = IL::InvalidID;
+};
+
 struct SpvDebugMap {
     /// Set the id bound
     /// \param id
@@ -78,6 +113,15 @@ struct SpvDebugMap {
     SpvOp GetOpCode(SpvId id) const {
         return entries.at(id).op;
     }
+
+    /// All debug variables
+    std::unordered_map<SpvId, SpvDebugVariableInfo> variableInfos;
+    
+    /// All instruction associations
+    std::unordered_map<uint32_t, SpvDebugInstructionValueSetInfo> instructionValueInfos;
+
+    /// All variable bindings
+    std::unordered_map<SpvId, SpvDebugBindingInfo> bindingInfos;
 
 private:
     struct Entry {

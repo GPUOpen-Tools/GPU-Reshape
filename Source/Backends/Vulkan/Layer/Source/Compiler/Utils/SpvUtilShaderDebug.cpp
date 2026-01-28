@@ -115,7 +115,8 @@ void SpvUtilShaderDebug::ParseDebug100Instruction(SpvRecordReader &ctx) {
     ENSURE(ctx++ == extDebugInfo100, "Unexpected set index");
 
     // Handle instruction
-    switch (ctx++) {
+    uint32_t opCode = ctx++;
+    switch (opCode) {
         default: {
             break;
         }
@@ -151,13 +152,17 @@ void SpvUtilShaderDebug::ParseDebug100Instruction(SpvRecordReader &ctx) {
             break;
         }
     }
+    
+    // Common case
+    ParseDebug100InstructionCommon(ctx, opCode);
 }
 
 void SpvUtilShaderDebug::ParseDebug100FunctionInstruction(SpvParseContext &ctx, SpvSourceAssociation& sourceAssociation) {
     ENSURE(ctx++ == extDebugInfo100, "Unexpected set index");
 
     // Handle instruction
-    switch (ctx++) {
+    uint32_t opCode = ctx++;
+    switch (opCode) {
         default: {
             break;
         }
@@ -177,12 +182,94 @@ void SpvUtilShaderDebug::ParseDebug100FunctionInstruction(SpvParseContext &ctx, 
             }
             break;
         }
-
         case NonSemanticShaderDebugInfo100DebugNoLine: {
             sourceAssociation = {};
             break;
         }
     }
+    
+    // Common case
+    ParseDebug100InstructionCommon(ctx, opCode);
+}
+
+template<typename T>
+void SpvUtilShaderDebug::ParseDebug100InstructionCommon(T &ctx, uint32_t opCode) {
+    // Handle instruction
+    switch (opCode) {
+        default: {
+            break;
+        }
+        case NonSemanticShaderDebugInfo100DebugLocalVariable: {
+            SpvId name = ctx++;
+            SpvId type = ctx++;
+            SpvId source = ctx++;
+            SpvId line = ctx++;
+            SpvId column = ctx++;
+            SpvId parent = ctx++;
+            SpvId flags = ctx++;
+
+            // Declare type
+            SpvDebugVariableInfo &variableInfo = debugMap.variableInfos[ctx.GetResult()];
+            variableInfo.nameId = name;
+            variableInfo.typeId = type;
+            break;
+        }
+        case NonSemanticShaderDebugInfo100DebugGlobalVariable: {
+            SpvId name = ctx++;
+            SpvId type = ctx++;
+            SpvId source = ctx++;
+            SpvId line = ctx++;
+            SpvId column = ctx++;
+            SpvId parent = ctx++;
+            SpvId linkedName = ctx++;
+            SpvId variable = ctx++;
+            SpvId flags = ctx++;
+
+            // Declare type
+            SpvDebugVariableInfo &variableInfo = debugMap.variableInfos[ctx.GetResult()];
+            variableInfo.nameId = name;
+            variableInfo.typeId = type;
+
+            // Bind to debug variable
+            SpvDebugBindingInfo &bindingInfo = debugMap.bindingInfos[variable];
+            bindingInfo.debugVariable = ctx.GetResult();
+            break;
+        }
+        case NonSemanticShaderDebugInfo100DebugDeclare: {
+            SpvId debugVariable = ctx++;
+            SpvId variable = ctx++;
+            SpvId expression = ctx++;
+            
+            // Bind to debug variable
+            SpvDebugBindingInfo &bindingInfo = debugMap.bindingInfos[variable];
+            bindingInfo.debugVariable = debugVariable;
+            break;
+        }
+        case NonSemanticShaderDebugInfo100DebugValue: {
+            pendingInfo.anyState = true;
+            
+            InstructionValueInfo info;
+            info.debugVariableId = ctx++;
+            info.value = ctx++;
+            info.expression = ctx++;
+            info.accessCount = ctx.PendingWords();
+            info.accessIndices = ctx.GetInstructionCode();
+            pendingInfo.valueInfo.values.push_back(info);
+            break;
+        }
+    }
+}
+
+void SpvUtilShaderDebug::AddPendingAssociation(uint32_t codeOffset) {
+    ASSERT(pendingInfo.anyState, "Unexpected state");
+   
+    // Add value infos
+    if (!pendingInfo.valueInfo.values.empty()) {
+        debugMap.instructionValueInfos[codeOffset] = pendingInfo.valueInfo;
+    }
+    
+    // Cleanup
+    pendingInfo.valueInfo.values.clear();
 }
 
 void SpvUtilShaderDebug::CopyTo(SpvPhysicalBlockTable &remote, SpvUtilShaderDebug &out) {

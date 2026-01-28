@@ -93,6 +93,17 @@ struct SpvRecordReader {
     bool HasPendingWords() const {
         return offset < GetOperandCount();
     }
+    
+    /// Does the current instruction have any pending words?
+    uint32_t PendingWords() const {
+        return offset < GetWordCount();
+    }
+    
+    /// Get the current instruction code
+    /// \return word pointer
+    const uint32_t* GetInstructionCode() const {
+        return record.operands + offset;
+    }
 
     /// Peek the next word within the instruction bounds
     /// \param peekOffset offset to apply, must be in bounds

@@ -121,3 +121,11 @@ const SpvSourceMap *SpvModule::GetSourceMap() const {
 
     return &physicalBlockTable->shaderDebug.sourceMap;
 }
+
+const SpvDebugMap * SpvModule::GetDebugMap() const {
+    if (!physicalBlockTable) {
+        return nullptr;
+    }
+
+    return &physicalBlockTable->shaderDebug.debugMap;
+}

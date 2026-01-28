@@ -111,6 +111,9 @@ public:
 
     /// Get the source map for this module
     const SpvSourceMap* GetSourceMap() const;
+    
+    /// Get the debug map for this module
+    const SpvDebugMap* GetDebugMap() const;
 
     /// Get the parent module
     const SpvModule* GetParent() const {
