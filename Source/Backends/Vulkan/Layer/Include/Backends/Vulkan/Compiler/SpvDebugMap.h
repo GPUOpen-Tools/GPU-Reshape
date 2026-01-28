@@ -28,6 +28,7 @@
 
 // Layer
 #include <Backends/Vulkan/Compiler/Spv.h>
+#include <Backends/Vulkan/Compiler/SpvSourceAssociation.h>
 
 // Common
 #include <Common/Assert.h>
