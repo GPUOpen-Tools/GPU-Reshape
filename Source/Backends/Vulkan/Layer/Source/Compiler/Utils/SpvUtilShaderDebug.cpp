@@ -262,6 +262,30 @@ void SpvUtilShaderDebug::ParseDebug100InstructionCommon(T &ctx, uint32_t opCode)
             pendingInfo.valueInfo.values.push_back(info);
             break;
         }
+        case NonSemanticShaderDebugInfo100DebugTypeBasic:
+        case NonSemanticShaderDebugInfo100DebugTypePointer:
+        case NonSemanticShaderDebugInfo100DebugTypeQualifier:
+        case NonSemanticShaderDebugInfo100DebugTypeArray:
+        case NonSemanticShaderDebugInfo100DebugTypeVector:
+        case NonSemanticShaderDebugInfo100DebugTypedef:
+        case NonSemanticShaderDebugInfo100DebugTypeFunction:
+        case NonSemanticShaderDebugInfo100DebugTypeEnum:
+        case NonSemanticShaderDebugInfo100DebugTypeComposite:
+        case NonSemanticShaderDebugInfo100DebugTypeMember:
+        case NonSemanticShaderDebugInfo100DebugTypeInheritance:
+        case NonSemanticShaderDebugInfo100DebugTypePtrToMember:
+        case NonSemanticShaderDebugInfo100DebugTypeTemplate:
+        case NonSemanticShaderDebugInfo100DebugTypeTemplateParameter:
+        case NonSemanticShaderDebugInfo100DebugTypeTemplateTemplateParameter:
+        case NonSemanticShaderDebugInfo100DebugTypeTemplateParameterPack:
+        case NonSemanticShaderDebugInfo100DebugTypeMatrix: {
+            debugMap.typeInfos[ctx.GetResult()] = SpvDebugTypeInfo {
+                .kind = static_cast<SpvOp>(opCode),
+                .operands = ctx.GetInstructionCode(),
+                .opCount = ctx.PendingWords()
+            };
+            break;
+        }
     }
 }
 

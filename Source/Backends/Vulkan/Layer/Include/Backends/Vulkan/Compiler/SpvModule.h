@@ -114,6 +114,10 @@ public:
     
     /// Get the debug map for this module
     const SpvDebugMap* GetDebugMap() const;
+    
+    SpvPhysicalBlockTable* GetTable() const {
+        return physicalBlockTable;
+    }
 
     /// Get the parent module
     const SpvModule* GetParent() const {

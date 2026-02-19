@@ -25,13 +25,162 @@
 // 
 
 #include <Backends/Vulkan/IL/DebugEmitter.h>
+#include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/Compiler/SpvDebugMap.h>
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 
+// Spirv
+#include <spirv/unified1/NonSemanticShaderDebugInfo100.h>
+
 DebugEmitter::DebugEmitter(DeviceDispatchTable* table) : table(table) {
     
+}
+
+static const Backend::IL::Type* ConstructType(IL::Program& program, const SpvDebugMap& map, SpvId id) {
+    const SpvDebugTypeInfo &type = map.typeInfos.at(id);
+    switch (type.kind) {
+        default: {
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::UnexposedType { });
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeBasic: {
+            switch (program.GetConstants().GetConstant<IL::IntConstant>(type.operands[2])->value) {
+                default: {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::UnexposedType { });
+                }
+                case NonSemanticShaderDebugInfo100Unspecified: {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::UnexposedType { });
+                }
+                case NonSemanticShaderDebugInfo100Address: {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType { 
+                        .pointee = program.GetTypeMap().FindTypeOrAdd(Backend::IL::UnexposedType { })
+                    });
+                }
+                case NonSemanticShaderDebugInfo100Boolean: {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType { });
+                }
+                case NonSemanticShaderDebugInfo100Float: {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType { 
+                        .bitWidth = static_cast<uint8_t>(program.GetConstants().GetConstant<IL::IntConstant>(type.operands[1])->value)
+                    });
+                }
+                case NonSemanticShaderDebugInfo100Signed: {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType { 
+                        .bitWidth = static_cast<uint8_t>(program.GetConstants().GetConstant<IL::IntConstant>(type.operands[1])->value),
+                        .signedness = true
+                    });
+                }
+                case NonSemanticShaderDebugInfo100SignedChar: {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType { 
+                        .bitWidth = 8,
+                        .signedness = true
+                    });
+                }
+                case NonSemanticShaderDebugInfo100Unsigned: {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType { 
+                        .bitWidth = static_cast<uint8_t>(program.GetConstants().GetConstant<IL::IntConstant>(type.operands[1])->value),
+                        .signedness = false
+                    });
+                }
+                case NonSemanticShaderDebugInfo100UnsignedChar : {
+                    return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType { 
+                        .bitWidth = 8,
+                        .signedness = false
+                    });
+                }
+            }
+            break;
+        }
+        case NonSemanticShaderDebugInfo100DebugTypePointer: {
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType { 
+                .pointee = ConstructType(program, map, type.operands[0])
+            });
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeQualifier: {
+            return ConstructType(program, map, type.operands[0]);
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeArray: {
+            uint32_t count = 1;
+            
+            if (const IL::IntConstant *constant = program.GetConstants().GetConstant<IL::IntConstant>(type.operands[1])) {
+                count = static_cast<uint32_t>(constant->value);
+            }
+            
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType { 
+                .elementType = ConstructType(program, map, type.operands[0]),
+                .count = static_cast<uint8_t>(count)
+            });
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeVector: {
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType { 
+                .containedType = ConstructType(program, map, type.operands[0]),
+                .dimension = static_cast<uint8_t>(program.GetConstants().GetConstant<IL::IntConstant>(type.operands[1])->value)
+            });
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeMatrix: {
+            // TODO: Majorness
+            
+            auto* vectorType = ConstructType(program, map, type.operands[0])->As<Backend::IL::VectorType>();
+            
+            uint32_t count = 1;
+            if (const IL::IntConstant *constant = program.GetConstants().GetConstant<IL::IntConstant>(type.operands[1])) {
+                count = static_cast<uint32_t>(constant->value);
+            }
+            
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::MatrixType { 
+                .containedType = vectorType->containedType,
+                .rows = vectorType->dimension,
+                .columns = static_cast<uint8_t>(count)
+            });
+            break;
+        }
+        case NonSemanticShaderDebugInfo100DebugTypedef: {
+            return ConstructType(program, map, type.operands[0]);
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeFunction: {
+            Backend::IL::FunctionType fn;
+            
+            fn.returnType = ConstructType(program, map, type.operands[1]);
+            
+            for (uint32_t i = 2; i < type.opCount; i++) {
+                fn.parameterTypes.push_back(ConstructType(program, map, type.operands[i]));
+            }
+            
+            return program.GetTypeMap().FindTypeOrAdd(fn);
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeEnum: {
+            return ConstructType(program, map, type.operands[1]);
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeComposite: {
+            Backend::IL::StructType str;
+            
+            for (uint32_t i = 9; i < type.opCount; i++) {
+                str.memberTypes.push_back(ConstructType(program, map, type.operands[i]));
+            }
+            
+            return program.GetTypeMap().FindTypeOrAdd(str);
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeMember: {
+            return ConstructType(program, map, type.operands[1]);
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeInheritance: {
+            return ConstructType(program, map, type.operands[0]);
+        }
+        case NonSemanticShaderDebugInfo100DebugTypePtrToMember: {
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType { 
+                .pointee = ConstructType(program, map, type.operands[0])
+            });
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeTemplate: {
+            return ConstructType(program, map, type.operands[0]);
+        }
+        case NonSemanticShaderDebugInfo100DebugTypeTemplateParameter:
+        case NonSemanticShaderDebugInfo100DebugTypeTemplateTemplateParameter:
+        case NonSemanticShaderDebugInfo100DebugTypeTemplateParameterPack: {
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::UnexposedType { });
+        }
+    }
 }
 
 void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *instr, TrivialStackVector<IL::DebugVariable, 4u>& variables) {
@@ -46,7 +195,7 @@ void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *ins
     if (!debugMap) {
         return;
     }
-    
+
     // If store, find the delegating variable
     if (auto* storeInstr = instr->Cast<IL::StoreInstruction>()) {
         if (auto it = debugMap->bindingInfos.find(storeInstr->address); it != debugMap->bindingInfos.end()) {
@@ -54,7 +203,7 @@ void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *ins
             
             // Create variable
             IL::DebugVariable &dest = variables.Add();
-            dest.type = program.GetTypeMap().GetType(variableInfo.typeId);
+            dest.type = ConstructType(program, *debugMap, variableInfo.typeId);
             dest.name = debugMap->Get(variableInfo.nameId, SpvOpString);
             dest.handle = storeInstr->value;
         }
@@ -68,7 +217,7 @@ void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *ins
 
             // Create variable
             IL::DebugVariable &dest = variables.Add();
-            dest.type = program.GetTypeMap().GetType(variableInfo.typeId);
+            dest.type = ConstructType(program, *debugMap, variableInfo.typeId);
             dest.name = debugMap->Get(variableInfo.nameId, SpvOpString);
             dest.handle = valueInfo.value;
         }

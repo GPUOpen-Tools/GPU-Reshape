@@ -72,6 +72,17 @@ struct SpvDebugBindingInfo {
     SpvId debugVariable = IL::InvalidID;
 };
 
+struct SpvDebugTypeInfo {
+    /// Kind of this type
+    SpvOp kind = {};
+    
+    /// Optional operands
+    const SpvId* operands = nullptr;
+    
+    /// Number of operands
+    uint32_t opCount = 0;
+};
+
 struct SpvDebugMap {
     /// Set the id bound
     /// \param id
@@ -123,6 +134,9 @@ struct SpvDebugMap {
 
     /// All variable bindings
     std::unordered_map<SpvId, SpvDebugBindingInfo> bindingInfos;
+    
+    /// All debug types
+    std::unordered_map<SpvId, SpvDebugTypeInfo> typeInfos;
 
 private:
     struct Entry {
