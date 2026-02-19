@@ -30,6 +30,11 @@ public static class TinyTypePacking
             {
                 throw new NotImplementedException($"Type {kind} is not implemented");
             }
+            case TypeKind.Unexposed:
+            {
+                opaqueType = new IL.UnexposedType();
+                break;
+            }
             case TypeKind.Bool:
             {
                 opaqueType = new IL.BoolType()
