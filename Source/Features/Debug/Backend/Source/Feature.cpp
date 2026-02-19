@@ -414,6 +414,7 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
             preBuilder.SetShaderProgram(resetHeaderProgramID);
             preBuilder.SetDescriptorData(resetHeaderProgram->GetDataID(), data);
             preBuilder.Dispatch(1, 1, 1);
+            preBuilder.UAVBarrier();
             breakpoint.pendingHeaderReset = false;
         }
     }
