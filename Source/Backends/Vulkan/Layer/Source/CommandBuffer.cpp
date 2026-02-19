@@ -386,6 +386,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
     commandBuffer->context.pipeline = state;
 }
 
+static uint32_t AllocateRollingUID(DeviceDispatchTable* state) {
+    // Allocate the identifier, we never want zero as that's reserved
+    for (;;) {
+        if (uint32_t rollingUID = state->rollingUID++; rollingUID != 0) {
+            return rollingUID;
+        }
+    }
+}
+
 ExecutionInfo GetBaseExecutionInfo(CommandBufferObject* object, PipelineType type) {
     const ShaderExportPipelineBindState& bindState = object->streamState->pipelineBindPoints[static_cast<uint32_t>(type)];
     
@@ -393,9 +402,8 @@ ExecutionInfo GetBaseExecutionInfo(CommandBufferObject* object, PipelineType typ
     ExecutionInfo info{};
 
     // Allocate the identifier, we never want zero as that's reserved
-    do {
-        info.rollingExecutionUID = object->table->rollingExecutionUID++;
-    } while (!info.rollingExecutionUID);
+    info.rollingExecutionUID = AllocateRollingUID(object->table);
+    info.rollingViewportUID  = object->streamState->renderPass.rollingUID;
     
     // Pipeline is optional
     info.pipelineUID = bindState.pipeline ? static_cast<uint32_t>(bindState.pipeline->uid) : 0;
@@ -852,6 +860,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(CommandBufferObject* comman
 
     // Mark as inside
     commandBuffer->streamState->renderPass.insideRenderPass = true;
+    commandBuffer->streamState->renderPass.rollingUID       = AllocateRollingUID(commandBuffer->table);
 
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdBeginRenderPass(commandBuffer->object, info, contents);

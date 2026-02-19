@@ -996,7 +996,7 @@ VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueSt
     return segment->prePatchCommandBuffer;
 }
 
-VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment) {
+VkCommandBuffer ShaderExportStreamer::BeginRecordPostCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment) {
     std::lock_guard guard(mutex);
 
     // Get queue
@@ -1014,6 +1014,16 @@ VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueS
         return nullptr;
     }
 
+    // OK
+    return segment->postPatchCommandBuffer;
+}
+
+void ShaderExportStreamer::EndRecordPostCommandBuffer(ShaderExportQueueState *state, ShaderExportStreamSegment *segment) {
+    std::lock_guard guard(mutex);
+
+    // Get queue
+    QueueState* queueState = table->states_queue.Get(state->queue);
+    
     // Counter to be copied
     const ShaderExportSegmentCounterInfo& counter = segment->allocation->counter;
 
@@ -1058,9 +1068,6 @@ VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueS
             0, nullptr,
             0, nullptr
     );
-    
-    // OK
-    return segment->postPatchCommandBuffer;
 }
 
 void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets, VkCommandBuffer commandBuffer) {

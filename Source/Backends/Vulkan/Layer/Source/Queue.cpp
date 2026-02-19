@@ -233,7 +233,7 @@ static VkCommandBuffer RecordExecutePostCommandBuffer(DeviceDispatchTable* devic
     ShaderExportStreamSegmentUserContext& context = segment->userPostContext;
 
     // Record the streaming pre patching
-    VkCommandBuffer patchBuffer = device->exportStreamer->RecordPostCommandBuffer(queueState->exportState, segment);
+    VkCommandBuffer patchBuffer = device->exportStreamer->BeginRecordPostCommandBuffer(queueState->exportState, segment);
 
     // Any commands?
     if (context.commandContext.buffer.Count()) {
@@ -263,6 +263,9 @@ static VkCommandBuffer RecordExecutePostCommandBuffer(DeviceDispatchTable* devic
         // Create streamer allocation association
         device->exportStreamer->MapSegment(context.streamState, segment);
     }
+    
+    // Finalize counters
+    device->exportStreamer->EndRecordPostCommandBuffer(queueState->exportState, segment);
 
     // Done
     device->next_vkEndCommandBuffer(patchBuffer);

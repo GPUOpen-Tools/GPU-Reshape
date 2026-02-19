@@ -330,7 +330,7 @@ struct DeviceDispatchTable {
     
     /// A rolling execution counter, wrap arounds are expected
     /// TOOD[dbg]: Let's avoid polluting the shared state
-    std::atomic<uint32_t> rollingExecutionUID{0};
+    std::atomic<uint32_t> rollingUID{0};
 
     /// Internal programs
     Programs* programs{nullptr};

@@ -100,7 +100,13 @@ public:
     /// \param queueState the queue to record for
     /// \param state the segment state
     /// \return command buffer to be submitted
-    VkCommandBuffer RecordPostCommandBuffer(ShaderExportQueueState* queueState, ShaderExportStreamSegment* state);
+    VkCommandBuffer BeginRecordPostCommandBuffer(ShaderExportQueueState* queueState, ShaderExportStreamSegment* state);
+
+    /// Record a patch command buffer for submissions
+    /// \param queueState the queue to record for
+    /// \param state the segment state
+    /// \return command buffer to be submitted
+    void EndRecordPostCommandBuffer(ShaderExportQueueState* queueState, ShaderExportStreamSegment* state);
 
     /// Enqueue a submitted segment
     /// \param queue the queue state that was submitted on

@@ -114,6 +114,9 @@ struct ShaderExportRenderPassState {
 
     /// Are we inside a render pass? Also serves as validation for the deep copy
     bool insideRenderPass{false};
+
+    /// Assigned uid
+    uint32_t rollingUID{0};
 };
 
 struct ShaderExportStreamMarkerEntryState {
