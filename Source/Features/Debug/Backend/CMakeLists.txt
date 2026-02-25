@@ -37,6 +37,11 @@ add_library(
     Source/LockShaderProgram.cpp
     Source/LooseAcquisitionProgram.cpp
     Source/ResetHeaderProgram.cpp
+    Source/SetupPredicateProgram.cpp
+    Source/SetupIndirectCopyProgram.cpp
+    Source/IndirectCopyProgram.cpp
+    Source/SetupPredicateProgram.cpp
+    Source/FinalizePredicateProgram.cpp
     Source/Plugin.cpp
 
     # Generated

@@ -68,6 +68,10 @@ class IScheduler;
 class IShaderSGUIDHost;
 class LooseAcquisitionProgram;
 class ResetHeaderProgram;
+class FinalizePredicateProgram;
+class SetupPredicateProgram;
+class IndirectCopyProgram;
+class SetupIndirectCopyProgram;
 struct CommandBuilder;
 
 namespace IL {
@@ -443,6 +447,10 @@ private:
     ShaderDataID streamBufferID{InvalidShaderDataID};
 
     /// Programs
+    ComRef<SetupPredicateProgram> setupPredicateProgram;
+    ComRef<FinalizePredicateProgram> finalizePredicateProgram;
+    ComRef<SetupIndirectCopyProgram> setupIndirectCopyProgram;
+    ComRef<IndirectCopyProgram> indirectCopyProgram;
     ComRef<LooseAcquisitionProgram> looseAcquisitionProgram;
     ComRef<ResetHeaderProgram> resetHeaderProgram;
 

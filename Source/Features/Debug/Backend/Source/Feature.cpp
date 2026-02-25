@@ -29,6 +29,10 @@
 #include <Features/Debug/BreakpointHeader.h>
 #include <Features/Debug/LooseAcquisitionProgram.h>
 #include <Features/Debug/ResetHeaderProgram.h>
+#include <Features/Debug/FinalizePredicateProgram.h>
+#include <Features/Debug/IndirectCopyProgram.h>
+#include <Features/Debug/SetupIndirectCopyProgram.h>
+#include <Features/Debug/SetupPredicateProgram.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -68,11 +72,21 @@
 #include <Common/FileSystem.h>
 #include <Common/Registry.h>
 
+/// Use predication for host streaming copies?
+#define USE_PREDICATION 1
+
+/// Use tiled resources for allocation?
+#define USE_TILED 1
+
 /// Max number of breakpoints, TODO[dbg]: for now?
 static constexpr uint32_t kMaxBreakpoints = 1 << 16;
 
 /// Maximum streaming size
+#if USE_TILED
 static constexpr uint64_t kDebugStreamBufferSize = UINT32_MAX; // ~4gb
+#else // USE_TILED
+static constexpr uint64_t kDebugStreamBufferSize = UINT32_MAX / 4;
+#endif // USE_TILED
 
 bool DebugFeature::Install() {
     // Must have the export host
@@ -105,7 +119,9 @@ bool DebugFeature::Install() {
     streamBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = kDebugStreamBufferSize / sizeof(uint32_t),
         .format = Backend::IL::Format::R32UInt,
+#if USE_TILED
         .flagSet = ShaderDataBufferFlag::Tiled
+#endif // USE_TILED
     }, "DebugStreamBuffer");
 
     // Create allocator for the streaming buffer
@@ -143,6 +159,28 @@ bool DebugFeature::CreatePrograms() {
     if (!programHost) {
         return false;
     }
+    
+#if USE_PREDICATION
+    setupPredicateProgram = registry->New<SetupPredicateProgram>(streamBufferID, exportID);
+    if (!setupPredicateProgram->Install()) {
+        return false;
+    }
+    
+    finalizePredicateProgram = registry->New<FinalizePredicateProgram>(streamBufferID, exportID);
+    if (!finalizePredicateProgram->Install()) {
+        return false;
+    }
+#else // USE_PREDICATION
+    setupIndirectCopyProgram = registry->New<SetupIndirectCopyProgram>(streamBufferID, exportID);
+    if (!setupIndirectCopyProgram->Install()) {
+        return false;
+    }
+    
+    indirectCopyProgram = registry->New<IndirectCopyProgram>(streamBufferID, exportID);
+    if (!indirectCopyProgram->Install()) {
+        return false;
+    }
+#endif // USE_PREDICATION
 
     // Create the acq. program
     looseAcquisitionProgram = registry->New<LooseAcquisitionProgram>(streamBufferID, exportID);
@@ -331,6 +369,7 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
     bool hasSyncRequest = false;
 
     // Any tiles pending mapping?
+#if USE_TILED
     if (tileResidencyAllocator.GetRequestCount()) {
         hasSyncRequest = true;
         
@@ -356,6 +395,7 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
         // Create the tile mappings for the new resource
         scheduler->MapTiles(Queue::ExclusiveTransfer, streamBufferID, static_cast<uint32_t>(tileMappings.size()), tileMappings.data());
     }
+#endif // USE_TILED
 
     // No breakpoints, let's not do redundant work
     if (breakpoints.empty() && !hasSyncRequest) {
@@ -445,11 +485,27 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
         // Wait for updates
         postBuilder.UAVBarrier();
 
-        // Copy the debug streaming buffer to host
-        // TODO[dbg]: This is incorrect, of course
+#if USE_PREDICATION
+        // Setup all predication commands
+        postBuilder.SetShaderProgram(setupPredicateProgram->GetID());
         for (const Breakpoint& breakpoint : breakpoints) {
-            // TODO[dbg]: Now we're doing two copies, not so nice
+            BreakpointCopyData data;
+            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            postBuilder.SetDescriptorData(setupPredicateProgram->GetDataID(), data);
+            postBuilder.Dispatch(1, 1, 1);
+        }
+        
+        // Wait for setup
+        postBuilder.UAVBarrier();
+
+        // Copy the debug streaming buffer to host
+        for (const Breakpoint& breakpoint : breakpoints) {
+            postBuilder.BeginPredicate(
+                streamBufferID,
+                breakpoint.uid * sizeof(BreakpointHeader) + offsetof(BreakpointHeader, predicationLo)
+            );
             
+            // TODO[dbg]: Now we're doing two copies, not so nice
             postBuilder.CopyBuffer(
                 streamBufferID, breakpoint.uid * sizeof(BreakpointHeader),
                 breakpoint.hostStreamingBuffer, 0,
@@ -461,7 +517,44 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
                 breakpoint.hostStreamingBuffer, sizeof(BreakpointHeader),
                 breakpoint.streamAllocation.length
             );
+            
+            postBuilder.EndPredicate(streamBufferID);
         }
+        
+        // Finalize all predicate states
+        postBuilder.SetShaderProgram(finalizePredicateProgram->GetID());
+        for (const Breakpoint& breakpoint : breakpoints) {
+            BreakpointCopyData data;
+            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            postBuilder.SetDescriptorData(finalizePredicateProgram->GetDataID(), data);
+            postBuilder.Dispatch(1, 1, 1);
+        }
+#else // USE_PREDICATION
+        // Setup indirect commands
+        postBuilder.SetShaderProgram(setupIndirectCopyProgram->GetID());
+        for (const Breakpoint& breakpoint : breakpoints) {
+            BreakpointCopyData data;
+            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            postBuilder.SetDescriptorData(setupIndirectCopyProgram->GetDataID(), data);
+            postBuilder.SetResourceData(setupIndirectCopyProgram->GetHostDataBinding(), breakpoint.hostStreamingBuffer);
+            postBuilder.Dispatch(1, 1, 1);
+        }
+
+        // Execute indirect commands
+        postBuilder.SetShaderProgram(indirectCopyProgram->GetID());
+        for (const Breakpoint& breakpoint : breakpoints) {
+            BreakpointCopyData data;
+            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            postBuilder.SetDescriptorData(indirectCopyProgram->GetDataID(), data);
+            postBuilder.SetResourceData(indirectCopyProgram->GetHostDataBinding(), breakpoint.hostStreamingBuffer);
+            postBuilder.DispatchIndirect(
+                streamBufferID,
+                breakpoint.uid * sizeof(BreakpointHeader) + offsetof(BreakpointHeader, copyDispatchParams)
+            );
+        }
+        
+        postBuilder.UAVBarrier();
+#endif // USE_PREDICATION
     }
 
     // Add to the tracker
@@ -1719,6 +1812,9 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
         // Actually do the CAS
         breakpointHeader.AtomicCompareExchange<&BreakpointHeader::shaderInstrumentationHash32>(emitter, emitter.UInt32(0), emitter.UInt32(breakpointData.shaderInstrumentationHash32));
 
+        // Hack
+        breakpointHeader.Set<&BreakpointHeader::payloadDataDWordStride>(emitter,  emitter.UInt32(breakpointData.hostLayout.dataDWordStride));
+
         // Back to merge
         emitter.Branch(hashMergeBlock);
     }
@@ -1853,10 +1949,18 @@ void DebugFeature::CreateAndUpdatePayload(Breakpoint &breakpoint) {
     breakpoint.pendingTransferHeader = true;
 
     // Create streaming counter-part
+    //  If we're using predicates, we can rely on a fully host resident buffer.
+    //  However, if using indirect copies, we need a host visible buffer, which has the unfortunate
+    //  side effect of residing in a slower memory type, I suspect using page-guards or similar mechanisms,
+    //  which is incredibly slow host side.
     breakpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = breakpoint.streamAllocation.length + sizeof(BreakpointHeader),
         .format = Backend::IL::Format::R8UInt,
+#if USE_PREDICATION
         .flagSet = ShaderDataBufferFlag::Host
+#else // USE_PREDICATION
+        .flagSet = ShaderDataBufferFlag::HostVisible | ShaderDataBufferFlag::NonDescriptor
+#endif // USE_PREDICATION
     }, "DebugStreamHost");
 }
 

@@ -105,15 +105,12 @@ struct BreakpointHeader {
     /// Total number of payload dwords
     uint32_t payloadDWordCount{0};
 
-    /// The lock for checksum data
-    uint32_t streamingChecksumLock{0};
+    /// The data payload dword stride
+    uint32_t payloadDataDWordStride{0};
 
     /// The instrumentation version acquired
     /// Only used for loose data ordering
     uint32_t shaderInstrumentationHash32{0};
-
-    /// Expected checksum
-    uint32_t streamingChecksum{0};
     
     /// The order of the data
     /// This is typically determined on the device, as it might be driven by memory constraints
@@ -130,9 +127,20 @@ struct BreakpointHeader {
 
     /// The expected number of streamed dwords
     uint32_t dwordStreamCount{0};
-
+    
+    /// Indirect dispatch parameters
+    uint32_t copyDispatchParams[3];
+    uint32_t copyDispatchLock{0};
+    
+    /// Alignment pad
+    uint32_t pad{0};
+    
+    /// Predication arguments
+    uint32_t predicationLo{0};
+    uint32_t predicationHi{0};
+    
     /// Useful for debugging
-    uint32_t paddingPayload[4];
+    uint32_t paddingPayload[2];
 };
 
 struct BreakpointLooseAcquisitionData {
@@ -144,6 +152,14 @@ struct BreakpointLooseAcquisitionData {
 };
 
 struct BreakpointResetHeaderData {
+    /// The allocation offset
+    uint32_t allocationDWordOffset{0};
+    
+    /// Structural pad
+    uint32_t pad{0};
+};
+
+struct BreakpointCopyData {
     /// The allocation offset
     uint32_t allocationDWordOffset{0};
     
@@ -168,4 +184,6 @@ static constexpr uint32_t BreakpointLooseHeaderDWordCount     = sizeof(Breakpoin
 static constexpr uint32_t BreakpointStreamingHeaderDWordCount = sizeof(BreakpointHeader) / sizeof(uint32_t);
 
 /// Validation
-static_assert(sizeof(BreakpointHeader) == 64, "Unexpected size");
+static_assert(offsetof(BreakpointHeader, predicationLo) % 8 == 0, "Unexpected predication alignment");
+static_assert(sizeof(BreakpointHeader)                  % 8 == 0, "Unexpected header alignment");
+static_assert(sizeof(BreakpointHeader)                      == 80, "Unexpected size");

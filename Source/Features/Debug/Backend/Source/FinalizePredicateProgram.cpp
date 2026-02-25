@@ -24,7 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#include <Features/Debug/ResetHeaderProgram.h>
+#include <Features/Debug/FinalizePredicateProgram.h>
 #include <Features/Debug/BreakpointHeader.h>
 
 // Backend
@@ -34,26 +34,36 @@
 #include <Backend/IL/ShaderBufferStruct.h>
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Metadata/KernelMetadata.h>
+#include <Backend/ShaderProgram/IShaderProgramHost.h>
 
 // Common
 #include <Common/Registry.h>
 
-ResetHeaderProgram::ResetHeaderProgram(ShaderDataID streamBufferID) : streamBufferID(streamBufferID) {
+FinalizePredicateProgram::FinalizePredicateProgram(ShaderDataID streamBufferID, ShaderExportID exportID) : streamBufferID(streamBufferID), exportID(exportID) {
     
 }
 
-bool ResetHeaderProgram::Install() {
+bool FinalizePredicateProgram::Install() {
     // Shader data host
     shaderDataHost = registry->Get<IShaderDataHost>();
+    
+    // Must have program host
+    auto programHost = registry->Get<IShaderProgramHost>();
+    if (!programHost) {
+        return false;
+    }
+
+    // Register validator
+    programID = programHost->Register(this);
 
     // Create patch data
-    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointResetHeaderData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointCopyData>());
 
     // OK
     return true;
 }
 
-void ResetHeaderProgram::Inject(IL::Program &program) {
+void FinalizePredicateProgram::Inject(IL::Program &program) {
     // Get entry point
     IL::Function* entryPoint = program.GetEntryPoint();
     
@@ -85,17 +95,6 @@ void ResetHeaderProgram::Inject(IL::Program &program) {
         acquisitionData.Get<&BreakpointResetHeaderData::allocationDWordOffset>(entryEmitter)
     );
     
-    // Reset header state
-    // Note: Do not reset data order, immutable in some capture modes
-    header.AtomicExchange<&BreakpointHeader::staticWidth>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::staticHeight>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::staticDepth>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::dwordStreamCount>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::dynamicCounter>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::acquiredExecutionUID>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter, entryEmitter.UInt32(0));
-    
-    // Reset copy state
-    header.AtomicExchange<&BreakpointHeader::copyDispatchParams>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::copyDispatchLock>(entryEmitter, entryEmitter.UInt32(0));
+    // Reset predicate state
+    header.Set<&BreakpointHeader::predicationLo>(entryEmitter, entryEmitter.UInt32(0));
 }

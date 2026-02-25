@@ -24,7 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#include <Features/Debug/ResetHeaderProgram.h>
+#include <Features/Debug/IndirectCopyProgram.h>
 #include <Features/Debug/BreakpointHeader.h>
 
 // Backend
@@ -34,26 +34,42 @@
 #include <Backend/IL/ShaderBufferStruct.h>
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Metadata/KernelMetadata.h>
+#include <Backend/ShaderProgram/IShaderProgramHost.h>
 
 // Common
 #include <Common/Registry.h>
 
-ResetHeaderProgram::ResetHeaderProgram(ShaderDataID streamBufferID) : streamBufferID(streamBufferID) {
+IndirectCopyProgram::IndirectCopyProgram(ShaderDataID streamBufferID, ShaderExportID exportID) : streamBufferID(streamBufferID), exportID(exportID) {
     
 }
 
-bool ResetHeaderProgram::Install() {
+bool IndirectCopyProgram::Install() {
     // Shader data host
     shaderDataHost = registry->Get<IShaderDataHost>();
+    
+    // Must have program host
+    auto programHost = registry->Get<IShaderProgramHost>();
+    if (!programHost) {
+        return false;
+    }
+
+    // Register validator
+    programID = programHost->Register(this);
 
     // Create patch data
-    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointResetHeaderData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointLooseAcquisitionData>());
+
+    // Create the host binding
+    hostDataID = shaderDataHost->CreateBufferBinding(programID, ShaderDataBufferBindingInfo{
+        .isWritable = true,
+        .format = Backend::IL::Format::R32UInt
+    });
 
     // OK
     return true;
 }
 
-void ResetHeaderProgram::Inject(IL::Program &program) {
+void IndirectCopyProgram::Inject(IL::Program &program) {
     // Get entry point
     IL::Function* entryPoint = program.GetEntryPoint();
     
@@ -68,34 +84,47 @@ void ResetHeaderProgram::Inject(IL::Program &program) {
     
     // Launch in shared configuration
     program.GetMetadataMap().AddMetadata(entryPoint->GetID(), IL::KernelWorkgroupSizeMetadata {
-        .threadsX = 1,
+        .threadsX = 64,
         .threadsY = 1,
         .threadsZ = 1
     });
     
     // Get the data ids
     IL::ID streamDataID = program.GetShaderDataMap().Get(streamBufferID)->id;
+    IL::ID hostDataBuffer = program.GetShaderDataMap().Get(hostDataID)->id;
     
     // Get shader data
-    IL::ShaderStruct<BreakpointResetHeaderData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
+    IL::ShaderStruct<BreakpointCopyData> copyData = program.GetShaderDataMap().Get(dataID)->id;
     
     // Breakpoint header
     IL::ShaderBufferStruct<BreakpointHeader> header = IL::ShaderBufferStruct<BreakpointHeader>(
         streamDataID, 
-        acquisitionData.Get<&BreakpointResetHeaderData::allocationDWordOffset>(entryEmitter)
+        copyData.Get<&BreakpointCopyData::allocationDWordOffset>(entryEmitter)
     );
     
-    // Reset header state
-    // Note: Do not reset data order, immutable in some capture modes
-    header.AtomicExchange<&BreakpointHeader::staticWidth>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::staticHeight>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::staticDepth>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::dwordStreamCount>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::dynamicCounter>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::acquiredExecutionUID>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter, entryEmitter.UInt32(0));
+    // Get DTID.x
+    IL::ID dispatchID = entryEmitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
+    IL::ID dispatchXID = entryEmitter.Extract(dispatchID, entryEmitter.UInt32(0));
     
-    // Reset copy state
-    header.AtomicExchange<&BreakpointHeader::copyDispatchParams>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::copyDispatchLock>(entryEmitter, entryEmitter.UInt32(0));
+    // Offset + DTID.x
+    IL::ID payloadOffset = entryEmitter.Add(
+        header.Get<&BreakpointHeader::payloadDWordOffset>(entryEmitter),
+        dispatchXID
+    );
+    
+    // Load exported dword
+    IL::ID value = entryEmitter.Extract(
+        entryEmitter.LoadBuffer(
+            entryEmitter.Load(streamDataID),
+            payloadOffset
+        ), 
+        entryEmitter.UInt32(0)
+    );
+    
+    // Copy to host visible
+    entryEmitter.StoreBuffer(
+        entryEmitter.Load(hostDataBuffer),
+        entryEmitter.Add(entryEmitter.UInt32(BreakpointHeaderDWordCount), dispatchXID),
+        value
+    );
 }
