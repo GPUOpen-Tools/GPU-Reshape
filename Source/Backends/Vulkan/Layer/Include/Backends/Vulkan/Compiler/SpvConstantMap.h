@@ -177,7 +177,7 @@ private:
         spvOffset[2] = constant->id;
 
         for (uint32_t i = 0; i < intType->bitWidth; i += 32) {
-            spvOffset[3 + i] |= std::bit_cast<uint64_t>(constant->value) >> i;
+            spvOffset[3 + i / 32] = static_cast<uint32_t>(std::bit_cast<uint64_t>(constant->value) >> i);
         }
     }
 
@@ -189,8 +189,18 @@ private:
         spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
 
-        for (uint32_t i = 0; i < fpType->bitWidth; i += 32) {
-            spvOffset[3 + i] |= std::bit_cast<uint64_t>(constant->value) >> i;
+        switch (fpType->bitWidth) {
+            default:
+            case 16:
+                ASSERT(false, "Not supported");
+                break;
+            case 32:
+                spvOffset[3] = std::bit_cast<uint32_t>(static_cast<float>(constant->value));
+                break;
+            case 64:
+                spvOffset[3] = static_cast<uint32_t>(std::bit_cast<uint64_t>(constant->value) & 0xFFFFFFFF);
+                spvOffset[4] = static_cast<uint32_t>(std::bit_cast<uint64_t>(constant->value) >> 32ull);
+                break;
         }
     }
 
