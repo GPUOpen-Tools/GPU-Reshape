@@ -61,7 +61,7 @@ namespace Studio.Services
         /// </summary>
         public static Task<T?> OpenFor<T>(this IWindowService self, object viewModel) where T : class
         {
-            return self.OpenDialogFor(viewModel).ContinueWith<T?>(x => (T?)x.Result);
+            return self.OpenDialogFor(viewModel).ContinueWith<T?>(_ => (T?)viewModel);
         }
     }
 }
