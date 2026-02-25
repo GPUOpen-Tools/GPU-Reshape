@@ -94,7 +94,10 @@ public:
 
     /// Check if a value is committed
     uint64_t IsCommitted(uint64_t head) {
-        return pendingContexts.empty() || head < pendingCommits.front();
+        return 
+            pendingContexts.empty() || 
+            pendingCommits.empty() || 
+            head < pendingCommits.front();
     }
 
 private:
