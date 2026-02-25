@@ -102,13 +102,13 @@ namespace GRS.Features.Waterfall.UIX.Workspace
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (streams.GetSchema().type != MessageSchemaType.Static)
+            if (streams.GetSchema().type != MessageSchemaType.Chunked)
                 return;
 
             switch (streams.GetSchema().id)
             {
                 case WaterfallingConditionMessage.ID:
-                    Handle(new StaticMessageView<WaterfallingConditionMessage>(streams));
+                    Handle(new ChunkedMessageView<WaterfallingConditionMessage>(streams));
                     break;
                 case DivergentResourceIndexingMessage.ID:
                     Handle(new ChunkedMessageView<DivergentResourceIndexingMessage>(streams));
@@ -119,7 +119,7 @@ namespace GRS.Features.Waterfall.UIX.Workspace
         /// <summary>
         /// Waterfalling handler
         /// </summary>
-        private void Handle(StaticMessageView<WaterfallingConditionMessage> view)
+        private void Handle(ChunkedMessageView<WaterfallingConditionMessage> view)
         {
             // Latent update set
             var lookup = new Dictionary<uint, WaterfallingConditionMessage>();
