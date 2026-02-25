@@ -109,6 +109,11 @@ struct SetResourceCommand : public TCommand<SetResourceCommand, CommandType::Set
     uint32_t puid;
 };
 
+struct SetResourceDataCommand : public TCommand<SetResourceDataCommand, CommandType::SetResourceData> {
+    ShaderDataID id;
+    ShaderDataID buffer;
+};
+
 enum class StageBufferFlag {
     None = 0,
     Atomic32 = BIT(1)
@@ -145,6 +150,20 @@ struct DispatchCommand : public TCommand<DispatchCommand, CommandType::Dispatch>
     uint32_t groupCountX;
     uint32_t groupCountY;
     uint32_t groupCountZ;
+};
+
+struct DispatchIndirectCommand : public TCommand<DispatchIndirectCommand, CommandType::DispatchIndirect> {
+    ShaderDataID buffer;
+    uint32_t offset;
+};
+
+struct BeginPredicateCommand : public TCommand<BeginPredicateCommand, CommandType::BeginPredicate> {
+    ShaderDataID buffer;
+    uint32_t offset;
+};
+
+struct EndPredicateCommand : public TCommand<EndPredicateCommand, CommandType::EndPredicate> {
+    ShaderDataID buffer;
 };
 
 struct UAVBarrierCommand : public TCommand<UAVBarrierCommand, CommandType::UAVBarrier> {

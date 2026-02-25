@@ -92,7 +92,7 @@ void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffs
             continue;
         }
 
-        if (resources[i].isHost) {
+        if (resources[i].isNonDescriptor) {
             continue;
         }
         
@@ -146,7 +146,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info, cons
     entry.info.id = rid;
     entry.info.type = ShaderDataType::Buffer;
     entry.info.buffer = info;
-    entry.isHost = info.flagSet & ShaderDataBufferFlag::Host;
+    entry.isNonDescriptor = info.flagSet & ShaderDataBufferFlag::Host;
 
     // Buffer info
     VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
@@ -171,7 +171,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info, cons
     if (!(info.flagSet & ShaderDataBufferFlag::Tiled)) {
         // Translate the residency
         AllocationResidency residency;
-        if (entry.isHost) {
+        if (entry.isNonDescriptor) {
             residency = AllocationResidency::Host;
         } else if (info.flagSet & ShaderDataBufferFlag::HostVisible) {
             residency = AllocationResidency::HostVisible;
@@ -436,7 +436,7 @@ void ShaderDataHost::EnumerateShader(uint32_t *count, ShaderDataInfo *out, Shade
         uint32_t offset = 0;
 
         for (uint32_t i = 0; i < resources.size(); i++) {
-            if (resources[i].isHost) {
+            if (resources[i].isNonDescriptor) {
                 continue;
             }
             
@@ -448,7 +448,7 @@ void ShaderDataHost::EnumerateShader(uint32_t *count, ShaderDataInfo *out, Shade
         uint32_t value = 0;
 
         for (uint32_t i = 0; i < resources.size(); i++) {
-            if (resources[i].isHost) {
+            if (resources[i].isNonDescriptor) {
                 continue;
             }
             

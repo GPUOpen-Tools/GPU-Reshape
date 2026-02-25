@@ -117,6 +117,34 @@ struct CommandBuilder {
         });
     }
 
+    /// Dispatch an indirect shader program
+    /// @param bufferID indirect args buffer
+    /// @param offset indirect args byte offset
+    void DispatchIndirect(ShaderDataID bufferID, uint32_t offset) {
+        buffer.Add(DispatchIndirectCommand {
+            .buffer = bufferID,
+            .offset = offset
+        });
+    }
+
+    /// Open a predicated range
+    /// @param bufferID predicate buffer
+    /// @param offset byte offset into buffer
+    void BeginPredicate(ShaderDataID bufferID, uint32_t offset) {
+        buffer.Add(BeginPredicateCommand {
+            .buffer = bufferID,
+            .offset = offset
+        });
+    }
+
+    /// Close a predicated range
+    /// @param bufferID predicate buffer
+    void EndPredicate(ShaderDataID bufferID) {
+        buffer.Add(EndPredicateCommand {
+            .buffer = bufferID
+        });
+    }
+
     /// Discard a resource
     /// \param puid the resource puid
     void Discard(uint32_t puid) {
@@ -153,6 +181,16 @@ struct CommandBuilder {
         buffer.Add(SetResourceCommand {
             .id = data,
             .puid = puid
+        });
+    }
+
+    /// Set a resource binding
+    /// @param data data binding
+    /// @param bufferID the buffer to be bound
+    void SetResourceData(ShaderDataID data, ShaderDataID bufferID) {
+        buffer.Add(SetResourceDataCommand {
+            .id = data,
+            .buffer = bufferID
         });
     }
 

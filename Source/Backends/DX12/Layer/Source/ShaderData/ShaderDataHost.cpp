@@ -138,9 +138,10 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info, cons
         // Translate residency
         if (info.flagSet & ShaderDataBufferFlag::Host) {
             residency = AllocationResidency::HostReadback;
-            entry.isHost = true;
+            entry.isNonDescriptor = true;
         } else if (info.flagSet & ShaderDataBufferFlag::HostVisible) {
             residency = AllocationResidency::HostVisible;
+            entry.isNonDescriptor = info.flagSet & ShaderDataBufferFlag::NonDescriptor;
         } else {
             residency = AllocationResidency::Device;
         }
@@ -387,7 +388,7 @@ void ShaderDataHost::EnumerateShader(uint32_t *count, ShaderDataInfo *out, Shade
         uint32_t offset = 0;
 
         for (uint32_t i = 0; i < resources.size(); i++) {
-            if (resources[i].isHost) {
+            if (resources[i].isNonDescriptor) {
                 continue;
             }
             
@@ -399,7 +400,7 @@ void ShaderDataHost::EnumerateShader(uint32_t *count, ShaderDataInfo *out, Shade
         uint32_t value = 0;
 
         for (uint32_t i = 0; i < resources.size(); i++) {
-            if (resources[i].isHost) {
+            if (resources[i].isNonDescriptor) {
                 continue;
             }
             
@@ -464,7 +465,7 @@ void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescripto
             continue;
         }
         
-        if (resources[i].isHost) {
+        if (resources[i].isNonDescriptor) {
             continue;
         }
 

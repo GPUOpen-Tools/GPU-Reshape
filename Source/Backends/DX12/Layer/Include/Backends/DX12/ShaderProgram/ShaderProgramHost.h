@@ -65,6 +65,11 @@ public:
         return programs[id].rootSignature;
     }
 
+    /// Get the shared signature
+    ID3D12CommandSignature* GetIndirectCommandSignature() const {
+        return indirectCommandSignature;
+    }
+
     /// Get the pipeline of a program
     ID3D12PipelineState* GetPipeline(ShaderProgramID id) const {
         return programs[id].pipeline;
@@ -107,6 +112,9 @@ private:
 private:
     /// Base module used for templating
     IDXModule* templateModule{nullptr};
+        
+    /// Shared indirect signature
+    ID3D12CommandSignature* indirectCommandSignature{nullptr};
 
     /// Optional debug handle
     ComRef<ShaderCompilerDebug> debug;

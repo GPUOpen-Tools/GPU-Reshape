@@ -107,7 +107,7 @@ private:
         ShaderDataInfo info;
 
         /// Is this a host resource?
-        bool isHost = false;
+        bool isNonDescriptor = false;
     };
 
     struct MappingEntry {

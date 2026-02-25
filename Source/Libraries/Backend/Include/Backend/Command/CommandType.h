@@ -34,6 +34,7 @@ enum class CommandType {
     SetEventData,
     SetDescriptorData,
     SetResource,
+    SetResourceData,
 
     /// Resources
     StageBuffer,
@@ -43,6 +44,11 @@ enum class CommandType {
 
     /// Invokes
     Dispatch,
+    DispatchIndirect,
+    
+    /// Predicates
+    BeginPredicate,
+    EndPredicate,
 
     /// Synchronization
     UAVBarrier

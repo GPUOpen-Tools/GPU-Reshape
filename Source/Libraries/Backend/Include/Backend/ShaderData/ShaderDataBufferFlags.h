@@ -39,7 +39,10 @@ enum class ShaderDataBufferFlag {
     Tiled = BIT(1),
 
     /// This resource is host-local
-    Host = BIT(2)
+    Host = BIT(2),
+    
+    /// This resource is not an implicit descriptor
+    NonDescriptor = BIT(3)
 };
 
 BIT_SET(ShaderDataBufferFlag);

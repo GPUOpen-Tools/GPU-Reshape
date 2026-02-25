@@ -40,7 +40,10 @@ struct ResourceState;
 
 struct UserBinding {
     /// Resource to be bound
-    ResourceState* resource{nullptr};
+    ID3D12Resource* resource{nullptr};
+    
+    /// Size of the binding
+    uint64_t width = 0;
 };
 
 struct UserCommandState {

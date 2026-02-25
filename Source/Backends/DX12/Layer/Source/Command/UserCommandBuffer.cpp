@@ -158,9 +158,32 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                     state.shaderProgramBindings.Resize(bindingIndex + 1);
                 }
 
+                ResourceState *resourceState = device->physicalResourceIdentifierMap.GetState(cmd->puid);
+                
                 // Set binding
                 state.shaderProgramBindings[bindingIndex] = UserBinding {
-                    .resource = device->physicalResourceIdentifierMap.GetState(cmd->puid)
+                    .resource = resourceState->object,
+                    .width = resourceState->desc.Width
+                };
+                break;
+            }
+            case CommandType::SetResourceData: {
+                auto *cmd = command.As<SetResourceDataCommand>();
+
+                // Get the root index
+                uint32_t bindingIndex = device->shaderDataHost->GetBindingIndex(state.shaderProgramID, cmd->id);
+
+                // Lazy allocate
+                if (bindingIndex >= state.shaderProgramBindings.Size()) {
+                    state.shaderProgramBindings.Resize(bindingIndex + 1);
+                }
+
+                const Allocation &allocation = device->shaderDataHost->GetResourceAllocation(cmd->buffer);
+
+                // Set binding
+                state.shaderProgramBindings[bindingIndex] = UserBinding {
+                    .resource = allocation.resource,
+                    .width = allocation.resource->GetDesc().Width
                 };
                 break;
             }
@@ -309,9 +332,44 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 commandList->DiscardResource(resourceState->object, nullptr);
                 break;
             }
-            case CommandType::Dispatch: {
-                auto* cmd = command.As<DispatchCommand>();
+            case CommandType::BeginPredicate: {
+                auto* cmd = command.As<BeginPredicateCommand>();
 
+                const Allocation& predicateBuffer = device->shaderDataHost->GetResourceAllocation(cmd->buffer);
+
+                D3D12_RESOURCE_BARRIER barrier{};
+                barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                barrier.Transition.pResource = predicateBuffer.resource;
+                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PREDICATION;
+                commandList->ResourceBarrier(1u, &barrier);
+                    
+                commandList->SetPredication(
+                    predicateBuffer.resource, cmd->offset,
+                    D3D12_PREDICATION_OP_EQUAL_ZERO
+                );
+                break;
+            }
+            case CommandType::EndPredicate: {
+                auto* cmd = command.As<EndPredicateCommand>();
+
+                const Allocation& predicateBuffer = device->shaderDataHost->GetResourceAllocation(cmd->buffer);
+                
+                commandList->SetPredication(
+                    nullptr, 0,
+                    D3D12_PREDICATION_OP_EQUAL_ZERO
+                );
+                    
+                D3D12_RESOURCE_BARRIER barrier{};
+                barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                barrier.Transition.pResource = predicateBuffer.resource;
+                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PREDICATION;
+                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                commandList->ResourceBarrier(1u, &barrier);
+                break;
+            }
+            case CommandType::Dispatch:
+            case CommandType::DispatchIndirect: {
                 // Any resources to set?
                 if (state.shaderProgramBindings.Size()) {
                     // Update state
@@ -351,11 +409,11 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                             view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
                             view.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
                             view.Buffer.FirstElement = 0;
-                            view.Buffer.NumElements = static_cast<UINT>(binding.resource->desc.Width / Backend::IL::GetSize(dataInfo.bufferBinding.format));
+                            view.Buffer.NumElements = static_cast<UINT>(binding.width / Backend::IL::GetSize(dataInfo.bufferBinding.format));
                 
                             // Create descriptor
                             device->object->CreateUnorderedAccessView(
-                                binding.resource->object, nullptr,
+                                binding.resource, nullptr,
                                 &view,
                                 heapAllocation.CPU(static_cast<uint32_t>(i))
                             );
@@ -367,11 +425,11 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                             view.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
                             view.Buffer.FirstElement = 0;
                             view.Buffer.StructureByteStride = 0;
-                            view.Buffer.NumElements = static_cast<UINT>(binding.resource->desc.Width / Backend::IL::GetSize(dataInfo.bufferBinding.format));
+                            view.Buffer.NumElements = static_cast<UINT>(binding.width / Backend::IL::GetSize(dataInfo.bufferBinding.format));
                 
                             // Create descriptor
                             device->object->CreateShaderResourceView(
-                                binding.resource->object,
+                                binding.resource,
                                 &view,
                                 heapAllocation.CPU(static_cast<uint32_t>(i))
                             );
@@ -390,11 +448,40 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 }
 
                 // Invoke
-                commandList->Dispatch(
-                    cmd->groupCountX,
-                    cmd->groupCountY,
-                    cmd->groupCountZ
-                );
+                if (static_cast<CommandType>(command.commandType) == CommandType::DispatchIndirect) {
+                    auto* cmd = command.As<DispatchIndirectCommand>();
+
+                    const Allocation& indirectBuffer = device->shaderDataHost->GetResourceAllocation(cmd->buffer);
+
+                    // UAV -> Indirect
+                    D3D12_RESOURCE_BARRIER barrier{};
+                    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    barrier.Transition.pResource = indirectBuffer.resource;
+                    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+                    commandList->ResourceBarrier(1u, &barrier);
+                    
+                    // Execute with shared signature
+                    commandList->ExecuteIndirect(
+                        device->shaderProgramHost->GetIndirectCommandSignature(),
+                        1u,
+                        indirectBuffer.resource, cmd->offset,
+                        nullptr, 0
+                    );
+                    
+                    // Indirect -> UAV
+                    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+                    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                    commandList->ResourceBarrier(1u, &barrier);
+                } else {
+                    auto* cmd = command.As<DispatchCommand>();
+
+                    commandList->Dispatch(
+                        cmd->groupCountX,
+                        cmd->groupCountY,
+                        cmd->groupCountZ
+                    );
+                }
                 break;
             }
             case CommandType::UAVBarrier: {

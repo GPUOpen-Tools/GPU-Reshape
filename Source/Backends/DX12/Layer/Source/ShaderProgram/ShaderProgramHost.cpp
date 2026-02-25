@@ -230,6 +230,21 @@ bool ShaderProgramHost::InstallPrograms() {
             return false;
         }
     }
+        
+    D3D12_INDIRECT_ARGUMENT_DESC indirectCommandArgDesc{};
+    indirectCommandArgDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+    
+    // Setup signature desc
+    D3D12_COMMAND_SIGNATURE_DESC indirectCommandArg{};
+    indirectCommandArg.ByteStride = sizeof(D3D12_DISPATCH_ARGUMENTS);
+    indirectCommandArg.pArgumentDescs = &indirectCommandArgDesc;
+    indirectCommandArg.NumArgumentDescs = 1;
+    
+    // Try to create command signature
+    HRESULT result = device->object->CreateCommandSignature(&indirectCommandArg, nullptr, __uuidof(ID3D12CommandSignature), reinterpret_cast<void**>(&indirectCommandSignature));
+    if (FAILED(result)) {
+        return false;
+    }
 
     // OK
     return true;
