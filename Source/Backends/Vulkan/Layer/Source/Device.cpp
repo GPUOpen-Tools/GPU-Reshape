@@ -26,6 +26,7 @@
 
 #include <Backends/Vulkan/Device.h>
 #include <Backends/Vulkan/DeviceStateVote.h>
+#include <Backends/Vulkan/DeviceProperties.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Instance.h>
@@ -266,6 +267,34 @@ static Backend::VendorType GetVendor(uint32_t vendorID) {
     }
 }
 
+void EnumerateDeviceExtensions(DeviceDispatchTable* table, PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkPhysicalDevice physicalDevice) {
+    // Get the enumerator
+    auto next_enumerate = reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(getInstanceProcAddr(table->parent->object, "vkEnumerateDeviceExtensionProperties"));
+    if (!next_enumerate) {
+        return;
+    }
+
+    // Number of extensions
+    uint32_t count = 0;
+    next_enumerate(physicalDevice, nullptr, &count, nullptr);
+
+    // Extension properties
+    table->supportedExtensions.resize(count);
+    next_enumerate(physicalDevice, nullptr, &count, table->supportedExtensions.data());
+}
+
+static bool SupportsExtension(DeviceDispatchTable* table, const char* name) {
+    // Check all extension names
+    for (const VkExtensionProperties &extension: table->supportedExtensions) {
+        if (!std::strcmp(extension.extensionName, name)) {
+            return true;
+        }
+    }
+
+    // Not found
+    return false;
+}
+
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     auto chainInfo = static_cast<VkLayerDeviceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
@@ -323,6 +352,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Try to get the vendor
     table->vendor = GetVendor(table->physicalDeviceProperties.properties.vendorID);
 
+    // Register the state
+    table->registry.AddNew<DeviceProperties>(table);
+
     // Register the state voter
     table->registry.AddNew<DeviceStateVote>(table);
 
@@ -333,12 +365,21 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->enabledLayers.insert(table->enabledLayers.end(), table->createInfo->ppEnabledLayerNames, table->createInfo->ppEnabledLayerNames + table->createInfo->enabledLayerCount);
     table->enabledExtensions.insert(table->enabledExtensions.end(), table->createInfo->ppEnabledExtensionNames, table->createInfo->ppEnabledExtensionNames + table->createInfo->enabledExtensionCount);
 
+    // Get all supported extensions
+    EnumerateDeviceExtensions(table, getInstanceProcAddr, physicalDevice);
+
     // Add descriptor indexing extension
     table->enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
     
     // Add synchronization extensions
     table->enabledExtensions.push_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
     table->enabledExtensions.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+    
+    // Add conditional rendering, if supported
+    if (SupportsExtension(table, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME)) {
+        table->enabledExtensions.push_back(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
+        table->capabilityTable.supportsPredicates = true;
+    }
 
     // Optional feature structures
     auto* features2                = FindStructureTypeMutableUnsafe<VkPhysicalDeviceFeatures2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2>(table->createInfo->pNext);

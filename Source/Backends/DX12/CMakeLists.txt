@@ -329,6 +329,7 @@ add_library(
     Layer/Source/DXGIFactory.cpp
     Layer/Source/Device.cpp
     Layer/Source/DeviceStateVote.cpp
+    Layer/Source/DeviceProperties.cpp
     Layer/Source/AMDAGS.cpp
     Layer/Source/Device11On12.cpp
     Layer/Source/Resource.cpp

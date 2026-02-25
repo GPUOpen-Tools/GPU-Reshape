@@ -42,7 +42,10 @@ enum class ShaderDataBufferFlag {
     Host = BIT(2),
     
     /// This resource is not an implicit descriptor
-    NonDescriptor = BIT(3)
+    NonDescriptor = BIT(3),
+    
+    /// This resource is used with predicates
+    Predicate = BIT(4)
 };
 
 BIT_SET(ShaderDataBufferFlag);

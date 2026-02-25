@@ -51,6 +51,7 @@
 // Backend
 #include <Backend/EventDataStack.h>
 #include <Backend/Device/VendorType.h>
+#include <Backend/Device/DeviceCapabilityTable.h>
 
 // Std
 #include <mutex>
@@ -349,6 +350,12 @@ struct DeviceDispatchTable {
     /// Creation extensions
     std::vector<const char*> enabledLayers;
     std::vector<const char*> enabledExtensions;
+
+    /// All supported extensions
+    std::vector<VkExtensionProperties> supportedExtensions;
+    
+    /// Shared capability table
+    DeviceCapabilityTable capabilityTable;
 
     /// Environment actions
     IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);

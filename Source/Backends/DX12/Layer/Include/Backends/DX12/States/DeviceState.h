@@ -42,6 +42,7 @@
 #include <Backend/Environment.h>
 #include <Backend/EventDataStack.h>
 #include <Backend/Device/VendorType.h>
+#include <Backend/Device/DeviceCapabilityTable.h>
 
 // Bridge
 #include <Bridge/Log/LogBuffer.h>
@@ -187,6 +188,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;
+    
+    /// Shared capabilities
+    DeviceCapabilityTable capabilityTable;
 
     /// Current SDK
     D3D12GPUOpenSDKRuntime sdk;

@@ -44,6 +44,7 @@
 #include <Backend/IL/ShaderBufferStruct.h>
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Metadata/KernelMetadata.h>
+#include <Backend/Device/DeviceCapabilityTable.h>
 
 // Schemas
 #include <Schemas/Features/DebugConfig.h>
@@ -64,6 +65,7 @@
 
 // Forward declarations
 class IBridge;
+class IDeviceProperties;
 class IScheduler;
 class IShaderSGUIDHost;
 class LooseAcquisitionProgram;
@@ -436,6 +438,10 @@ private:
     ComRef<IScheduler>        scheduler;
     ComRef<IDeviceStateVote>  stateVote;
     ComRef<IL::IDebugEmitter> debugEmitter;
+    ComRef<IDeviceProperties> deviceProperties;
+    
+    /// Device table
+    DeviceCapabilityTable deviceCapabilityTable;
 
     /// All device states
     DeviceStateRef<DeviceStatePooling> poolingState;

@@ -26,30 +26,19 @@
 
 #pragma once
 
-// Layer
-#include "ReconstructionFlag.h"
-
 // Backend
-#include <Backend/ShaderProgram/ShaderProgram.h>
-
-// Common
-#include <Common/Containers/TrivialStackVector.h>
+#include <Backend/Device/IDeviceProperties.h>
 
 // Forward declarations
-struct ResourceState;
+struct DeviceState;
 
-struct UserBinding {
-    /// View to be bound
-    VkBufferView bufferView;
-};
+class DeviceProperties : public IDeviceProperties {
+public:
+    DeviceProperties(DeviceState* deviceState);
 
-struct UserCommandState {
-    /// Current reconstruction state
-    ReconstructionFlagSet reconstructionFlags{0};
+    /// Overrides
+    DeviceCapabilityTable GetCapabilityTable() override;
 
-    /// Bound shader program
-    ShaderProgramID shaderProgramID{InvalidShaderProgramID};
-
-    /// All program bindings
-    TrivialStackVector<UserBinding, 4u> shaderProgramBindings;
+private:
+    DeviceState* deviceState;
 };

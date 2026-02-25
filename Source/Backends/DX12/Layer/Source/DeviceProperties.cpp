@@ -22,34 +22,16 @@
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
 // FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-// 
+//
 
-#pragma once
+#include <Backends/DX12/DeviceProperties.h>
+#include <Backends/DX12/States/DeviceState.h>
 
-// Layer
-#include "ReconstructionFlag.h"
+DeviceProperties::DeviceProperties(DeviceState *deviceState) : deviceState(deviceState) {
+    // Always supports predicates
+    deviceState->capabilityTable.supportsPredicates = true;
+}
 
-// Backend
-#include <Backend/ShaderProgram/ShaderProgram.h>
-
-// Common
-#include <Common/Containers/TrivialStackVector.h>
-
-// Forward declarations
-struct ResourceState;
-
-struct UserBinding {
-    /// View to be bound
-    VkBufferView bufferView;
-};
-
-struct UserCommandState {
-    /// Current reconstruction state
-    ReconstructionFlagSet reconstructionFlags{0};
-
-    /// Bound shader program
-    ShaderProgramID shaderProgramID{InvalidShaderProgramID};
-
-    /// All program bindings
-    TrivialStackVector<UserBinding, 4u> shaderProgramBindings;
-};
+DeviceCapabilityTable DeviceProperties::GetCapabilityTable() {
+	return deviceState->capabilityTable;
+}

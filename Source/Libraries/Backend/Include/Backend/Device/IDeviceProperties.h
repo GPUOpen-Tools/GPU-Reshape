@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,30 +26,16 @@
 
 #pragma once
 
-// Layer
-#include "ReconstructionFlag.h"
-
 // Backend
-#include <Backend/ShaderProgram/ShaderProgram.h>
+#include <Backend/Device/DeviceCapabilityTable.h>
 
 // Common
-#include <Common/Containers/TrivialStackVector.h>
+#include <Common/IComponent.h>
 
-// Forward declarations
-struct ResourceState;
-
-struct UserBinding {
-    /// View to be bound
-    VkBufferView bufferView;
-};
-
-struct UserCommandState {
-    /// Current reconstruction state
-    ReconstructionFlagSet reconstructionFlags{0};
-
-    /// Bound shader program
-    ShaderProgramID shaderProgramID{InvalidShaderProgramID};
-
-    /// All program bindings
-    TrivialStackVector<UserBinding, 4u> shaderProgramBindings;
+class IDeviceProperties : public TComponent<IDeviceProperties> {
+public:
+    COMPONENT(DeviceState);
+    
+    /// Get the current capabilities
+    virtual DeviceCapabilityTable GetCapabilityTable() = 0;
 };

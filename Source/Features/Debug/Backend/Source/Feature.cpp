@@ -56,6 +56,7 @@
 #include <Backend/IL/Tiny/TinyTypePacking.h>
 #include <Backend/IL/TypeSize.h>
 #include <Backend/IL/Emitters/IDebugEmitter.h>
+#include <Backend/Device/IDeviceProperties.h>
 
 // Generated schema
 #include <Schemas/Features/Debug.h>
@@ -108,6 +109,18 @@ bool DebugFeature::Install() {
 
     // Get scheduler
     scheduler = registry->Get<IScheduler>();
+    
+    // Get device
+    deviceProperties = registry->Get<IDeviceProperties>();
+    if (!deviceProperties) {
+        return false;
+    }
+    
+    // Get capabilities
+    deviceCapabilityTable = deviceProperties->GetCapabilityTable();
+#if !USE_PREDICATION
+    deviceCapabilityTable.supportsPredicates = false;
+#endif // !USE_PREDICATION
 
     // Create monotonic primitive
     exclusiveTransferPrimitiveID = scheduler->CreatePrimitive();
@@ -120,7 +133,9 @@ bool DebugFeature::Install() {
         .elementCount = kDebugStreamBufferSize / sizeof(uint32_t),
         .format = Backend::IL::Format::R32UInt,
 #if USE_TILED
-        .flagSet = ShaderDataBufferFlag::Tiled
+        .flagSet = ShaderDataBufferFlag::Tiled | ShaderDataBufferFlag::Predicate
+#else // USE_TILED
+        .flagSet = ShaderDataBufferFlag::Predicate
 #endif // USE_TILED
     }, "DebugStreamBuffer");
 
@@ -160,27 +175,28 @@ bool DebugFeature::CreatePrograms() {
         return false;
     }
     
-#if USE_PREDICATION
-    setupPredicateProgram = registry->New<SetupPredicateProgram>(streamBufferID, exportID);
-    if (!setupPredicateProgram->Install()) {
-        return false;
-    }
+    // Create predicated programs if possible
+    if (deviceCapabilityTable.supportsPredicates) {
+        setupPredicateProgram = registry->New<SetupPredicateProgram>(streamBufferID, exportID);
+        if (!setupPredicateProgram->Install()) {
+            return false;
+        }
     
-    finalizePredicateProgram = registry->New<FinalizePredicateProgram>(streamBufferID, exportID);
-    if (!finalizePredicateProgram->Install()) {
-        return false;
-    }
-#else // USE_PREDICATION
-    setupIndirectCopyProgram = registry->New<SetupIndirectCopyProgram>(streamBufferID, exportID);
-    if (!setupIndirectCopyProgram->Install()) {
-        return false;
-    }
+        finalizePredicateProgram = registry->New<FinalizePredicateProgram>(streamBufferID, exportID);
+        if (!finalizePredicateProgram->Install()) {
+            return false;
+        }
+    } else {
+        setupIndirectCopyProgram = registry->New<SetupIndirectCopyProgram>(streamBufferID, exportID);
+        if (!setupIndirectCopyProgram->Install()) {
+            return false;
+        }
     
-    indirectCopyProgram = registry->New<IndirectCopyProgram>(streamBufferID, exportID);
-    if (!indirectCopyProgram->Install()) {
-        return false;
+        indirectCopyProgram = registry->New<IndirectCopyProgram>(streamBufferID, exportID);
+        if (!indirectCopyProgram->Install()) {
+            return false;
+        }
     }
-#endif // USE_PREDICATION
 
     // Create the acq. program
     looseAcquisitionProgram = registry->New<LooseAcquisitionProgram>(streamBufferID, exportID);
@@ -485,76 +501,83 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
         // Wait for updates
         postBuilder.UAVBarrier();
 
-#if USE_PREDICATION
-        // Setup all predication commands
-        postBuilder.SetShaderProgram(setupPredicateProgram->GetID());
-        for (const Breakpoint& breakpoint : breakpoints) {
-            BreakpointCopyData data;
-            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
-            postBuilder.SetDescriptorData(setupPredicateProgram->GetDataID(), data);
-            postBuilder.Dispatch(1, 1, 1);
-        }
-        
-        // Wait for setup
-        postBuilder.UAVBarrier();
+        // Try to use predicated copies, if possible
+        if (deviceCapabilityTable.supportsPredicates) {
+            // Setup all predication commands
+            postBuilder.SetShaderProgram(setupPredicateProgram->GetID());
+            for (const Breakpoint& breakpoint : breakpoints) {
+                BreakpointCopyData data;
+                data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+                postBuilder.SetDescriptorData(setupPredicateProgram->GetDataID(), data);
+                postBuilder.Dispatch(1, 1, 1);
+            }
+            
+            // Wait for setup
+            postBuilder.UAVBarrier();
 
-        // Copy the debug streaming buffer to host
-        for (const Breakpoint& breakpoint : breakpoints) {
-            postBuilder.BeginPredicate(
-                streamBufferID,
-                breakpoint.uid * sizeof(BreakpointHeader) + offsetof(BreakpointHeader, predicationLo)
-            );
+            // Copy the debug streaming buffer to host
+            for (const Breakpoint& breakpoint : breakpoints) {
+                // If not supported, pay for the expensive copy
+                if (deviceCapabilityTable.supportsPredicates) {
+                    postBuilder.BeginPredicate(
+                        streamBufferID,
+                        breakpoint.uid * sizeof(BreakpointHeader) + offsetof(BreakpointHeader, predicationLo)
+                    );
+                }
+                
+                // TODO[dbg]: Now we're doing two copies, not so nice
+                postBuilder.CopyBuffer(
+                    streamBufferID, breakpoint.uid * sizeof(BreakpointHeader),
+                    breakpoint.hostStreamingBuffer, 0,
+                    sizeof(BreakpointHeader)
+                );
+                
+                postBuilder.CopyBuffer(
+                    streamBufferID, breakpoint.streamAllocation.offset,
+                    breakpoint.hostStreamingBuffer, sizeof(BreakpointHeader),
+                    breakpoint.streamAllocation.length
+                );
+                
+                // If not supported, pay for the expensive copy
+                if (deviceCapabilityTable.supportsPredicates) {
+                    postBuilder.EndPredicate(streamBufferID);
+                }
+            }
             
-            // TODO[dbg]: Now we're doing two copies, not so nice
-            postBuilder.CopyBuffer(
-                streamBufferID, breakpoint.uid * sizeof(BreakpointHeader),
-                breakpoint.hostStreamingBuffer, 0,
-                sizeof(BreakpointHeader)
-            );
-            
-            postBuilder.CopyBuffer(
-                streamBufferID, breakpoint.streamAllocation.offset,
-                breakpoint.hostStreamingBuffer, sizeof(BreakpointHeader),
-                breakpoint.streamAllocation.length
-            );
-            
-            postBuilder.EndPredicate(streamBufferID);
-        }
-        
-        // Finalize all predicate states
-        postBuilder.SetShaderProgram(finalizePredicateProgram->GetID());
-        for (const Breakpoint& breakpoint : breakpoints) {
-            BreakpointCopyData data;
-            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
-            postBuilder.SetDescriptorData(finalizePredicateProgram->GetDataID(), data);
-            postBuilder.Dispatch(1, 1, 1);
-        }
-#else // USE_PREDICATION
-        // Setup indirect commands
-        postBuilder.SetShaderProgram(setupIndirectCopyProgram->GetID());
-        for (const Breakpoint& breakpoint : breakpoints) {
-            BreakpointCopyData data;
-            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
-            postBuilder.SetDescriptorData(setupIndirectCopyProgram->GetDataID(), data);
-            postBuilder.SetResourceData(setupIndirectCopyProgram->GetHostDataBinding(), breakpoint.hostStreamingBuffer);
-            postBuilder.Dispatch(1, 1, 1);
-        }
+            // Finalize all predicate states
+            postBuilder.SetShaderProgram(finalizePredicateProgram->GetID());
+            for (const Breakpoint& breakpoint : breakpoints) {
+                BreakpointCopyData data;
+                data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+                postBuilder.SetDescriptorData(finalizePredicateProgram->GetDataID(), data);
+                postBuilder.Dispatch(1, 1, 1);
+            }
+        } else {
+            // Setup indirect commands
+            postBuilder.SetShaderProgram(setupIndirectCopyProgram->GetID());
+            for (const Breakpoint& breakpoint : breakpoints) {
+                BreakpointCopyData data;
+                data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+                postBuilder.SetDescriptorData(setupIndirectCopyProgram->GetDataID(), data);
+                postBuilder.SetResourceData(setupIndirectCopyProgram->GetHostDataBinding(), breakpoint.hostStreamingBuffer);
+                postBuilder.Dispatch(1, 1, 1);
+            }
 
-        // Execute indirect commands
-        postBuilder.SetShaderProgram(indirectCopyProgram->GetID());
-        for (const Breakpoint& breakpoint : breakpoints) {
-            BreakpointCopyData data;
-            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
-            postBuilder.SetDescriptorData(indirectCopyProgram->GetDataID(), data);
-            postBuilder.SetResourceData(indirectCopyProgram->GetHostDataBinding(), breakpoint.hostStreamingBuffer);
-            postBuilder.DispatchIndirect(
-                streamBufferID,
-                breakpoint.uid * sizeof(BreakpointHeader) + offsetof(BreakpointHeader, copyDispatchParams)
-            );
-        }
+            // Execute indirect commands
+            postBuilder.SetShaderProgram(indirectCopyProgram->GetID());
+            for (const Breakpoint& breakpoint : breakpoints) {
+                BreakpointCopyData data;
+                data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+                postBuilder.SetDescriptorData(indirectCopyProgram->GetDataID(), data);
+                postBuilder.SetResourceData(indirectCopyProgram->GetHostDataBinding(), breakpoint.hostStreamingBuffer);
+                postBuilder.DispatchIndirect(
+                    streamBufferID,
+                    breakpoint.uid * sizeof(BreakpointHeader) + offsetof(BreakpointHeader, copyDispatchParams)
+                );
+            }
         
-        postBuilder.UAVBarrier();
-#endif // USE_PREDICATION
+            postBuilder.UAVBarrier();
+        }
     }
 
     // Add to the tracker
@@ -1956,11 +1979,10 @@ void DebugFeature::CreateAndUpdatePayload(Breakpoint &breakpoint) {
     breakpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = breakpoint.streamAllocation.length + sizeof(BreakpointHeader),
         .format = Backend::IL::Format::R8UInt,
-#if USE_PREDICATION
-        .flagSet = ShaderDataBufferFlag::Host
-#else // USE_PREDICATION
-        .flagSet = ShaderDataBufferFlag::HostVisible | ShaderDataBufferFlag::NonDescriptor
-#endif // USE_PREDICATION
+        .flagSet = 
+            deviceCapabilityTable.supportsPredicates ? 
+            ShaderDataBufferFlag::Host : 
+            ShaderDataBufferFlag::HostVisible | ShaderDataBufferFlag::NonDescriptor
     }, "DebugStreamHost");
 }
 

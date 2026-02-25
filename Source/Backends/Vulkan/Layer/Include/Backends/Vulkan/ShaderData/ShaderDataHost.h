@@ -73,6 +73,12 @@ public:
     /// \return buffer object
     VkBuffer GetResourceBuffer(ShaderDataID rid);
 
+    /// Get the underlying buffer view of a resource
+    /// \param rid resource id
+    /// \param format the expected format
+    /// \return buffer object
+    VkBufferView GetResourceBufferView(ShaderDataID rid, VkFormat format);
+
     /// Get the allocation of a resource
     /// \param rid resource identifier
     /// \return given allocation

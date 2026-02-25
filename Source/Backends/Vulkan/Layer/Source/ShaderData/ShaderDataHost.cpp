@@ -158,6 +158,11 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info, cons
     if (info.flagSet & ShaderDataBufferFlag::Tiled) {
         bufferInfo.flags |= VK_BUFFER_CREATE_SPARSE_BINDING_BIT | VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
     }
+    
+    // If predicated, append usage
+    if (info.flagSet & ShaderDataBufferFlag::Predicate) {
+        bufferInfo.usage |= VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT;
+    }
 
     // Attempt to create the buffer
     if (table->next_vkCreateBuffer(table->object, &bufferInfo, nullptr, &entry.buffer) != VK_SUCCESS) {
@@ -390,6 +395,19 @@ VkBuffer ShaderDataHost::GetResourceBuffer(ShaderDataID rid) {
 
     // OK
     return entry.buffer;
+}
+
+VkBufferView ShaderDataHost::GetResourceBufferView(ShaderDataID rid, VkFormat format) {
+    std::lock_guard guard(mutex);
+    uint32_t index = indices[rid];
+
+    // Entry to map
+    ResourceEntry &entry = resources[index];
+    ASSERT(entry.info.type == ShaderDataType::Buffer, "Invalid resource");
+
+    // OK
+    ASSERT(format == VK_FORMAT_R32_UINT, "Unsupported format");
+    return entry.view;
 }
 
 VmaAllocation ShaderDataHost::GetMappingAllocation(ShaderDataMappingID mid) {
