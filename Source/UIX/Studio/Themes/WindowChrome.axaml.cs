@@ -56,6 +56,11 @@ namespace Studio.Views.Controls
         public static readonly StyledProperty<bool> ShowIconProperty = AvaloniaProperty.Register<WindowChrome, bool>(nameof(ShowIcon), true);
         
         /// <summary>
+        /// Pin icon style for the given view
+        /// </summary>
+        public static readonly StyledProperty<StreamGeometry> PinIconProperty = AvaloniaProperty.Register<WindowChrome, StreamGeometry>(nameof(PinIcon));
+        
+        /// <summary>
         /// Maximize icon style for the given view
         /// </summary>
         public static readonly StyledProperty<StreamGeometry> MaximizeIconProperty = AvaloniaProperty.Register<WindowChrome, StreamGeometry>(nameof(MaximizeIcon));
@@ -84,6 +89,11 @@ namespace Studio.Views.Controls
         /// Close command style for the given view
         /// </summary>
         public static readonly StyledProperty<ICommand> CloseCommandProperty = AvaloniaProperty.Register<SectionView, ICommand>(nameof(CloseCommand));
+        
+        /// <summary>
+        /// Pin command style for the given view
+        /// </summary>
+        public static readonly StyledProperty<ICommand> PinCommandProperty = AvaloniaProperty.Register<SectionView, ICommand>(nameof(PinCommand));
         
         /// <summary>
         /// Title getter / setter
@@ -131,6 +141,24 @@ namespace Studio.Views.Controls
         }
         
         /// <summary>
+        /// Pin icon getter / setter
+        /// </summary>
+        public StreamGeometry PinIcon
+        {
+            get => GetValue(PinIconProperty);
+            set => SetValue(PinIconProperty, value);
+        }
+
+        /// <summary>
+        /// Pin command getter / setter
+        /// </summary>
+        public ICommand PinCommand
+        {
+            get => GetValue(PinCommandProperty);
+            set => SetValue(PinCommandProperty, value);
+        }
+        
+        /// <summary>
         /// Maximize icon getter / setter
         /// </summary>
         public StreamGeometry MaximizeIcon
@@ -171,6 +199,7 @@ namespace Studio.Views.Controls
             MinimizeCommand = ReactiveCommand.Create(OnMinimize);
             MaximizeCommand = ReactiveCommand.Create(OnMaximize);
             CloseCommand = ReactiveCommand.Create(OnClose);
+            PinCommand = ReactiveCommand.Create(OnPin);
             UpdateIcons();
         }
 
@@ -216,6 +245,15 @@ namespace Studio.Views.Controls
             {
                 MaximizeIcon = ResourceLocator.GetIcon("Maximize")!;
             }
+            
+            if (Window?.Topmost ?? false)
+            {
+                PinIcon = ResourceLocator.GetIcon("Unpin")!;
+            }
+            else
+            {
+                PinIcon = ResourceLocator.GetIcon("Pin")!;
+            }
         }
 
         /// <summary>
@@ -256,6 +294,18 @@ namespace Studio.Views.Controls
         private void OnClose()
         {
             Window?.Close();
+        }
+
+        /// <summary>
+        /// Invoked on pins
+        /// </summary>
+        private void OnPin()
+        {
+            if (Window != null)
+            {
+                Window.Topmost = !Window.Topmost;
+                UpdateIcons();
+            }
         }
 
         /// <summary>

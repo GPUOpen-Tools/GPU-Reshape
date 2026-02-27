@@ -87,7 +87,7 @@
 
         <!-- Toolbox right hand side -->
         <Border 
-            Margin="0 2 140 2" 
+            Margin="0 2 190 2" 
             Grid.Row="0" Grid.Column="0"
             BorderBrush="{StaticResource DockThemeBorderLowBrush}" 
             BorderThickness="1"

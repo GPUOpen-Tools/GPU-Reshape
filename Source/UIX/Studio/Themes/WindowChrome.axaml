@@ -87,6 +87,15 @@
                         VerticalAlignment="Top">
                         <Button 
                             Margin="0 0 2 0"
+                            Command="{TemplateBinding PinCommand}"
+                            Classes="Window">
+                            <PathIcon
+                                Margin="0 1 0 0"
+                                Data="{TemplateBinding PinIcon}" Height="15" />
+                        </Button>
+                        
+                        <Button 
+                            Margin="0 0 2 0"
                             Command="{TemplateBinding MinimizeCommand}"
                             IsVisible="{TemplateBinding CanMinimize}"
                             Classes="Window">
