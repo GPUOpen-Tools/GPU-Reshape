@@ -61,7 +61,8 @@ namespace Studio.App
         // Setup command signatures
         static readonly RootCommand Command = new RootCommand("GPU Reshape")
         {
-            AttachCommand.Create()
+            AttachCommand.Create(),
+            ApplySettingCommand.Create()
         };
 
         public static void Build(string[] args)
@@ -160,7 +161,10 @@ namespace Studio.App
             // Invoke command line if requested
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { Args: { Length: > 0 } args })
             {
-                await Command.InvokeAsync(args);
+                foreach (string[] command in CommandLineUtils.SplitCommands(args))
+                {
+                    await Command.InvokeAsync(command);
+                }
             }
             
             base.OnFrameworkInitializationCompleted();
