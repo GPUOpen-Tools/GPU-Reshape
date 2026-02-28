@@ -29,6 +29,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
+using Runtime.Utils.Workspace;
 using Runtime.ViewModels.IL;
 using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
@@ -134,12 +135,13 @@ namespace Studio.ViewModels.Shader
             get => _content;
             set
             {
-                this.RaiseAndSetIfChanged(ref _content, value);
-                
-                if (_content != null)
+                // Subscribe before potential listeners kick off
+                if (value != null)
                 {
-                    OnObjectChanged();
+                    OnObjectChanged((ShaderViewModel)value);
                 }
+                
+                this.RaiseAndSetIfChanged(ref _content, value);
             }
         }
 
@@ -263,27 +265,30 @@ namespace Studio.ViewModels.Shader
         public ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? TransformInstructionLine(AssembledInstructionMapping mapping)
         {
             ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel> viewModel = new();
-            
-            // Association is trivial, just fetch the asssembled lookup
-            viewModel.Associations.Add(
-                new ShaderMultiAssociationPair<ShaderInstructionSourceAssociationViewModel>()
-                {
-                    ShaderViewModel = ShaderViewModel!,
-                    Association = new ShaderInstructionSourceAssociationViewModel()
+
+            // Association is trivial, just fetch the assembled lookup
+            ShaderUtils.SubscribeDeferredProgram(PropertyCollection!, ShaderViewModel!, () =>
+            {
+                viewModel.Associations.Add(
+                    new ShaderMultiAssociationPair<ShaderInstructionSourceAssociationViewModel>()
                     {
-                        Location = new ShaderLocation()
+                        ShaderViewModel = ShaderViewModel!,
+                        Association = new ShaderInstructionSourceAssociationViewModel()
                         {
-                            BasicBlockId = mapping.BasicBlockId,
-                            InstructionIndex = mapping.InstructionIndex,
-                            Line = TransformLine(new ShaderLocation()
+                            Location = new ShaderLocation()
                             {
                                 BasicBlockId = mapping.BasicBlockId,
-                                InstructionIndex = mapping.InstructionIndex
-                            })
+                                InstructionIndex = mapping.InstructionIndex,
+                                Line = TransformLine(new ShaderLocation()
+                                {
+                                    BasicBlockId = mapping.BasicBlockId,
+                                    InstructionIndex = mapping.InstructionIndex
+                                })
+                            }
                         }
                     }
-                }
-            );
+                );
+            });
 
             return viewModel;
         }
@@ -323,16 +328,16 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Invoked on object change
         /// </summary>
-        private void OnObjectChanged()
+        private void OnObjectChanged(ShaderViewModel content)
         {
             // Submit request if not already
-            if (ShaderViewModel!.Program == null)
+            if (content.Program == null)
             {
-                PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderIL(ShaderViewModel);
+                PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderIL(content);
             }
 
             // Bind program, assemble when changed
-            ShaderViewModel.WhenAnyValue(x => x.Program).WhereNotNull().Subscribe(program =>
+            content.WhenAnyValue(x => x.Program).WhereNotNull().Subscribe(program =>
             {
                 // Create assembler
                 _assembler = new Assembler(program);
