@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Avalonia.Threading;
 using Message.CLR;
 using Runtime.ViewModels.Shader;
@@ -167,11 +168,18 @@ namespace Studio.ViewModels.Workspace.Services
                                 continue;
                             }
 
-                            // Parse program
-                            Models.IL.Program? program = new Models.IL.Parser().Parse(shaderCode.program.String);
+                            // Message escapes the thread
+                            string reference = shaderCode.program.String;
 
-                            // Copy contents
-                            Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.Program = program; });
+                            // Programs can get incredibly complex, schedule it on a worker thread
+                            ThreadPool.QueueUserWorkItem(_ =>
+                            {
+                                // Parse program
+                                Models.IL.Program program = new Models.IL.Parser().Parse(reference);
+
+                                // Copy contents
+                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.Program = program; });
+                            });
                             break;
                         }
                         case ShaderBlockGraphMessage.ID:
