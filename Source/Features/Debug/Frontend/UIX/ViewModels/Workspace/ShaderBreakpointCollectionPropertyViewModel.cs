@@ -50,7 +50,7 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
         // Bind to collection
         this.WhenAnyValue(x => x.CollectionViewModel).WhereNotNull().Subscribe(x =>
         {
-            x.Bindings.ToObservableChangeSet()
+            x.SourceBindings.ToObservableChangeSet()
                 .OnItemAdded(OnAdded)
                 .OnItemRemoved(OnRemoved)
                 .Subscribe();
@@ -68,7 +68,7 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
     /// <summary>
     /// Invoked on breakpoint addition
     /// </summary>
-    private void OnAdded(BreakpointViewModelBinding obj)
+    private void OnAdded(BreakpointViewModelSourceBinding obj)
     {
         ShaderPropertyProperty.EnqueueBus();
     }
@@ -76,7 +76,7 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
     /// <summary>
     /// Invoked on breakpoint removal
     /// </summary>
-    private void OnRemoved(BreakpointViewModelBinding obj)
+    private void OnRemoved(BreakpointViewModelSourceBinding obj)
     {
         ShaderPropertyProperty.EnqueueBus();
     }
@@ -93,7 +93,7 @@ public class ShaderBreakpointCollectionPropertyViewModel : BasePropertyViewModel
         
         // Store all breakpoints
         StaticMessageView<DebugBreakpointMessage, ReadWriteMessageStream> view = new(breakpointStream);
-        foreach (BreakpointViewModelBinding binding in CollectionViewModel.Bindings)
+        foreach (BreakpointViewModelSourceBinding binding in CollectionViewModel.SourceBindings)
         {
             BreakpointConfig breakpointConfig = binding.BreakpointViewModel.GetBreakpointConfig();
             

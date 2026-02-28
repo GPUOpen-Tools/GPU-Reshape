@@ -200,7 +200,7 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
             };
             
             // Subscribe to all bindings
-            obj.Value.Bindings
+            obj.Value.SourceBindings
                 .ToObservableChangeSet()
                 .OnItemAdded(x => OnBindingAdded(collectionItem, x))
                 .OnItemRemoved(x => OnBindingRemoved(collectionItem, x))
@@ -228,7 +228,7 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
         /// <summary>
         /// Invoked on binding additions
         /// </summary>
-        private void OnBindingAdded(BreakpointTreeItemViewModel item, BreakpointViewModelBinding binding)
+        private void OnBindingAdded(BreakpointTreeItemViewModel item, BreakpointViewModelSourceBinding binding)
         {
             // Create item
             var breakpointItem = new BreakpointTreeItemViewModel()
@@ -254,7 +254,7 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
         /// <summary>
         /// Invoked on binding removals
         /// </summary>
-        private void OnBindingRemoved(BreakpointTreeItemViewModel item, BreakpointViewModelBinding binding)
+        private void OnBindingRemoved(BreakpointTreeItemViewModel item, BreakpointViewModelSourceBinding binding)
         {
             if (item.Items.FirstOrDefault(x => ((BreakpointTreeItemViewModel)x).LookupKey == binding.BreakpointViewModel) is {} child)
             {

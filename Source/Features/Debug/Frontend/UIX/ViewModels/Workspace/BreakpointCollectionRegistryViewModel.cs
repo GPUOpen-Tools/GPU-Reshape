@@ -34,7 +34,8 @@ public class BreakpointCollectionRegistryViewModel : BasePropertyViewModel
         {
             value = new BreakpointCollectionViewModel()
             {
-                PropertyViewModel = this.GetWorkspaceCollection()!
+                PropertyViewModel = this.GetWorkspaceCollection()!,
+                ViewModel = viewModel,
             };
             
             ViewModels.Add(viewModel, value);
@@ -51,7 +52,9 @@ public class BreakpointCollectionRegistryViewModel : BasePropertyViewModel
     {
         foreach (KeyValuePair<object, BreakpointCollectionViewModel> pair in ViewModels)
         {
-            pair.Value.Bindings.RemoveMany(pair.Value.Bindings.Where(x => x.BreakpointViewModel == breakpointViewModel));
+            // Remove from physical and virtual
+            pair.Value.TextualBindings.RemoveMany(pair.Value.TextualBindings.Where(x => x.BreakpointViewModel == breakpointViewModel));
+            pair.Value.SourceBindings.RemoveMany(pair.Value.SourceBindings.Where(x => x.BreakpointViewModel == breakpointViewModel));
             
             // Remove all bound events
             pair.Value.Disposable.Clear();

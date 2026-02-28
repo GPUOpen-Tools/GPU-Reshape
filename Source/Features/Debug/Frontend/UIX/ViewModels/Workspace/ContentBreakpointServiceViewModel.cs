@@ -8,6 +8,7 @@ using GRS.Features.Debug.UIX.ViewModels.Utils;
 using ReactiveUI;
 using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Listeners;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 
 namespace GRS.Features.Debug.UIX.Workspace;
@@ -37,17 +38,23 @@ public class ContentBreakpointServiceViewModel : ReactiveObject, IDestructableOb
     /// </summary>
     public void Bind()
     {
-        _breakpointCollectionViewModel.Bindings
+        _breakpointCollectionViewModel.SourceBindings
             .ToObservableChangeSet()
-            .OnItemAdded(OnAdded)
-            .OnItemRemoved(OnRemoved)
+            .OnItemAdded(OnSourceAdded)
+            .OnItemRemoved(OnSourceRemoved)
+            .Subscribe();
+        
+        _breakpointCollectionViewModel.TextualBindings
+            .ToObservableChangeSet()
+            .OnItemAdded(OnTextualAdded)
+            .OnItemRemoved(OnBindingRemoved)
             .Subscribe();
     }
 
     /// <summary>
     /// Invoked on item adds
     /// </summary>
-    private void OnAdded(BreakpointViewModelBinding binding)
+    private void OnSourceAdded(BreakpointViewModelSourceBinding binding)
     {
         BreakpointMappingUtils.SubscribeInstructionLineMapping(Content, binding.BreakpointViewModel.Disposable, binding.Source.Mapping, associationViewModel =>
         {
@@ -93,7 +100,68 @@ public class ContentBreakpointServiceViewModel : ReactiveObject, IDestructableOb
     /// <summary>
     /// Invoked on item removed
     /// </summary>
-    private void OnRemoved(BreakpointViewModelBinding binding)
+    private void OnSourceRemoved(BreakpointViewModelSourceBinding binding)
+    {
+        // Slow remove
+        _sourceBindingSet.RemoveWhere(x => x.Item1 == binding.BreakpointViewModel);
+
+        // Remove source object
+        if (_sourceObjects.TryGetValue(binding, out BreakpointSourceObject? sourceObject))
+        {
+            Content.MarkerCanvasViewModel.SourceObjects.Remove(sourceObject);
+            _sourceObjects.Remove(binding);
+        }
+    }
+
+    /// <summary>
+    /// Invoked on item adds
+    /// </summary>
+    private void OnTextualAdded(BreakpointViewModelTextualBinding binding)
+    {
+        // Create textual key
+        var key = Tuple.Create(
+            binding.BreakpointViewModel,
+            binding.LineBase0
+        );
+
+        // Ignore textual-wise duplicates
+        if (!_textualBindingSet.Add(key))
+        {
+            return;
+        }
+
+        // Create object
+        BreakpointSourceObject sourceObject = new()
+        {
+            Content = "Breakpoint",
+            DetailViewModel = binding.BreakpointViewModel,
+            Segment = new ShaderSourceSegment
+            {
+                Location = new ShaderLocation()
+                {
+                    Line = binding.LineBase0
+                }
+            }
+        };
+
+        // Register source object
+        Content.MarkerCanvasViewModel.SourceObjects.Add(sourceObject);
+        
+        // Remove on breakpoint disposing
+        binding.BreakpointViewModel.Disposable.Add(Disposable.Create(() =>
+        {
+            Content.MarkerCanvasViewModel.SourceObjects.Remove(sourceObject);
+        }));
+        
+        // Always select by default
+        Content.SelectedTextualSourceObject = sourceObject;
+        Content.MarkerCanvasViewModel.DetailCommand?.Execute(sourceObject);
+    }
+
+    /// <summary>
+    /// Invoked on item removed
+    /// </summary>
+    private void OnBindingRemoved(BreakpointViewModelTextualBinding binding)
     {
         // Slow remove
         _sourceBindingSet.RemoveWhere(x => x.Item1 == binding.BreakpointViewModel);
@@ -122,7 +190,12 @@ public class ContentBreakpointServiceViewModel : ReactiveObject, IDestructableOb
     private HashSet<Tuple<BreakpointViewModel, int, int>> _sourceBindingSet = new();
 
     /// <summary>
+    /// All textual binding sets
+    /// </summary>
+    private HashSet<Tuple<BreakpointViewModel, int>> _textualBindingSet = new();
+
+    /// <summary>
     /// All source objects
     /// </summary>
-    private Dictionary<BreakpointViewModelBinding, BreakpointSourceObject> _sourceObjects = new();
+    private Dictionary<object, BreakpointSourceObject> _sourceObjects = new();
 }

@@ -75,7 +75,7 @@ public class BreakpointMargin : LineNumberMargin
             double lineTextMiddle = visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.TextMiddle);
             
             // Has an assigned breakpoint?
-            if (VM.CollectionViewModel.Bindings.FirstOrDefault(b => IsBreakpointVisible(b, lineNumberBase1 - 1)) is { } breakpoint)
+            if (GetBreakpointForLine(lineNumberBase1 - 1) != null)
             {
                 // Draw breakpoint
                 context.DrawEllipse(
@@ -130,7 +130,7 @@ public class BreakpointMargin : LineNumberMargin
     /// Bind an instruction line
     /// Invalidates when actually bound
     /// </summary>
-    private ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? BindSourceInstructionLineAssociations(BreakpointViewModelBinding binding)
+    private ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? BindSourceInstructionLineAssociations(BreakpointViewModelSourceBinding binding)
     {
         // Check cache
         if (!_breakpointSourceAssociations.TryGetValue(binding, out ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>? association))
@@ -182,9 +182,9 @@ public class BreakpointMargin : LineNumberMargin
             VM.LastFocusLineNumberBase0 = VM.LineNumberBase0;
             
             // Assign highlighted breakpoint
-            if (VM.CollectionViewModel.Bindings.FirstOrDefault(x => IsBreakpointVisible(x, VM.LineNumberBase0)) is { } breakpoint)
+            if (GetBreakpointForLine(VM.LineNumberBase0) is { } breakpoint)
             {
-                VM.HighlightedBreakpointViewModel = breakpoint.BreakpointViewModel;
+                VM.HighlightedBreakpointViewModel = breakpoint;
             }
         }
         else
@@ -195,6 +195,33 @@ public class BreakpointMargin : LineNumberMargin
         }
 
         InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Get the breakpoint assigned to a particular line
+    /// </summary>
+    private BreakpointViewModel? GetBreakpointForLine(int lineBase0)
+    {
+        // Check textual breakpoints first
+        foreach (BreakpointViewModelTextualBinding binding in VM.CollectionViewModel.TextualBindings)
+        {
+            if (binding.LineBase0 == lineBase0)
+            {
+                return binding.BreakpointViewModel;
+            }
+        }
+
+        // Check for source bindings
+        foreach (BreakpointViewModelSourceBinding binding in VM.CollectionViewModel.SourceBindings)
+        {
+            if (IsBreakpointVisible(binding, lineBase0))
+            {
+                return binding.BreakpointViewModel;
+            }
+        }
+
+        // No bindings
+        return null;
     }
 
     /// <summary>
@@ -286,20 +313,20 @@ public class BreakpointMargin : LineNumberMargin
     private void HandleNewBreakpoint(int lineBase0)
     {
         // If there's a breakpoint, remove it
-        if (VM.CollectionViewModel.Bindings.FirstOrDefault(x => IsBreakpointVisible(x, lineBase0)) is { } breakpoint)
+        if (GetBreakpointForLine(lineBase0) is { } breakpoint)
         {
             // Deregister against registry
             VM.Content.PropertyCollection?
                 .GetService<BreakpointRegistryService>()?
-                .Deregister(breakpoint.BreakpointViewModel);
+                .Deregister(breakpoint);
             
             // Let the registry handle it, it may be mirrored
             VM.Content.PropertyCollection?
                 .GetProperty<BreakpointCollectionRegistryViewModel>()?
-                .Remove(breakpoint.BreakpointViewModel);
+                .Remove(breakpoint);
             
             // Remove all bound events
-            breakpoint.BreakpointViewModel.Disposable.Clear();
+            breakpoint.Disposable.Clear();
         }
         else
         {
@@ -312,7 +339,7 @@ public class BreakpointMargin : LineNumberMargin
     /// <summary>
     /// Check if a breakpoint is visible
     /// </summary>
-    private bool IsBreakpointVisible(BreakpointViewModelBinding binding, int lineBase0)
+    private bool IsBreakpointVisible(BreakpointViewModelSourceBinding binding, int lineBase0)
     {
         if (BindSourceInstructionLineAssociations(binding) is not { } associationViewModel)
         {
@@ -367,7 +394,7 @@ public class BreakpointMargin : LineNumberMargin
     /// <summary>
     /// All cached associations
     /// </summary>
-    private Dictionary<BreakpointViewModelBinding, ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>> _breakpointSourceAssociations = new();
+    private Dictionary<BreakpointViewModelSourceBinding, ShaderMultiAssociationViewModel<ShaderInstructionSourceAssociationViewModel>> _breakpointSourceAssociations = new();
 
     /// <summary>
     /// Current preview line
