@@ -97,8 +97,8 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         // If there's a data format, don't render the entire thing, just re-pack
         if (message.dataFormat != 0)
         {
-            // Already gamma encoded, undo it
-            config.Gamma = (float)(1.0 / ValueTypeRenderingUtils.FormattingConfig.DefaultGamma);
+            // Already gamma encoded
+            config.Gamma = 1.0f;
             
             // Parallelize composition
             Parallel.For(0, exportCount, i =>
@@ -169,8 +169,8 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         // Fast path, compressed and scatter memcpy
         if (message.dataFormat != 0)
         {
-            // Already gamma encoded, undo it
-            config.Gamma = (float)(1.0 / ValueTypeRenderingUtils.FormattingConfig.DefaultGamma);
+            // Already gamma encoded
+            config.Gamma = 1.0f;
             
             // Parallelize composition
             Parallel.For(0, exportCount, i =>
@@ -263,7 +263,8 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
             MinValue = imageDisplayViewModel?.MinValue ?? 0.0f,
             MaxValue = imageDisplayViewModel?.MaxValue ?? 1.0f,
             Gamma = (imageDisplayViewModel?.IsSRGB ?? true) ? ValueTypeRenderingUtils.FormattingConfig.DefaultGamma : 1.0f,
-            TexelChannelMask = GetTexelChannelMask(imageDisplayViewModel)
+            TexelChannelMask = GetTexelChannelMask(imageDisplayViewModel),
+            TexelChannelConstant = GetTexelChannelConstant(imageDisplayViewModel)
         };
     }
 
@@ -300,6 +301,26 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
         }
             
         return mask;
+    }
+
+    /// <summary>
+    /// Get the color 255 constant
+    /// </summary>
+    private static uint GetTexelChannelConstant(ImageBreakpointDisplayViewModel? imageDisplayViewModel)
+    {
+        if (imageDisplayViewModel == null)
+        {
+            return 0u;
+        }
+        
+        uint constant = 0x0;
+        
+        if (!imageDisplayViewModel.ColorMask.HasFlag(ColorMask.A))
+        {
+            constant |= 0xFFu << 24;
+        }
+            
+        return constant;
     }
 
     private class Payload

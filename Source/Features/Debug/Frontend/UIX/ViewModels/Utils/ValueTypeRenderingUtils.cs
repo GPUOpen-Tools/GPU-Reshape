@@ -34,6 +34,11 @@ public static class ValueTypeRenderingUtils
         public required uint TexelChannelMask;
 
         /// <summary>
+        /// Channel constants
+        /// </summary>
+        public required uint TexelChannelConstant;
+
+        /// <summary>
         /// Gamma to apply
         /// </summary>
         public required float Gamma;
@@ -285,7 +290,7 @@ public static class ValueTypeRenderingUtils
                 Pack(config, ((texel >> 16) & 0xFF) / 255.0f, 16) |
                 Pack(config, ((texel >> 24) & 0xFF) / 255.0f, 24);
         
-        return texel & config.TexelChannelMask;
+        return texel & config.TexelChannelMask | config.TexelChannelConstant;
     }
 
     /// <summary>
