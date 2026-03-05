@@ -65,9 +65,9 @@ namespace Studio.App
             ApplySettingCommand.Create()
         };
 
-        public static void Build(string[] args)
+        public static int Build(string[] args)
         {
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         
         public static AppBuilder BuildAvaloniaApp()

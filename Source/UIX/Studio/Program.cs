@@ -34,17 +34,16 @@ namespace Studio
     class Program
     {
         [STAThread]
-        private static void Main(string[] args)
+        private static int Main(string[] args)
         {
             // Any arguments?
             if (args.Length > 0 && CliApp.IsCLI(args))
             {
-                CliApp.Build(args);
-                return;
+                return CliApp.Build(args);
             }
             
             // Otherwise assume desktop
-            DesktopApp.Build(args);
+            return DesktopApp.Build(args);
         }
         
         /// <summary>

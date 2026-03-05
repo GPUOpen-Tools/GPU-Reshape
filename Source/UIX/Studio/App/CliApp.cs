@@ -45,12 +45,14 @@ public class CliApp : Application
         RenderCommand.Create()
     };
     
-    public static void Build(string[] args)
+    public static int Build(string[] args)
     {
         AppBuilder.Configure<CliApp>()
             .UsePlatformDetect()
             .LogToTrace()
             .Start(AppMain, args);
+
+        return _exitCode;
     }
 
     public static bool IsCLI(string[] args)
@@ -69,7 +71,7 @@ public class CliApp : Application
     private static async void AppMainTask(string[] args)
     {
         // Invoke sync
-        await Command.InvokeAsync(args);
+        _exitCode = await Command.InvokeAsync(args);
 
         // Stop the dispatcher
         _cancellationToken.Cancel();
@@ -104,4 +106,9 @@ public class CliApp : Application
     /// Dispatcher cancellation token
     /// </summary>
     private static CancellationTokenSource _cancellationToken = new();
+
+    /// <summary>
+    /// Shared exit code
+    /// </summary>
+    private static int _exitCode = 0;
 }
