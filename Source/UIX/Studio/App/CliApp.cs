@@ -38,6 +38,11 @@ namespace Studio.App;
 
 public class CliApp : Application
 {
+    /// <summary>
+    /// Is this a CLI app?
+    /// </summary>
+    public static bool IsActive = false;
+    
     // Setup command signatures
     static readonly RootCommand Command = new RootCommand("GPU Reshape")
     {
@@ -47,6 +52,8 @@ public class CliApp : Application
     
     public static int Build(string[] args)
     {
+        IsActive = true;
+        
         AppBuilder.Configure<CliApp>()
             .UsePlatformDetect()
             .LogToTrace()

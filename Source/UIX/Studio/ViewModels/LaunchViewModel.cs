@@ -39,6 +39,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.App;
 using Studio.Models.Environment;
 using Studio.Models.Workspace;
 using Studio.Services;
@@ -389,19 +390,23 @@ namespace Studio.ViewModels
                 .OnItemRemoved(x => Configurations.Remove(x))
                 .Subscribe();
 
-            // Suspension
-            this.BindTypedSuspension();
-
-            // Get history
-            SuspensionHistoryKeys = this.GetSuspensionHistory();
-
-            // Bind on key changes
-            this.WhenAnyValue(x => x.SelectedHistoryKey).Skip(1).Subscribe(this.RecoverSuspendedHistory);
-
-            // Try getting configuration from suspension
-            if (!string.IsNullOrEmpty(SelectedConfigurationName))
+            // App suspension
+            if (!CliApp.IsActive)
             {
-                SelectedConfiguration = Configurations.FirstOrDefault(x => x.Name == SelectedConfigurationName);
+                // Suspension
+                this.BindTypedSuspension();
+
+                // Get history
+                SuspensionHistoryKeys = this.GetSuspensionHistory();
+
+                // Bind on key changes
+                this.WhenAnyValue(x => x.SelectedHistoryKey).Skip(1).Subscribe(this.RecoverSuspendedHistory);
+
+                // Try getting configuration from suspension
+                if (!string.IsNullOrEmpty(SelectedConfigurationName))
+                {
+                    SelectedConfiguration = Configurations.FirstOrDefault(x => x.Name == SelectedConfigurationName);
+                }
             }
             
             // Default selection
@@ -615,11 +620,15 @@ namespace Studio.ViewModels
                 return;
             }
             
-            // Suspend all properties for this one
-            this.SuspendHistory(_applicationPath);
+            // App suspension
+            if (!CliApp.IsActive)
+            {
+                // Suspend all properties for this one
+                this.SuspendHistory(_applicationPath);
 
-            // Get history
-            SuspensionHistoryKeys = this.GetSuspensionHistory();
+                // Get history
+                SuspensionHistoryKeys = this.GetSuspensionHistory();
+            }
 
             // Prevent launches for now
             _canLaunch = false;

@@ -339,6 +339,7 @@ public class LaunchCommand : IBaseCommand
         // Check result
         if (_launchViewModel.ConnectionStatus == ConnectionStatus.FailedLaunch)
         {
+            Logging.Error("Failed to launch application");
             return null;
         }
 
