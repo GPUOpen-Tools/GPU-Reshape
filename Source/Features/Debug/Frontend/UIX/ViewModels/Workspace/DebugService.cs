@@ -37,11 +37,16 @@ using Studio.ViewModels.Workspace;
 using Message.CLR;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio;
+using Studio.Models.IL;
 using Studio.Models.IL.Tiny;
 using Studio.Models.Instrumentation;
 using Studio.Services;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
+using ArrayType = Studio.Models.IL.ArrayType;
+using MatrixType = Studio.Models.IL.MatrixType;
+using StructType = Studio.Models.IL.StructType;
+using VectorType = Studio.Models.IL.VectorType;
 using Type = Studio.Models.IL.Type;
 
 namespace GRS.Features.Debug.UIX.Workspace
@@ -183,6 +188,69 @@ namespace GRS.Features.Debug.UIX.Workspace
         }
 
         /// <summary>
+        /// Recreate the value structure
+        /// </summary>
+        private void CreateValueStructure(Type type, BreakpointDebugValue value, IEnumerator<DebugBreakpointValueMetadataMessage> enumerator)
+        {
+            enumerator.MoveNext();
+            var valueMessage = enumerator.Current;
+            
+            // Set info
+            value.Type = type;
+            value.Name = valueMessage.name.String;
+            value.ValueId = valueMessage.valueId;
+            
+            // Handle structure
+            switch (type.Kind)
+            {
+                case TypeKind.Struct:
+                {
+                    var typed = (StructType)type;
+                    value.Values = new BreakpointDebugValue[typed.MemberTypes.Length];
+                    
+                    for (int i = 0; i < typed.MemberTypes.Length; i++)
+                    {
+                        CreateValueStructure(typed.MemberTypes[i], value.Values[i] = new BreakpointDebugValue(), enumerator);
+                    }
+                    break;
+                }
+                case TypeKind.Array:
+                {
+                    var typed = (ArrayType)type;
+                    value.Values = new BreakpointDebugValue[typed.Count];
+                    
+                    for (int i = 0; i < typed.Count; i++)
+                    {
+                        CreateValueStructure(typed.ElementType, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                    }
+                    break;
+                }
+                case TypeKind.Vector:
+                {
+                    var typed = (VectorType)type;
+                    value.Values = new BreakpointDebugValue[typed.Dimension];
+                    
+                    for (int i = 0; i < typed.Dimension; i++)
+                    {
+                        CreateValueStructure(typed.ContainedType, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                    }
+                    break;
+                }
+                case TypeKind.Matrix:
+                {
+                    var typed = (MatrixType)type;
+                    value.Values = new BreakpointDebugValue[typed.Columns * typed.Rows];
+                    
+                    for (int i = 0; i < typed.Columns * typed.Rows; i++)
+                    {
+                        CreateValueStructure(typed.ContainedType, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                    }
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
         /// Bridge handler
         /// </summary>
         private void HandleMetadata(DynamicMessageView<DebugBreakpointMetadataMessage> view)
@@ -206,13 +274,23 @@ namespace GRS.Features.Debug.UIX.Workspace
                         variable.dataTinyType,
                         new TinyTypePacking.TinyTypeResolver()
                     );
-                    
-                    remoteVariables.Add(new BreakpointDebugVariable()
+
+                    // Create variable
+                    var debugVariable = new BreakpointDebugVariable()
                     {
                         Name = variable.name.String,
                         Type = type,
-                        Handle = variable.handle
-                    });
+                        VariableId = variable.variableId
+                    };
+
+                    // Parse all variables
+                    CreateValueStructure(
+                        type,
+                        debugVariable.Value,
+                        new DynamicMessageView<DebugBreakpointValueMetadataMessage>(variable.values.Stream).GetEnumerator()
+                    );
+                    
+                    remoteVariables.Add(debugVariable);
                 }
                 
                 // The rest needs to happen on the UI thread
@@ -221,7 +299,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     // TODO: This is not correct, it's a multi-subscriber situation, again
                     foreach (BreakpointDebugVariable variable in remoteVariables)
                     {
-                        if (!breakpointViewModel.DebugVariables.Any(x => x.Handle == variable.Handle))
+                        if (!breakpointViewModel.DebugVariables.Any(x => x.GetHashCode() == variable.GetHashCode()))
                         {
                             breakpointViewModel.DebugVariables.Add(variable);
                         }

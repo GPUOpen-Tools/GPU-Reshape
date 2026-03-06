@@ -40,8 +40,8 @@ public:
     DebugEmitter(DeviceDispatchTable* table);
 
     /// Overrides
-    void GetVariables(IL::Program& program, const IL::Instruction* instr, TrivialStackVector<IL::DebugVariable, 4u>& variables) override;
-    IL::ID ReconstructValue(IL::Emitter<> &emitter, uint32_t handle, const IL::Instruction *instr) override;
+    void GetStack(IL::Program& program, const IL::Instruction* instr, SmallArena& arena, IL::DebugStack& stack) override;
+    IL::ID ReconstructValue(IL::Emitter<> &emitter, const IL::DebugSingleValue& value, const IL::Instruction *instr) override;
 
 private:
     DeviceDispatchTable* table;

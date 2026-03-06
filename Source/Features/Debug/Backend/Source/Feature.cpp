@@ -954,7 +954,7 @@ static IL::ID CompressFPUnorm8888(const IL::VisitContext &context, IL::Emitter<>
         }
         case Backend::IL::TypeKind::FP: {
             // TODO[dbg]: Color space handling
-            IL::ID linear = ((IL::ID)emitter.Mul(extended.Pow(value, context.program.GetConstants().FP(0.4545454545f)->id), context.program.GetConstants().FP(255.0f)->id));
+            IL::ID linear = emitter.Mul(extended.Pow(value, context.program.GetConstants().FP(0.4545454545f)->id), context.program.GetConstants().FP(255.0f)->id);
             IL::ID quant = emitter.FloatToUInt32(linear); // This is my quant
             return extended.Min(quant, emitter.UInt32(255));
         }
@@ -968,37 +968,159 @@ static IL::ID CompressFPUnorm8888(const IL::VisitContext &context, IL::Emitter<>
     }
 }
 
+static void FillValueStream(MessageStreamView<DebugBreakpointValueMetadataMessage> view, const IL::DebugSingleValue& value, uint32_t& id) {
+    DebugBreakpointValueMetadataMessage *data = view.Add(DebugBreakpointValueMetadataMessage::AllocationInfo {
+        .nameLength = value.name.length()
+    });
+    
+    data->name.Set(value.name);
+    data->valueId = id++;
+    data->hasReconstruction = false;
+    
+    switch (value.type->kind) {
+        default: {
+            data->hasReconstruction = value.handle != nullptr;
+            break;
+        }
+        case Backend::IL::TypeKind::Struct: {
+            auto _type = value.type->As<Backend::IL::StructType>();
+            
+            for (uint32_t i = 0; i < _type->memberTypes.size(); i++) {
+                FillValueStream(view, value.values[i], id);
+            }
+            
+            break;
+        }
+        case Backend::IL::TypeKind::Array: {
+            auto _type = value.type->As<Backend::IL::ArrayType>();
+            
+            for (uint32_t i = 0; i < _type->count; i++) {
+                FillValueStream(view, value.values[i], id);
+            }
+
+            break;
+        }
+        case Backend::IL::TypeKind::Vector: {
+            auto _type = value.type->As<Backend::IL::VectorType>();
+            
+            for (uint32_t i = 0; i < _type->dimension; i++) {
+                FillValueStream(view, value.values[i], id);
+            }
+
+            break;
+        }
+        case Backend::IL::TypeKind::Matrix: {
+            auto _type = value.type->As<Backend::IL::MatrixType>();
+            
+            for (uint32_t column = 0; column < _type->columns; column++) {
+                for (uint32_t row = 0; row < _type->rows; row++) {
+                    FillValueStream(view, value.values[_type->columns * _type->rows], id);
+                }
+            }
+
+            break;
+        }
+    }
+}
+
+static const IL::DebugSingleValue* GetValueFromId(const IL::DebugSingleValue& value, uint32_t& id) {
+    if (!id) {
+        return &value;
+    }
+    
+    switch (value.type->kind) {
+        default: {
+            ASSERT(false, "Invalid state");
+            return nullptr;
+        }
+        case Backend::IL::TypeKind::Struct: {
+            auto _type = value.type->As<Backend::IL::StructType>();
+            
+            for (uint32_t i = 0; i < _type->memberTypes.size(); i++) {
+                if (const IL::DebugSingleValue *member = GetValueFromId(value, --id)) {
+                    return member;
+                }
+            }
+            
+            return nullptr;
+        }
+        case Backend::IL::TypeKind::Array: {
+            auto _type = value.type->As<Backend::IL::ArrayType>();
+            
+            for (uint32_t i = 0; i < _type->count; i++) {
+                if (const IL::DebugSingleValue *member = GetValueFromId(value, --id)) {
+                    return member;
+                }
+            }
+
+            return nullptr;
+        }
+        case Backend::IL::TypeKind::Vector: {
+            auto _type = value.type->As<Backend::IL::VectorType>();
+            
+            for (uint32_t i = 0; i < _type->dimension; i++) {
+                if (const IL::DebugSingleValue *member = GetValueFromId(value, --id)) {
+                    return member;
+                }
+            }
+
+            return nullptr;
+        }
+        case Backend::IL::TypeKind::Matrix: {
+            auto _type = value.type->As<Backend::IL::MatrixType>();
+            
+            for (uint32_t column = 0; column < _type->columns; column++) {
+                for (uint32_t row = 0; row < _type->rows; row++) {
+                    if (const IL::DebugSingleValue *member = GetValueFromId(value, --id)) {
+                        return member;
+                    }
+                }
+            }
+
+            return nullptr;
+        }
+    }
+}
+
 const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction *instr, const DebugBreakpointMessage& breakpointMessage, BreakpointData& breakpointData, Breakpoint* breakpoint) {
-    // Try to reconstruct the source value first
-    TrivialStackVector<IL::DebugVariable, 4> variables;
-    debugEmitter->GetVariables(context.program, instr, variables);
+    // Try to reconstruct the debug stack first
+    debugEmitter->GetStack(context.program, instr, breakpointData.arena, breakpointData.debugStack);
     
     // Anything?
-    if (variables.Size()) {
+    if (breakpointData.debugStack.variables.size()) {
         // Variable stream
         MessageStream  variableStream;
         MessageStreamView<DebugBreakpointVariableMetadataMessage> variableView(variableStream);
         
         // Report all variables and their representations
-        for (uint64_t i = 0; i < variables.Size(); i++) {
-            const IL::DebugVariable &src = variables[i];
+        for (uint64_t i = 0; i < breakpointData.debugStack.variables.size(); i++) {
+            const IL::DebugVariable *src = breakpointData.debugStack.variables[i];
+            
+            // All values
+            MessageStream valueStream;
+
+            // Fill value stream, allocate linearly
+            uint32_t id = 0;
+            FillValueStream(valueStream, src->value, id);
 
             // Pack the tiny type down
             std::vector<uint8_t> tinyType;
-            Backend::IL::Tiny::Pack(src.type, tinyType);
+            Backend::IL::Tiny::Pack(src->value.type, tinyType);
             
             // Allocate metadata
             DebugBreakpointVariableMetadataMessage *metadata = variableView.Add(DebugBreakpointVariableMetadataMessage::AllocationInfo {
-                .nameLength = src.name.length(),
-                .dataTinyTypeCount = tinyType.size()
+                .nameLength = src->name.length(),
+                .dataTinyTypeCount = tinyType.size(),
+                .valuesByteSize = valueStream.GetByteSize()
             });
             
             // Copy over tiny type
             std::memcpy(metadata->dataTinyType.Get(), tinyType.data(), tinyType.size());
             
             // Copy over the info
-            metadata->name.Set(src.name);
-            metadata->handle = src.handle;
+            metadata->name.Set(src->name);
+            metadata->variableId = static_cast<uint32_t>(i);
+            metadata->values.Set(valueStream);
         }
         
         // Empty out last stream
@@ -1017,16 +1139,19 @@ const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitCo
         // Push metadata
         bridge->GetOutput()->AddStreamAndSwap(metadataStream);
         
+        // Assign ids
+        breakpointData.variableId = breakpointMessage.variableId;
+        breakpointData.valueId = breakpointMessage.valueId;
+        
         // Find owning variable
-        for (const IL::DebugVariable& variable : variables) {
-            if (variable.handle == breakpointMessage.variableHandle) {
-                // Assign handle
-                breakpointData.variableHandle = breakpointMessage.variableHandle;
-                
-                // Report the chosen type
-                return variable.type;
+        if (breakpointData.variableId != UINT32_MAX) {
+            const IL::DebugVariable* variable = breakpointData.debugStack.variables[breakpointData.variableId];
+        
+            // Try to find value
+            if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, breakpointData.valueId)) {
+                return value->type;
             }
-        } 
+        }
     }
 
     // Try to get the raw type
@@ -1042,11 +1167,17 @@ IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, c
     IL::Emitter<> emitter(context.program, context.basicBlock, insertIt);
 
     // Try to reconstruct the source value first
-    if (breakpointData.variableHandle != UINT32_MAX) {
-        if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, breakpointData.variableHandle, instr); reconstructed != IL::InvalidID) {
-            // Split after the constructed debug value
-            insertIt = emitter.GetIterator();
-            return reconstructed;
+    if (breakpointData.variableId != UINT32_MAX) {
+        const IL::DebugVariable* variable = breakpointData.debugStack.variables[breakpointData.variableId];
+        
+        // Try to find value
+        if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, breakpointData.valueId)) {
+            // Attempt to reconstruct
+            if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, *value, instr); reconstructed != IL::InvalidID) {
+                // Split after the constructed debug value
+                insertIt = emitter.GetIterator();
+                return reconstructed;
+            }
         }
     }
 

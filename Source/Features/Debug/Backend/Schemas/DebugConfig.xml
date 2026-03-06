@@ -32,7 +32,8 @@
         <field name="codeOffset" type="uint32"/>
         <field name="uid" type="uint32"/>
         <field name="flags" type="uint32"/>
-        <field name="variableHandle" type="uint32"/>
+        <field name="variableId" type="uint32"/>
+        <field name="valueId" type="uint32"/>
         <field name="markerHash32" type="uint32"/>
     </message>
     
@@ -77,10 +78,17 @@
         <field name="dataRequestStreamSize" type="uint32"/>
     </message>
 
+    <message name="DebugBreakpointValueMetadata">
+        <field name="name" type="string"/>
+        <field name="valueId" type="uint32"/>
+        <field name="hasReconstruction" type="bool"/>
+    </message>
+
     <message name="DebugBreakpointVariableMetadata">
         <field name="name" type="string"/>
-        <field name="handle" type="uint32"/>
+        <field name="variableId" type="uint32"/>
         <field name="dataTinyType" type="array" element="uint8"/>
+        <field name="values" type="stream"/>
     </message>
     
     <message name="DebugBreakpointMetadata">

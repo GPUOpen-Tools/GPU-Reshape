@@ -181,3 +181,6 @@ private:
     /// Loose allocations, free'd manually
     std::vector<void*> freeAllocations;
 };
+
+/// Standard arena types
+using SmallArena = LinearBlockAllocator<256>;

@@ -29,6 +29,9 @@
 // Layer
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
 
+// Backend
+#include <Backend/IL/ID.h>
+
 // Common
 #include <Common/Containers/TrivialStackVector.h>
 
@@ -37,15 +40,24 @@ namespace Backend::IL {
 }
 
 namespace IL {
+    struct Constant;
     struct Function;
 }
+
+struct DXDwarfCode {
+    /// Owning code offset
+    uint32_t codeOffset{IL::InvalidID};
+    
+    /// Owning constant offset
+    const IL::Constant* constant{nullptr};
+};
 
 struct DXDwarfValue {
     /// Type of this value
     LLVMDwarfOpKind kind;
 
-    /// Owning code offset
-    uint32_t codeOffset{0};
+    /// Code assigned to this value
+    DXDwarfCode code;
 
     /// Payload
     union {
@@ -59,6 +71,9 @@ struct DXDwarfValue {
 struct DXDwarfVariableValue {
     /// Name of the variable
     const char* name{nullptr};
+
+    /// Variable being assigned
+    uint32_t variableId{0};
 
     /// Optional, reconstructed type
     const Backend::IL::Type* type{nullptr};

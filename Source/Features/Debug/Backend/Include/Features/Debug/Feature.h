@@ -45,6 +45,7 @@
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Metadata/KernelMetadata.h>
 #include <Backend/Device/DeviceCapabilityTable.h>
+#include <Backend/IL/Debug/DebugStack.h>
 
 // Schemas
 #include <Schemas/Features/DebugConfig.h>
@@ -224,9 +225,18 @@ private:
         
         /// The payload data dword offset
         IL::ID payloadDataOffset{IL::InvalidID};
+
+        /// Shared allocator
+        SmallArena arena;
+
+        /// Reconstructed stack
+        IL::DebugStack debugStack;
         
         /// Chosen variable
-        uint32_t variableHandle = UINT32_MAX;
+        uint32_t variableId = UINT32_MAX;
+        
+        /// Chosen value within the variable
+        uint32_t valueId = UINT32_MAX;
     };
 
     struct PendingDestruction {

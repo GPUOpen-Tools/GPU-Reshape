@@ -30,17 +30,35 @@
 #include <Backend/IL/Type.h>
 
 // Std
+#include <span>
+#include <vector>
 #include <string_view>
 
 namespace IL {
+    struct DebugSingleValue {
+        /// Name of this variable
+        std::string_view name;
+        
+        /// Type of this value
+        const Backend::IL::Type* type = nullptr;
+        
+        /// Contained values
+        std::span<DebugSingleValue> values;
+        
+        /// Internal handle
+        void* handle = nullptr;
+    };
+    
     struct DebugVariable {
         /// Name of this variable
         std::string_view name;
         
-        /// Type of this variable
-        const Backend::IL::Type* type = nullptr;
-        
-        /// Internal handle
-        uint32_t handle = 0;
+        /// Assigned value
+        DebugSingleValue value;
+    };
+    
+    struct DebugStack {
+        /// All variables in this stack
+        std::vector<DebugVariable*> variables;
     };
 }

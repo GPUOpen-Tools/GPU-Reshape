@@ -34,6 +34,11 @@
 // Spirv
 #include <spirv/unified1/NonSemanticShaderDebugInfo100.h>
 
+struct DebugHandle {
+    /// Assigned value
+    IL::ID result;
+};
+
 DebugEmitter::DebugEmitter(DeviceDispatchTable* table) : table(table) {
     
 }
@@ -183,7 +188,7 @@ static const Backend::IL::Type* ConstructType(IL::Program& program, const SpvDeb
     }
 }
 
-void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *instr, TrivialStackVector<IL::DebugVariable, 4u>& variables) {
+void DebugEmitter::GetStack(IL::Program &program, const IL::Instruction *instr, SmallArena& arena, IL::DebugStack& stack) {
     // Get shader state
     ShaderModuleState* shaderState = table->states_shaderModule.GetFromUID(program.GetShaderGUID());
     if (!shaderState || !shaderState->spirvModule) {
@@ -202,10 +207,12 @@ void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *ins
             const SpvDebugVariableInfo &variableInfo = debugMap->variableInfos.at(it->second.debugVariable);
             
             // Create variable
-            IL::DebugVariable &dest = variables.Add();
-            dest.type = ConstructType(program, *debugMap, variableInfo.typeId);
-            dest.name = debugMap->Get(variableInfo.nameId, SpvOpString);
-            dest.handle = storeInstr->value;
+            IL::DebugVariable *dest = stack.variables.emplace_back(arena.Allocate<IL::DebugVariable>());
+            dest->name = debugMap->Get(variableInfo.nameId, SpvOpString);
+            dest->value.type = ConstructType(program, *debugMap, variableInfo.typeId);
+            dest->value.handle = arena.Allocate<DebugHandle>(DebugHandle {
+                .result = storeInstr->value
+            });
         }
     }
     
@@ -216,15 +223,17 @@ void DebugEmitter::GetVariables(IL::Program &program, const IL::Instruction *ins
             const SpvDebugVariableInfo &variableInfo = debugMap->variableInfos.at(valueInfo.debugVariableId);
 
             // Create variable
-            IL::DebugVariable &dest = variables.Add();
-            dest.type = ConstructType(program, *debugMap, variableInfo.typeId);
-            dest.name = debugMap->Get(variableInfo.nameId, SpvOpString);
-            dest.handle = valueInfo.value;
+            IL::DebugVariable *dest = stack.variables.emplace_back(arena.Allocate<IL::DebugVariable>());
+            dest->name = debugMap->Get(variableInfo.nameId, SpvOpString);
+            dest->value.type = ConstructType(program, *debugMap, variableInfo.typeId);
+            dest->value.handle = arena.Allocate<DebugHandle>(DebugHandle {
+                .result = valueInfo.value
+            });
         }
     }
 }
 
-IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, uint32_t handle, const IL::Instruction *instr) {
+IL::ID DebugEmitter::ReconstructValue(IL::Emitter<> &emitter, const IL::DebugSingleValue& value, const IL::Instruction *instr) {
     // Nothing to reconstruct
-    return handle;
+    return static_cast<DebugHandle*>(value.handle)->result;
 }

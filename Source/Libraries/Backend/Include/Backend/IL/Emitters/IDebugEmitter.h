@@ -27,11 +27,11 @@
 #pragma once
 
 // Backend
-#include <Backend/IL/Debug/DebugVariable.h>
+#include <Backend/IL/Debug/DebugStack.h>
 #include <Backend/IL/Emitters/Emitter.h>
 
 // Common
-#include <Common/Containers/TrivialStackVector.h>
+#include <Common/Containers/LinearBlockAllocator.h>
 
 namespace IL {
     class IDebugEmitter : public TComponent<IDebugEmitter> {
@@ -41,14 +41,15 @@ namespace IL {
         /// Reconstruct the debugging value type
         /// @param program owning program
         /// @param instr instruction to reconstruct for
-        /// @param variables all associated variables
-        virtual void GetVariables(Program& program, const Instruction* instr, TrivialStackVector<DebugVariable, 4u>& variables) = 0;
+        /// @param arena shared arena allocator
+        /// @param stack reconstructed stack
+        virtual void GetStack(Program& program, const Instruction* instr, SmallArena& arena, DebugStack& stack) = 0;
 
         /// Reconstruct the debugging value
         /// @param emitter the emitter used for reconstruction
-        /// @param handle variable handle chosen to reconstruct
+        /// @param value variable chosen to reconstruct
         /// @param instr instruction to reconstruct for
         /// @return invalid if failed
-        virtual ID ReconstructValue(Emitter<>& emitter, uint32_t handle, const Instruction* instr) = 0;
+        virtual ID ReconstructValue(Emitter<>& emitter, const IL::DebugSingleValue& value, const Instruction* instr) = 0;
     };
 }

@@ -62,6 +62,26 @@ namespace Backend::IL {
                 return type->As<ArrayType>()->count;
         }
     }
+    
+    inline uint32_t GetComponentCountRecursive(const Type* type) {
+        switch (type->kind) {
+            default:
+                return 1u;
+            case TypeKind::Vector:
+                return type->As<VectorType>()->dimension;
+            case TypeKind::Matrix:
+                return type->As<MatrixType>()->rows * type->As<MatrixType>()->columns;
+            case TypeKind::Array:
+                return type->As<ArrayType>()->count;
+            case TypeKind::Struct: {
+                uint32_t count = 0;
+                for (const Type * memberType : type->As<StructType>()->memberTypes) {
+                    count += GetComponentCountRecursive(memberType);
+                }
+                return count;
+            }
+        }
+    }
 
     inline const Type* Splat(Program& program, const Type* scalarType, uint8_t count) {
         return program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {

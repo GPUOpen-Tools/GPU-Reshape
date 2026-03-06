@@ -114,14 +114,15 @@ DXDwarfInfo DXILDebugModule::GetDwarfInfo(Backend::IL::TypeMap& typeMap, const I
     // Copy over info
     DXDwarfInfo info;
     for (const InstructionDwarfVariable& sourceVar : it->second.variables) {
-        DXDwarfVariableValue& variable =  info.variables.emplace_back();
+        DXDwarfVariableValue& variable = info.variables.emplace_back();
         variable.name = sourceVar.name;
         variable.type = GetTypeFromDwarf(typeMap, sourceVar.typeMdId - 1);
+        variable.variableId = sourceVar.variableMdId;
 
         for (const InstructionDwarfValue* sourceValue : sourceVar.values) {
             DXDwarfValue &value = variable.values.emplace_back();
             value.kind = sourceValue->kind;
-            value.codeOffset = sourceValue->codeOffset;
+            value.code = sourceValue->code;
             value.bitWise.bitStart = sourceValue->bitWise.bitStart;
             value.bitWise.bitLength = sourceValue->bitWise.bitLength;
         } 
@@ -351,6 +352,30 @@ void DXILDebugModule::ParseTypes(LLVMBlock *block) {
                 }
                 break;
             }
+            case LLVMTypeRecord::Integer: {
+                type.integral.bitWidth = record.Op32(0);
+                break;
+            }
+            case LLVMTypeRecord::Half: {
+                type.integral.bitWidth = 16;
+                break;
+            }
+            case LLVMTypeRecord::Float: {
+                type.integral.bitWidth = 32;
+                break;
+            }
+            case LLVMTypeRecord::Double: {
+                type.integral.bitWidth = 64;
+                break;
+            }
+            case LLVMTypeRecord::Vector: {
+                type.aggregate.contained = record.Op32(1);
+                break;
+            }
+            case LLVMTypeRecord::Array: {
+                type.aggregate.contained = record.Op32(1);
+                break;
+            }
         }
     }
 }
@@ -509,7 +534,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
 
     // Resolve all pending values
     for (InstructionDwarfValue *value : unresolvedDwarfValues) {
-        value->codeOffset = ResolveDwarfValue(value->codeOffset);
+        ResolveDwarfValue(value);
     }
 
     // Cleanup
@@ -521,23 +546,19 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
 }
 
 void DXILDebugModule::ParseConstants(LLVMBlock *block) {
+    uint32_t type = IL::InvalidID;
+    
     for (LLVMRecord &record: block->records) {
         if (record.Is(LLVMConstantRecord::SetType)) {
+            type = record.Op32(0);
             continue;
         }
 
+        // Constants are resolved on demand
         ThinValue &value = thinValues.emplace_back();
-
-        // Handle special values
-        switch (static_cast<LLVMConstantRecord>(record.id)) {
-            default: {
-                break;
-            }
-            case LLVMConstantRecord::Integer: {
-                value.literal = LLVMBitStreamReader::DecodeSigned(record.Op(0));
-                break;
-            }
-        }
+        value.kind = ThinValueKind::Constant;
+        value.thinType = type;
+        value.record = &record;
     }
 }
 
@@ -1289,11 +1310,11 @@ const Backend::IL::Type * DXILDebugModule::GetClassTypeFromDwarf(Backend::IL::Ty
                     if (argName.StartsWith("row_count")) {
                         Metadata& valueMd = thinMetadata[argMd.templateValue.valueMdId - 1];
                         ASSERT(valueMd.type == LLVMMetadataRecord::Value, "Unexpected record");
-                        rows = static_cast<uint32_t>(thinValues[valueMd.value].literal);
+                        rows = static_cast<uint32_t>(GetLiteralConstant(valueMd.value));
                     } else if (argName.StartsWith("col_count")) {
                         Metadata& valueMd = thinMetadata[argMd.templateValue.valueMdId - 1];
                         ASSERT(valueMd.type == LLVMMetadataRecord::Value, "Unexpected record");
-                        columns = static_cast<uint32_t>(thinValues[valueMd.value].literal);
+                        columns = static_cast<uint32_t>(GetLiteralConstant(valueMd.value));
                     }
                     break;
                 }
@@ -1459,15 +1480,15 @@ void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LL
     
     // Setup value
     InstructionDwarfValue* value = variable->values.emplace_back(blockAllocator.Allocate<InstructionDwarfValue>());
-    value->codeOffset = IL::InvalidID;
+    value->valueId = IL::InvalidID;
     value->kind = expressionMd.expression.op;
     
     if (Metadata &valueMd = thinMetadata[valueMdIndex]; valueMd.type == LLVMMetadataRecord::Value) {
-        value->codeOffset = valueMd.value;
+        value->valueId = valueMd.value;
 
         // May not be resolved
-        if (value->codeOffset < thinValues.size()) {
-            value->codeOffset = ResolveDwarfValue(value->codeOffset);
+        if (value->valueId < thinValues.size()) {
+            ResolveDwarfValue(value);
         } else {
             unresolvedDwarfValues.push_back(value);
         }
@@ -1486,15 +1507,211 @@ void DXILDebugModule::ParseDebugValueCall(FunctionMetadata& functionMd, const LL
     }
 }
 
-uint32_t DXILDebugModule::ResolveDwarfValue(uint32_t valueIndex) {
+void DXILDebugModule::ResolveDwarfValue(InstructionDwarfValue* value) {
     // We cannot reliably cross-reference constants, just do records
-    const ThinValue& debugValue = thinValues[valueIndex];
+    const ThinValue& debugValue = thinValues[value->valueId];
     switch (debugValue.kind) {
-        default:
-            return IL::InvalidID;
-        case ThinValueKind::Instruction:
-            return debugValue.recordOffset;
+        default: {
+            ASSERT(false, "Unexpected value");
+            return;
+        }
+        case ThinValueKind::Instruction: {
+            value->code.codeOffset = debugValue.recordOffset;
+            break;
+        }
+        case ThinValueKind::Constant: {
+            value->code.constant = ResolveConstant(value->valueId);
+            break;
+        }
     }
+}
+
+template<typename T>
+const T* DXILDebugModule::AllocateThinConstant(const T& decl) {
+    T* value = blockAllocator.Allocate<T>(decl);
+    value->kind = T::kKind;
+    return value;
+}
+
+const IL::Constant* DXILDebugModule::ResolveConstant(uint32_t valueId) {
+    const ThinValue& debugValue = thinValues[valueId];
+    
+    // Type assigned
+    const ThinType& thinType = thinTypes[debugValue.thinType];
+    
+    // Resolve as much as possible
+    switch (static_cast<LLVMConstantRecord>(debugValue.record->id)) {
+        default: {
+            return AllocateThinConstant(IL::UnexposedConstant {});
+        }
+            
+        case LLVMConstantRecord::Null: {
+            return AllocateThinConstant(IL::NullConstant {});
+        }
+
+        case LLVMConstantRecord::Integer: {
+            if (thinType.integral.bitWidth == 1) {
+                return AllocateThinConstant(IL::BoolConstant {
+                    .value = debugValue.record->Op32(0) ? true : false
+                });
+            } else {
+                return AllocateThinConstant(IL::IntConstant {
+                    .value = debugValue.record->Op32(0)
+                });
+            }
+        }
+
+        case LLVMConstantRecord::Float: {
+            return AllocateThinConstant(IL::FPConstant {
+                .value = debugValue.record->OpBitCast<float>(0)
+            });
+        }
+
+        case LLVMConstantRecord::Aggregate: {
+            switch (thinType.type) {
+                default: {
+                    return AllocateThinConstant(IL::UnexposedConstant {});
+                }
+                case LLVMTypeRecord::StructAnon:
+                case LLVMTypeRecord::StructName:
+                case LLVMTypeRecord::StructNamed: {
+                    IL::StructConstant decl;
+
+                    // Fill members
+                    for (uint32_t i = 0; i < debugValue.record->opCount; i++) {
+                        uint32_t operand = debugValue.record->Op32(i);
+                        
+                        if (operand < thinValues.size()) {
+                            const IL::Constant *memberConstant = ResolveConstant(operand);
+                            decl.members.push_back(memberConstant);
+                        } else {
+                            return AllocateThinConstant(IL::UnexposedConstant {});
+                        }
+                    }
+
+                    return AllocateThinConstant(decl);
+                }
+                case LLVMTypeRecord::Vector: {
+                    IL::VectorConstant decl;
+
+                    // Fill members
+                    for (uint32_t i = 0; i < debugValue.record->opCount; i++) {
+                        uint32_t operand = debugValue.record->Op32(i);
+                        
+                        if (operand < thinValues.size()) {
+                            const IL::Constant *memberConstant = ResolveConstant(operand);
+                            decl.elements.push_back(memberConstant);
+                        } else {
+                            return AllocateThinConstant(IL::UnexposedConstant {});
+                        }
+                    }
+
+                    return AllocateThinConstant(decl);
+                }
+                case LLVMTypeRecord::Array: {
+                    IL::ArrayConstant decl;
+
+                    // Fill members
+                    for (uint32_t i = 0; i < debugValue.record->opCount; i++) {
+                        uint32_t operand = debugValue.record->Op32(i);
+                        
+                        if (operand < thinValues.size()) {
+                            const IL::Constant *memberConstant = ResolveConstant(operand);
+                            decl.elements.push_back(memberConstant);
+                        } else {
+                            return AllocateThinConstant(IL::UnexposedConstant {});
+                        }
+                    }
+
+                    return AllocateThinConstant(decl);
+                }
+            }
+        }
+
+        case LLVMConstantRecord::Data: {
+            switch (thinType.type) {
+                default: {
+                    return AllocateThinConstant(IL::UnexposedConstant {});
+                }
+                case LLVMTypeRecord::Vector: {
+                    IL::VectorConstant decl;
+
+                    const ThinType& containedThinType = thinTypes[thinType.aggregate.contained];
+                    
+                    // Fill members
+                    for (uint32_t i = 0; i < debugValue.record->opCount; i++) {
+                        switch (containedThinType.type) {
+                            default: {
+                                ASSERT(false, "Invalid type");
+                                decl.elements.push_back(AllocateThinConstant(IL::UnexposedConstant {}));
+                            }
+                            case LLVMTypeRecord::Integer: {
+                                if (thinType.integral.bitWidth == 1) {
+                                    decl.elements.push_back(AllocateThinConstant(IL::BoolConstant {
+                                        .value = debugValue.record->Op32(0) ? true : false
+                                    }));
+                                } else {
+                                    decl.elements.push_back(AllocateThinConstant(IL::IntConstant {
+                                        .value = debugValue.record->Op32(0)
+                                    }));
+                                }
+                                break;
+                            }
+                            case LLVMTypeRecord::Half:
+                            case LLVMTypeRecord::Float:
+                            case LLVMTypeRecord::Double: {
+                                decl.elements.push_back(AllocateThinConstant(IL::FPConstant {
+                                    .value = debugValue.record->OpBitCast<float>(0)
+                                }));
+                            }
+                        }
+                    }
+
+                    return AllocateThinConstant(decl);
+                }
+                case LLVMTypeRecord::Array: {
+                    IL::ArrayConstant decl;
+
+                    const ThinType& containedThinType = thinTypes[thinType.aggregate.contained];
+                    
+                    // Fill members
+                    for (uint32_t i = 0; i < debugValue.record->opCount; i++) {
+                        switch (containedThinType.type) {
+                            default: {
+                                ASSERT(false, "Invalid type");
+                                decl.elements.push_back(AllocateThinConstant(IL::UnexposedConstant {}));
+                            }
+                            case LLVMTypeRecord::Integer: {
+                                if (thinType.integral.bitWidth == 1) {
+                                    decl.elements.push_back(AllocateThinConstant(IL::BoolConstant {
+                                        .value = debugValue.record->Op32(0) ? true : false
+                                    }));
+                                } else {
+                                    decl.elements.push_back(AllocateThinConstant(IL::IntConstant {
+                                        .value = debugValue.record->Op32(0)
+                                    }));
+                                }
+                                break;
+                            }
+                            case LLVMTypeRecord::Half:
+                            case LLVMTypeRecord::Float:
+                            case LLVMTypeRecord::Double: {
+                                decl.elements.push_back(AllocateThinConstant(IL::FPConstant {
+                                    .value = debugValue.record->OpBitCast<float>(0)
+                                }));
+                            }
+                        }
+                    }
+
+                    return AllocateThinConstant(decl);
+                }
+            }
+        }
+    }
+}
+
+uint64_t DXILDebugModule::GetLiteralConstant(uint32_t valueId) {
+    return LLVMBitStreamReader::DecodeSigned(thinValues[valueId].record->Op(0));
 }
 
 DXILDebugModule::SourceFragment *DXILDebugModule::FindOrCreateSourceFragmentSanitized(const LLVMRecordStringView &view) {

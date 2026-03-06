@@ -185,8 +185,11 @@ private:
         /// Type of this value
         LLVMDwarfOpKind kind;
 
-        /// Owning value id
-        uint32_t codeOffset;
+        /// Assigned value id
+        uint32_t valueId{0};
+
+        /// Owning value
+        DXDwarfCode code;
 
         /// Payload
         union {
@@ -246,7 +249,18 @@ private:
     void ParseDebugValueCall(FunctionMetadata& functionMd, const LLVMRecord &record, uint32_t anchor);
 
     /// Resolve a forward dwarf value
-    uint32_t ResolveDwarfValue(uint32_t thinIndex);
+    void ResolveDwarfValue(InstructionDwarfValue* value);
+    
+    /// Allocate a thin constant
+    /// \param decl Constant declaration 
+    template<class T>
+    const T *AllocateThinConstant(const T &decl);
+
+    /// Resolve a full constant from its id
+    const IL::Constant* ResolveConstant(uint32_t valueId);
+    
+private:
+    uint64_t GetLiteralConstant(uint32_t valueId);
     
 private:
     /// Symtab values
@@ -416,12 +430,21 @@ private:
                 uint32_t  parameterCount : 16;
                 uint32_t  isVoidReturn   : 1;
             } function;
+            
+            struct {
+                uint8_t bitWidth;
+            } integral;
+            
+            struct {
+                uint8_t contained;
+            } aggregate;
         };
     };
 
     /// Value validation kind
     enum class ThinValueKind {
         None,
+        Constant,
         Function,
         Parameter,
         Instruction
@@ -438,8 +461,8 @@ private:
         /// Offset of the declaring record
         uint32_t recordOffset{0};
 
-        /// Literal value if relevant
-        uint64_t literal{0};
+        /// Constant owning this value
+        LLVMRecord* record{nullptr};
 
         /// Is this value non-semantic? Meaning, stripped from the canonical module?
         bool bIsNonSemantic{false};
