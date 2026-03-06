@@ -1098,6 +1098,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 // Create mapping if present
                 if (!callDecl->type->returnType->Is<Backend::IL::VoidType>()) {
                     result = table.idMap.AllocMappedID(DXILIDType::Instruction);
+                    
+                    // Update traceback
+                    sourceTraceback[recordIdx].instructionID = result;
 
                     // Set as return type
                     ilTypeMap.SetType(result, callDecl->type->returnType);
