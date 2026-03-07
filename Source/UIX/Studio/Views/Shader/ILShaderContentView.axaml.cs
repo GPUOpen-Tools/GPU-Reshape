@@ -198,6 +198,11 @@ namespace Studio.Views.Shader
             // Bind detail context
             sourceObject.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
             {
+                if (ServiceRegistry.Get<ISourceService>() is { } sourceService)
+                {
+                    sourceService.SelectedSourceObject = x;
+                }
+
                 vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
                     Object = vm.Content as ShaderViewModel,

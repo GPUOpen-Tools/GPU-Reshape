@@ -24,23 +24,40 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Dock.Model.Core;
+using System;
+using ReactiveUI;
+using GRS.Features.Debug.UIX.ViewModels;
 
-namespace Studio.ViewModels.Traits
+namespace Studio.Services
 {
-    public enum DockingSlot
-    {
-        Left,
-        Right,
-        BottomLeft,
-        BottomRight
-    }
-    
-    public interface IDockingExtension
+    public class BreakpointService : ReactiveObject
     {
         /// <summary>
-        /// Install this extension
+        /// The currently selected breakpoint view model
         /// </summary>
-        public IDockable[] Install(DockingSlot slot);
+        public BreakpointViewModel? SelectedBreakpointViewModel
+        {
+            get => _selectedBreakpointViewModel;
+            set => this.RaiseAndSetIfChanged(ref _selectedBreakpointViewModel, value);
+        }
+
+        public BreakpointService()
+        {
+            if (ServiceRegistry.Get<ISourceService>() is { } sourceService)
+            {
+                // Bind on source selections
+                sourceService
+                    .WhenAnyValue(x => x.SelectedSourceObject)
+                    .Subscribe(x =>
+                    {
+                        SelectedBreakpointViewModel = x as BreakpointViewModel;
+                    });
+            }
+        }
+
+        /// <summary>
+        /// Internal state
+        /// </summary>
+        private BreakpointViewModel? _selectedBreakpointViewModel;
     }
 }

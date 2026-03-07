@@ -190,7 +190,7 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Recreate the value structure
         /// </summary>
-        private void CreateValueStructure(Type type, BreakpointDebugValue value, IEnumerator<DebugBreakpointValueMetadataMessage> enumerator)
+        private void CreateValueStructure(Type type, uint variableId, BreakpointDebugValue value, IEnumerator<DebugBreakpointValueMetadataMessage> enumerator)
         {
             enumerator.MoveNext();
             var valueMessage = enumerator.Current;
@@ -198,7 +198,9 @@ namespace GRS.Features.Debug.UIX.Workspace
             // Set info
             value.Type = type;
             value.Name = valueMessage.name.String;
+            value.VariableId = variableId;
             value.ValueId = valueMessage.valueId;
+            value.HasReconstruction = valueMessage.hasReconstruction == 1;
             
             // Handle structure
             switch (type.Kind)
@@ -210,7 +212,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     
                     for (int i = 0; i < typed.MemberTypes.Length; i++)
                     {
-                        CreateValueStructure(typed.MemberTypes[i], value.Values[i] = new BreakpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.MemberTypes[i], variableId, value.Values[i] = new BreakpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -221,7 +223,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     
                     for (int i = 0; i < typed.Count; i++)
                     {
-                        CreateValueStructure(typed.ElementType, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ElementType, variableId, value.Values[i] = new BreakpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -232,7 +234,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     
                     for (int i = 0; i < typed.Dimension; i++)
                     {
-                        CreateValueStructure(typed.ContainedType, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ContainedType, variableId, value.Values[i] = new BreakpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -243,7 +245,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     
                     for (int i = 0; i < typed.Columns * typed.Rows; i++)
                     {
-                        CreateValueStructure(typed.ContainedType, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ContainedType, variableId, value.Values[i] = new BreakpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -286,6 +288,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     // Parse all variables
                     CreateValueStructure(
                         type,
+                        debugVariable.VariableId,
                         debugVariable.Value,
                         new DynamicMessageView<DebugBreakpointValueMetadataMessage>(variable.values.Stream).GetEnumerator()
                     );
@@ -299,16 +302,16 @@ namespace GRS.Features.Debug.UIX.Workspace
                     // TODO: This is not correct, it's a multi-subscriber situation, again
                     foreach (BreakpointDebugVariable variable in remoteVariables)
                     {
-                        if (!breakpointViewModel.DebugVariables.Any(x => x.GetHashCode() == variable.GetHashCode()))
+                        if (breakpointViewModel.DebugVariables.All(x => x.VariableId != variable.VariableId))
                         {
                             breakpointViewModel.DebugVariables.Add(variable);
                         }
                     }
                     
                     // Default select first
-                    if (breakpointViewModel.SelectedDebugVariable == null && breakpointViewModel.DebugVariables.Count > 0)
+                    if (breakpointViewModel.SelectedDebugValue == null && breakpointViewModel.DebugVariables.Count > 0)
                     {
-                        breakpointViewModel.SelectedDebugVariable = breakpointViewModel.DebugVariables[0];
+                        breakpointViewModel.SelectedDebugValue = breakpointViewModel.DebugVariables[0].Value;
                     }
                 });
             }

@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,23 +24,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Dock.Model.Core;
+using Avalonia.Controls;
 
-namespace Studio.ViewModels.Traits
+namespace UIX.Views.Tools
 {
-    public enum DockingSlot
+    public partial class BreakpointStackView : UserControl
     {
-        Left,
-        Right,
-        BottomLeft,
-        BottomRight
-    }
-    
-    public interface IDockingExtension
-    {
-        /// <summary>
-        /// Install this extension
-        /// </summary>
-        public IDockable[] Install(DockingSlot slot);
+        public BreakpointStackView()
+        {
+            InitializeComponent();
+        }
     }
 }

@@ -84,11 +84,15 @@ namespace GRS.Features.Debug.UIX
             // Install the settings
             ServiceRegistry.Get<ISettingsService>()?.Add(new DebugSettingViewModel());
             
+            // Install the breakpoint service
+            ServiceRegistry.Add(new BreakpointService());
+            
             // Add locators
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(DebugSettingViewModel), typeof(DebugSettingView));
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointViewModel), typeof(BreakpointDisplayView));
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointViewModel), typeof(BreakpointWindow), ViewType.Window);
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointTreeViewModel), typeof(BreakpointTreeView));
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointStackViewModel), typeof(BreakpointStackView));
             
             // Display locators
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayView));
@@ -224,6 +228,8 @@ namespace GRS.Features.Debug.UIX
             {
                 case DockingSlot.Right:
                     return [new BreakpointTreeViewModel()];
+                case DockingSlot.BottomRight:
+                    return [new BreakpointStackViewModel()];
             }
             
             return Array.Empty<IDockable>();

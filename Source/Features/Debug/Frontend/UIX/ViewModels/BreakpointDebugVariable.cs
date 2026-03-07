@@ -1,6 +1,7 @@
-﻿using ReactiveUI;
+﻿using System;
+using ReactiveUI;
 using Runtime.ViewModels.IL;
-using Studio.Models.IL;
+using Type = Studio.Models.IL.Type;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
 
@@ -25,12 +26,30 @@ public class BreakpointDebugValue : ReactiveObject
     }
     
     /// <summary>
-    /// Internal handle
+    /// Variable handle
+    /// </summary>
+    public uint VariableId
+    {
+        get => _variableId;
+        set => this.RaiseAndSetIfChanged(ref _variableId, value);
+    }
+    
+    /// <summary>
+    /// Value handle
     /// </summary>
     public uint ValueId
     {
         get => _valueId;
         set => this.RaiseAndSetIfChanged(ref _valueId, value);
+    }
+    
+    /// <summary>
+    /// Does this value have a valid reconstruction?
+    /// </summary>
+    public bool HasReconstruction
+    {
+        get => _hasReconstruction;
+        set => this.RaiseAndSetIfChanged(ref _hasReconstruction, value);
     }
     
     /// <summary>
@@ -40,7 +59,14 @@ public class BreakpointDebugValue : ReactiveObject
     {
         get
         {
-            return $"{Name} - {Assembler.AssembleInlineType(_type, true)}";
+            string type = Assembler.AssembleInlineType(_type, true);
+        
+            if (string.IsNullOrEmpty(_name))
+            {
+                return type;
+            }
+            
+            return $"{type} {Name}";
         }
     }
 
@@ -64,14 +90,20 @@ public class BreakpointDebugValue : ReactiveObject
     private string _name;
     
     /// <summary>
-    /// Internal handle
+    /// Internal handles
     /// </summary>
+    private uint _variableId;
     private uint _valueId;
 
     /// <summary>
     /// Internal values
     /// </summary>
-    private BreakpointDebugValue[] _values;
+    private BreakpointDebugValue[] _values = Array.Empty<BreakpointDebugValue>();
+
+    /// <summary>
+    /// Internal reconstruction state
+    /// </summary>
+    private bool _hasReconstruction;
 }
 
 public class BreakpointDebugVariable : ReactiveObject
@@ -110,7 +142,14 @@ public class BreakpointDebugVariable : ReactiveObject
     {
         get
         {
-            return $"{Name} - {Assembler.AssembleInlineType(_type, true)}";
+            string type = Assembler.AssembleInlineType(_type, true);
+        
+            if (string.IsNullOrEmpty(_name))
+            {
+                return type;
+            }
+            
+            return $"{type} {Name}";
         }
     }
 

@@ -143,12 +143,12 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     public ObservableCollection<BreakpointDebugVariable> DebugVariables { get; } = new();
 
     /// <summary>
-    /// Selected debug variable
+    /// Selected debug value
     /// </summary>
-    public BreakpointDebugVariable? SelectedDebugVariable
+    public BreakpointDebugValue? SelectedDebugValue
     {
-        get => _selectedDebugVariable;
-        set => this.RaiseAndSetIfChanged(ref _selectedDebugVariable, value);
+        get => _selectedDebugValue;
+        set => this.RaiseAndSetIfChanged(ref _selectedDebugValue, value);
     }
 
     /// <summary>
@@ -212,7 +212,7 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
             .Subscribe(_ => EnqueueAllShaderParentBus());
         
         // Update shaders on variable changes
-        this.WhenAnyValue(x => x.SelectedDebugVariable)
+        this.WhenAnyValue(x => x.SelectedDebugValue)
             .WhereNotNull()
             .Throttle(TimeSpan.FromMilliseconds(500))
             .Subscribe(_ => EnqueueAllShaderParentBus());
@@ -464,7 +464,7 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
     private string _marker;
 
     /// <summary>
-    /// Internal variable
+    /// Internal value
     /// </summary>
-    private BreakpointDebugVariable? _selectedDebugVariable;
+    private BreakpointDebugValue? _selectedDebugValue;
 }

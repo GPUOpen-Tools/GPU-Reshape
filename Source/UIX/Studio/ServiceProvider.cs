@@ -58,6 +58,9 @@ public class ServiceProvider
 
         // Hosts all docking extension objects
         ServiceRegistry.Add<IDockingService>(new DockingService());
+
+        // Hosts all source listeners
+        ServiceRegistry.Add<ISourceService>(new SourceService());
     }
 
     /// <summary>

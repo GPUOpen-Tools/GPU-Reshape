@@ -39,6 +39,7 @@
 
     <ItemGroup>
       <PackageReference Include="Avalonia" Version="11.1.1" />
+      <PackageReference Include="Avalonia.Desktop" Version="11.1.1" />
       <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.0.1" />
       <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.1" />
       <PackageReference Include="Avalonia.Diagnostics" Version="11.1.1" />
@@ -123,6 +124,14 @@
       </Compile>
       <Compile Update="Views\Tools\BreakpointTreeView.axaml.cs">
         <DependentUpon>BreakpointTreeView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\BreakpointVariableView.axaml.cs">
+        <DependentUpon>BreakpointStackView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Tools\BreakpointStackView.axaml.cs">
+        <DependentUpon>BreakpointStackView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
     </ItemGroup>

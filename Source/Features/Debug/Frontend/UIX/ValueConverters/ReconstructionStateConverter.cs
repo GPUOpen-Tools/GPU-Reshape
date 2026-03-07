@@ -24,23 +24,46 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Dock.Model.Core;
+using System;
+using System.Globalization;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
+using GRS.Features.Debug.UIX.Models;
 
-namespace Studio.ViewModels.Traits
+namespace Studio.ValueConverters
 {
-    public enum DockingSlot
-    {
-        Left,
-        Right,
-        BottomLeft,
-        BottomRight
-    }
-    
-    public interface IDockingExtension
+    public class ReconstructionStateConverter : IValueConverter
     {
         /// <summary>
-        /// Install this extension
+        /// Convert the value
         /// </summary>
-        public IDockable[] Install(DockingSlot slot);
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is not BreakpointValueReconstructionState state)
+            {
+                return null;
+            }
+            
+            // TODO[dbg]: Temp stuff
+            switch (state)
+            {
+                default:
+                    return null;
+                case BreakpointValueReconstructionState.None:
+                    return Brushes.DarkRed;
+                case BreakpointValueReconstructionState.Partial:
+                    return Brushes.Yellow;
+                case BreakpointValueReconstructionState.Full:
+                    return Brushes.Green;
+            }
+        }
+
+        /// <summary>
+        /// Convert the value back
+        /// </summary>
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

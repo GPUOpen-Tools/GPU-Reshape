@@ -91,6 +91,8 @@ namespace GRS.Features.Debug.UIX.ViewModels.Tools
 
         public BreakpointTreeViewModel()
         {
+            Title = "Breakpoints";
+            
             OpenBreakpointDocument = ReactiveCommand.Create<BreakpointTreeItemViewModel>(OnOpenBreakpointDocument);
             
             // Bind selected workspace

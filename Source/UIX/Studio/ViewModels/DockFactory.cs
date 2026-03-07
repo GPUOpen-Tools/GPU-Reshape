@@ -162,9 +162,9 @@ namespace Studio.ViewModels
                 )
             };
 
-            var bottomDock = new ProportionalDock
+            var bottomLeftDock = new ProportionalDock
             {
-                Proportion = 0.15,
+                Proportion = 0.60,
                 Orientation = Orientation.Horizontal,
                 ActiveDockable = null,
                 VisibleDockables = CreateList<IDockable>
@@ -173,10 +173,27 @@ namespace Studio.ViewModels
                     {
                         ActiveDockable = log,
                         IsExpanded = true,
-                        VisibleDockables = CreateDockables(DockingSlot.Bottom, log),
-                        Alignment = Alignment.Bottom,
+                        VisibleDockables = CreateDockables(DockingSlot.BottomLeft, log),
+                        Alignment = Alignment.Left,
                         GripMode = GripMode.Visible
                     }
+                )
+            };
+
+            var bottomRightDock = new ProportionalDock
+            {
+                Orientation = Orientation.Horizontal,
+                ActiveDockable = null,
+                VisibleDockables = CreateList<IDockable>
+                (
+                    SelectFirst(new ToolDock
+                    {
+                        ActiveDockable = null,
+                        IsExpanded = true,
+                        VisibleDockables = CreateDockables(DockingSlot.BottomRight),
+                        Alignment = Alignment.Right,
+                        GripMode = GripMode.Visible
+                    })
                 )
             };
 
@@ -201,6 +218,18 @@ namespace Studio.ViewModels
                 )
             };
 
+            var bottomLayout = new ProportionalDock
+            {
+                Proportion = 0.2,
+                Orientation = Orientation.Horizontal,
+                VisibleDockables = CreateList<IDockable>
+                (
+                    bottomLeftDock,
+                    new ProportionalDockSplitter(),
+                    bottomRightDock
+                )
+            };
+
             var mainLayout = new ProportionalDock
             {
                 Orientation = Orientation.Vertical,
@@ -208,7 +237,7 @@ namespace Studio.ViewModels
                 (
                     centerLayout,
                     new ProportionalDockSplitter(),
-                    bottomDock
+                    bottomLayout
                 )
             };
 
@@ -237,6 +266,16 @@ namespace Studio.ViewModels
             _rootDock = rootDock;
             
             return rootDock;
+        }
+
+        private IDockable SelectFirst(ToolDock toolDock)
+        {
+            if (toolDock.ActiveDockable == null &&  toolDock.VisibleDockables?.Count > 0)
+            {
+                toolDock.ActiveDockable = toolDock.VisibleDockables[0];
+            }
+
+            return toolDock;
         }
 
         /// <summary>

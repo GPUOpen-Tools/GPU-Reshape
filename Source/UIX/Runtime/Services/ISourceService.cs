@@ -24,23 +24,16 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Dock.Model.Core;
+using ReactiveUI;
+using Studio.ViewModels.Workspace.Objects;
 
-namespace Studio.ViewModels.Traits
+namespace Studio.Services
 {
-    public enum DockingSlot
-    {
-        Left,
-        Right,
-        BottomLeft,
-        BottomRight
-    }
-    
-    public interface IDockingExtension
+    public interface ISourceService : IReactiveObject
     {
         /// <summary>
-        /// Install this extension
+        /// Current source object
         /// </summary>
-        public IDockable[] Install(DockingSlot slot);
+        public ISourceObjectDetailViewModel? SelectedSourceObject { get; set; }
     }
 }
