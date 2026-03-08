@@ -1037,7 +1037,7 @@ static const IL::DebugSingleValue* GetValueFromId(const IL::DebugSingleValue& va
             auto _type = value.type->As<Backend::IL::StructType>();
             
             for (uint32_t i = 0; i < _type->memberTypes.size(); i++) {
-                if (const IL::DebugSingleValue *member = GetValueFromId(value, --id)) {
+                if (const IL::DebugSingleValue *member = GetValueFromId(value.values[i], --id)) {
                     return member;
                 }
             }
@@ -1048,7 +1048,7 @@ static const IL::DebugSingleValue* GetValueFromId(const IL::DebugSingleValue& va
             auto _type = value.type->As<Backend::IL::ArrayType>();
             
             for (uint32_t i = 0; i < _type->count; i++) {
-                if (const IL::DebugSingleValue *member = GetValueFromId(value, --id)) {
+                if (const IL::DebugSingleValue *member = GetValueFromId(value.values[i], --id)) {
                     return member;
                 }
             }
@@ -1059,7 +1059,7 @@ static const IL::DebugSingleValue* GetValueFromId(const IL::DebugSingleValue& va
             auto _type = value.type->As<Backend::IL::VectorType>();
             
             for (uint32_t i = 0; i < _type->dimension; i++) {
-                if (const IL::DebugSingleValue *member = GetValueFromId(value, --id)) {
+                if (const IL::DebugSingleValue *member = GetValueFromId(value.values[i], --id)) {
                     return member;
                 }
             }
@@ -1071,7 +1071,7 @@ static const IL::DebugSingleValue* GetValueFromId(const IL::DebugSingleValue& va
             
             for (uint32_t column = 0; column < _type->columns; column++) {
                 for (uint32_t row = 0; row < _type->rows; row++) {
-                    if (const IL::DebugSingleValue *member = GetValueFromId(value, --id)) {
+                    if (const IL::DebugSingleValue *member = GetValueFromId(value.values[column * _type->rows + row], --id)) {
                         return member;
                     }
                 }
@@ -1148,7 +1148,8 @@ const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitCo
             const IL::DebugVariable* variable = breakpointData.debugStack.variables[breakpointData.variableId];
         
             // Try to find value
-            if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, breakpointData.valueId)) {
+            uint32_t idDecrement = breakpointData.valueId;
+            if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, idDecrement)) {
                 return value->type;
             }
         }
@@ -1171,7 +1172,8 @@ IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, c
         const IL::DebugVariable* variable = breakpointData.debugStack.variables[breakpointData.variableId];
         
         // Try to find value
-        if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, breakpointData.valueId)) {
+        uint32_t idDecrement = breakpointData.valueId;
+        if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, idDecrement)) {
             // Attempt to reconstruct
             if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, *value, instr); reconstructed != IL::InvalidID) {
                 // Split after the constructed debug value
