@@ -284,12 +284,19 @@ static void PropagateCodeConstant(SmallArena& arena, const IL::Constant* constan
     }
 }
 
-static void PropagateCodeOffset(SmallArena& arena, uint32_t codeOffset, IL::DebugSingleValue& value, TrivialStackVector<uint32_t, 4u>&  accessIndices) {
+static void PropagateCodeOffset(SmallArena& arena, uint32_t codeOffset, const Backend::IL::Type *valueType, IL::DebugSingleValue& value, TrivialStackVector<uint32_t, 4u>&  accessIndices) {
     switch (value.type->kind) {
         default: {
             // Since we're traversing in reverse, accept the latest value
             if (value.handle) {
                 return;
+            }
+            
+            // We're at a value leaf, but DXIL may occasionally host composite types on leafs where we're implicitly referencing
+            // the first component. This is a bug, but we have to live with it.
+            bool bIsImplicitLeaf = valueType->Is<Backend::IL::StructType>();
+            if (bIsImplicitLeaf) {
+                accessIndices.Add(0);
             }
             
             uint32_t* dst = arena.AllocateArray<uint32_t>(static_cast<uint32_t>(accessIndices.Size()));
@@ -301,34 +308,42 @@ static void PropagateCodeOffset(SmallArena& arena, uint32_t codeOffset, IL::Debu
                 },
                 .accessIndices = std::span(dst, accessIndices.Size())
             });
+            
+            // Cleanup
+            if (bIsImplicitLeaf) {
+                accessIndices.PopBack();
+            }
             break;
         }
         case Backend::IL::TypeKind::Array: {
             auto* _type = value.type->As<Backend::IL::ArrayType>();
+            auto* _valueType = valueType->As<Backend::IL::ArrayType>();
             
             for (uint32_t i = 0; i < _type->count; i++) {
                 accessIndices.Add(i);
-                PropagateCodeOffset(arena, codeOffset, value.values[i], accessIndices);
+                PropagateCodeOffset(arena, codeOffset, _valueType->elementType, value.values[i], accessIndices);
                 accessIndices.PopBack();
             }
             break;
         }
         case Backend::IL::TypeKind::Vector: {
             auto* _type = value.type->As<Backend::IL::VectorType>();
+            auto* _valueType = valueType->As<Backend::IL::VectorType>();
             
             for (uint32_t i = 0; i < _type->dimension; i++) {
                 accessIndices.Add(i);
-                PropagateCodeOffset(arena, codeOffset, value.values[i], accessIndices);
+                PropagateCodeOffset(arena, codeOffset, _valueType->containedType, value.values[i], accessIndices);
                 accessIndices.PopBack();
             }
             break;
         }
         case Backend::IL::TypeKind::Struct: {
             auto* _type = value.type->As<Backend::IL::StructType>();
+            auto* _valueType = valueType->As<Backend::IL::StructType>();
             
             for (uint32_t i = 0; i < _type->memberTypes.size(); i++) {
                 accessIndices.Add(i);
-                PropagateCodeOffset(arena, codeOffset, value.values[i], accessIndices);
+                PropagateCodeOffset(arena, codeOffset, _valueType->memberTypes[i], value.values[i], accessIndices);
                 accessIndices.PopBack();
             }
             break;
@@ -371,7 +386,14 @@ static IL::ID ReconstructStructuredValue(IL::Emitter<> &emitter, IDXModule* modu
                 return emitter.GetProgram()->GetConstants().FindConstantOrAdd(value.type, IL::NullConstant {})->id;
             }
             
-            return valueInstr;
+            IL::ID result = valueInstr;
+            
+            // Extract until we get to the leaf
+            for (uint32_t index : handle->accessIndices) {
+                result = emitter.Extract(result, emitter.UInt32(index));
+            } 
+            
+            return result;
         }
         case Backend::IL::TypeKind::Struct: {
             auto _type = value.type->As<Backend::IL::StructType>();
@@ -498,12 +520,6 @@ void DebugEmitter::GetStack(IL::Program &program, const IL::Instruction *instr, 
                     // TODO: Bit extraction?
                     ASSERT(dwarfValue.bitWise.bitStart % 8 == 0, "Non-byte aligned");
                     
-                    // Validate the traceback from the value (debug module -> canonical)
-                    if (dwarfValue.code.codeOffset != IL::InvalidID) {
-                        DXCodeOffsetTraceback valueTraceback = shaderState->module->GetCodeOffsetTraceback(dwarfValue.code.codeOffset);
-                        ASSERT(valueTraceback.instructionID != IL::InvalidID, "Unexpected traceback state");
-                    }
-                    
                     uint64_t byteOffset = dwarfValue.bitWise.bitStart / 8;
                     IL::DebugSingleValue* value = GetStructuredValueAtOffsetRef(variable->value, dwarfValue.code.constant, byteOffset);
                 
@@ -514,8 +530,18 @@ void DebugEmitter::GetStack(IL::Program &program, const IL::Instruction *instr, 
                     
                     // To preserve the history, propagate the constant across all atomic units
                     if (dwarfValue.code.codeOffset != IL::InvalidID) {
+                        DXCodeOffsetTraceback valueTraceback = shaderState->module->GetCodeOffsetTraceback(dwarfValue.code.codeOffset);
+                        ASSERT(valueTraceback.instructionID != IL::InvalidID, "Unexpected traceback state");
+                        
+                        // Get instruction
+                        IL::InstructionRef valueInstr = program.GetIdentifierMap().Get(valueTraceback.instructionID);
+                        ASSERT(valueInstr->result != IL::InvalidID, "Unexpected instruction state");
+
+                        // Type for composite checks
+                        const Backend::IL::Type *valueType = program.GetTypeMap().GetType(valueInstr->result);
+                        
                         TrivialStackVector<uint32_t, 4u> accessIndices;
-                        PropagateCodeOffset(arena, dwarfValue.code.codeOffset, *value, accessIndices);
+                        PropagateCodeOffset(arena, dwarfValue.code.codeOffset, valueType, *value, accessIndices);
                     } else {
                         PropagateCodeConstant(arena, dwarfValue.code.constant, *value);
                     }
