@@ -37,7 +37,7 @@
         xmlns:controls="clr-namespace:Studio.Views.Controls"
         mc:Ignorable="d"
         d:DesignWidth="1200" d:DesignHeight="680"
-        Width="1500" Height="825"
+        Width="1800" Height="990"
         UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
         WindowState="Normal" WindowStartupLocation="CenterScreen"
         TransparencyLevelHint="None"
