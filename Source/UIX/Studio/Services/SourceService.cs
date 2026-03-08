@@ -34,7 +34,7 @@ namespace Studio.Services
         /// <summary>
         /// Currently selected source object
         /// </summary>
-        public ISourceObjectDetailViewModel? SelectedSourceObject
+        public ITextualSourceObject? SelectedSourceObject
         {
             get => _selectedSourceObject;
             set => this.RaiseAndSetIfChanged(ref _selectedSourceObject, value);
@@ -43,6 +43,6 @@ namespace Studio.Services
         /// <summary>
         /// Internal state
         /// </summary>
-        private ISourceObjectDetailViewModel? _selectedSourceObject;
+        private ITextualSourceObject? _selectedSourceObject;
     }
 }

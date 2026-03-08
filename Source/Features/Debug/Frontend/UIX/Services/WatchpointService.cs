@@ -50,7 +50,7 @@ namespace Studio.Services
                     .WhenAnyValue(x => x.SelectedSourceObject)
                     .Subscribe(x =>
                     {
-                        SelectedWatchpointViewModel = x as WatchpointViewModel;
+                        SelectedWatchpointViewModel = x?.DetailViewModel as WatchpointViewModel;
                     });
             }
         }

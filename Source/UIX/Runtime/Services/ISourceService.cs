@@ -34,6 +34,6 @@ namespace Studio.Services
         /// <summary>
         /// Current source object
         /// </summary>
-        public ISourceObjectDetailViewModel? SelectedSourceObject { get; set; }
+        public ITextualSourceObject? SelectedSourceObject { get; set; }
     }
 }

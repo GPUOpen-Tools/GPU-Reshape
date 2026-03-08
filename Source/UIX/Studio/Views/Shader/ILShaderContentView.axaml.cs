@@ -195,14 +195,15 @@ namespace Studio.Views.Shader
             // Set selection
             vm.SelectedTextualSourceObject = sourceObject;
             
+            // Set global selection
+            if (ServiceRegistry.Get<ISourceService>() is { } sourceService)
+            {
+                sourceService.SelectedSourceObject = sourceObject;
+            }
+            
             // Bind detail context
             sourceObject.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
             {
-                if (ServiceRegistry.Get<ISourceService>() is { } sourceService)
-                {
-                    sourceService.SelectedSourceObject = x;
-                }
-
                 vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
                     Object = vm.Content as ShaderViewModel,
