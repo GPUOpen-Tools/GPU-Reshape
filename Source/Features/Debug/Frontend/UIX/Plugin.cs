@@ -79,32 +79,32 @@ namespace GRS.Features.Debug.UIX
             ServiceRegistry.Get<IEditorService>()?.Extensions.Add(this);
             
             // Install the archetype registry
-            ServiceRegistry.Add(new BreakpointDisplayRegistryService());
+            ServiceRegistry.Add(new WatchpointDisplayRegistryService());
             
             // Install the settings
             ServiceRegistry.Get<ISettingsService>()?.Add(new DebugSettingViewModel());
             
-            // Install the breakpoint service
-            ServiceRegistry.Add(new BreakpointService());
+            // Install the watchpoint service
+            ServiceRegistry.Add(new WatchpointService());
             
             // Add locators
             ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(DebugSettingViewModel), typeof(DebugSettingView));
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointViewModel), typeof(BreakpointDisplayView));
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointViewModel), typeof(BreakpointWindow), ViewType.Window);
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointTreeViewModel), typeof(BreakpointTreeView));
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(BreakpointStackViewModel), typeof(BreakpointStackView));
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(WatchpointViewModel), typeof(WatchpointDisplayView));
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(WatchpointViewModel), typeof(WatchpointWindow), ViewType.Window);
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(WatchpointTreeViewModel), typeof(WatchpointTreeView));
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(WatchpointStackViewModel), typeof(WatchpointStackView));
             
             // Display locators
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayView));
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayConfigView), ViewType.Config);
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayStatusView), ViewType.Status);
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageBreakpointDisplayViewModel), typeof(ImageBreakpointDisplayOverlayView), ViewType.Overlay);
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(LooseBreakpointDisplayViewModel), typeof(LooseBreakpointDisplayView));
-            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(LooseBreakpointDisplayViewModel), typeof(LooseBreakpointDisplayConfigView), ViewType.Config);
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageWatchpointDisplayViewModel), typeof(ImageWatchpointDisplayView));
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageWatchpointDisplayViewModel), typeof(ImageWatchpointDisplayConfigView), ViewType.Config);
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageWatchpointDisplayViewModel), typeof(ImageWatchpointDisplayStatusView), ViewType.Status);
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(ImageWatchpointDisplayViewModel), typeof(ImageWatchpointDisplayOverlayView), ViewType.Overlay);
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(LooseWatchpointDisplayViewModel), typeof(LooseWatchpointDisplayView));
+            ServiceRegistry.Get<ILocatorService>()?.AddDerived(typeof(LooseWatchpointDisplayViewModel), typeof(LooseWatchpointDisplayConfigView), ViewType.Config);
 
             // Register context actions
             ServiceRegistry.Get<IContextMenuService>()?.ViewModels.AddRange([
-                new BreakpointContextViewModel()
+                new WatchpointContextViewModel()
             ]);
             
             // Register docking extensions
@@ -160,29 +160,29 @@ namespace GRS.Features.Debug.UIX
                 .Where(x => x is { Item1: not null, Item2: not null })
                 .Subscribe(_ =>
                 {
-                    // Try to get the breakpoint collection
-                    if (BreakpointUtils.GetShaderBreakpointCollection(viewModel.PropertyCollection!, viewModel.Content!) is not { } collectionViewModel)
+                    // Try to get the watchpoint collection
+                    if (WatchpointUtils.GetShaderWatchpointCollection(viewModel.PropertyCollection!, viewModel.Content!) is not { } collectionViewModel)
                     {
                         return;
                     }
                 
-                    // Check if we have the breakpoint service
+                    // Check if we have the watchpoint service
                     // We need to dynamically rebind them, so it's unfortunately not that simple
-                    if (collectionViewModel.GetServiceWhere<ContentBreakpointServiceViewModel>(x =>
+                    if (collectionViewModel.GetServiceWhere<ContentWatchpointServiceViewModel>(x =>
                             x.Content == textualShaderViewModel && 
-                            x.BreakpointCollectionViewModel == collectionViewModel
+                            x.WatchpointCollectionViewModel == collectionViewModel
                         ) is null)
                     {
                         // Create service
-                        ContentBreakpointServiceViewModel breakpointService = new()
+                        ContentWatchpointServiceViewModel watchpointService = new()
                         {
                             Content = textualShaderViewModel,
-                            BreakpointCollectionViewModel = collectionViewModel
+                            WatchpointCollectionViewModel = collectionViewModel
                         };
             
                         // Bind and keep track of it
-                        breakpointService.Bind();
-                        viewModel.Services.Add(breakpointService);
+                        watchpointService.Bind();
+                        viewModel.Services.Add(watchpointService);
                     }
             });
         }
@@ -198,8 +198,8 @@ namespace GRS.Features.Debug.UIX
                 return;
             }
             
-            // Try to get the breakpoint collection
-            if (BreakpointUtils.GetShaderBreakpointCollection(viewModel.PropertyCollection!, viewModel.Content!) is not { } collectionViewModel)
+            // Try to get the watchpoint collection
+            if (WatchpointUtils.GetShaderWatchpointCollection(viewModel.PropertyCollection!, viewModel.Content!) is not { } collectionViewModel)
             {
                 return;
             }
@@ -207,11 +207,11 @@ namespace GRS.Features.Debug.UIX
             // Add background renderer
             textEditor.TextArea.TextView.BackgroundRenderers.Add(new ValidationTextMarkerService());
             
-            // Add breakpoint margin
-            textEditor.TextArea.LeftMargins[0] = new BreakpointMargin(textEditor.TextArea.LeftMargins[0])
+            // Add watchpoint margin
+            textEditor.TextArea.LeftMargins[0] = new WatchpointMargin(textEditor.TextArea.LeftMargins[0])
             {
                 ContextMenu = textEditor.ContextMenu,
-                DataContext = new BreakpointMarginViewModel
+                DataContext = new WatchpointMarginViewModel
                 {
                     Content = textualShaderViewModel,
                     CollectionViewModel = collectionViewModel
@@ -227,9 +227,9 @@ namespace GRS.Features.Debug.UIX
             switch (slot)
             {
                 case DockingSlot.Right:
-                    return [new BreakpointTreeViewModel()];
+                    return [new WatchpointTreeViewModel()];
                 case DockingSlot.BottomRight:
-                    return [new BreakpointStackViewModel()];
+                    return [new WatchpointStackViewModel()];
             }
             
             return Array.Empty<IDockable>();
@@ -249,14 +249,14 @@ namespace GRS.Features.Debug.UIX
         /// </summary>
         public void Install(IWorkspaceViewModel workspaceViewModel)
         {
-            // Add breakpoint registry
-            workspaceViewModel.PropertyCollection.Services.Add(new BreakpointRegistryService()
+            // Add watchpoint registry
+            workspaceViewModel.PropertyCollection.Services.Add(new WatchpointRegistryService()
             {
                 WorkspaceViewModel = workspaceViewModel
             });
             
             // Add view model collection registry
-            workspaceViewModel.PropertyCollection.Properties.Add(new BreakpointCollectionRegistryViewModel()
+            workspaceViewModel.PropertyCollection.Properties.Add(new WatchpointCollectionRegistryViewModel()
             {
                 Parent = workspaceViewModel.PropertyCollection
             });

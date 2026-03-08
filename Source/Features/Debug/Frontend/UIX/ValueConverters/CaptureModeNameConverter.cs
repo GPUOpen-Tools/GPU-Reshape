@@ -38,7 +38,7 @@ namespace Studio.ValueConverters
         /// </summary>
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is not BreakpointCaptureMode captureMode)
+            if (value is not WatchpointCaptureMode captureMode)
             {
                 return null;
             }
@@ -48,9 +48,9 @@ namespace Studio.ValueConverters
             {
                 return captureMode switch
                 {
-                    BreakpointCaptureMode.FirstEvent => "Capture on the first draw/dispatch it hits",
-                    BreakpointCaptureMode.FirstViewport => "Capture on all events inside the first viewport it hits",
-                    BreakpointCaptureMode.AllEvents => "Capture all events as loose data items (flat list of values)",
+                    WatchpointCaptureMode.FirstEvent => "Capture on the first draw/dispatch it hits",
+                    WatchpointCaptureMode.FirstViewport => "Capture on all events inside the first viewport it hits",
+                    WatchpointCaptureMode.AllEvents => "Capture all events as loose data items (flat list of values)",
                     _ => captureMode.ToString()
                 };
             }
@@ -58,9 +58,9 @@ namespace Studio.ValueConverters
             {
                 return captureMode switch
                 {
-                    BreakpointCaptureMode.FirstEvent => "First Event",
-                    BreakpointCaptureMode.FirstViewport => "First Viewport",
-                    BreakpointCaptureMode.AllEvents => "All Events (Loose)",
+                    WatchpointCaptureMode.FirstEvent => "First Event",
+                    WatchpointCaptureMode.FirstViewport => "First Viewport",
+                    WatchpointCaptureMode.AllEvents => "All Events (Loose)",
                     _ => captureMode.ToString()
                 };
             }

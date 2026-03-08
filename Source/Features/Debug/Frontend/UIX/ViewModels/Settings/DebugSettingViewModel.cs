@@ -34,33 +34,33 @@ namespace GRS.Features.Debug.UIX.Settings
     public class DebugSettingViewModel : BaseSettingViewModel, INotifySuspension
     {
         /// <summary>
-        /// Max number of Mb a breakpoint may use
+        /// Max number of Mb a watchpoint may use
         /// </summary>
         [DataMember]
-        public uint MaxBreakpointMemoryMb
+        public uint MaxWatchpointMemoryMb
         {
-            get => _maxBreakpointMemoryMb;
-            set => this.RaiseAndSetIfChanged(ref _maxBreakpointMemoryMb, value);
+            get => _maxWatchpointMemoryMb;
+            set => this.RaiseAndSetIfChanged(ref _maxWatchpointMemoryMb, value);
         }
         
         /// <summary>
-        /// Initial number of Mb a breakpoint may use
+        /// Initial number of Mb a watchpoint may use
         /// </summary>
         [DataMember]
-        public uint DefaultBreakpointMemoryMb
+        public uint DefaultWatchpointMemoryMb
         {
-            get => _defaultBreakpointMemoryMb;
-            set => this.RaiseAndSetIfChanged(ref _defaultBreakpointMemoryMb, value);
+            get => _defaultWatchpointMemoryMb;
+            set => this.RaiseAndSetIfChanged(ref _defaultWatchpointMemoryMb, value);
         }
         
         /// <summary>
         /// Max dimension of an image display
         /// </summary>
         [DataMember]
-        public uint MaxBreakpointImageSizePerAxis
+        public uint MaxWatchpointImageSizePerAxis
         {
-            get => _maxBreakpointImageSizePerAxisSize;
-            set => this.RaiseAndSetIfChanged(ref _maxBreakpointImageSizePerAxisSize, value);
+            get => _maxWatchpointImageSizePerAxisSize;
+            set => this.RaiseAndSetIfChanged(ref _maxWatchpointImageSizePerAxisSize, value);
         }
 
         public DebugSettingViewModel() : base("Debugging")
@@ -76,16 +76,16 @@ namespace GRS.Features.Debug.UIX.Settings
         /// <summary>
         /// Internal max mb
         /// </summary>
-        private uint _maxBreakpointMemoryMb = 256;
+        private uint _maxWatchpointMemoryMb = 256;
 
         /// <summary>
         /// Internal max mb
         /// </summary>
-        private uint _maxBreakpointImageSizePerAxisSize = 4096;
+        private uint _maxWatchpointImageSizePerAxisSize = 4096;
 
         /// <summary>
         /// Internal initial mb
         /// </summary>
-        private uint _defaultBreakpointMemoryMb = 32;
+        private uint _defaultWatchpointMemoryMb = 32;
     }
 }

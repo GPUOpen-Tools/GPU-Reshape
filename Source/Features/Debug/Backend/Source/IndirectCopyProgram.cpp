@@ -25,7 +25,7 @@
 // 
 
 #include <Features/Debug/IndirectCopyProgram.h>
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -57,7 +57,7 @@ bool IndirectCopyProgram::Install() {
     programID = programHost->Register(this);
 
     // Create patch data
-    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointLooseAcquisitionData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<WatchpointLooseAcquisitionData>());
 
     // Create the host binding
     hostDataID = shaderDataHost->CreateBufferBinding(programID, ShaderDataBufferBindingInfo{
@@ -94,12 +94,12 @@ void IndirectCopyProgram::Inject(IL::Program &program) {
     IL::ID hostDataBuffer = program.GetShaderDataMap().Get(hostDataID)->id;
     
     // Get shader data
-    IL::ShaderStruct<BreakpointCopyData> copyData = program.GetShaderDataMap().Get(dataID)->id;
+    IL::ShaderStruct<WatchpointCopyData> copyData = program.GetShaderDataMap().Get(dataID)->id;
     
-    // Breakpoint header
-    IL::ShaderBufferStruct<BreakpointHeader> header = IL::ShaderBufferStruct<BreakpointHeader>(
+    // Watchpoint header
+    IL::ShaderBufferStruct<WatchpointHeader> header = IL::ShaderBufferStruct<WatchpointHeader>(
         streamDataID, 
-        copyData.Get<&BreakpointCopyData::allocationDWordOffset>(entryEmitter)
+        copyData.Get<&WatchpointCopyData::allocationDWordOffset>(entryEmitter)
     );
     
     // Get DTID.x
@@ -108,7 +108,7 @@ void IndirectCopyProgram::Inject(IL::Program &program) {
     
     // Offset + DTID.x
     IL::ID payloadOffset = entryEmitter.Add(
-        header.Get<&BreakpointHeader::payloadDWordOffset>(entryEmitter),
+        header.Get<&WatchpointHeader::payloadDWordOffset>(entryEmitter),
         dispatchXID
     );
     
@@ -124,7 +124,7 @@ void IndirectCopyProgram::Inject(IL::Program &program) {
     // Copy to host visible
     entryEmitter.StoreBuffer(
         entryEmitter.Load(hostDataBuffer),
-        entryEmitter.Add(entryEmitter.UInt32(BreakpointHeaderDWordCount), dispatchXID),
+        entryEmitter.Add(entryEmitter.UInt32(WatchpointHeaderDWordCount), dispatchXID),
         value
     );
 }

@@ -1,0 +1,138 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
+             xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
+             xmlns:models="clr-namespace:GRS.Features.Debug.UIX.Models"
+             xmlns:r="clr-namespace:UIX.Resources"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="UIX.Views.Display.ImageWatchpointDisplayOverlayView"
+             x:DataType="viewModels:ImageWatchpointDisplayViewModel">
+    <UserControl.Resources>
+        <valueConverters:ColorMaskConverter x:Key="ColorMaskConverter" />
+    </UserControl.Resources>
+
+    <StackPanel 
+        Margin="10 10 0 0"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Top"
+        Orientation="Vertical"
+        Spacing="5">
+        <ToggleButton
+            Classes="Overlay"
+            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_LockToContent}"
+            IsChecked="{Binding LockToContent}">
+            <PathIcon Data="{StaticResource MagnifyExpand}" Width="15" />
+        </ToggleButton>
+        
+        <Button
+            Classes="Overlay"
+            ToolTip.Tip="Display settings">
+            <PathIcon Data="{StaticResource Image}" Width="15" />
+
+            <Button.Flyout>
+                <Flyout Placement="Right" FlyoutPresenterClasses="Overlay">
+                    <Grid Margin="3">
+                        <StackPanel Orientation="Vertical" Spacing="5">
+                            <CheckBox 
+                                Content="Maintain Aspect Ratio" 
+                                IsChecked="{Binding MaintainAspectRatio}"
+                                ToolTip.Tip="When locked, maintain the aspect ratio"/>
+        
+                            <CheckBox 
+                                Content="Compress" 
+                                IsChecked="{Binding Compress}"
+                                ToolTip.Tip="Enable image compression for faster streaming"/>
+                        </StackPanel>
+                    </Grid>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+        
+        <Button 
+            Classes="Overlay"
+            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_Palette}">
+            <PathIcon Data="{StaticResource Palette}" Width="15" />
+
+            <Button.Flyout>
+                <Flyout Placement="Right" FlyoutPresenterClasses="Overlay">
+                    <StackPanel Orientation="Horizontal">
+                        <ToggleButton 
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="SRGB"
+                            Width="40"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_SRGB}"
+                            Foreground="White"
+                            IsChecked="{Binding IsSRGB}"/>
+                            
+                        <Border 
+                            Width="1"
+                            VerticalAlignment="Stretch"
+                            HorizontalAlignment="Stretch"
+                            Background="{DynamicResource BorderColor}"/>
+                        
+                        <ToggleButton
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="R"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_R}"
+                            Foreground="Red"
+                            IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.R}}"
+                            Command="{Binding ToggleColorMaskCommand}"
+                            CommandParameter="{x:Static models:ColorMask.R}"/>
+
+                        <ToggleButton
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="G"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_G}"
+                            Foreground="LawnGreen"
+                            IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.G}}"
+                            Command="{Binding ToggleColorMaskCommand}"
+                            CommandParameter="{x:Static models:ColorMask.G}" />
+
+                        <ToggleButton
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="B"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_B}"
+                            Foreground="DeepSkyBlue"
+                            IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.B}}"
+                            Command="{Binding ToggleColorMaskCommand}"
+                            CommandParameter="{x:Static models:ColorMask.B}" />
+
+                        <ToggleButton
+                            Classes="Overlay"
+                            CornerRadius="0"
+                            Content="A"
+                            ToolTip.Tip="{x:Static r:Resources.Debug_Image_Overlay_A}"
+                            Foreground="White"
+                            IsChecked="{Binding ColorMask, Mode=OneWay, Converter={StaticResource ColorMaskConverter}, ConverterParameter={x:Static models:ColorMask.A}}"
+                            Command="{Binding ToggleColorMaskCommand}"
+                            CommandParameter="{x:Static models:ColorMask.A}" />
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+        
+        <Button
+            Classes="Overlay">
+            <PathIcon Data="{StaticResource Settings}" Width="15" />
+
+            <Button.Flyout>
+                <Flyout Placement="Right" FlyoutPresenterClasses="Overlay">
+                    <Grid Margin="3">
+                        <StackPanel Orientation="Vertical">
+                            <CheckBox
+                                IsChecked="{Binding EarlyDepthStencil}"
+                                Content="Early Depth Stencil"
+                                ToolTip.Tip="Forcefully enables early depth stencil for debugging purposes"/>
+                        </StackPanel>
+                    </Grid>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+    </StackPanel>
+</UserControl>

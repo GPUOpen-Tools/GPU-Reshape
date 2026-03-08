@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
+             xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
+             xmlns:controls="clr-namespace:UIX.Views.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="UIX.Views.Display.ImageWatchpointDisplayView"
+             x:DataType="viewModels:ImageWatchpointDisplayViewModel">
+    <UserControl.Resources>
+        <valueConverters:ImageAspectRatioConverter x:Key="ImageAspectRatioConverter" />
+    </UserControl.Resources>
+
+    <Grid>
+        <controls:Checkerboard />
+
+        <ScrollViewer
+            x:Name="ScrollArea"
+            HorizontalScrollBarVisibility="Auto"
+            VerticalScrollBarVisibility="Auto">
+            <Image
+                x:Name="Image"
+                Source="{Binding Image}"
+                Stretch="{Binding MaintainAspectRatio, Converter={StaticResource ImageAspectRatioConverter}}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch" />
+        </ScrollViewer>
+    </Grid>
+</UserControl>

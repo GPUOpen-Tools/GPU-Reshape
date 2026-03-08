@@ -25,7 +25,7 @@
 // 
 
 #include <Features/Debug/LooseAcquisitionProgram.h>
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -50,7 +50,7 @@ bool LooseAcquisitionProgram::Install() {
     shaderDataHost = registry->Get<IShaderDataHost>();
 
     // Create patch data
-    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointLooseAcquisitionData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<WatchpointLooseAcquisitionData>());
 
     // OK
     return true;
@@ -80,22 +80,22 @@ void LooseAcquisitionProgram::Inject(IL::Program &program) {
     IL::ID streamDataID = program.GetShaderDataMap().Get(streamBufferID)->id;
     
     // Get shader data
-    IL::ShaderStruct<BreakpointLooseAcquisitionData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
+    IL::ShaderStruct<WatchpointLooseAcquisitionData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
     
     // Split the entry point for early out
     entryBlock->Split(exitBlock, entryBlock->GetTerminator());
 
-    // Breakpoint header
-    IL::ShaderBufferStruct<BreakpointHeader> header;
+    // Watchpoint header
+    IL::ShaderBufferStruct<WatchpointHeader> header;
 
     IL::Emitter<> entryEmitter(program, *entryBlock);
     {
         // Get the header
-        header = IL::ShaderBufferStruct<BreakpointHeader>(streamDataID, acquisitionData.Get<&BreakpointLooseAcquisitionData::allocationDWordOffset>(entryEmitter));
+        header = IL::ShaderBufferStruct<WatchpointHeader>(streamDataID, acquisitionData.Get<&WatchpointLooseAcquisitionData::allocationDWordOffset>(entryEmitter));
 
         // Was this produced?
         IL::ID hasProducer = entryEmitter.NotEqual(
-            header.Get<&BreakpointHeader::dynamicCounter>(entryEmitter),
+            header.Get<&WatchpointHeader::dynamicCounter>(entryEmitter),
             entryEmitter.UInt32(0)
         );
         
@@ -103,7 +103,7 @@ void LooseAcquisitionProgram::Inject(IL::Program &program) {
         hasProducer = entryEmitter.And(
             hasProducer,
             entryEmitter.NotEqual(
-                header.Get<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter),
+                header.Get<&WatchpointHeader::shaderInstrumentationHash32>(entryEmitter),
                 entryEmitter.UInt32(0)
             )
         );
@@ -112,8 +112,8 @@ void LooseAcquisitionProgram::Inject(IL::Program &program) {
         hasProducer = entryEmitter.And(
             hasProducer,
             entryEmitter.NotEqual(
-                header.Get<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter),
-                entryEmitter.UInt32(kBreakpointInstrumentationHashLocked)
+                header.Get<&WatchpointHeader::shaderInstrumentationHash32>(entryEmitter),
+                entryEmitter.UInt32(kWatchpointInstrumentationHashLocked)
             )
         );
         
@@ -128,16 +128,16 @@ void LooseAcquisitionProgram::Inject(IL::Program &program) {
     
     IL::Emitter<> bodyEmitter(program, *bodyBlock);
     {
-        // Pseudo lock the breakpoint by re-acquiring the hash
-        IL::ID previousHash = header.AtomicExchange<&BreakpointHeader::shaderInstrumentationHash32>(bodyEmitter, bodyEmitter.UInt32(kBreakpointInstrumentationHashLocked));
+        // Pseudo lock the watchpoint by re-acquiring the hash
+        IL::ID previousHash = header.AtomicExchange<&WatchpointHeader::shaderInstrumentationHash32>(bodyEmitter, bodyEmitter.UInt32(kWatchpointInstrumentationHashLocked));
         
         // Send acquisition event
-        BreakpointAcquisitionMessage::ShaderExport msg;
-        msg.chunks |= BreakpointAcquisitionMessage::Chunk::ExtraData | BreakpointAcquisitionMessage::Chunk::LooseCounter;
-        msg.uid = acquisitionData.Get<&BreakpointLooseAcquisitionData::breakpointUid>(bodyEmitter);
+        WatchpointAcquisitionMessage::ShaderExport msg;
+        msg.chunks |= WatchpointAcquisitionMessage::Chunk::ExtraData | WatchpointAcquisitionMessage::Chunk::LooseCounter;
+        msg.uid = acquisitionData.Get<&WatchpointLooseAcquisitionData::watchpointUid>(bodyEmitter);
         msg.magic = bodyEmitter.UInt32(42);
         msg.extraData.instrumentationHash32 = previousHash;
-        msg.looseCounter.streamedDynamicCounter = header.Get<&BreakpointHeader::dynamicCounter>(bodyEmitter);
+        msg.looseCounter.streamedDynamicCounter = header.Get<&WatchpointHeader::dynamicCounter>(bodyEmitter);
         bodyEmitter.Export(exportID, msg);
         
         // Fin!

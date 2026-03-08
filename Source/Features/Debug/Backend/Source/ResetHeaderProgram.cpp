@@ -25,7 +25,7 @@
 // 
 
 #include <Features/Debug/ResetHeaderProgram.h>
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -47,7 +47,7 @@ bool ResetHeaderProgram::Install() {
     shaderDataHost = registry->Get<IShaderDataHost>();
 
     // Create patch data
-    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointResetHeaderData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<WatchpointResetHeaderData>());
 
     // OK
     return true;
@@ -77,25 +77,25 @@ void ResetHeaderProgram::Inject(IL::Program &program) {
     IL::ID streamDataID = program.GetShaderDataMap().Get(streamBufferID)->id;
     
     // Get shader data
-    IL::ShaderStruct<BreakpointResetHeaderData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
+    IL::ShaderStruct<WatchpointResetHeaderData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
     
-    // Breakpoint header
-    IL::ShaderBufferStruct<BreakpointHeader> header = IL::ShaderBufferStruct<BreakpointHeader>(
+    // Watchpoint header
+    IL::ShaderBufferStruct<WatchpointHeader> header = IL::ShaderBufferStruct<WatchpointHeader>(
         streamDataID, 
-        acquisitionData.Get<&BreakpointResetHeaderData::allocationDWordOffset>(entryEmitter)
+        acquisitionData.Get<&WatchpointResetHeaderData::allocationDWordOffset>(entryEmitter)
     );
     
     // Reset header state
     // Note: Do not reset data order, immutable in some capture modes
-    header.AtomicExchange<&BreakpointHeader::staticWidth>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::staticHeight>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::staticDepth>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::dwordStreamCount>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::dynamicCounter>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::acquiredExecutionUID>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::staticWidth>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::staticHeight>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::staticDepth>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::dwordStreamCount>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::dynamicCounter>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::acquiredExecutionUID>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::shaderInstrumentationHash32>(entryEmitter, entryEmitter.UInt32(0));
     
     // Reset copy state
-    header.AtomicExchange<&BreakpointHeader::copyDispatchParams>(entryEmitter, entryEmitter.UInt32(0));
-    header.AtomicExchange<&BreakpointHeader::copyDispatchLock>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::copyDispatchParams>(entryEmitter, entryEmitter.UInt32(0));
+    header.AtomicExchange<&WatchpointHeader::copyDispatchLock>(entryEmitter, entryEmitter.UInt32(0));
 }

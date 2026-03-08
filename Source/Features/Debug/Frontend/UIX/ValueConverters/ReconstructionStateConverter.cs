@@ -39,7 +39,7 @@ namespace Studio.ValueConverters
         /// </summary>
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is not BreakpointValueReconstructionState state)
+            if (value is not WatchpointValueReconstructionState state)
             {
                 return null;
             }
@@ -49,11 +49,11 @@ namespace Studio.ValueConverters
             {
                 default:
                     return null;
-                case BreakpointValueReconstructionState.None:
+                case WatchpointValueReconstructionState.None:
                     return Brushes.DarkRed;
-                case BreakpointValueReconstructionState.Partial:
+                case WatchpointValueReconstructionState.Partial:
                     return Brushes.Yellow;
-                case BreakpointValueReconstructionState.Full:
+                case WatchpointValueReconstructionState.Full:
                     return Brushes.Green;
             }
         }

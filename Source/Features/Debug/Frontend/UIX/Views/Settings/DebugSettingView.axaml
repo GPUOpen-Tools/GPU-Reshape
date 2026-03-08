@@ -56,11 +56,11 @@
                     Margin="0 0 0 0"
                     HorizontalAlignment="Left"
                     TextWrapping="WrapWithOverflow"
-                    Text="Max Breakpoint Memory (Mb)"/>
+                    Text="Max Watchpoint Memory (Mb)"/>
                 
                 <NumericUpDown
                     Margin="0 0 0 2.5" Height="25"
-                    Value="{Binding MaxBreakpointMemoryMb}"
+                    Value="{Binding MaxWatchpointMemoryMb}"
                     Padding="0"/>
                 
                 <TextBlock 
@@ -74,11 +74,11 @@
                     Margin="0 0 0 0"
                     HorizontalAlignment="Left"
                     TextWrapping="WrapWithOverflow"
-                    Text="Default Breakpoint Memory (Mb)"/>
+                    Text="Default Watchpoint Memory (Mb)"/>
                 
                 <NumericUpDown
                     Margin="0 0 0 2.5" Height="25"
-                    Value="{Binding DefaultBreakpointMemoryMb}"
+                    Value="{Binding DefaultWatchpointMemoryMb}"
                     Padding="0"/>
                 
                 <TextBlock 
@@ -92,11 +92,11 @@
                     Margin="0 0 0 0"
                     HorizontalAlignment="Left"
                     TextWrapping="WrapWithOverflow"
-                    Text="Max Breakpoint Image Size Per-Axis (pixels)"/>
+                    Text="Max Watchpoint Image Size Per-Axis (pixels)"/>
                 
                 <NumericUpDown
                     Margin="0 0 0 2.5" Height="25"
-                    Value="{Binding MaxBreakpointImageSizePerAxis}"
+                    Value="{Binding MaxWatchpointImageSizePerAxis}"
                     Padding="0"/>
                 
                 <TextBlock 

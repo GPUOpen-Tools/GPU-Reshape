@@ -28,7 +28,7 @@ public class LooseVirtualObservableCollection : IReadOnlyList<LooseItemViewModel
         {
             get
             {
-                return new LooseItemViewModel(Container.BreakpointDisplayViewModel, _dwordOffset)
+                return new LooseItemViewModel(Container.WatchpointDisplayViewModel, _dwordOffset)
                 {
                     Index = _index
                 };
@@ -42,10 +42,10 @@ public class LooseVirtualObservableCollection : IReadOnlyList<LooseItemViewModel
         /// </summary>
         public bool MoveNext()
         {
-            DebugBreakpointStreamMessage.FlatInfo flatInfo = Container.BreakpointDisplayViewModel.FlatInfo;
-            _dwordOffset += LooseBreakpointHeader.DWordCount + flatInfo.dataDWordStride;
+            DebugWatchpointStreamMessage.FlatInfo flatInfo = Container.WatchpointDisplayViewModel.FlatInfo;
+            _dwordOffset += LooseWatchpointHeader.DWordCount + flatInfo.dataDWordStride;
             _index++;
-            return _dwordOffset + LooseBreakpointHeader.DWordCount + flatInfo.dataDWordStride <= Container.BreakpointDisplayViewModel.DWords.Length;
+            return _dwordOffset + LooseWatchpointHeader.DWordCount + flatInfo.dataDWordStride <= Container.WatchpointDisplayViewModel.DWords.Length;
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ public class LooseVirtualObservableCollection : IReadOnlyList<LooseItemViewModel
     /// <summary>
     /// The owning display view model
     /// </summary>
-    public required LooseBreakpointDisplayViewModel BreakpointDisplayViewModel { get; set; }
+    public required LooseWatchpointDisplayViewModel WatchpointDisplayViewModel { get; set; }
 
     /// <summary>
     /// Always synchronized
@@ -103,15 +103,15 @@ public class LooseVirtualObservableCollection : IReadOnlyList<LooseItemViewModel
     {
         get
         {
-            uint maxItems = (uint)(BreakpointDisplayViewModel.DWords.Length / (LooseBreakpointHeader.DWordCount + BreakpointDisplayViewModel.FlatInfo.dataDWordStride));
-            return (int)Math.Min(maxItems, BreakpointDisplayViewModel.FlatInfo.dataDynamicCounter);
+            uint maxItems = (uint)(WatchpointDisplayViewModel.DWords.Length / (LooseWatchpointHeader.DWordCount + WatchpointDisplayViewModel.FlatInfo.dataDWordStride));
+            return (int)Math.Min(maxItems, WatchpointDisplayViewModel.FlatInfo.dataDynamicCounter);
         }
     }
 
     /// <summary>
-    /// Sync with the breakpoint by default
+    /// Sync with the watchpoint by default
     /// </summary>
-    public object SyncRoot => BreakpointDisplayViewModel;
+    public object SyncRoot => WatchpointDisplayViewModel;
 
     /// <summary>
     /// Array accessor
@@ -120,16 +120,16 @@ public class LooseVirtualObservableCollection : IReadOnlyList<LooseItemViewModel
     {
         get
         {
-            uint dwordOffset = (uint)((LooseBreakpointHeader.DWordCount + BreakpointDisplayViewModel.FlatInfo.dataDWordStride) * index);
+            uint dwordOffset = (uint)((LooseWatchpointHeader.DWordCount + WatchpointDisplayViewModel.FlatInfo.dataDWordStride) * index);
             
             // Guard against expected bounds
-            if (dwordOffset + LooseBreakpointHeader.DWordCount + BreakpointDisplayViewModel.FlatInfo.dataDWordStride > BreakpointDisplayViewModel.DWords.Length)
+            if (dwordOffset + LooseWatchpointHeader.DWordCount + WatchpointDisplayViewModel.FlatInfo.dataDWordStride > WatchpointDisplayViewModel.DWords.Length)
             {
                 return null;
             }
 
             // Construct at offset
-            return new LooseItemViewModel(BreakpointDisplayViewModel, dwordOffset)
+            return new LooseItemViewModel(WatchpointDisplayViewModel, dwordOffset)
             {
                 Index = index
             };

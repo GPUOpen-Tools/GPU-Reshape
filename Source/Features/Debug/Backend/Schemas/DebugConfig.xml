@@ -28,7 +28,7 @@
 
 
 <schema>
-    <message name="DebugBreakpoint">
+    <message name="DebugWatchpoint">
         <field name="codeOffset" type="uint32"/>
         <field name="uid" type="uint32"/>
         <field name="flags" type="uint32"/>
@@ -38,29 +38,29 @@
     </message>
     
     <message name="DebugConfig">
-        <field name="breakpoints" type="stream"/>
+        <field name="watchpoints" type="stream"/>
     </message>
 
-    <message name="DebugBreakpointStreamHandled">
+    <message name="DebugWatchpointStreamHandled">
         <field name="request" type="uint32"/>
     </message>
 
-    <message name="RegisterDebugBreakpoint">
+    <message name="RegisterDebugWatchpoint">
         <field name="uid" type="uint32"/>
         <field name="streamSize" type="uint32"/>
         <field name="captureMode" type="uint32"/>
     </message>
 
-    <message name="ReallocateDebugBreakpoint">
+    <message name="ReallocateDebugWatchpoint">
         <field name="uid" type="uint32"/>
         <field name="streamSize" type="uint32"/>
     </message>
 
-    <message name="DeregisterDebugBreakpoint">
+    <message name="DeregisterDebugWatchpoint">
         <field name="uid" type="uint32"/>
     </message>
 
-    <message name="DebugBreakpointStream">
+    <message name="DebugWatchpointStream">
         <field name="request" type="uint32"/>
         <field name="uid" type="uint32"/>
         <field name="captureMode" type="uint32"/>
@@ -78,20 +78,20 @@
         <field name="dataRequestStreamSize" type="uint32"/>
     </message>
 
-    <message name="DebugBreakpointValueMetadata">
+    <message name="DebugWatchpointValueMetadata">
         <field name="name" type="string"/>
         <field name="valueId" type="uint32"/>
         <field name="hasReconstruction" type="bool"/>
     </message>
 
-    <message name="DebugBreakpointVariableMetadata">
+    <message name="DebugWatchpointVariableMetadata">
         <field name="name" type="string"/>
         <field name="variableId" type="uint32"/>
         <field name="dataTinyType" type="array" element="uint8"/>
         <field name="values" type="stream"/>
     </message>
     
-    <message name="DebugBreakpointMetadata">
+    <message name="DebugWatchpointMetadata">
         <field name="uid" type="uint32"/>
         <field name="variables" type="stream"/>
     </message>

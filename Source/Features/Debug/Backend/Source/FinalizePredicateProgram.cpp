@@ -25,7 +25,7 @@
 // 
 
 #include <Features/Debug/FinalizePredicateProgram.h>
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -57,7 +57,7 @@ bool FinalizePredicateProgram::Install() {
     programID = programHost->Register(this);
 
     // Create patch data
-    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointCopyData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<WatchpointCopyData>());
 
     // OK
     return true;
@@ -87,14 +87,14 @@ void FinalizePredicateProgram::Inject(IL::Program &program) {
     IL::ID streamDataID = program.GetShaderDataMap().Get(streamBufferID)->id;
     
     // Get shader data
-    IL::ShaderStruct<BreakpointResetHeaderData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
+    IL::ShaderStruct<WatchpointResetHeaderData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
     
-    // Breakpoint header
-    IL::ShaderBufferStruct<BreakpointHeader> header = IL::ShaderBufferStruct<BreakpointHeader>(
+    // Watchpoint header
+    IL::ShaderBufferStruct<WatchpointHeader> header = IL::ShaderBufferStruct<WatchpointHeader>(
         streamDataID, 
-        acquisitionData.Get<&BreakpointResetHeaderData::allocationDWordOffset>(entryEmitter)
+        acquisitionData.Get<&WatchpointResetHeaderData::allocationDWordOffset>(entryEmitter)
     );
     
     // Reset predicate state
-    header.Set<&BreakpointHeader::predicationLo>(entryEmitter, entryEmitter.UInt32(0));
+    header.Set<&WatchpointHeader::predicationLo>(entryEmitter, entryEmitter.UInt32(0));
 }

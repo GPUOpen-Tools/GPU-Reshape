@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
+             xmlns:controls="clr-namespace:Studio.Views.Controls;assembly=UIX.Studio.Runtime"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="UIX.Views.Display.ImageWatchpointDisplayConfigView"
+             x:DataType="viewModels:ImageWatchpointDisplayViewModel">
+    <StackPanel Orientation="Horizontal">
+        <!-- Display Range -->
+        
+        <Border 
+            Width="1"
+            Margin="5 0 0 0"
+            VerticalAlignment="Stretch"
+            Background="{StaticResource RegionColor}"/>
+        
+        <TextBlock 
+            Text="Range"
+            Margin="5 0 0 0"
+            VerticalAlignment="Center"/>
+            
+        <NumericUpDown 
+            Height="20"
+            VerticalAlignment="Center"
+            Margin="5 0 0 0"
+            Value="{Binding Minimum, ElementName=DisplayRangeSlider}"
+            Padding="0 -3 0 0"/>
+            
+        <controls:SliderRange 
+            x:Name="DisplayRangeSlider"
+            Margin="5 0 0 0"
+            LowerValue="{Binding MinValue, Mode=TwoWay}"
+            UpperValue="{Binding MaxValue, Mode=TwoWay}"
+            Width="100"/>
+            
+        <NumericUpDown 
+            Height="20"
+            VerticalAlignment="Center"
+            Margin="5 0 0 0"
+            Value="{Binding Maximum, ElementName=DisplayRangeSlider}"
+            Padding="0 -3 0 0"/>
+        
+        <Button 
+            Classes="Icon"
+            Margin="5 0 0 0"
+            x:Name="AutoRange">
+            <PathIcon Margin="0 1 0 0" Data="{StaticResource Wand}" Width="14" Height="14"/>
+        </Button>
+    </StackPanel>
+</UserControl>

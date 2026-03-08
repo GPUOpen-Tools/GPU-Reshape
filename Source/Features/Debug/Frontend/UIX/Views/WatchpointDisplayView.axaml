@@ -1,0 +1,158 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
+             xmlns:controls="clr-namespace:Studio.Views.Controls;assembly=UIX.Studio.Runtime"
+             xmlns:valueConverters="clr-namespace:Studio.ValueConverters;assembly=UIX.Studio.Runtime"
+             xmlns:valueConvertersLocal="clr-namespace:Studio.ValueConverters"
+             xmlns:views="clr-namespace:UIX.Views"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="UIX.Views.WatchpointDisplayView"
+             x:DataType="viewModels:WatchpointViewModel">
+    <UserControl.Resources>
+        <valueConverters:ConditionalComboConverter x:Key="ComboConverter" />
+        <valueConvertersLocal:CaptureModeNameConverter x:Key="CaptureModeNameConverter" />
+    </UserControl.Resources>
+    
+    <Grid Background="{StaticResource InfoBackgroundColor}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Configuration -->
+        <Grid Grid.Row="0" Margin="3 2 3 2">
+            <StackPanel 
+                Spacing="5"
+                HorizontalAlignment="Left"
+                Orientation="Horizontal">
+                <!-- Capture -->
+                <ComboBox 
+                    IsVisible="{Binding CaptureModeTypes, Converter={StaticResource ComboConverter}}"
+                    SelectedItem="{Binding CaptureMode}" 
+                    ItemsSource="{Binding CaptureModeTypes}"
+                    ToolTip.Tip="{Binding CaptureMode, Converter={StaticResource CaptureModeNameConverter}, ConverterParameter=tooltip}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock 
+                                Text="{Binding Converter={StaticResource CaptureModeNameConverter}}"
+                                ToolTip.Tip="{Binding Converter={StaticResource CaptureModeNameConverter}, ConverterParameter=tooltip}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                
+                <!-- Variables -->
+                <views:WatchpointVariableView x:Name="StackView"/>
+                
+                <!-- Archetype -->
+                <ComboBox 
+                    IsVisible="{Binding Archetypes, Converter={StaticResource ComboConverter}}"
+                    SelectedItem="{Binding ArchetypeViewModel}" 
+                    ItemsSource="{Binding Archetypes}"
+                    DisplayMemberBinding="{Binding Name}"/>
+                
+                <!-- Marker -->
+                <TextBox
+                    Text="{Binding Marker}"
+                    Watermark="Marker Filter"
+                    ToolTip.Tip="Optional marker name (full name, case-sensitive), only hits if any marker hierarchy (max 5 nested) contains this name"/>
+                
+                <!-- Config -->
+                <controls:LocatorViewHost 
+                    HorizontalAlignment="Stretch" 
+                    VerticalAlignment="Stretch" 
+                    ViewType="Config"
+                    DataContext="{Binding DisplayViewModel}"/>
+            </StackPanel>
+            
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <Label Content="{Binding FrameRate, FallbackValue=32, StringFormat='FPS: {0}'}" />
+                
+                <ToggleButton
+                    Margin="0 0 0 0" 
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Height="25"
+                    Width="25"
+                    IsChecked="{Binding Paused}">
+                    <PathIcon Data="{StaticResource Pause}" Margin="0 1 1 0" Width="10" />
+                </ToggleButton>
+                
+                <Button
+                    Margin="0 0 0 0" 
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Height="25"
+                    Width="25"
+                    Command="{Binding OpenInNewCommand}">
+                    <PathIcon Data="{StaticResource OpenInNew}" Margin="0 1 1 0" Width="10" />
+                </Button>
+            </StackPanel>
+        </Grid>
+        
+        <!-- Display -->
+        <Grid Grid.Row="1">
+            <Border 
+                Height="1"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Stretch"
+                Background="{DynamicResource LineBorderBrush}"/>
+            
+            <!-- Primary -->
+            <controls:LocatorViewHost 
+                Margin="0 1 0 0"
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch" 
+                DataContext="{Binding DisplayViewModel}" />
+            
+            <!-- Overlay -->
+            <controls:LocatorViewHost 
+                Margin="0 1 0 0"
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch" 
+                ViewType="Overlay"
+                DataContext="{Binding DisplayViewModel}"/>
+        </Grid>
+        
+        <!-- Info -->
+        <Grid Grid.Row="2">
+            <StackPanel 
+                Margin="25 0 0 0"
+                HorizontalAlignment="Left"
+                Orientation="Horizontal">
+                <!-- Status -->
+                <controls:LocatorViewHost 
+                    Margin="5 0 0 0"
+                    HorizontalAlignment="Stretch" 
+                    VerticalAlignment="Stretch" 
+                    ViewType="Status"
+                    DataContext="{Binding DisplayViewModel}"/>
+            </StackPanel>
+            
+            <StackPanel
+                Margin="0 0 5 0"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Height="25">
+                <Label Content="{Binding Decoration}"/>
+                
+                <StackPanel
+                    IsVisible="{Binding HasStatusMessage}"
+                    HorizontalAlignment="Left"
+                    Orientation="Horizontal">
+                    <PathIcon
+                        VerticalAlignment="Center"
+                        Margin="0 1 0 0"
+                        Data="{StaticResource Warning}" Width="14" Height="14"/>
+                    
+                    <TextBlock 
+                        Margin="5 0 0 0"
+                        VerticalAlignment="Center"
+                        Text="{Binding StatusMessage}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

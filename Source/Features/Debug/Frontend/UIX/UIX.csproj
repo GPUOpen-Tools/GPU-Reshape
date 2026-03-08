@@ -99,39 +99,39 @@
         <DependentUpon>DebugSettingView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\BreakpointWindow.axaml.cs">
-        <DependentUpon>BreakpointDisplayView.axaml</DependentUpon>
+      <Compile Update="Views\WatchpointWindow.axaml.cs">
+        <DependentUpon>WatchpointDisplayView.axaml</DependentUpon>
       </Compile>
-      <Compile Update="Views\Display\ImageBreakpointDisplayConfigView.axaml.cs">
-        <DependentUpon>ImageBreakpointDisplayConfigView.axaml</DependentUpon>
+      <Compile Update="Views\Display\ImageWatchpointDisplayConfigView.axaml.cs">
+        <DependentUpon>ImageWatchpointDisplayConfigView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\Display\LooseBreakpointDisplayConfigView.axaml.cs">
-        <DependentUpon>LooseBreakpointDisplayConfigView.axaml</DependentUpon>
+      <Compile Update="Views\Display\LooseWatchpointDisplayConfigView.axaml.cs">
+        <DependentUpon>LooseWatchpointDisplayConfigView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\Display\LooseBreakpointDisplayView.axaml.cs">
-        <DependentUpon>LooseBreakpointDisplayView.axaml</DependentUpon>
+      <Compile Update="Views\Display\LooseWatchpointDisplayView.axaml.cs">
+        <DependentUpon>LooseWatchpointDisplayView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\Display\ImageBreakpointDisplayStatusView.axaml.cs">
-        <DependentUpon>ImageBreakpointDisplayStatusView.axaml</DependentUpon>
+      <Compile Update="Views\Display\ImageWatchpointDisplayStatusView.axaml.cs">
+        <DependentUpon>ImageWatchpointDisplayStatusView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\Display\ImageBreakpointDisplayOverlayView.axaml.cs">
-        <DependentUpon>ImageBreakpointDisplayOverlayView.axaml</DependentUpon>
+      <Compile Update="Views\Display\ImageWatchpointDisplayOverlayView.axaml.cs">
+        <DependentUpon>ImageWatchpointDisplayOverlayView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\Tools\BreakpointTreeView.axaml.cs">
-        <DependentUpon>BreakpointTreeView.axaml</DependentUpon>
+      <Compile Update="Views\Tools\WatchpointTreeView.axaml.cs">
+        <DependentUpon>WatchpointTreeView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\BreakpointVariableView.axaml.cs">
-        <DependentUpon>BreakpointStackView.axaml</DependentUpon>
+      <Compile Update="Views\WatchpointVariableView.axaml.cs">
+        <DependentUpon>WatchpointStackView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Views\Tools\BreakpointStackView.axaml.cs">
-        <DependentUpon>BreakpointStackView.axaml</DependentUpon>
+      <Compile Update="Views\Tools\WatchpointStackView.axaml.cs">
+        <DependentUpon>WatchpointStackView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
     </ItemGroup>

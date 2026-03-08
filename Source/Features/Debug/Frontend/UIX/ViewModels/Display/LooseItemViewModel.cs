@@ -41,15 +41,15 @@ public class LooseItemViewModel : ReactiveObject
     /// <summary>
     /// Construct this loose item
     /// </summary>
-    public LooseItemViewModel(LooseBreakpointDisplayViewModel breakpointDisplayViewModel, uint dwordOffset)
+    public LooseItemViewModel(LooseWatchpointDisplayViewModel watchpointDisplayViewModel, uint dwordOffset)
     {
         _reEntryState = true;
         
         // Get export dword span
-        Span<uint> dwordSpan = new(breakpointDisplayViewModel.DWords, (int)dwordOffset, (int)(LooseBreakpointHeader.DWordCount + breakpointDisplayViewModel.FlatInfo.dataDWordStride));
+        Span<uint> dwordSpan = new(watchpointDisplayViewModel.DWords, (int)dwordOffset, (int)(LooseWatchpointHeader.DWordCount + watchpointDisplayViewModel.FlatInfo.dataDWordStride));
         
         // Interpret the execution info
-        LooseBreakpointHeader header = MemoryMarshal.Read<LooseBreakpointHeader>(MemoryMarshal.AsBytes(dwordSpan));
+        LooseWatchpointHeader header = MemoryMarshal.Read<LooseWatchpointHeader>(MemoryMarshal.AsBytes(dwordSpan));
 
         // Shared execution data
         LooseTreeItemViewModel executionInfoItem = new()
@@ -58,7 +58,7 @@ public class LooseItemViewModel : ReactiveObject
             Items =
             [
                 new LooseTreeItemViewModel { Text = $"{TracebackUtils.Format(header.executionInfo.executionFlags)}" },
-                GetPipelineItemViewModel(breakpointDisplayViewModel, header),
+                GetPipelineItemViewModel(watchpointDisplayViewModel, header),
                 new LooseTreeItemViewModel { Text = $"Queue : {header.executionInfo.queueUID}" }
             ]
         };
@@ -145,10 +145,10 @@ public class LooseItemViewModel : ReactiveObject
         }
         
         // Data span begin
-        Span<uint> dataDWordSpan = dwordSpan.Slice((int)LooseBreakpointHeader.DWordCount);
+        Span<uint> dataDWordSpan = dwordSpan.Slice((int)LooseWatchpointHeader.DWordCount);
 
         // TODO: Actually interpret the data
-        LooseTreeItemViewModel dataItem = GetValueItem(breakpointDisplayViewModel, header, dataDWordSpan, dwordOffset + LooseBreakpointHeader.DWordCount);
+        LooseTreeItemViewModel dataItem = GetValueItem(watchpointDisplayViewModel, header, dataDWordSpan, dwordOffset + LooseWatchpointHeader.DWordCount);
         
         // Add items
         RootItemViewModel.Items.AddRange([
@@ -189,21 +189,21 @@ public class LooseItemViewModel : ReactiveObject
     /// <summary>
     /// Get a bound value item
     /// </summary>
-    private LooseTreeItemViewModel GetValueItem(LooseBreakpointDisplayViewModel breakpointDisplayViewModel, LooseBreakpointHeader header, Span<uint> dataDWordSpan, uint dwordOffset)
+    private LooseTreeItemViewModel GetValueItem(LooseWatchpointDisplayViewModel watchpointDisplayViewModel, LooseWatchpointHeader header, Span<uint> dataDWordSpan, uint dwordOffset)
     {
         // Due to Span GC rules, create it anew here
         // The underlying memory is guaranteed to exist
-        Span<uint> dwordSpan = new(breakpointDisplayViewModel.DWords, (int)dwordOffset, (int)breakpointDisplayViewModel.FlatInfo.dataDWordStride);
+        Span<uint> dwordSpan = new(watchpointDisplayViewModel.DWords, (int)dwordOffset, (int)watchpointDisplayViewModel.FlatInfo.dataDWordStride);
         
         // Just keep it under its own category
         LooseTreeItemViewModel item = new()
         {
-            Text = $"Value {Assembler.AssembleInlineType(breakpointDisplayViewModel.Type, true)} "
+            Text = $"Value {Assembler.AssembleInlineType(watchpointDisplayViewModel.Type, true)} "
         };
         
         // Format the bytes according to its type
         Span<byte> dataSpan = MemoryMarshal.AsBytes(dwordSpan);
-        FormatValue(item, breakpointDisplayViewModel.Type, ref dataSpan, true);
+        FormatValue(item, watchpointDisplayViewModel.Type, ref dataSpan, true);
 
         // Update the flat string
         Flatten();
@@ -214,13 +214,13 @@ public class LooseItemViewModel : ReactiveObject
     /// <summary>
     /// Get a bound pipeline name item
     /// </summary>
-    private LooseTreeItemViewModel GetPipelineItemViewModel(LooseBreakpointDisplayViewModel breakpointDisplayViewModel, LooseBreakpointHeader header)
+    private LooseTreeItemViewModel GetPipelineItemViewModel(LooseWatchpointDisplayViewModel watchpointDisplayViewModel, LooseWatchpointHeader header)
     {
         LooseTreeItemViewModel item = new() { Text = $"Pipeline : {header.executionInfo.pipelineUID}" };
 
         // If possible, bind the name
-        if (breakpointDisplayViewModel.PropertyViewModel.GetProperty<IPipelineCollectionViewModel>() is { } collection &&
-            breakpointDisplayViewModel.PropertyViewModel.GetService<IPipelinePoolingService>() is { } pooling)
+        if (watchpointDisplayViewModel.PropertyViewModel.GetProperty<IPipelineCollectionViewModel>() is { } collection &&
+            watchpointDisplayViewModel.PropertyViewModel.GetService<IPipelinePoolingService>() is { } pooling)
         {
             PipelineViewModel pipelineViewModel = collection.GetOrAddPipeline(header.executionInfo.pipelineUID);
             

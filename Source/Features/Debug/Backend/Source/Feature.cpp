@@ -26,7 +26,7 @@
 
 // Feature
 #include <Features/Debug/Feature.h>
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 #include <Features/Debug/LooseAcquisitionProgram.h>
 #include <Features/Debug/ResetHeaderProgram.h>
 #include <Features/Debug/FinalizePredicateProgram.h>
@@ -79,8 +79,8 @@
 /// Use tiled resources for allocation?
 #define USE_TILED 1
 
-/// Max number of breakpoints, TODO[dbg]: for now?
-static constexpr uint32_t kMaxBreakpoints = 1 << 16;
+/// Max number of watchpoints, TODO[dbg]: for now?
+static constexpr uint32_t kMaxWatchpoints = 1 << 16;
 
 /// Maximum streaming size
 #if USE_TILED
@@ -100,7 +100,7 @@ bool DebugFeature::Install() {
     shaderDataHost = registry->Get<IShaderDataHost>();
 
     // Allocate the shared export
-    auto messageType = ShaderExportTypeInfo::FromType<BreakpointAcquisitionMessage>();
+    auto messageType = ShaderExportTypeInfo::FromType<WatchpointAcquisitionMessage>();
     messageType.streamType = ShaderExportStreamType::Input;
     exportID = exportHost->Allocate(messageType);
 
@@ -152,7 +152,7 @@ bool DebugFeature::Install() {
 
     // Register for messages
     bridge = registry->Get<IBridge>().GetUnsafe();
-    bridge->Register(BreakpointAcquisitionMessage::kID, this);
+    bridge->Register(WatchpointAcquisitionMessage::kID, this);
 
     // Get state voter, used primarily for scheduler changes
     stateVote = registry->Get<IDeviceStateVote>();
@@ -160,9 +160,9 @@ bool DebugFeature::Install() {
     // Get the debug emitter
     debugEmitter = registry->Get<IL::IDebugEmitter>();
 
-    // Allocate breakpoint headers
-    buddyAllocator.Allocate(kMaxBreakpoints * sizeof(BreakpointHeader));
-    tileResidencyAllocator.Allocate(0, kMaxBreakpoints * sizeof(BreakpointHeader));
+    // Allocate watchpoint headers
+    buddyAllocator.Allocate(kMaxWatchpoints * sizeof(WatchpointHeader));
+    tileResidencyAllocator.Allocate(0, kMaxWatchpoints * sizeof(WatchpointHeader));
     
     // OK
     return true;
@@ -233,13 +233,13 @@ void DebugFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void DebugFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
-    std::unordered_map<uint32_t, DebugBreakpointMessage> breakpointStreams;
+    std::unordered_map<uint32_t, DebugWatchpointMessage> watchpointStreams;
 
     // Options
     if (const DebugConfigMessage* debugConfig = Find<DebugConfigMessage>(specialization)) {
-        // Parse all breakpoints
-        for (auto it = ConstMessageStreamView<DebugBreakpointMessage, MessageSubStream>(debugConfig->breakpoints).GetIterator(); it; ++it) {
-            breakpointStreams[it->codeOffset] = *it.Get();
+        // Parse all watchpoints
+        for (auto it = ConstMessageStreamView<DebugWatchpointMessage, MessageSubStream>(debugConfig->watchpoints).GetIterator(); it; ++it) {
+            watchpointStreams[it->codeOffset] = *it.Get();
         }
     }
 
@@ -251,8 +251,8 @@ void DebugFeature::Inject(IL::Program &program, const MessageStreamView<> &speci
             return it;
         }
         
-        if (auto breakpointIt = breakpointStreams.find(it->source.codeOffset); breakpointIt != breakpointStreams.end()) {
-            return InjectBreakpoint(context, it, breakpointIt->second);
+        if (auto watchpointIt = watchpointStreams.find(it->source.codeOffset); watchpointIt != watchpointStreams.end()) {
+            return InjectWatchpoint(context, it, watchpointIt->second);
         }
 
         // TODO[dbg]: Let's not reiterate the everything 
@@ -271,8 +271,8 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
         // Handle GPU feedback
         // TODO[dbg]: This is ugly
         if (streams[i].GetSchema().type == MessageSchemaType::Chunked) {
-            for (auto it = ConstMessageStreamView<BreakpointAcquisitionMessage>(streams[i]).GetIterator(); it; ++it) {
-                OnBreakpointAcquired(it.Get(), builder);
+            for (auto it = ConstMessageStreamView<WatchpointAcquisitionMessage>(streams[i]).GetIterator(); it; ++it) {
+                OnWatchpointAcquired(it.Get(), builder);
             }
             continue;
         }
@@ -282,26 +282,26 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
         // Visit all ordered messages
         for (ConstMessageStreamView<>::ConstIterator it = view.GetIterator(); it; ++it) {
             switch (it.GetID()) {
-                case DebugBreakpointStreamHandledMessage::kID: {
-                    const DebugBreakpointStreamHandledMessage *msg = it.Get<DebugBreakpointStreamHandledMessage>();
+                case DebugWatchpointStreamHandledMessage::kID: {
+                    const DebugWatchpointStreamHandledMessage *msg = it.Get<DebugWatchpointStreamHandledMessage>();
                     defaultController.remoteRequestIndex = msg->request;
                     break;
                 }
-                case RegisterDebugBreakpointMessage::kID: {
-                    const RegisterDebugBreakpointMessage *msg = it.Get<RegisterDebugBreakpointMessage>();
+                case RegisterDebugWatchpointMessage::kID: {
+                    const RegisterDebugWatchpointMessage *msg = it.Get<RegisterDebugWatchpointMessage>();
 
-                    // Add breakpoint
-                    Breakpoint& breakpoint = breakpoints.emplace_back();
-                    breakpoint.uid = msg->uid;
-                    breakpoint.captureMode = static_cast<BreakpointCaptureMode>(msg->captureMode);
-                    breakpoint.streamSize = msg->streamSize;
+                    // Add watchpoint
+                    Watchpoint& watchpoint = watchpoints.emplace_back();
+                    watchpoint.uid = msg->uid;
+                    watchpoint.captureMode = static_cast<WatchpointCaptureMode>(msg->captureMode);
+                    watchpoint.streamSize = msg->streamSize;
 
                     // Setup payload
-                    CreateAndUpdatePayload(breakpoint);
+                    CreateAndUpdatePayload(watchpoint);
 
-                    // Assign breakpoint device states
+                    // Assign watchpoint device states
                     if (!poolingState.IsSet()) {
-                        // Greatly increase pooling rate, speeds up breakpoint streaming
+                        // Greatly increase pooling rate, speeds up watchpoint streaming
                         poolingState = DeviceStateRef(stateVote.GetUnsafe(), DeviceStatePooling {
                             .intervalMS = 1
                         });
@@ -309,31 +309,31 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                     
                     break;
                 }
-                case ReallocateDebugBreakpointMessage::kID: {
-                    const ReallocateDebugBreakpointMessage *msg = it.Get<ReallocateDebugBreakpointMessage>();
+                case ReallocateDebugWatchpointMessage::kID: {
+                    const ReallocateDebugWatchpointMessage *msg = it.Get<ReallocateDebugWatchpointMessage>();
 
                     // Try to find it
-                    Breakpoint* breakpoint = FindBreakpointNoLock(msg->uid);
-                    if (!breakpoint) {
+                    Watchpoint* watchpoint = FindWatchpointNoLock(msg->uid);
+                    if (!watchpoint) {
                         break;
                     }
 
                     // Push the old allocation to the queue
                     allocationDestructionQueue.push_back(PendingDestruction {
-                        .allocation = breakpoint->streamAllocation,
-                        .hostStreamingBuffer = breakpoint->hostStreamingBuffer,
+                        .allocation = watchpoint->streamAllocation,
+                        .hostStreamingBuffer = watchpoint->hostStreamingBuffer,
                         .lastCommit = contextLifetimeQueue.GetCommitHead()
                     });
 
                     // Set new streaming size
-                    breakpoint->streamSize = msg->streamSize;
+                    watchpoint->streamSize = msg->streamSize;
 
                     // Setup payload
-                    CreateAndUpdatePayload(*breakpoint);
+                    CreateAndUpdatePayload(*watchpoint);
 
-                    // Assign breakpoint device states
+                    // Assign watchpoint device states
                     if (!poolingState.IsSet()) {
-                        // Greatly increase pooling rate, speeds up breakpoint streaming
+                        // Greatly increase pooling rate, speeds up watchpoint streaming
                         poolingState = DeviceStateRef(stateVote.GetUnsafe(), DeviceStatePooling {
                             .intervalMS = 1
                         });
@@ -341,34 +341,34 @@ void DebugFeature::Handle(const MessageStream *streams, uint32_t count) {
                     
                     break;
                 }
-                case DeregisterDebugBreakpointMessage::kID: {
-                    const DeregisterDebugBreakpointMessage *msg = it.Get<DeregisterDebugBreakpointMessage>();
+                case DeregisterDebugWatchpointMessage::kID: {
+                    const DeregisterDebugWatchpointMessage *msg = it.Get<DeregisterDebugWatchpointMessage>();
 
                     // TODO: This isn't really correct, since we're also not waiting for the instrumentation to commit the old stuff, and the pending submissions...
                     // Tricky area to get right. We could have an "invalidated" header region, since the memory is technically still valid for a bit, but not sure.
 
-                    // Find breakpoint
-                    auto breakpoint = std::ranges::find_if(breakpoints, [&](const Breakpoint& candidate) {
+                    // Find watchpoint
+                    auto watchpoint = std::ranges::find_if(watchpoints, [&](const Watchpoint& candidate) {
                         return candidate.uid == msg->uid;
                     });
 
                     // Shouldn't happen, but just in case
-                    if (breakpoint == breakpoints.end()) {
+                    if (watchpoint == watchpoints.end()) {
                         break;
                     }
 
                     // Free its memory
                     allocationDestructionQueue.push_back(PendingDestruction {
-                        .allocation = breakpoint->streamAllocation,
-                        .hostStreamingBuffer = breakpoint->hostStreamingBuffer,
+                        .allocation = watchpoint->streamAllocation,
+                        .hostStreamingBuffer = watchpoint->hostStreamingBuffer,
                         .lastCommit = contextLifetimeQueue.GetCommitHead()
                     });
 
                     // No longer tracked
-                    breakpoints.erase(breakpoint);
+                    watchpoints.erase(watchpoint);
 
-                    // Reset breakpoint device states
-                    if (breakpoints.empty()) {
+                    // Reset watchpoint device states
+                    if (watchpoints.empty()) {
                         poolingState = {};
                     }
                     break;
@@ -413,8 +413,8 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
     }
 #endif // USE_TILED
 
-    // No breakpoints, let's not do redundant work
-    if (breakpoints.empty() && !hasSyncRequest) {
+    // No watchpoints, let's not do redundant work
+    if (watchpoints.empty() && !hasSyncRequest) {
         return;
     }
 
@@ -423,14 +423,14 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
     CommandBuilder syncBuilder(syncBuffer);
 
     // Handle header mappings
-    for (Breakpoint& breakpoint : breakpoints) {
-        if (!breakpoint.pendingTransferHeader) {
+    for (Watchpoint& watchpoint : watchpoints) {
+        if (!watchpoint.pendingTransferHeader) {
             continue;
         }
 
         // Reset the header
-        syncBuilder.StageBuffer(streamBufferID, breakpoint.uid * sizeof(BreakpointHeader), sizeof(BreakpointHeader), &breakpoint.header);
-        breakpoint.pendingTransferHeader = false;
+        syncBuilder.StageBuffer(streamBufferID, watchpoint.uid * sizeof(WatchpointHeader), sizeof(WatchpointHeader), &watchpoint.header);
+        watchpoint.pendingTransferHeader = false;
         
         // Always sync header resets
         hasSyncRequest = true;
@@ -457,21 +457,21 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
     CommandBuilder preBuilder(submitContext.preContext->buffer);
     {
         // Reset all pending headers
-        for (Breakpoint& breakpoint: breakpoints) {
-            if (!breakpoint.pendingHeaderReset) {
+        for (Watchpoint& watchpoint: watchpoints) {
+            if (!watchpoint.pendingHeaderReset) {
                 continue;
             }
            
             // Setup data
-            BreakpointResetHeaderData data;
-            data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            WatchpointResetHeaderData data;
+            data.allocationDWordOffset = watchpoint.uid * WatchpointHeaderDWordCount;
 
             // Dispatch loose update
             preBuilder.SetShaderProgram(resetHeaderProgramID);
             preBuilder.SetDescriptorData(resetHeaderProgram->GetDataID(), data);
             preBuilder.Dispatch(1, 1, 1);
             preBuilder.UAVBarrier();
-            breakpoint.pendingHeaderReset = false;
+            watchpoint.pendingHeaderReset = false;
         }
     }
     
@@ -483,15 +483,15 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
         postBuilder.SetShaderProgram(looseAcquisitionProgramID);
 
         // Loose updates require gpu visibility
-        for (Breakpoint& breakpoint: breakpoints) {
-            if (breakpoint.captureMode != BreakpointCaptureMode::AllEvents) {
+        for (Watchpoint& watchpoint: watchpoints) {
+            if (watchpoint.captureMode != WatchpointCaptureMode::AllEvents) {
                 continue;
             }
            
             // Setup data
-            BreakpointLooseAcquisitionData patchData;
-            patchData.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
-            patchData.breakpointUid = breakpoint.uid;
+            WatchpointLooseAcquisitionData patchData;
+            patchData.allocationDWordOffset = watchpoint.uid * WatchpointHeaderDWordCount;
+            patchData.watchpointUid = watchpoint.uid;
 
             // Dispatch loose update
             postBuilder.SetDescriptorData(looseAcquisitionProgram->GetDataID(), patchData);
@@ -505,9 +505,9 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
         if (deviceCapabilityTable.supportsPredicates) {
             // Setup all predication commands
             postBuilder.SetShaderProgram(setupPredicateProgram->GetID());
-            for (const Breakpoint& breakpoint : breakpoints) {
-                BreakpointCopyData data;
-                data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            for (const Watchpoint& watchpoint : watchpoints) {
+                WatchpointCopyData data;
+                data.allocationDWordOffset = watchpoint.uid * WatchpointHeaderDWordCount;
                 postBuilder.SetDescriptorData(setupPredicateProgram->GetDataID(), data);
                 postBuilder.Dispatch(1, 1, 1);
             }
@@ -516,26 +516,26 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
             postBuilder.UAVBarrier();
 
             // Copy the debug streaming buffer to host
-            for (const Breakpoint& breakpoint : breakpoints) {
+            for (const Watchpoint& watchpoint : watchpoints) {
                 // If not supported, pay for the expensive copy
                 if (deviceCapabilityTable.supportsPredicates) {
                     postBuilder.BeginPredicate(
                         streamBufferID,
-                        breakpoint.uid * sizeof(BreakpointHeader) + offsetof(BreakpointHeader, predicationLo)
+                        watchpoint.uid * sizeof(WatchpointHeader) + offsetof(WatchpointHeader, predicationLo)
                     );
                 }
                 
                 // TODO[dbg]: Now we're doing two copies, not so nice
                 postBuilder.CopyBuffer(
-                    streamBufferID, breakpoint.uid * sizeof(BreakpointHeader),
-                    breakpoint.hostStreamingBuffer, 0,
-                    sizeof(BreakpointHeader)
+                    streamBufferID, watchpoint.uid * sizeof(WatchpointHeader),
+                    watchpoint.hostStreamingBuffer, 0,
+                    sizeof(WatchpointHeader)
                 );
                 
                 postBuilder.CopyBuffer(
-                    streamBufferID, breakpoint.streamAllocation.offset,
-                    breakpoint.hostStreamingBuffer, sizeof(BreakpointHeader),
-                    breakpoint.streamAllocation.length
+                    streamBufferID, watchpoint.streamAllocation.offset,
+                    watchpoint.hostStreamingBuffer, sizeof(WatchpointHeader),
+                    watchpoint.streamAllocation.length
                 );
                 
                 // If not supported, pay for the expensive copy
@@ -546,33 +546,33 @@ void DebugFeature::OnPreSubmit(SubmissionContext &submitContext, const CommandCo
             
             // Finalize all predicate states
             postBuilder.SetShaderProgram(finalizePredicateProgram->GetID());
-            for (const Breakpoint& breakpoint : breakpoints) {
-                BreakpointCopyData data;
-                data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            for (const Watchpoint& watchpoint : watchpoints) {
+                WatchpointCopyData data;
+                data.allocationDWordOffset = watchpoint.uid * WatchpointHeaderDWordCount;
                 postBuilder.SetDescriptorData(finalizePredicateProgram->GetDataID(), data);
                 postBuilder.Dispatch(1, 1, 1);
             }
         } else {
             // Setup indirect commands
             postBuilder.SetShaderProgram(setupIndirectCopyProgram->GetID());
-            for (const Breakpoint& breakpoint : breakpoints) {
-                BreakpointCopyData data;
-                data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            for (const Watchpoint& watchpoint : watchpoints) {
+                WatchpointCopyData data;
+                data.allocationDWordOffset = watchpoint.uid * WatchpointHeaderDWordCount;
                 postBuilder.SetDescriptorData(setupIndirectCopyProgram->GetDataID(), data);
-                postBuilder.SetResourceData(setupIndirectCopyProgram->GetHostDataBinding(), breakpoint.hostStreamingBuffer);
+                postBuilder.SetResourceData(setupIndirectCopyProgram->GetHostDataBinding(), watchpoint.hostStreamingBuffer);
                 postBuilder.Dispatch(1, 1, 1);
             }
 
             // Execute indirect commands
             postBuilder.SetShaderProgram(indirectCopyProgram->GetID());
-            for (const Breakpoint& breakpoint : breakpoints) {
-                BreakpointCopyData data;
-                data.allocationDWordOffset = breakpoint.uid * BreakpointHeaderDWordCount;
+            for (const Watchpoint& watchpoint : watchpoints) {
+                WatchpointCopyData data;
+                data.allocationDWordOffset = watchpoint.uid * WatchpointHeaderDWordCount;
                 postBuilder.SetDescriptorData(indirectCopyProgram->GetDataID(), data);
-                postBuilder.SetResourceData(indirectCopyProgram->GetHostDataBinding(), breakpoint.hostStreamingBuffer);
+                postBuilder.SetResourceData(indirectCopyProgram->GetHostDataBinding(), watchpoint.hostStreamingBuffer);
                 postBuilder.DispatchIndirect(
                     streamBufferID,
-                    breakpoint.uid * sizeof(BreakpointHeader) + offsetof(BreakpointHeader, copyDispatchParams)
+                    watchpoint.uid * sizeof(WatchpointHeader) + offsetof(WatchpointHeader, copyDispatchParams)
                 );
             }
         
@@ -615,63 +615,63 @@ bool DebugFeature::ThrottleController(RequestController &controller) {
     return true;
 }
 
-bool DebugFeature::CanCollectBreakpoint(const Breakpoint &breakpoint) {
-    switch (breakpoint.captureMode) {
+bool DebugFeature::CanCollectWatchpoint(const Watchpoint &watchpoint) {
+    switch (watchpoint.captureMode) {
         default:
             ASSERT(false, "Invalid capture mode");
             return false;
-        case BreakpointCaptureMode::FirstEvent:
-        case BreakpointCaptureMode::FirstViewport:
-        case BreakpointCaptureMode::AllEvents:
-            return breakpoint.pendingCollection;
+        case WatchpointCaptureMode::FirstEvent:
+        case WatchpointCaptureMode::FirstViewport:
+        case WatchpointCaptureMode::AllEvents:
+            return watchpoint.pendingCollection;
     }
 }
 
-uint32_t DebugFeature::GetBreakpointInstrumentationHash(const Breakpoint &breakpoint, const BreakpointHeader *header) {
-    switch (breakpoint.captureMode) {
+uint32_t DebugFeature::GetWatchpointInstrumentationHash(const Watchpoint &watchpoint, const WatchpointHeader *header) {
+    switch (watchpoint.captureMode) {
         default:
             ASSERT(false, "Invalid capture mode");
             return 0u;
-        case BreakpointCaptureMode::FirstEvent:
-        case BreakpointCaptureMode::FirstViewport:
-        case BreakpointCaptureMode::AllEvents:
-            return breakpoint.pendingCollectionHash;
+        case WatchpointCaptureMode::FirstEvent:
+        case WatchpointCaptureMode::FirstViewport:
+        case WatchpointCaptureMode::AllEvents:
+            return watchpoint.pendingCollectionHash;
     }
 }
 
-bool DebugFeature::HasBreakpointStreambackData(const Breakpoint& breakpoint, const BreakpointHeader* header) {
-    switch (breakpoint.captureMode) {
+bool DebugFeature::HasWatchpointStreambackData(const Watchpoint& watchpoint, const WatchpointHeader* header) {
+    switch (watchpoint.captureMode) {
         default:
             ASSERT(false, "Invalid capture mode");
             return false;
-        case BreakpointCaptureMode::FirstEvent:
-        case BreakpointCaptureMode::FirstViewport:
+        case WatchpointCaptureMode::FirstEvent:
+        case WatchpointCaptureMode::FirstViewport:
             return true;
-        case BreakpointCaptureMode::AllEvents:
-            return breakpoint.pendingAcqDynamicCounter > 0;
+        case WatchpointCaptureMode::AllEvents:
+            return watchpoint.pendingAcqDynamicCounter > 0;
     }
 }
 
-uint64_t DebugFeature::GetBreakpointStreamRequestSize(const Breakpoint &breakpoint, const BreakpointHeader *header, const BreakpointDataHostLayout& hostLayout) {
-    switch (breakpoint.captureMode) {
+uint64_t DebugFeature::GetWatchpointStreamRequestSize(const Watchpoint &watchpoint, const WatchpointHeader *header, const WatchpointDataHostLayout& hostLayout) {
+    switch (watchpoint.captureMode) {
         default:
             ASSERT(false, "Invalid capture mode");
             return 0;
-        case BreakpointCaptureMode::FirstEvent:
-        case BreakpointCaptureMode::FirstViewport:
+        case WatchpointCaptureMode::FirstEvent:
+        case WatchpointCaptureMode::FirstViewport:
             // Just stream back the entire thing
             return header->dwordStreamCount * sizeof(uint32_t);
-        case BreakpointCaptureMode::AllEvents:
+        case WatchpointCaptureMode::AllEvents:
             // Stream back the actual contents
-            return breakpoint.pendingAcqDynamicCounter * (sizeof(BreakpointLooseHeader) + hostLayout.dataDWordStride * sizeof(uint32_t));
+            return watchpoint.pendingAcqDynamicCounter * (sizeof(WatchpointLooseHeader) + hostLayout.dataDWordStride * sizeof(uint32_t));
     }
 }
 
 void DebugFeature::OnSyncPoint() {
     std::lock_guard guard(mutex);
 
-    // No breakpoints? No data
-    if (breakpoints.empty()) {
+    // No watchpoints? No data
+    if (watchpoints.empty()) {
         return;
     }
 
@@ -698,43 +698,43 @@ void DebugFeature::OnSyncPoint() {
     CommandBuffer buffer;
     CommandBuilder builder(buffer);
     
-    // Stream out the breakpoints separately
-    for (Breakpoint& breakpoint : breakpoints) {
+    // Stream out the watchpoints separately
+    for (Watchpoint& watchpoint : watchpoints) {
         // Pending collection?
-        if (!CanCollectBreakpoint(breakpoint)) {
+        if (!CanCollectWatchpoint(watchpoint)) {
             continue;
         }
         
         // Map the streaming buffer
-        void* mapped = shaderDataHost->Map(breakpoint.hostStreamingBuffer);
+        void* mapped = shaderDataHost->Map(watchpoint.hostStreamingBuffer);
 
         // Payload is after the header
-        auto* header  = static_cast<BreakpointHeader*>(mapped);
+        auto* header  = static_cast<WatchpointHeader*>(mapped);
         void* payload = header + 1;
 
         // Do we have any data at all?
-        if (HasBreakpointStreambackData(breakpoint, header)) {
+        if (HasWatchpointStreambackData(watchpoint, header)) {
             // Get the instrumentation hash, this makes sure the host layout is always in sync
-            uint32_t instrumentationHash32 = GetBreakpointInstrumentationHash(breakpoint, header);
+            uint32_t instrumentationHash32 = GetWatchpointInstrumentationHash(watchpoint, header);
 
             // Make sure it's a valid layout
-            auto hostLayoutIt = breakpoint.hostLayoutMap.find(instrumentationHash32);
-            if (hostLayoutIt == breakpoint.hostLayoutMap.end()) {
+            auto hostLayoutIt = watchpoint.hostLayoutMap.find(instrumentationHash32);
+            if (hostLayoutIt == watchpoint.hostLayoutMap.end()) {
                 continue;
             }
 
             // Describes the expected memory layout
-            BreakpointDataHostLayout& hostLayout = hostLayoutIt->second;
+            WatchpointDataHostLayout& hostLayout = hostLayoutIt->second;
             
             // How much we actually need to stream
-            uint64_t requestedStreamSize = GetBreakpointStreamRequestSize(breakpoint, header, hostLayout);
-            uint64_t effectiveStreamSize = std::min(breakpoint.streamSize, requestedStreamSize);
+            uint64_t requestedStreamSize = GetWatchpointStreamRequestSize(watchpoint, header, hostLayout);
+            uint64_t effectiveStreamSize = std::min(watchpoint.streamSize, requestedStreamSize);
         
             // Empty out last stream
-            MessageStreamView<DebugBreakpointStreamMessage> view(stream);
+            MessageStreamView<DebugWatchpointStreamMessage> view(stream);
 
-            // Allocate breakpoint data
-            auto message = view.Add(DebugBreakpointStreamMessage::AllocationInfo {
+            // Allocate watchpoint data
+            auto message = view.Add(DebugWatchpointStreamMessage::AllocationInfo {
                 .dataCount = effectiveStreamSize,
                 .dataTinyTypeCount = hostLayout.tinyType.size()
             });
@@ -747,8 +747,8 @@ void DebugFeature::OnSyncPoint() {
 
             // Write out request data
             message->request = ++defaultController.requestIndex;
-            message->uid = breakpoint.uid;
-            message->captureMode = static_cast<uint32_t>(breakpoint.captureMode);
+            message->uid = watchpoint.uid;
+            message->captureMode = static_cast<uint32_t>(watchpoint.captureMode);
             message->dataFormat = static_cast<uint32_t>(hostLayout.format);
             message->dataTypeId = hostLayout.typeId;
             message->dataCompression = static_cast<uint32_t>(hostLayout.compression);
@@ -757,29 +757,29 @@ void DebugFeature::OnSyncPoint() {
             message->dataStaticWidth = header->staticWidth;
             message->dataStaticHeight = header->staticHeight;
             message->dataStaticDepth = header->staticDepth;
-            message->dataDynamicCounter = breakpoint.pendingAcqDynamicCounter;
+            message->dataDynamicCounter = watchpoint.pendingAcqDynamicCounter;
             message->dataRequestStreamSize = static_cast<uint32_t>(requestedStreamSize);
         }
 
         // Done!
-        shaderDataHost->Unmap(breakpoint.hostStreamingBuffer, mapped);
+        shaderDataHost->Unmap(watchpoint.hostStreamingBuffer, mapped);
 
         // Clear the buffer, if needed
-        if (breakpoint.captureMode == BreakpointCaptureMode::FirstEvent || breakpoint.captureMode == BreakpointCaptureMode::FirstViewport) {
+        if (watchpoint.captureMode == WatchpointCaptureMode::FirstEvent || watchpoint.captureMode == WatchpointCaptureMode::FirstViewport) {
             builder.ClearBuffer(
                 streamBufferID,
-                breakpoint.streamAllocation.offset,
-                breakpoint.streamAllocation.length,
+                watchpoint.streamAllocation.offset,
+                watchpoint.streamAllocation.length,
                 0x0
             );
         }
 
         // Patch the header on next submission
         // TODO: We could submit it separately if too slow
-        breakpoint.pendingHeaderReset = true;
+        watchpoint.pendingHeaderReset = true;
 
         // Collected!
-        breakpoint.pendingCollection = false;
+        watchpoint.pendingCollection = false;
     }
 
     // Any commands?
@@ -800,33 +800,33 @@ void DebugFeature::OnSyncPoint() {
     }
 }
 
-void DebugFeature::OnBreakpointAcquired(const BreakpointAcquisitionMessage *acqMessage, CommandBuilder& builder) {
+void DebugFeature::OnWatchpointAcquired(const WatchpointAcquisitionMessage *acqMessage, CommandBuilder& builder) {
     ASSERT(acqMessage->magic == 42, "Corrupt message");
     
     // If it failed to resolve, it may have been removed
-    if (Breakpoint *breakpoint = FindBreakpointNoLock(acqMessage->uid)) {
-        if (breakpoint->captureMode == BreakpointCaptureMode::AllEvents) {
+    if (Watchpoint *watchpoint = FindWatchpointNoLock(acqMessage->uid)) {
+        if (watchpoint->captureMode == WatchpointCaptureMode::AllEvents) {
             uint32_t instrumentationHash32 = *(reinterpret_cast<const uint32_t*>(acqMessage) + 1);
             
             // TODO: We could move this to a double-exchange on the GPU
-            if (instrumentationHash32 == kBreakpointInstrumentationHashLocked) {
+            if (instrumentationHash32 == kWatchpointInstrumentationHashLocked) {
                 return;
             }
             
             // Loose events may double-signal
-            breakpoint->pendingCollection = true;
+            watchpoint->pendingCollection = true;
         
             // Read beyond primary key
             // TODO[init]: Add support for reading chunks in C++
-            breakpoint->pendingCollectionHash = instrumentationHash32;
-            breakpoint->pendingAcqDynamicCounter = *(reinterpret_cast<const uint32_t*>(acqMessage) + 2);
+            watchpoint->pendingCollectionHash = instrumentationHash32;
+            watchpoint->pendingAcqDynamicCounter = *(reinterpret_cast<const uint32_t*>(acqMessage) + 2);
         } else {
-            ASSERT(!breakpoint->pendingCollection, "GPU double-signalled breakpoint for collection");
-            breakpoint->pendingCollection = true;
+            ASSERT(!watchpoint->pendingCollection, "GPU double-signalled watchpoint for collection");
+            watchpoint->pendingCollection = true;
         
             // Read beyond primary key
             // TODO[init]: Add support for reading chunks in C++
-            breakpoint->pendingCollectionHash = *(reinterpret_cast<const uint32_t*>(acqMessage) + 1);
+            watchpoint->pendingCollectionHash = *(reinterpret_cast<const uint32_t*>(acqMessage) + 1);
         }
     }
 }
@@ -968,8 +968,8 @@ static IL::ID CompressFPUnorm8888(const IL::VisitContext &context, IL::Emitter<>
     }
 }
 
-static void FillValueStream(MessageStreamView<DebugBreakpointValueMetadataMessage> view, const IL::DebugSingleValue& value, uint32_t& id) {
-    DebugBreakpointValueMetadataMessage *data = view.Add(DebugBreakpointValueMetadataMessage::AllocationInfo {
+static void FillValueStream(MessageStreamView<DebugWatchpointValueMetadataMessage> view, const IL::DebugSingleValue& value, uint32_t& id) {
+    DebugWatchpointValueMetadataMessage *data = view.Add(DebugWatchpointValueMetadataMessage::AllocationInfo {
         .nameLength = value.name.length()
     });
     
@@ -1081,19 +1081,19 @@ static const IL::DebugSingleValue* GetValueFromId(const IL::DebugSingleValue& va
     }
 }
 
-const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction *instr, const DebugBreakpointMessage& breakpointMessage, BreakpointData& breakpointData, Breakpoint* breakpoint) {
+const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction *instr, const DebugWatchpointMessage& watchpointMessage, WatchpointData& watchpointData, Watchpoint* watchpoint) {
     // Try to reconstruct the debug stack first
-    debugEmitter->GetStack(context.program, instr, breakpointData.arena, breakpointData.debugStack);
+    debugEmitter->GetStack(context.program, instr, watchpointData.arena, watchpointData.debugStack);
     
     // Anything?
-    if (breakpointData.debugStack.variables.size()) {
+    if (watchpointData.debugStack.variables.size()) {
         // Variable stream
         MessageStream  variableStream;
-        MessageStreamView<DebugBreakpointVariableMetadataMessage> variableView(variableStream);
+        MessageStreamView<DebugWatchpointVariableMetadataMessage> variableView(variableStream);
         
         // Report all variables and their representations
-        for (uint64_t i = 0; i < breakpointData.debugStack.variables.size(); i++) {
-            const IL::DebugVariable *src = breakpointData.debugStack.variables[i];
+        for (uint64_t i = 0; i < watchpointData.debugStack.variables.size(); i++) {
+            const IL::DebugVariable *src = watchpointData.debugStack.variables[i];
             
             // All values
             MessageStream valueStream;
@@ -1107,7 +1107,7 @@ const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitCo
             Backend::IL::Tiny::Pack(src->value.type, tinyType);
             
             // Allocate metadata
-            DebugBreakpointVariableMetadataMessage *metadata = variableView.Add(DebugBreakpointVariableMetadataMessage::AllocationInfo {
+            DebugWatchpointVariableMetadataMessage *metadata = variableView.Add(DebugWatchpointVariableMetadataMessage::AllocationInfo {
                 .nameLength = src->name.length(),
                 .dataTinyTypeCount = tinyType.size(),
                 .valuesByteSize = valueStream.GetByteSize()
@@ -1124,30 +1124,30 @@ const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitCo
         
         // Empty out last stream
         MessageStream metadataStream;
-        MessageStreamView<DebugBreakpointMetadataMessage> view(metadataStream);
+        MessageStreamView<DebugWatchpointMetadataMessage> view(metadataStream);
 
-        // Allocate breakpoint metadata
-        auto message = view.Add(DebugBreakpointMetadataMessage::AllocationInfo {
+        // Allocate watchpoint metadata
+        auto message = view.Add(DebugWatchpointMetadataMessage::AllocationInfo {
             .variablesByteSize = variableStream.GetByteSize()
         });
         
         // Write out all variables
         message->variables.Set(variableStream);
-        message->uid = breakpoint->uid;
+        message->uid = watchpoint->uid;
         
         // Push metadata
         bridge->GetOutput()->AddStreamAndSwap(metadataStream);
         
         // Assign ids
-        breakpointData.variableId = breakpointMessage.variableId;
-        breakpointData.valueId = breakpointMessage.valueId;
+        watchpointData.variableId = watchpointMessage.variableId;
+        watchpointData.valueId = watchpointMessage.valueId;
         
         // Find owning variable
-        if (breakpointData.variableId != UINT32_MAX) {
-            const IL::DebugVariable* variable = breakpointData.debugStack.variables[breakpointData.variableId];
+        if (watchpointData.variableId != UINT32_MAX) {
+            const IL::DebugVariable* variable = watchpointData.debugStack.variables[watchpointData.variableId];
         
             // Try to find value
-            uint32_t idDecrement = breakpointData.valueId;
+            uint32_t idDecrement = watchpointData.valueId;
             if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, idDecrement)) {
                 return value->type;
             }
@@ -1162,16 +1162,16 @@ const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitCo
     return nullptr;
 }
 
-IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, BreakpointData& breakpointData, IL::BasicBlock::Iterator& insertIt) {
+IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, WatchpointData& watchpointData, IL::BasicBlock::Iterator& insertIt) {
     // Emit after the instruction
     IL::Emitter<> emitter(context.program, context.basicBlock, insertIt);
 
     // Try to reconstruct the source value first
-    if (breakpointData.variableId != UINT32_MAX) {
-        const IL::DebugVariable* variable = breakpointData.debugStack.variables[breakpointData.variableId];
+    if (watchpointData.variableId != UINT32_MAX) {
+        const IL::DebugVariable* variable = watchpointData.debugStack.variables[watchpointData.variableId];
         
         // Try to find value
-        uint32_t idDecrement = breakpointData.valueId;
+        uint32_t idDecrement = watchpointData.valueId;
         if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, idDecrement)) {
             // Attempt to reconstruct
             if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, *value, instr); reconstructed != IL::InvalidID) {
@@ -1210,15 +1210,15 @@ IL::ID DebugFeature::GetInstructionRawDebugValue(const IL::VisitContext &context
     }
 }
 
-bool DebugFeature::GetBreakpointFormat(BreakpointData& breakpointData) {
+bool DebugFeature::GetWatchpointFormat(WatchpointData& watchpointData) {
     // Check compression
-    switch (breakpointData.hostLayout.compression) {
+    switch (watchpointData.hostLayout.compression) {
         default: {
             //  No compression
             break;
         }
-        case BreakpointCompression::FPUnorm8888: {
-            breakpointData.hostLayout.format = Backend::IL::Format::RGBA8;
+        case WatchpointCompression::FPUnorm8888: {
+            watchpointData.hostLayout.format = Backend::IL::Format::RGBA8;
             return true;
         }
     }
@@ -1228,14 +1228,14 @@ bool DebugFeature::GetBreakpointFormat(BreakpointData& breakpointData) {
     return false;
 }
 
-bool DebugFeature::SupportsKernelType(IL::KernelType kernelType, Breakpoint* breakpoint) {
-    switch (breakpoint->captureMode) {
+bool DebugFeature::SupportsKernelType(IL::KernelType kernelType, Watchpoint* watchpoint) {
+    switch (watchpoint->captureMode) {
         default: {
             ASSERT(false, "Invalid mode");
             return false;
         }
-        case BreakpointCaptureMode::FirstEvent:
-        case BreakpointCaptureMode::FirstViewport: {
+        case WatchpointCaptureMode::FirstEvent:
+        case WatchpointCaptureMode::FirstViewport: {
             // Only some shaders supported for now
             switch (kernelType) {
                 default: {
@@ -1263,14 +1263,14 @@ bool DebugFeature::SupportsKernelType(IL::KernelType kernelType, Breakpoint* bre
                 }
             }
         }
-        case BreakpointCaptureMode::AllEvents: {
+        case WatchpointCaptureMode::AllEvents: {
             // Always supported
             return true;
         }
     }
 }
 
-bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, const Backend::IL::Type* valueType, Breakpoint* breakpoint, BreakpointData& breakpointData) {
+bool DebugFeature::GetWatchpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, const Backend::IL::Type* valueType, Watchpoint* watchpoint, WatchpointData& watchpointData) {
     // Type may not be serializable
     if (!IsTypeSerializationSupported(valueType)) {
         return false;
@@ -1278,45 +1278,45 @@ bool DebugFeature::GetBreakpointDataHostLayout(const IL::VisitContext &context, 
 
     // Check kernel type support
     auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.program.GetEntryPoint()->GetID());
-    if (!SupportsKernelType(kernelType->type, breakpoint)) {
+    if (!SupportsKernelType(kernelType->type, watchpoint)) {
         return false;
     }
 
     // Supports 8-8-8-8 compression?
-    if (breakpoint->captureMode != BreakpointCaptureMode::AllEvents) {
-        if (breakpointData.flags & BreakpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, valueType)) {
-            breakpointData.hostLayout.compression = BreakpointCompression::FPUnorm8888;
+    if (watchpoint->captureMode != WatchpointCaptureMode::AllEvents) {
+        if (watchpointData.flags & WatchpointFlag::AllowImageFPUNorm8888Compression && SupportsImageFPUnormCompression(instr, valueType)) {
+            watchpointData.hostLayout.compression = WatchpointCompression::FPUnorm8888;
         }
     }
 
     // Try to get the format
-    if (GetBreakpointFormat(breakpointData)) {
+    if (GetWatchpointFormat(watchpointData)) {
         // Assume stride
-        breakpointData.hostLayout.dataDWordStride = static_cast<uint32_t>(GetSize(breakpointData.hostLayout.format) / sizeof(uint32_t));
+        watchpointData.hostLayout.dataDWordStride = static_cast<uint32_t>(GetSize(watchpointData.hostLayout.format) / sizeof(uint32_t));
     } else {
         // If not relevant, just assume the type
-        breakpointData.hostLayout.typeId = valueType->id;
+        watchpointData.hostLayout.typeId = valueType->id;
 
         // Pack the tiny type down
-        Backend::IL::Tiny::Pack(valueType, breakpointData.hostLayout.tinyType);
+        Backend::IL::Tiny::Pack(valueType, watchpointData.hostLayout.tinyType);
 
         // TODO[dbg]: I guess we don't need to handle alignment?
-        breakpointData.hostLayout.dataDWordStride = static_cast<uint32_t>((GetPODNonAlignedTypeByteSize(valueType) + sizeof(uint32_t) - 1) / sizeof(uint32_t));
+        watchpointData.hostLayout.dataDWordStride = static_cast<uint32_t>((GetPODNonAlignedTypeByteSize(valueType) + sizeof(uint32_t) - 1) / sizeof(uint32_t));
     }
 
     // Host layout supported
     return true;
 }
 
-void DebugFeature::GetBreakpointOrderingFirstEvent(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<BreakpointHeader>& breakpointHeader, Breakpoint *breakpoint, BreakpointData& breakpointData) {
+void DebugFeature::GetWatchpointOrderingFirstEvent(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<WatchpointHeader>& watchpointHeader, Watchpoint *watchpoint, WatchpointData& watchpointData) {
     auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.program.GetEntryPoint()->GetID());
 
     // Default init
-    breakpointData.firstEvent.staticOrderWidth = emitter.UInt32(0);
-    breakpointData.firstEvent.staticOrderHeight = emitter.UInt32(0);
-    breakpointData.firstEvent.staticOrderDepth = emitter.UInt32(0);
+    watchpointData.firstEvent.staticOrderWidth = emitter.UInt32(0);
+    watchpointData.firstEvent.staticOrderHeight = emitter.UInt32(0);
+    watchpointData.firstEvent.staticOrderDepth = emitter.UInt32(0);
 
-    IL::ID dwordStride = emitter.UInt32(breakpointData.hostLayout.dataDWordStride);
+    IL::ID dwordStride = emitter.UInt32(watchpointData.hostLayout.dataDWordStride);
 
     // Get work dimensions
     switch (kernelType->type) {
@@ -1326,9 +1326,9 @@ void DebugFeature::GetBreakpointOrderingFirstEvent(const IL::VisitContext &conte
         }
         case IL::KernelType::Pixel: {
             // Determine the thread counts
-            breakpointData.firstEvent.staticOrderWidth = execution.Get<&ExecutionInfo::viewport>(emitter, 0);
-            breakpointData.firstEvent.staticOrderHeight = execution.Get<&ExecutionInfo::viewport>(emitter, 1);
-            breakpointData.firstEvent.staticOrderDepth = emitter.UInt32(1);
+            watchpointData.firstEvent.staticOrderWidth = execution.Get<&ExecutionInfo::viewport>(emitter, 0);
+            watchpointData.firstEvent.staticOrderHeight = execution.Get<&ExecutionInfo::viewport>(emitter, 1);
+            watchpointData.firstEvent.staticOrderDepth = emitter.UInt32(1);
             break;
         }
         case IL::KernelType::Compute: {
@@ -1340,27 +1340,27 @@ void DebugFeature::GetBreakpointOrderingFirstEvent(const IL::VisitContext &conte
             IL::ID threadGroupsZ = execution.Get<&ExecutionInfo::dispatch>(emitter, 2);
 
             // Determine the thread counts
-            breakpointData.firstEvent.staticOrderWidth = emitter.Mul(threadGroupsX, emitter.UInt32(kernelWorkgroupSize->threadsX));
-            breakpointData.firstEvent.staticOrderHeight = emitter.Mul(threadGroupsY, emitter.UInt32(kernelWorkgroupSize->threadsY));
-            breakpointData.firstEvent.staticOrderDepth = emitter.Mul(threadGroupsZ, emitter.UInt32(kernelWorkgroupSize->threadsZ));
+            watchpointData.firstEvent.staticOrderWidth = emitter.Mul(threadGroupsX, emitter.UInt32(kernelWorkgroupSize->threadsX));
+            watchpointData.firstEvent.staticOrderHeight = emitter.Mul(threadGroupsY, emitter.UInt32(kernelWorkgroupSize->threadsY));
+            watchpointData.firstEvent.staticOrderDepth = emitter.Mul(threadGroupsZ, emitter.UInt32(kernelWorkgroupSize->threadsZ));
             break;
         }
     }
 
     // Determine the max number of dwords
-    breakpointData.firstEvent.dwordStreamCount = emitter.Mul(breakpointData.firstEvent.staticOrderWidth, emitter.Mul(breakpointData.firstEvent.staticOrderHeight, emitter.Mul(breakpointData.firstEvent.staticOrderDepth, dwordStride)));
+    watchpointData.firstEvent.dwordStreamCount = emitter.Mul(watchpointData.firstEvent.staticOrderWidth, emitter.Mul(watchpointData.firstEvent.staticOrderHeight, emitter.Mul(watchpointData.firstEvent.staticOrderDepth, dwordStride)));
 
     // Max number of dwords
-    IL::ID payloadDWordCount = breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(emitter);
+    IL::ID payloadDWordCount = watchpointHeader.Get<&WatchpointHeader::payloadDWordCount>(emitter);
 
     /// Is this a dynamic payload?
-    breakpointData.firstEvent.isDynamic = emitter.GreaterThan(breakpointData.firstEvent.dwordStreamCount, payloadDWordCount);
+    watchpointData.firstEvent.isDynamic = emitter.GreaterThan(watchpointData.firstEvent.dwordStreamCount, payloadDWordCount);
 
     // Select dynamic if we exceed 
-    breakpointData.orderType = emitter.Select(
-        breakpointData.firstEvent.isDynamic,
-        emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Dynamic)),
-        emitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Static))
+    watchpointData.orderType = emitter.Select(
+        watchpointData.firstEvent.isDynamic,
+        emitter.UInt32(static_cast<uint32_t>(WatchpointDataOrder::Dynamic)),
+        emitter.UInt32(static_cast<uint32_t>(WatchpointDataOrder::Static))
     );
 
     // Indices
@@ -1400,22 +1400,22 @@ void DebugFeature::GetBreakpointOrderingFirstEvent(const IL::VisitContext &conte
     IL::ID staticOrder;
     {
         // z * w * h + y * w + x
-        staticOrder = emitter.Mul(z, emitter.Mul(breakpointData.firstEvent.staticOrderWidth, breakpointData.firstEvent.staticOrderHeight));
-        staticOrder = emitter.Add(staticOrder, emitter.Mul(y, breakpointData.firstEvent.staticOrderWidth));
+        staticOrder = emitter.Mul(z, emitter.Mul(watchpointData.firstEvent.staticOrderWidth, watchpointData.firstEvent.staticOrderHeight));
+        staticOrder = emitter.Add(staticOrder, emitter.Mul(y, watchpointData.firstEvent.staticOrderWidth));
         staticOrder = emitter.Add(staticOrder, x);
     }
 
     // Assume static ordering for now, dynamic exporting happens later
-    breakpointData.staticOrder = staticOrder;
+    watchpointData.staticOrder = staticOrder;
     
 #if !defined(NDEBUG) && 0
-    breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, x, 0);
-    breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, y, 1);
-    breakpointHeader.Set<&BreakpointHeader::debugPayloads>(emitter, z, 2);
+    watchpointHeader.Set<&WatchpointHeader::debugPayloads>(emitter, x, 0);
+    watchpointHeader.Set<&WatchpointHeader::debugPayloads>(emitter, y, 1);
+    watchpointHeader.Set<&WatchpointHeader::debugPayloads>(emitter, z, 2);
 #endif // NDEBUG
 }
 
-static void GetBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, uint32_t& byteOffset, TrivialStackVector<IL::ID, 16u>& dwords) {
+static void GetWatchpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, uint32_t& byteOffset, TrivialStackVector<IL::ID, 16u>& dwords) {
     const Backend::IL::Type *type = context.program.GetTypeMap().GetType(value);
 
     // Structural
@@ -1428,7 +1428,7 @@ static void GetBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter
 
             // Get all nested dwords
             for (uint32_t i = 0; i < typed->dimension; i++) {
-                GetBreakpointDataDWords(
+                GetWatchpointDataDWords(
                     context, emitter, emitter.Extract(value, emitter.UInt32(i)),
                     byteOffset,
                     dwords
@@ -1442,7 +1442,7 @@ static void GetBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter
 
             // Get all nested dwords
             for (uint32_t i = 0; i < static_cast<uint32_t>(typed->memberTypes.size()); i++) {
-                GetBreakpointDataDWords(
+                GetWatchpointDataDWords(
                     context, emitter, emitter.Extract(value, emitter.UInt32(i)),
                     byteOffset,
                     dwords
@@ -1512,35 +1512,35 @@ static void GetBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter
     }
 }
 
-void DebugFeature::StoreBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {
+void DebugFeature::StoreWatchpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Watchpoint* watchpoint, WatchpointData& watchpointData) {
     // Zero init dwords
-    TrivialStackVector<IL::ID, 16u> dwords(breakpointData.hostLayout.dataDWordStride);
-    for (uint32_t i = 0; i < breakpointData.hostLayout.dataDWordStride; i++) {
+    TrivialStackVector<IL::ID, 16u> dwords(watchpointData.hostLayout.dataDWordStride);
+    for (uint32_t i = 0; i < watchpointData.hostLayout.dataDWordStride; i++) {
         dwords[i] = emitter.UInt32(0);
     }
 
     // Get the data dwords, handles alignment
     uint32_t byteOffset = 0;
-    GetBreakpointDataDWords(context, emitter, value, byteOffset, dwords);
+    GetWatchpointDataDWords(context, emitter, value, byteOffset, dwords);
 
     // Get the data ids
     IL::ID streamLoadID = emitter.Load(context.program.GetShaderDataMap().Get(streamBufferID)->id);
     
     // Finally, write them out
-    for (uint32_t i = 0; i < breakpointData.hostLayout.dataDWordStride; i++) {
-        IL::ID offset = emitter.Add(breakpointData.payloadDataOffset, emitter.UInt32(i));
+    for (uint32_t i = 0; i < watchpointData.hostLayout.dataDWordStride; i++) {
+        IL::ID offset = emitter.Add(watchpointData.payloadDataOffset, emitter.UInt32(i));
         emitter.StoreBuffer(streamLoadID, offset, dwords[i]);
     }
 }
 
-void DebugFeature::StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData) {    
+void DebugFeature::StoreWatchpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Watchpoint* watchpoint, WatchpointData& watchpointData) {    
     // Handle any kind of compression
-    switch (breakpointData.hostLayout.compression) {
+    switch (watchpointData.hostLayout.compression) {
         default: {
             //  No compression
             break;
         }
-        case BreakpointCompression::FPUnorm8888: {
+        case WatchpointCompression::FPUnorm8888: {
             // Compress the value
             value = CompressFPUnorm8888(context, emitter, value);
 
@@ -1552,56 +1552,56 @@ void DebugFeature::StoreBreakpointData(const IL::VisitContext &context, IL::Emit
     }
 
     // Finally, store the dwords
-    StoreBreakpointDataDWords(context, emitter, value, breakpoint, breakpointData);
+    StoreWatchpointDataDWords(context, emitter, value, watchpoint, watchpointData);
 }
 
 static uint32_t ShaderInstrumentationHashWideTo32(uint64_t wide) {
     return BufferCRC32Short(&wide, sizeof(wide));
 }
 
-IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &context, IL::BasicBlock::Iterator it, const DebugBreakpointMessage& breakpointMessage) {
+IL::BasicBlock::Iterator DebugFeature::InjectWatchpoint(const IL::VisitContext &context, IL::BasicBlock::Iterator it, const DebugWatchpointMessage& watchpointMessage) {
     // TODO[dbg]: Send a message back "nothing to debug!" This shouldn't come from a message
 
-    // Find the relevant breakpoint
-    Breakpoint* breakpoint = FindBreakpointNoLock(breakpointMessage.uid);
-    if (!breakpoint) {
+    // Find the relevant watchpoint
+    Watchpoint* watchpoint = FindWatchpointNoLock(watchpointMessage.uid);
+    if (!watchpoint) {
         return it;
     }
 
     // Intermediate data
-    BreakpointData breakpointData;
-    breakpointData.flags = static_cast<BreakpointFlag>(breakpointMessage.flags);
-    breakpointData.markerHash32 = breakpointMessage.markerHash32;
-    breakpointData.shaderInstrumentationHash32 = ShaderInstrumentationHashWideTo32(context.program.GetShaderInstrumentationHash());
+    WatchpointData watchpointData;
+    watchpointData.flags = static_cast<WatchpointFlag>(watchpointMessage.flags);
+    watchpointData.markerHash32 = watchpointMessage.markerHash32;
+    watchpointData.shaderInstrumentationHash32 = ShaderInstrumentationHashWideTo32(context.program.GetShaderInstrumentationHash());
 
     // Get the value to be debugged
-    const Backend::IL::Type *valueType = GetInstructionDebugType(context, it, breakpointMessage, breakpointData, breakpoint);
+    const Backend::IL::Type *valueType = GetInstructionDebugType(context, it, watchpointMessage, watchpointData, watchpoint);
     if (!valueType) {
         return it;
     }
 
     // Try to determine the data layout
     // This may fail if there's nothing suitable
-    if (!GetBreakpointDataHostLayout(context, it, valueType, breakpoint, breakpointData)) {
+    if (!GetWatchpointDataHostLayout(context, it, valueType, watchpoint, watchpointData)) {
         return it;
     }
 
     /**
-     * At this point the breakpoint has been accepted, emitting is allowed
+     * At this point the watchpoint has been accepted, emitting is allowed
      **/
 
     // Apply any per-program state
-    ApplyBreakpointFlagsToProgram(context, breakpointData);
+    ApplyWatchpointFlagsToProgram(context, watchpointData);
 
     // Set name for debugging
-    it.block->SetName("Breakpoint.EntryBlock");
+    it.block->SetName("Watchpoint.EntryBlock");
 
     // Splitting/inserting after the debug instruction
     IL::BasicBlock::Iterator insertIt = std::next(it);
 
     // Get the value to be debugged
     // This may modify the program, so do it after
-    IL::ID value = GetInstructionDebugValue(context, it, breakpointData, insertIt);
+    IL::ID value = GetInstructionDebugValue(context, it, watchpointData, insertIt);
     ASSERT(value != IL::InvalidID, "Type without value");
     
     // Emit in the interrupt block
@@ -1610,33 +1610,33 @@ IL::BasicBlock::Iterator DebugFeature::InjectBreakpoint(const IL::VisitContext &
 
     // Acquire it logically before, to access some shared findings
     IL::BasicBlock* resumeBlock;
-    switch (breakpoint->captureMode) {
+    switch (watchpoint->captureMode) {
         default:
             ASSERT(false, "Invalid capture mode");
             return insertIt;
-        case BreakpointCaptureMode::FirstEvent:
-        case BreakpointCaptureMode::FirstViewport:
-            resumeBlock = AcquireAndAllocateBreakpointFirstEvent(context, insertIt, interruptBlock, breakpoint, breakpointData);
+        case WatchpointCaptureMode::FirstEvent:
+        case WatchpointCaptureMode::FirstViewport:
+            resumeBlock = AcquireAndAllocateWatchpointFirstEvent(context, insertIt, interruptBlock, watchpoint, watchpointData);
             break;
-        case BreakpointCaptureMode::AllEvents:
-            resumeBlock = AcquireAndAllocateBreakpointAllEvents(context, insertIt, interruptBlock, breakpoint, breakpointData);
+        case WatchpointCaptureMode::AllEvents:
+            resumeBlock = AcquireAndAllocateWatchpointAllEvents(context, insertIt, interruptBlock, watchpoint, watchpointData);
             break;
     }
 
-    // Store the breakpoint data
-    StoreBreakpointData(context, emitter, value, breakpoint, breakpointData);
+    // Store the watchpoint data
+    StoreWatchpointData(context, emitter, value, watchpoint, watchpointData);
     
-    // Branch the breakpoint to resume
+    // Branch the watchpoint to resume
     IL::Emitter(context.program, *interruptBlock).Branch(resumeBlock);
 
     // Instrumentation has passed, keep the layout around
-    breakpoint->hostLayoutMap[breakpointData.shaderInstrumentationHash32] = breakpointData.hostLayout;
+    watchpoint->hostLayoutMap[watchpointData.shaderInstrumentationHash32] = watchpointData.hostLayout;
 
     // Resume iteration
     return resumeBlock->begin();
 }
 
-IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData) {
+IL::BasicBlock* DebugFeature::AcquireWatchpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *watchpointBlock, Watchpoint* watchpoint, WatchpointData& watchpointData) {
     /**
      * First-event optimized acquisition.
      *
@@ -1646,7 +1646,7 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
      *   
      *   allocated = (last == 0)
      *   if (allocated) {
-     *     Export(BreakpointAcquisitionMessage {
+     *     Export(WatchpointAcquisitionMessage {
      *       .uid = <uid>
      *     });
      *   }
@@ -1673,37 +1673,37 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
     IL::Emitter(context.program, *insertIt.block).Branch(headerBlock);
     IL::Emitter<> headerEmitter(context.program, *headerBlock);
 
-    // Find the relevant breakpoint
-    GetBreakpoint(headerEmitter, breakpoint, breakpointData);
+    // Find the relevant watchpoint
+    GetWatchpoint(headerEmitter, watchpoint, watchpointData);
 
     // Get the current execution
     IL::ShaderStruct<ExecutionInfo> execution(headerEmitter.ExecutionInfo());
 
     // Get the header
-    IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.headerOffset);
+    IL::ShaderBufferStruct<WatchpointHeader> watchpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, watchpointData.headerOffset);
 
     // Get payload offset
-    breakpointData.payloadOffset = breakpointHeader.Get<&BreakpointHeader::payloadDWordOffset>(headerEmitter);
+    watchpointData.payloadOffset = watchpointHeader.Get<&WatchpointHeader::payloadDWordOffset>(headerEmitter);
 
     // Get the ordering, this is used by both the acquire header and export
-    GetBreakpointOrderingFirstEvent(context, headerEmitter, execution, breakpointHeader, breakpoint, breakpointData);
+    GetWatchpointOrderingFirstEvent(context, headerEmitter, execution, watchpointHeader, watchpoint, watchpointData);
 
     // Read the curent acquired UID
     // This is a regular buffer read, not atomic
-    IL::ID acquiredUID = breakpointHeader.Get<&BreakpointHeader::acquiredExecutionUID>(headerEmitter);
+    IL::ID acquiredUID = watchpointHeader.Get<&WatchpointHeader::acquiredExecutionUID>(headerEmitter);
 
     // Get the rolling uid
     IL::ID rollingUID;
-    switch (breakpoint->captureMode) {
+    switch (watchpoint->captureMode) {
         default: {
             ASSERT(false, "Invalid capture mode");
             return nullptr;
         }
-        case BreakpointCaptureMode::FirstEvent: {
+        case WatchpointCaptureMode::FirstEvent: {
             rollingUID = execution.Get<&ExecutionInfo::rollingExecutionUID>(headerEmitter);
             break;
         }
-        case BreakpointCaptureMode::FirstViewport: {
+        case WatchpointCaptureMode::FirstViewport: {
             rollingUID = execution.Get<&ExecutionInfo::rollingViewportUID>(headerEmitter);
             break;
         }
@@ -1717,8 +1717,8 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
     IL::ID canAllocateHeader = headerEmitter.Equal(acquiredUID, headerEmitter.UInt32(0));
 
     // Supplied hash?
-    if (breakpointData.markerHash32) {
-        IL::ID hash32         = headerEmitter.UInt32(breakpointData.markerHash32);
+    if (watchpointData.markerHash32) {
+        IL::ID hash32         = headerEmitter.UInt32(watchpointData.markerHash32);
         IL::ID anyHashMatched = headerEmitter.Bool(false);
 
         // Check if any of the scopes match
@@ -1752,7 +1752,7 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
         IL::Emitter<> casEmitter(context.program, *casBlock);
 
         // Actually do the CAS
-        IL::ID previousValue = breakpointHeader.AtomicCompareExchange<&BreakpointHeader::acquiredExecutionUID>(casEmitter, casEmitter.UInt32(0), rollingUID);
+        IL::ID previousValue = watchpointHeader.AtomicCompareExchange<&WatchpointHeader::acquiredExecutionUID>(casEmitter, casEmitter.UInt32(0), rollingUID);
 
         // Allocated if it was zero
         IL::ID allocatedCAS = casEmitter.Equal(previousValue, casEmitter.UInt32(0));
@@ -1767,22 +1767,22 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
         {
             IL::Emitter<> exportEmitter(context.program, *exportBlock);
 
-            // Write out that the breakpoint was allocated
+            // Write out that the watchpoint was allocated
             // Since streams are per-submission, this is entirely atomic and coherent
-            BreakpointAcquisitionMessage::ShaderExport msg;
-            msg.chunks |= BreakpointAcquisitionMessage::Chunk::ExtraData;
-            msg.uid = exportEmitter.UInt32(breakpoint->uid);
+            WatchpointAcquisitionMessage::ShaderExport msg;
+            msg.chunks |= WatchpointAcquisitionMessage::Chunk::ExtraData;
+            msg.uid = exportEmitter.UInt32(watchpoint->uid);
             msg.magic = exportEmitter.UInt32(42);
-            msg.extraData.instrumentationHash32 = exportEmitter.UInt32(breakpointData.shaderInstrumentationHash32);
+            msg.extraData.instrumentationHash32 = exportEmitter.UInt32(watchpointData.shaderInstrumentationHash32);
             exportEmitter.Export(exportID, msg);
 
-            // Update the breakpoint header's device data layout
+            // Update the watchpoint header's device data layout
             // Used on the host to resolve ordering
-            breakpointHeader.Set<&BreakpointHeader::dataOrder>(exportEmitter, breakpointData.orderType);
-            breakpointHeader.Set<&BreakpointHeader::staticWidth>(exportEmitter, breakpointData.firstEvent.staticOrderWidth);
-            breakpointHeader.Set<&BreakpointHeader::staticHeight>(exportEmitter, breakpointData.firstEvent.staticOrderHeight);
-            breakpointHeader.Set<&BreakpointHeader::staticDepth>(exportEmitter, breakpointData.firstEvent.staticOrderDepth);
-            breakpointHeader.Set<&BreakpointHeader::dwordStreamCount>(exportEmitter, breakpointData.firstEvent.dwordStreamCount);
+            watchpointHeader.Set<&WatchpointHeader::dataOrder>(exportEmitter, watchpointData.orderType);
+            watchpointHeader.Set<&WatchpointHeader::staticWidth>(exportEmitter, watchpointData.firstEvent.staticOrderWidth);
+            watchpointHeader.Set<&WatchpointHeader::staticHeight>(exportEmitter, watchpointData.firstEvent.staticOrderHeight);
+            watchpointHeader.Set<&WatchpointHeader::staticDepth>(exportEmitter, watchpointData.firstEvent.staticOrderDepth);
+            watchpointHeader.Set<&WatchpointHeader::dwordStreamCount>(exportEmitter, watchpointData.firstEvent.dwordStreamCount);
 
             exportEmitter.Branch(exportMergeBlock);
         }
@@ -1801,10 +1801,10 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
         // Merge the inbound acquired states
         IL::ID acquired = mergeEmitter.Phi(headerBlock, acquiredHeader, exportMergeBlock, acquiredCAS);
 
-        // If acquired, do breakpoint stuff, otherwise resume the program as usual
+        // If acquired, do watchpoint stuff, otherwise resume the program as usual
         mergeEmitter.BranchConditional(
             acquired,
-            breakpointBlock,
+            watchpointBlock,
             resumeBlock,
             IL::ControlFlow::Selection(resumeBlock)
         );
@@ -1814,7 +1814,7 @@ IL::BasicBlock* DebugFeature::AcquireBreakpointFirstEvent(const IL::VisitContext
     return resumeBlock;
 }
 
-IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
+IL::BasicBlock * DebugFeature::AcquireAndAllocateWatchpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *watchpointBlock, Watchpoint *watchpoint, WatchpointData &watchpointData) {
     /**
     * acq = acquire()
     * if (acq) {
@@ -1823,7 +1823,7 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::
     *   }
     *
     *   order = phi <...>
-    *   breakpoint
+    *   watchpoint
     */
 
     // Allocate blocks
@@ -1831,8 +1831,8 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::
     IL::BasicBlock* dynamicBlock = context.function.GetBasicBlocks().AllocBlock("Bk.Inject.DynamicAlloc");
     IL::BasicBlock* mergeBlock   = context.function.GetBasicBlocks().AllocBlock("Bk.Inject.Merge");
 
-    // Acquire the breakpoint
-    IL::BasicBlock* resumeBlock = AcquireBreakpointFirstEvent(context, insertIt, headerBlock, breakpoint, breakpointData);
+    // Acquire the watchpoint
+    IL::BasicBlock* resumeBlock = AcquireWatchpointFirstEvent(context, insertIt, headerBlock, watchpoint, watchpointData);
 
     // Header
     IL::ID staticPayloadDataOffset;
@@ -1840,12 +1840,12 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::
         IL::Emitter<> emitter(context.program, *headerBlock);
 
         // Header offset within the payload
-        staticPayloadDataOffset = emitter.Mul(breakpointData.staticOrder, emitter.UInt32(breakpointData.hostLayout.dataDWordStride));
+        staticPayloadDataOffset = emitter.Mul(watchpointData.staticOrder, emitter.UInt32(watchpointData.hostLayout.dataDWordStride));
 
         // Offset by payload offset
-        staticPayloadDataOffset = emitter.Add(breakpointData.payloadOffset, staticPayloadDataOffset);
+        staticPayloadDataOffset = emitter.Add(watchpointData.payloadOffset, staticPayloadDataOffset);
         
-        emitter.BranchConditional(breakpointData.firstEvent.isDynamic, dynamicBlock, mergeBlock, IL::ControlFlow::Selection(mergeBlock));
+        emitter.BranchConditional(watchpointData.firstEvent.isDynamic, dynamicBlock, mergeBlock, IL::ControlFlow::Selection(mergeBlock));
     }
 
     // Dynamic Allocation
@@ -1855,26 +1855,26 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::
         IL::Emitter<> dynamicEmitter(context.program, *dynamicBlock);
 
         // Get the header
-        IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.headerOffset);
+        IL::ShaderBufferStruct<WatchpointHeader> watchpointHeader(context.program.GetShaderDataMap().Get(streamBufferID)->id, watchpointData.headerOffset);
 
         // Get dynamic ordering
-        dynamicOrder = breakpointHeader.AtomicAdd<&BreakpointHeader::dynamicCounter>(dynamicEmitter, dynamicEmitter.UInt32(1));
+        dynamicOrder = watchpointHeader.AtomicAdd<&WatchpointHeader::dynamicCounter>(dynamicEmitter, dynamicEmitter.UInt32(1));
 
         // Limit by available number of dwords
-        dynamicOrder = IL::ExtendedEmitter(dynamicEmitter).Min(dynamicOrder, breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(dynamicEmitter));
+        dynamicOrder = IL::ExtendedEmitter(dynamicEmitter).Min(dynamicOrder, watchpointHeader.Get<&WatchpointHeader::payloadDWordCount>(dynamicEmitter));
 
         // Header offset within the payload
-        IL::ID dynamicHeaderDWordOffset = dynamicEmitter.Mul(dynamicOrder, dynamicEmitter.UInt32(breakpointData.hostLayout.dataDWordStride + BreakpointDynamicHeaderDWordCount));
+        IL::ID dynamicHeaderDWordOffset = dynamicEmitter.Mul(dynamicOrder, dynamicEmitter.UInt32(watchpointData.hostLayout.dataDWordStride + WatchpointDynamicHeaderDWordCount));
 
         // Offset by payload offset
-        dynamicHeaderDWordOffset = dynamicEmitter.Add(breakpointData.payloadOffset, dynamicHeaderDWordOffset);
+        dynamicHeaderDWordOffset = dynamicEmitter.Add(watchpointData.payloadOffset, dynamicHeaderDWordOffset);
 
         // Store the dynamic header
         IL::ID streamLoadID = dynamicEmitter.Load(context.program.GetShaderDataMap().Get(streamBufferID)->id);
-        dynamicEmitter.StoreBuffer(streamLoadID, dynamicHeaderDWordOffset, breakpointData.staticOrder);
+        dynamicEmitter.StoreBuffer(streamLoadID, dynamicHeaderDWordOffset, watchpointData.staticOrder);
 
         // Start writing after the header
-        dynamicPayloadDataOffset = dynamicEmitter.Add(dynamicHeaderDWordOffset, dynamicEmitter.UInt32(BreakpointDynamicHeaderDWordCount));
+        dynamicPayloadDataOffset = dynamicEmitter.Add(dynamicHeaderDWordOffset, dynamicEmitter.UInt32(WatchpointDynamicHeaderDWordCount));
 
         // To merge
         dynamicEmitter.Branch(mergeBlock);
@@ -1885,26 +1885,26 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointFirstEvent(const IL::
         IL::Emitter<> mergeEmitter(context.program, *mergeBlock);
 
         // Select the appropriate ordering
-        breakpointData.exportOrder = mergeEmitter.Phi(
-            headerBlock, breakpointData.staticOrder,
+        watchpointData.exportOrder = mergeEmitter.Phi(
+            headerBlock, watchpointData.staticOrder,
             dynamicBlock, dynamicOrder
         );
 
         // Select the data offset
-        breakpointData.payloadDataOffset = mergeEmitter.Phi(
+        watchpointData.payloadDataOffset = mergeEmitter.Phi(
             headerBlock, staticPayloadDataOffset,
             dynamicBlock, dynamicPayloadDataOffset
         );
 
-        // To the actual breakpoint
-        mergeEmitter.Branch(breakpointBlock);
+        // To the actual watchpoint
+        mergeEmitter.Branch(watchpointBlock);
     }
 
     // OK
     return resumeBlock;
 }
 
-IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *interruptBlock, Breakpoint *breakpoint, BreakpointData &breakpointData) {
+IL::BasicBlock * DebugFeature::AcquireAndAllocateWatchpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *interruptBlock, Watchpoint *watchpoint, WatchpointData &watchpointData) {
     /**
      * <instr>
      *
@@ -1933,25 +1933,25 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
     IL::Emitter(context.program, *insertIt.block).Branch(hashHeaderBlock);
 
     // Shared header
-    IL::ShaderBufferStruct<BreakpointHeader> breakpointHeader;
+    IL::ShaderBufferStruct<WatchpointHeader> watchpointHeader;
     
     // Hash header
     // Check if we're allocated or not
     {
         IL::Emitter<> emitter(context.program, *hashHeaderBlock);
 
-        // Find the relevant breakpoint
-        GetBreakpoint(emitter, breakpoint, breakpointData);
+        // Find the relevant watchpoint
+        GetWatchpoint(emitter, watchpoint, watchpointData);
         
         // Get the header
-        breakpointHeader = IL::ShaderBufferStruct<BreakpointHeader>(context.program.GetShaderDataMap().Get(streamBufferID)->id, breakpointData.headerOffset);
+        watchpointHeader = IL::ShaderBufferStruct<WatchpointHeader>(context.program.GetShaderDataMap().Get(streamBufferID)->id, watchpointData.headerOffset);
 
         // Get payload offset
-        breakpointData.payloadOffset = breakpointHeader.Get<&BreakpointHeader::payloadDWordOffset>(emitter);
+        watchpointData.payloadOffset = watchpointHeader.Get<&WatchpointHeader::payloadDWordOffset>(emitter);
 
         // Check if the hash is unallocated
         IL::ID isUnallocatedHash = emitter.Equal(
-            breakpointHeader.Get<&BreakpointHeader::shaderInstrumentationHash32>(emitter),
+            watchpointHeader.Get<&WatchpointHeader::shaderInstrumentationHash32>(emitter),
             emitter.UInt32(0)
         );
 
@@ -1965,10 +1965,10 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
         IL::Emitter<> emitter(context.program, *hashAllocationBlock);
         
         // Actually do the CAS
-        breakpointHeader.AtomicCompareExchange<&BreakpointHeader::shaderInstrumentationHash32>(emitter, emitter.UInt32(0), emitter.UInt32(breakpointData.shaderInstrumentationHash32));
+        watchpointHeader.AtomicCompareExchange<&WatchpointHeader::shaderInstrumentationHash32>(emitter, emitter.UInt32(0), emitter.UInt32(watchpointData.shaderInstrumentationHash32));
 
         // Hack
-        breakpointHeader.Set<&BreakpointHeader::payloadDataDWordStride>(emitter,  emitter.UInt32(breakpointData.hostLayout.dataDWordStride));
+        watchpointHeader.Set<&WatchpointHeader::payloadDataDWordStride>(emitter,  emitter.UInt32(watchpointData.hostLayout.dataDWordStride));
 
         // Back to merge
         emitter.Branch(hashMergeBlock);
@@ -1981,8 +1981,8 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
         // Check if the hash is matching
         // TOOD: Not thread safe, obviously
         IL::ID isMatchingHash = emitter.Equal(
-            breakpointHeader.Get<&BreakpointHeader::shaderInstrumentationHash32>(emitter),
-            emitter.UInt32(breakpointData.shaderInstrumentationHash32)
+            watchpointHeader.Get<&WatchpointHeader::shaderInstrumentationHash32>(emitter),
+            emitter.UInt32(watchpointData.shaderInstrumentationHash32)
         );
 
         // Allocate if need be
@@ -1994,16 +1994,16 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
         IL::Emitter<> emitter(context.program, *setupBlock);
 
         // Get dynamic ordering
-        IL::ID order = breakpointHeader.AtomicAdd<&BreakpointHeader::dynamicCounter>(emitter, emitter.UInt32(1));
+        IL::ID order = watchpointHeader.AtomicAdd<&WatchpointHeader::dynamicCounter>(emitter, emitter.UInt32(1));
 
         // Limit by available number of dwords
-        order = IL::ExtendedEmitter(emitter).Min(order, breakpointHeader.Get<&BreakpointHeader::payloadDWordCount>(emitter));
+        order = IL::ExtendedEmitter(emitter).Min(order, watchpointHeader.Get<&WatchpointHeader::payloadDWordCount>(emitter));
 
         // Header offset within the payload
-        IL::ID headerDWordOffset = emitter.Mul(order, emitter.UInt32(breakpointData.hostLayout.dataDWordStride + BreakpointLooseHeaderDWordCount));
+        IL::ID headerDWordOffset = emitter.Mul(order, emitter.UInt32(watchpointData.hostLayout.dataDWordStride + WatchpointLooseHeaderDWordCount));
 
         // Offset by payload offset
-        headerDWordOffset = emitter.Add(breakpointData.payloadOffset, headerDWordOffset);
+        headerDWordOffset = emitter.Add(watchpointData.payloadOffset, headerDWordOffset);
 
         // Store the dynamic header
         IL::ID streamLoadID = emitter.Load(context.program.GetShaderDataMap().Get(streamBufferID)->id);
@@ -2060,14 +2060,14 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
             }
 
             // Store the thread indices
-            emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&BreakpointLooseHeader::threadX>())), threadX);
-            emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&BreakpointLooseHeader::threadY>())), threadY);
-            emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&BreakpointLooseHeader::threadZ>())), threadZ);
+            emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&WatchpointLooseHeader::threadX>())), threadX);
+            emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&WatchpointLooseHeader::threadY>())), threadY);
+            emitter.StoreBuffer(streamLoadID, emitter.Add(headerDWordOffset, emitter.UInt32(IL::MemberDWordOffset<&WatchpointLooseHeader::threadZ>())), threadZ);
         }
 
         // Start writing after the header
-        breakpointData.payloadDataOffset = emitter.Add(headerDWordOffset, emitter.UInt32(BreakpointLooseHeaderDWordCount));
-        breakpointData.exportOrder = order;
+        watchpointData.payloadDataOffset = emitter.Add(headerDWordOffset, emitter.UInt32(WatchpointLooseHeaderDWordCount));
+        watchpointData.exportOrder = order;
 
         // To merge
         emitter.Branch(interruptBlock);
@@ -2077,39 +2077,39 @@ IL::BasicBlock * DebugFeature::AcquireAndAllocateBreakpointAllEvents(const IL::V
     return resumeBlock;
 }
 
-void DebugFeature::CreateAndUpdatePayload(Breakpoint &breakpoint) {
+void DebugFeature::CreateAndUpdatePayload(Watchpoint &watchpoint) {
     // Allocate the underlying memory
-    breakpoint.streamAllocation = buddyAllocator.Allocate(breakpoint.streamSize);
+    watchpoint.streamAllocation = buddyAllocator.Allocate(watchpoint.streamSize);
 
     // Setup the default header
-    breakpoint.header.payloadDWordOffset = static_cast<uint32_t>(breakpoint.streamAllocation.offset / sizeof(uint32_t));
-    breakpoint.header.payloadDWordCount  = static_cast<uint32_t>(breakpoint.streamSize / sizeof(uint32_t));
+    watchpoint.header.payloadDWordOffset = static_cast<uint32_t>(watchpoint.streamAllocation.offset / sizeof(uint32_t));
+    watchpoint.header.payloadDWordCount  = static_cast<uint32_t>(watchpoint.streamSize / sizeof(uint32_t));
 
     // Capture mode modifiers
-    switch (breakpoint.captureMode) {
+    switch (watchpoint.captureMode) {
         default:
             break;
-        case BreakpointCaptureMode::AllEvents:
-            breakpoint.header.dataOrder = BreakpointDataOrder::Loose;
+        case WatchpointCaptureMode::AllEvents:
+            watchpoint.header.dataOrder = WatchpointDataOrder::Loose;
             break;
     }
 
     // Map the relevant times for the range
     tileResidencyAllocator.Allocate(
-        breakpoint.streamAllocation.offset,
-        breakpoint.streamAllocation.length
+        watchpoint.streamAllocation.offset,
+        watchpoint.streamAllocation.length
     );
     
     // Update the header when possible
-    breakpoint.pendingTransferHeader = true;
+    watchpoint.pendingTransferHeader = true;
 
     // Create streaming counter-part
     //  If we're using predicates, we can rely on a fully host resident buffer.
     //  However, if using indirect copies, we need a host visible buffer, which has the unfortunate
     //  side effect of residing in a slower memory type, I suspect using page-guards or similar mechanisms,
     //  which is incredibly slow host side.
-    breakpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = breakpoint.streamAllocation.length + sizeof(BreakpointHeader),
+    watchpoint.hostStreamingBuffer = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
+        .elementCount = watchpoint.streamAllocation.length + sizeof(WatchpointHeader),
         .format = Backend::IL::Format::R8UInt,
         .flagSet = 
             deviceCapabilityTable.supportsPredicates ? 
@@ -2118,9 +2118,9 @@ void DebugFeature::CreateAndUpdatePayload(Breakpoint &breakpoint) {
     }, "DebugStreamHost");
 }
 
-DebugFeature::Breakpoint * DebugFeature::FindBreakpointNoLock(uint32_t uid) {
-    // Find the relevant breakpoint
-    for (Breakpoint& _candidate : breakpoints) {
+DebugFeature::Watchpoint * DebugFeature::FindWatchpointNoLock(uint32_t uid) {
+    // Find the relevant watchpoint
+    for (Watchpoint& _candidate : watchpoints) {
         if (_candidate.uid == uid) {
             return &_candidate;
         }
@@ -2130,9 +2130,9 @@ DebugFeature::Breakpoint * DebugFeature::FindBreakpointNoLock(uint32_t uid) {
     return nullptr;
 }
 
-void DebugFeature::ApplyBreakpointFlagsToProgram(const IL::VisitContext &context, const BreakpointData &breakpointData) {
+void DebugFeature::ApplyWatchpointFlagsToProgram(const IL::VisitContext &context, const WatchpointData &watchpointData) {
     // Using early depth stencil?
-    if (breakpointData.flags & BreakpointFlag::EarlyDepthStencil) {
+    if (watchpointData.flags & WatchpointFlag::EarlyDepthStencil) {
         auto* kernelType = context.program.GetMetadataMap().GetMetadata<IL::KernelTypeMetadata>(context.program.GetEntryPoint()->GetID());
 
         // Only for pixel shaders
@@ -2145,16 +2145,16 @@ void DebugFeature::ApplyBreakpointFlagsToProgram(const IL::VisitContext &context
     }
 }
 
-void DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, Breakpoint *breakpoint, BreakpointData& breakpointData) {
+void DebugFeature::GetWatchpoint(IL::Emitter<> &emitter, Watchpoint *watchpoint, WatchpointData& watchpointData) {
     // Set the dword offset
-    breakpointData.headerOffset = emitter.UInt32(breakpoint->uid * BreakpointHeaderDWordCount);
+    watchpointData.headerOffset = emitter.UInt32(watchpoint->uid * WatchpointHeaderDWordCount);
 }
 
-void DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, DebugBreakpointMessage breakpoint, BreakpointData& breakpointData) {
+void DebugFeature::GetWatchpoint(IL::Emitter<> &emitter, DebugWatchpointMessage watchpoint, WatchpointData& watchpointData) {
     std::lock_guard guard(mutex);
 
-    // Find the relevant breakpoint
-    Breakpoint* candidate = FindBreakpointNoLock(breakpoint.uid);
+    // Find the relevant watchpoint
+    Watchpoint* candidate = FindWatchpointNoLock(watchpoint.uid);
 
     // Shouldn't happen
     if (!candidate) {
@@ -2163,7 +2163,7 @@ void DebugFeature::GetBreakpoint(IL::Emitter<> &emitter, DebugBreakpointMessage 
     }
 
     // Set the dword offset
-    GetBreakpoint(emitter, candidate, breakpointData);
+    GetWatchpoint(emitter, candidate, watchpointData);
 }
 
 FeatureInfo DebugFeature::GetInfo() {

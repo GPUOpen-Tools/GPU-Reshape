@@ -25,7 +25,7 @@
 // 
 
 #include <Features/Debug/SetupPredicateProgram.h>
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -60,7 +60,7 @@ bool SetupPredicateProgram::Install() {
     programID = programHost->Register(this);
 
     // Create patch data
-    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointCopyData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<WatchpointCopyData>());
 
     // OK
     return true;
@@ -91,27 +91,27 @@ void SetupPredicateProgram::Inject(IL::Program &program) {
     IL::ID streamDataID = program.GetShaderDataMap().Get(streamBufferID)->id;
     
     // Get shader data
-    IL::ShaderStruct<BreakpointCopyData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
+    IL::ShaderStruct<WatchpointCopyData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
     
     // Split the entry point for early out
     entryBlock->Split(exitBlock, entryBlock->GetTerminator());
 
-    // Breakpoint header
-    IL::ShaderBufferStruct<BreakpointHeader> header;
+    // Watchpoint header
+    IL::ShaderBufferStruct<WatchpointHeader> header;
 
     IL::Emitter<> entryEmitter(program, *entryBlock);
     {
         // Get the header
-        header = IL::ShaderBufferStruct<BreakpointHeader>(streamDataID, acquisitionData.Get<&BreakpointCopyData::allocationDWordOffset>(entryEmitter));
+        header = IL::ShaderBufferStruct<WatchpointHeader>(streamDataID, acquisitionData.Get<&WatchpointCopyData::allocationDWordOffset>(entryEmitter));
 
         // Was this produced?
         IL::ID hasProducer = entryEmitter.Or(
             entryEmitter.NotEqual(
-                header.Get<&BreakpointHeader::acquiredExecutionUID>(entryEmitter),
+                header.Get<&WatchpointHeader::acquiredExecutionUID>(entryEmitter),
                 entryEmitter.UInt32(0)
             ),
             entryEmitter.NotEqual(
-                header.Get<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter),
+                header.Get<&WatchpointHeader::shaderInstrumentationHash32>(entryEmitter),
                 entryEmitter.UInt32(0)
             )
         );
@@ -120,7 +120,7 @@ void SetupPredicateProgram::Inject(IL::Program &program) {
         hasProducer = entryEmitter.And(
             hasProducer,
             entryEmitter.Equal(
-                header.Get<&BreakpointHeader::copyDispatchLock>(entryEmitter),
+                header.Get<&WatchpointHeader::copyDispatchLock>(entryEmitter),
                 entryEmitter.UInt32(0)
             )
         );
@@ -137,10 +137,10 @@ void SetupPredicateProgram::Inject(IL::Program &program) {
     IL::Emitter<> actEmitter(program, *acqBlock);
     {    
         // Write 1
-        header.Set<&BreakpointHeader::predicationLo>(actEmitter, actEmitter.UInt32(1), 0);
+        header.Set<&WatchpointHeader::predicationLo>(actEmitter, actEmitter.UInt32(1), 0);
         
         // Mark as locked
-        header.Set<&BreakpointHeader::copyDispatchLock>(actEmitter, actEmitter.UInt32(1));
+        header.Set<&WatchpointHeader::copyDispatchLock>(actEmitter, actEmitter.UInt32(1));
         
         actEmitter.Branch(exitBlock);
     }
@@ -148,7 +148,7 @@ void SetupPredicateProgram::Inject(IL::Program &program) {
     IL::Emitter<> relEmitter(program, *relBlock);
     {
         // Write 0
-        header.Set<&BreakpointHeader::predicationLo>(relEmitter, relEmitter.UInt32(0), 0);
+        header.Set<&WatchpointHeader::predicationLo>(relEmitter, relEmitter.UInt32(0), 0);
         relEmitter.Branch(exitBlock);
     }
 }

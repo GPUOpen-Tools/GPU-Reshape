@@ -78,11 +78,11 @@ namespace GRS.Features.Debug.UIX.Workspace
             ViewModel = viewModel;
             
             // Add listener to bridge
-            viewModel.Connection?.Bridge?.Register(DebugBreakpointMetadataMessage.ID, this);
-            viewModel.Connection?.Bridge?.Register(DebugBreakpointStreamMessage.ID, this);
+            viewModel.Connection?.Bridge?.Register(DebugWatchpointMetadataMessage.ID, this);
+            viewModel.Connection?.Bridge?.Register(DebugWatchpointStreamMessage.ID, this);
 
-            // Get the breakpoint registry for the workspace
-            _breakpointRegistryService = ViewModel.PropertyCollection.GetService<BreakpointRegistryService>();
+            // Get the watchpoint registry for the workspace
+            _watchpointRegistryService = ViewModel.PropertyCollection.GetService<WatchpointRegistryService>();
 
             // Get the settings
             _debugSettingViewModel = ServiceRegistry.Get<ISettingsService>()?.Get<DebugSettingViewModel>();
@@ -94,7 +94,7 @@ namespace GRS.Features.Debug.UIX.Workspace
         public void Destruct()
         {
             // Remove listeners
-            ViewModel.Connection?.Bridge?.Deregister(DebugBreakpointStreamMessage.ID, this);
+            ViewModel.Connection?.Bridge?.Deregister(DebugWatchpointStreamMessage.ID, this);
         }
 
         /// <summary>
@@ -104,11 +104,11 @@ namespace GRS.Features.Debug.UIX.Workspace
         {
             switch (streams.Schema.id)
             {
-                case DebugBreakpointStreamMessage.ID:
-                    HandleStream(new DynamicMessageView<DebugBreakpointStreamMessage>(streams));
+                case DebugWatchpointStreamMessage.ID:
+                    HandleStream(new DynamicMessageView<DebugWatchpointStreamMessage>(streams));
                     break;
-                case DebugBreakpointMetadataMessage.ID:
-                    HandleMetadata(new DynamicMessageView<DebugBreakpointMetadataMessage>(streams));
+                case DebugWatchpointMetadataMessage.ID:
+                    HandleMetadata(new DynamicMessageView<DebugWatchpointMetadataMessage>(streams));
                     break;
             }
         }
@@ -116,24 +116,24 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Bridge handler
         /// </summary>
-        private void HandleStream(DynamicMessageView<DebugBreakpointStreamMessage> view)
+        private void HandleStream(DynamicMessageView<DebugWatchpointStreamMessage> view)
         {
-            foreach (DebugBreakpointStreamMessage message in view)
+            foreach (DebugWatchpointStreamMessage message in view)
             {
-                // Get the breakpoint
-                if (_breakpointRegistryService?.GetBreakpoint(message.uid) is not {} breakpointViewModel)
+                // Get the watchpoint
+                if (_watchpointRegistryService?.GetWatchpoint(message.uid) is not {} watchpointViewModel)
                 {
                     continue;
                 }
 
                 // Skip if paused
-                if (breakpointViewModel.Paused)
+                if (watchpointViewModel.Paused)
                 {
                     continue;
                 }
                 
                 // Do we have a processor?
-                if (breakpointViewModel.GetOrCreateProcessor(message, out IDisposable? processorCommit) is not { } processorViewModel)
+                if (watchpointViewModel.GetOrCreateProcessor(message, out IDisposable? processorCommit) is not { } processorViewModel)
                 {
                     // Always commit if needed
                     Dispatcher.UIThread.InvokeAsync(() => processorCommit?.Dispose());
@@ -141,7 +141,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                 }
                 
                 // May have changed capture mode
-                if ((BreakpointCaptureMode)message.captureMode != breakpointViewModel.CaptureMode)
+                if ((WatchpointCaptureMode)message.captureMode != watchpointViewModel.CaptureMode)
                 {
                     continue;
                 }
@@ -149,20 +149,20 @@ namespace GRS.Features.Debug.UIX.Workspace
                 // Update tiny type if needed
                 if (message.dataTinyType.Count != 0)
                 {
-                    UpdateTinyType(breakpointViewModel, message);
+                    UpdateTinyType(watchpointViewModel, message);
                 }
 
                 // Process it on the messaging thread, let the heavy weight stuff leave the UI thread be
-                object? payload = processorViewModel.Process(breakpointViewModel, message);
+                object? payload = processorViewModel.Process(watchpointViewModel, message);
                 
                 // Total number of streamed data
                 uint byteCount = (uint)message.data.Count;
                 
                 // Flatten the data for UI thread
-                DebugBreakpointStreamMessage.FlatInfo flat = message.Flat;
+                DebugWatchpointStreamMessage.FlatInfo flat = message.Flat;
 
-                // Update all breakpoint stats
-                IDisposable statsCommit = UpdateStats(breakpointViewModel, message);
+                // Update all watchpoint stats
+                IDisposable statsCommit = UpdateStats(watchpointViewModel, message);
                 
                 // The rest needs to happen on the UI thread
                 Dispatcher.UIThread.InvokeAsync(() =>
@@ -175,14 +175,14 @@ namespace GRS.Features.Debug.UIX.Workspace
                     if (payload != null)
                     {
                         // Finally, install the payload
-                        if (breakpointViewModel.DisplayViewModel != null)
+                        if (watchpointViewModel.DisplayViewModel != null)
                         {
-                            processorViewModel.Install(breakpointViewModel.DisplayViewModel, payload);
+                            processorViewModel.Install(watchpointViewModel.DisplayViewModel, payload);
                         }
                     }
 
                     // Internal stream handling
-                    ProcessStreamRequest(breakpointViewModel, flat, byteCount);
+                    ProcessStreamRequest(watchpointViewModel, flat, byteCount);
                 });
             }
         }
@@ -190,7 +190,7 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Recreate the value structure
         /// </summary>
-        private void CreateValueStructure(Type type, uint variableId, BreakpointDebugValue value, IEnumerator<DebugBreakpointValueMetadataMessage> enumerator)
+        private void CreateValueStructure(Type type, uint variableId, WatchpointDebugValue value, IEnumerator<DebugWatchpointValueMetadataMessage> enumerator)
         {
             enumerator.MoveNext();
             var valueMessage = enumerator.Current;
@@ -208,44 +208,44 @@ namespace GRS.Features.Debug.UIX.Workspace
                 case TypeKind.Struct:
                 {
                     var typed = (StructType)type;
-                    value.Values = new BreakpointDebugValue[typed.MemberTypes.Length];
+                    value.Values = new WatchpointDebugValue[typed.MemberTypes.Length];
                     
                     for (int i = 0; i < typed.MemberTypes.Length; i++)
                     {
-                        CreateValueStructure(typed.MemberTypes[i], variableId, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.MemberTypes[i], variableId, value.Values[i] = new WatchpointDebugValue(), enumerator);
                     }
                     break;
                 }
                 case TypeKind.Array:
                 {
                     var typed = (ArrayType)type;
-                    value.Values = new BreakpointDebugValue[typed.Count];
+                    value.Values = new WatchpointDebugValue[typed.Count];
                     
                     for (int i = 0; i < typed.Count; i++)
                     {
-                        CreateValueStructure(typed.ElementType, variableId, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ElementType, variableId, value.Values[i] = new WatchpointDebugValue(), enumerator);
                     }
                     break;
                 }
                 case TypeKind.Vector:
                 {
                     var typed = (VectorType)type;
-                    value.Values = new BreakpointDebugValue[typed.Dimension];
+                    value.Values = new WatchpointDebugValue[typed.Dimension];
                     
                     for (int i = 0; i < typed.Dimension; i++)
                     {
-                        CreateValueStructure(typed.ContainedType, variableId, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ContainedType, variableId, value.Values[i] = new WatchpointDebugValue(), enumerator);
                     }
                     break;
                 }
                 case TypeKind.Matrix:
                 {
                     var typed = (MatrixType)type;
-                    value.Values = new BreakpointDebugValue[typed.Columns * typed.Rows];
+                    value.Values = new WatchpointDebugValue[typed.Columns * typed.Rows];
                     
                     for (int i = 0; i < typed.Columns * typed.Rows; i++)
                     {
-                        CreateValueStructure(typed.ContainedType, variableId, value.Values[i] = new BreakpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ContainedType, variableId, value.Values[i] = new WatchpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -255,21 +255,21 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Bridge handler
         /// </summary>
-        private void HandleMetadata(DynamicMessageView<DebugBreakpointMetadataMessage> view)
+        private void HandleMetadata(DynamicMessageView<DebugWatchpointMetadataMessage> view)
         {
-            foreach (DebugBreakpointMetadataMessage md in view)
+            foreach (DebugWatchpointMetadataMessage md in view)
             {
-                // Get the breakpoint
-                if (_breakpointRegistryService?.GetBreakpoint(md.uid) is not {} breakpointViewModel)
+                // Get the watchpoint
+                if (_watchpointRegistryService?.GetWatchpoint(md.uid) is not {} watchpointViewModel)
                 {
                     continue;
                 }
 
-                List<BreakpointDebugVariable> remoteVariables = new();
+                List<WatchpointDebugVariable> remoteVariables = new();
 
                 // Parse all variables
-                foreach (DebugBreakpointVariableMetadataMessage variable in
-                         new DynamicMessageView<DebugBreakpointVariableMetadataMessage>(md.variables.Stream))
+                foreach (DebugWatchpointVariableMetadataMessage variable in
+                         new DynamicMessageView<DebugWatchpointVariableMetadataMessage>(md.variables.Stream))
                 {
                     // Unpack the type
                     Type type = TinyTypePacking.UnpackTinyType(
@@ -278,7 +278,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     );
 
                     // Create variable
-                    var debugVariable = new BreakpointDebugVariable()
+                    var debugVariable = new WatchpointDebugVariable()
                     {
                         Name = variable.name.String,
                         Type = type,
@@ -290,7 +290,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                         type,
                         debugVariable.VariableId,
                         debugVariable.Value,
-                        new DynamicMessageView<DebugBreakpointValueMetadataMessage>(variable.values.Stream).GetEnumerator()
+                        new DynamicMessageView<DebugWatchpointValueMetadataMessage>(variable.values.Stream).GetEnumerator()
                     );
                     
                     remoteVariables.Add(debugVariable);
@@ -300,18 +300,18 @@ namespace GRS.Features.Debug.UIX.Workspace
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     // TODO: This is not correct, it's a multi-subscriber situation, again
-                    foreach (BreakpointDebugVariable variable in remoteVariables)
+                    foreach (WatchpointDebugVariable variable in remoteVariables)
                     {
-                        if (breakpointViewModel.DebugVariables.All(x => x.VariableId != variable.VariableId))
+                        if (watchpointViewModel.DebugVariables.All(x => x.VariableId != variable.VariableId))
                         {
-                            breakpointViewModel.DebugVariables.Add(variable);
+                            watchpointViewModel.DebugVariables.Add(variable);
                         }
                     }
                     
                     // Default select first
-                    if (breakpointViewModel.SelectedDebugValue == null && breakpointViewModel.DebugVariables.Count > 0)
+                    if (watchpointViewModel.SelectedDebugValue == null && watchpointViewModel.DebugVariables.Count > 0)
                     {
-                        breakpointViewModel.SelectedDebugValue = breakpointViewModel.DebugVariables[0].Value;
+                        watchpointViewModel.SelectedDebugValue = watchpointViewModel.DebugVariables[0].Value;
                     }
                 });
             }
@@ -320,38 +320,38 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Update an underlying tiny type
         /// </summary>
-        private void UpdateTinyType(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage message)
+        private void UpdateTinyType(WatchpointViewModel watchpointViewModel, DebugWatchpointStreamMessage message)
         {
             // Check if we need to parse it again
-            if (breakpointViewModel.TinyType is { ID: var id } && id == message.dataTypeId)
+            if (watchpointViewModel.TinyType is { ID: var id } && id == message.dataTypeId)
             {
                 return;
             }
             
             // Unpack it
-            breakpointViewModel.TinyType = TinyTypePacking.UnpackTinyType(
+            watchpointViewModel.TinyType = TinyTypePacking.UnpackTinyType(
                 message.dataTinyType,
                 new TinyTypePacking.TinyTypeResolver()
             );
 
             // Switch over from tiny type id to real one
-            breakpointViewModel.TinyType.ID = message.dataTypeId;
+            watchpointViewModel.TinyType.ID = message.dataTypeId;
         }
 
         /// <summary>
-        /// Update all breakpoint statistics
+        /// Update all watchpoint statistics
         /// </summary>
-        private IDisposable UpdateStats(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage message)
+        private IDisposable UpdateStats(WatchpointViewModel watchpointViewModel, DebugWatchpointStreamMessage message)
         {
             // Calculate average frametime
             long  now = Stopwatch.GetTimestamp();
-            long  delta = now - breakpointViewModel.ProcessThreadLastTimeStamp;
+            long  delta = now - watchpointViewModel.ProcessThreadLastTimeStamp;
             float seconds = delta / (float)Stopwatch.Frequency;
             float frameRate = 1.0f / seconds;
             float weight = 0.95f;
             
             // Update the thread specific stamp
-            breakpointViewModel.ProcessThreadLastTimeStamp = now;
+            watchpointViewModel.ProcessThreadLastTimeStamp = now;
 
             // Get the optional status message
             string statusMessage = GetStatusMessage(message);
@@ -359,39 +359,39 @@ namespace GRS.Features.Debug.UIX.Workspace
             // Update timing
             return new ActionDisposable(() =>
             {
-                breakpointViewModel.StatusMessage = statusMessage;
-                breakpointViewModel.HasStatusMessage = !string.IsNullOrEmpty(statusMessage);
-                breakpointViewModel.FrameRate = weight * breakpointViewModel.FrameRate + (1.0f - weight) * frameRate;
+                watchpointViewModel.StatusMessage = statusMessage;
+                watchpointViewModel.HasStatusMessage = !string.IsNullOrEmpty(statusMessage);
+                watchpointViewModel.FrameRate = weight * watchpointViewModel.FrameRate + (1.0f - weight) * frameRate;
             });
         }
         
         /// <summary>
-        /// Check breakpoint status
+        /// Check watchpoint status
         /// </summary>
-        private string GetStatusMessage(DebugBreakpointStreamMessage message)
+        private string GetStatusMessage(DebugWatchpointStreamMessage message)
         {
             // Get the requested byte size
             uint dynamicRequestedByteSize = 0;
-            switch ((BreakpointDataOrder)message.dataOrder)
+            switch ((WatchpointDataOrder)message.dataOrder)
             {
-                case BreakpointDataOrder.None:
-                case BreakpointDataOrder.Static:
+                case WatchpointDataOrder.None:
+                case WatchpointDataOrder.Static:
                     break;
-                case BreakpointDataOrder.Dynamic:
-                    dynamicRequestedByteSize = message.dataDynamicCounter * sizeof(int) * (DynamicBreakpointHeader.DWordCount + message.dataDWordStride);
+                case WatchpointDataOrder.Dynamic:
+                    dynamicRequestedByteSize = message.dataDynamicCounter * sizeof(int) * (DynamicWatchpointHeader.DWordCount + message.dataDWordStride);
                     break;
-                case BreakpointDataOrder.Loose:
-                    dynamicRequestedByteSize = message.dataDynamicCounter * sizeof(int) * (LooseBreakpointHeader.DWordCount + message.dataDWordStride);
+                case WatchpointDataOrder.Loose:
+                    dynamicRequestedByteSize = message.dataDynamicCounter * sizeof(int) * (LooseWatchpointHeader.DWordCount + message.dataDWordStride);
                     break;
                 default:
-                    Logging.Error("Failed to decode breakpoint stream");
+                    Logging.Error("Failed to decode watchpoint stream");
                     break;
             }
 
             // Out of memory?
             if (dynamicRequestedByteSize > message.data.Count)
             {
-                return $"Out of memory, requested {(int)(dynamicRequestedByteSize / 1e6)}mb, max {_debugSettingViewModel?.MaxBreakpointMemoryMb ?? 32}mb";
+                return $"Out of memory, requested {(int)(dynamicRequestedByteSize / 1e6)}mb, max {_debugSettingViewModel?.MaxWatchpointMemoryMb ?? 32}mb";
             }
 
             // Nothing of importance
@@ -401,14 +401,14 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Invoked on stream requests
         /// </summary>
-        private void ProcessStreamRequest(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage.FlatInfo flat, uint byteCount)
+        private void ProcessStreamRequest(WatchpointViewModel watchpointViewModel, DebugWatchpointStreamMessage.FlatInfo flat, uint byteCount)
         {
             uint request = flat.request;
 
             // Notice the streamer that this request was handled
             if (ViewModel.Connection?.GetSharedBus() is { } sharedBus)
             {
-                var limit = sharedBus.Add<DebugBreakpointStreamHandledMessage>();
+                var limit = sharedBus.Add<DebugWatchpointStreamHandledMessage>();
                 limit.request = request;
             }
 
@@ -416,28 +416,28 @@ namespace GRS.Features.Debug.UIX.Workspace
             // If so, try to grow the backing memory
             if (byteCount < flat.dataRequestStreamSize)
             {
-                ReallocateBreakpoint(breakpointViewModel, flat);
+                ReallocateWatchpoint(watchpointViewModel, flat);
             }
         }
 
         /// <summary>
-        /// Grow the backing memory of a breakpoint
+        /// Grow the backing memory of a watchpoint
         /// </summary>
-        private void ReallocateBreakpoint(BreakpointViewModel breakpointViewModel, DebugBreakpointStreamMessage.FlatInfo flat)
+        private void ReallocateWatchpoint(WatchpointViewModel watchpointViewModel, DebugWatchpointStreamMessage.FlatInfo flat)
         {
             // Determine the new size
-            uint limit             = (_debugSettingViewModel?.MaxBreakpointMemoryMb ?? 32) * 1000000;
+            uint limit             = (_debugSettingViewModel?.MaxWatchpointMemoryMb ?? 32) * 1000000;
             uint optimalStreamSize = Math.Min((uint)(flat.dataRequestStreamSize * 1.1), limit);
 
             // May be capped by limits
-            if (breakpointViewModel.StreamSize == optimalStreamSize)
+            if (watchpointViewModel.StreamSize == optimalStreamSize)
             {
                 return;
             }
             
             // Let the backend reallocate it
-            breakpointViewModel.StreamSize = optimalStreamSize;
-            _breakpointRegistryService?.Reallocate(breakpointViewModel);
+            watchpointViewModel.StreamSize = optimalStreamSize;
+            _watchpointRegistryService?.Reallocate(watchpointViewModel);
         }
 
         /// <summary>
@@ -463,7 +463,7 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Internal registry
         /// </summary>
-        private readonly BreakpointRegistryService? _breakpointRegistryService;
+        private readonly WatchpointRegistryService? _watchpointRegistryService;
 
         /// <summary>
         /// Internal settings

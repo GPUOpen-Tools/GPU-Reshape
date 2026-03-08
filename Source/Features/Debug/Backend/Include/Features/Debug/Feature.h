@@ -27,7 +27,7 @@
 #pragma once
 
 // Debug
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 
 // Backend
 #include <Backend/IFeature.h>
@@ -122,10 +122,10 @@ private:
     void OnJoin(CommandContextHandle contextHandle);
     void OnSyncPoint();
 
-    /// Invoked on breakpoint acquisition
+    /// Invoked on watchpoint acquisition
     /// @param acqMessage the message
     /// @param builder immediate builder
-    void OnBreakpointAcquired(const BreakpointAcquisitionMessage* acqMessage, CommandBuilder& builder);
+    void OnWatchpointAcquired(const WatchpointAcquisitionMessage* acqMessage, CommandBuilder& builder);
 
 private:
     /// Interrupt a visitation context
@@ -134,22 +134,22 @@ private:
     /// @return the new iteration point
     IL::BasicBlock::Iterator SplitInterruptBlock(const IL::VisitContext& context, IL::BasicBlock::Iterator it, IL::BasicBlock* interruptBlock);
 
-    /// Inject a breakpoint
+    /// Inject a watchpoint
     /// @param it instruction to debug
-    /// @param breakpoint breakpoint to be added
+    /// @param watchpoint watchpoint to be added
     /// @return next iterator
-    IL::BasicBlock::Iterator InjectBreakpoint(const IL::VisitContext& context, IL::BasicBlock::Iterator it, const DebugBreakpointMessage& breakpoint);
+    IL::BasicBlock::Iterator InjectWatchpoint(const IL::VisitContext& context, IL::BasicBlock::Iterator it, const DebugWatchpointMessage& watchpoint);
 
 private:
-    struct Breakpoint {
-        /// Monotic id of this breakpoint
+    struct Watchpoint {
+        /// Monotic id of this watchpoint
         uint32_t uid = 0;
 
         /// Host layout, determined at compile time
-        std::unordered_map<uint32_t, BreakpointDataHostLayout> hostLayoutMap;
+        std::unordered_map<uint32_t, WatchpointDataHostLayout> hostLayoutMap;
 
         /// Registered capture mode
-        BreakpointCaptureMode captureMode{};
+        WatchpointCaptureMode captureMode{};
 
         /// Allocated stream size
         uint64_t streamSize = 0;
@@ -160,7 +160,7 @@ private:
         /// Gpu produced counter
         uint32_t pendingAcqDynamicCounter = 0;
 
-        /// Is this breakpoint pending collection?
+        /// Is this watchpoint pending collection?
         bool pendingCollection = false;
 
         /// Do we have a pending header upload?
@@ -170,7 +170,7 @@ private:
         bool pendingHeaderReset = false;
 
         /// The templated header for blitting
-        BreakpointHeader header{};
+        WatchpointHeader header{};
 
         /// Underlying allocation
         BuddyAllocation streamAllocation;
@@ -179,9 +179,9 @@ private:
         ShaderDataID hostStreamingBuffer = InvalidShaderDataID;
     };
 
-    struct BreakpointData {
-        /// Flags for this breakpoint
-        BreakpointFlag flags{BreakpointFlag::None};
+    struct WatchpointData {
+        /// Flags for this watchpoint
+        WatchpointFlag flags{WatchpointFlag::None};
 
         /// Optional, marker hash
         uint32_t markerHash32{0};
@@ -190,7 +190,7 @@ private:
         uint32_t shaderInstrumentationHash32{0};
 
         /// Intermediate host layout data
-        BreakpointDataHostLayout hostLayout{};
+        WatchpointDataHostLayout hostLayout{};
         
         /// The dynamically assigned ordering type
         IL::ID orderType{IL::InvalidID};
@@ -250,33 +250,33 @@ private:
         uint64_t lastCommit = 0;
     };
 
-    /// Find a breakpoint from uid
-    Breakpoint* FindBreakpointNoLock(uint32_t uid);
+    /// Find a watchpoint from uid
+    Watchpoint* FindWatchpointNoLock(uint32_t uid);
 
     /// Apply program wide flags
     /// @param context parent context
-    /// @param breakpointData device breakpoint data
-    void ApplyBreakpointFlagsToProgram(const IL::VisitContext& context, const BreakpointData& breakpointData);
+    /// @param watchpointData device watchpoint data
+    void ApplyWatchpointFlagsToProgram(const IL::VisitContext& context, const WatchpointData& watchpointData);
 
-    /// Get breakpoint device data
+    /// Get watchpoint device data
     /// @param emitter target emitter
-    /// @param breakpoint host breakpoint data
-    /// @param breakpointData device breakpoint data
-    void GetBreakpoint(IL::Emitter<>& emitter, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    /// @param watchpoint host watchpoint data
+    /// @param watchpointData device watchpoint data
+    void GetWatchpoint(IL::Emitter<>& emitter, Watchpoint* watchpoint, WatchpointData& watchpointData);
 
-    /// Get a breakpoint from its message
+    /// Get a watchpoint from its message
     /// @param emitter target emitter
-    /// @param breakpoint host breakpoint data
-    /// @param breakpointData device breakpoint data
-    void GetBreakpoint(IL::Emitter<>& emitter, DebugBreakpointMessage breakpoint, BreakpointData& breakpointData);
+    /// @param watchpoint host watchpoint data
+    /// @param watchpointData device watchpoint data
+    void GetWatchpoint(IL::Emitter<>& emitter, DebugWatchpointMessage watchpoint, WatchpointData& watchpointData);
 
-    /// Store all value dwords of a breakpoint
+    /// Store all value dwords of a watchpoint
     /// @param context parent context
     /// @param emitter target emitter
     /// @param value value, potentially structured, to be stored
-    /// @param breakpoint host breakpoint data
-    /// @param breakpointData device breakpoint data
-    void StoreBreakpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    /// @param watchpoint host watchpoint data
+    /// @param watchpointData device watchpoint data
+    void StoreWatchpointDataDWords(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Watchpoint* watchpoint, WatchpointData& watchpointData);
 
     /// Get the raw (i.e., not reconstructed) debug value
     /// @param context parent context
@@ -288,105 +288,105 @@ private:
     /// @param context parent context
     /// @param instr debug instruction
     /// @return invalid if failed
-    const Backend::IL::Type* GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction* instr, const DebugBreakpointMessage& breakpointMessage, BreakpointData& breakpointData, Breakpoint* breakpoint);
+    const Backend::IL::Type* GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction* instr, const DebugWatchpointMessage& watchpointMessage, WatchpointData& watchpointData, Watchpoint* watchpoint);
     
     /// Get the debug value for an instruction
     /// @param context parent context
     /// @param instr debug instruction
     /// @param insertIt the insertion iterator for reconstruction
     /// @return invalid if failed
-    IL::ID GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, BreakpointData& breakpointData, IL::BasicBlock::Iterator& insertIt);
+    IL::ID GetInstructionDebugValue(const IL::VisitContext &context, const IL::Instruction* instr, WatchpointData& watchpointData, IL::BasicBlock::Iterator& insertIt);
     
-    /// Try to get the texel format of a breakpoint
+    /// Try to get the texel format of a watchpoint
     /// @return true if a format is appropriate, over structured data
-    bool GetBreakpointFormat(BreakpointData& breakpointData);
+    bool GetWatchpointFormat(WatchpointData& watchpointData);
 
     /// Check if a kernel type is supported
     /// @param kernelType type to check
-    /// @param breakpoint active breakpoint
+    /// @param watchpoint active watchpoint
     /// @return supported
-    bool SupportsKernelType(IL::KernelType kernelType, Breakpoint* breakpoint);
+    bool SupportsKernelType(IL::KernelType kernelType, Watchpoint* watchpoint);
     
-    /// Try to get the breakpoint data host layout, fails in case it's not a valid breakpoint
+    /// Try to get the watchpoint data host layout, fails in case it's not a valid watchpoint
     /// @param context parent context
     /// @param instr exporting instruction
     /// @param value value to check for
-    /// @param breakpoint host breakpoint data
-    /// @param breakpointData device breakpoint data
+    /// @param watchpoint host watchpoint data
+    /// @param watchpointData device watchpoint data
     /// @return false if failed
-    bool GetBreakpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, const Backend::IL::Type* valueType, Breakpoint *breakpoint, BreakpointData& breakpointData);
+    bool GetWatchpointDataHostLayout(const IL::VisitContext &context, const IL::Instruction* instr, const Backend::IL::Type* valueType, Watchpoint *watchpoint, WatchpointData& watchpointData);
 
-    /// Store all exported breakpoint data
+    /// Store all exported watchpoint data
     /// @param context parent context
     /// @param emitter target emitter
     /// @param instr exporting instruction
     /// @param value value to check for
-    /// @param breakpoint host breakpoint data
-    /// @param breakpointData device breakpoint data
-    void StoreBreakpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    /// @param watchpoint host watchpoint data
+    /// @param watchpointData device watchpoint data
+    void StoreWatchpointData(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ID value, Watchpoint* watchpoint, WatchpointData& watchpointData);
 
     /// Get first event ordering
     /// @param context parent context
     /// @param emitter target emitter
     /// @param execution the current execution info
-    /// @param breakpointHeader the breakpoint header state
-    /// @param breakpoint host breakpoint data
-    /// @param breakpointData device breakpoint data
-    void GetBreakpointOrderingFirstEvent(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<BreakpointHeader>& breakpointHeader, Breakpoint *breakpoint, BreakpointData& breakpointData);
+    /// @param watchpointHeader the watchpoint header state
+    /// @param watchpoint host watchpoint data
+    /// @param watchpointData device watchpoint data
+    void GetWatchpointOrderingFirstEvent(const IL::VisitContext &context, IL::Emitter<>& emitter, IL::ShaderStruct<ExecutionInfo>& execution, IL::ShaderBufferStruct<WatchpointHeader>& watchpointHeader, Watchpoint *watchpoint, WatchpointData& watchpointData);
 
-    /// Acquire a first event breakpoint
+    /// Acquire a first event watchpoint
     /// @param it instruction being instrumented
-    /// @param breakpointBlock the breakpoint interrupt block
-    /// @param breakpoint breakpoint data
-    /// @param breakpointData
+    /// @param watchpointBlock the watchpoint interrupt block
+    /// @param watchpoint watchpoint data
+    /// @param watchpointData
     /// @return next instruction iterator
-    IL::BasicBlock* AcquireBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    IL::BasicBlock* AcquireWatchpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *watchpointBlock, Watchpoint* watchpoint, WatchpointData& watchpointData);
     
     /// Acquire and allocate first event ordering
     /// @param it instruction being instrumented
-    /// @param breakpointBlock the breakpoint interrupt block
-    /// @param breakpoint breakpoint data
-    /// @param breakpointData
+    /// @param watchpointBlock the watchpoint interrupt block
+    /// @param watchpoint watchpoint data
+    /// @param watchpointData
     /// @return next instruction iterator
-    IL::BasicBlock* AcquireAndAllocateBreakpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    IL::BasicBlock* AcquireAndAllocateWatchpointFirstEvent(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *watchpointBlock, Watchpoint* watchpoint, WatchpointData& watchpointData);
     
     /// Acquire and allocate all event ordering
     /// @param it instruction being instrumented
-    /// @param breakpointBlock the breakpoint interrupt block
-    /// @param breakpoint breakpoint data
-    /// @param breakpointData
+    /// @param watchpointBlock the watchpoint interrupt block
+    /// @param watchpoint watchpoint data
+    /// @param watchpointData
     /// @return next instruction iterator
-    IL::BasicBlock* AcquireAndAllocateBreakpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *breakpointBlock, Breakpoint* breakpoint, BreakpointData& breakpointData);
+    IL::BasicBlock* AcquireAndAllocateWatchpointAllEvents(const IL::VisitContext &context, const IL::BasicBlock::Iterator &insertIt, IL::BasicBlock *watchpointBlock, Watchpoint* watchpoint, WatchpointData& watchpointData);
 
-    /// Check if we can collect any breakpoint data
-    /// @param breakpoint target breakpoint
-    bool CanCollectBreakpoint(const Breakpoint& breakpoint);
+    /// Check if we can collect any watchpoint data
+    /// @param watchpoint target watchpoint
+    bool CanCollectWatchpoint(const Watchpoint& watchpoint);
 
     /// Get the current instrumentation hash used for host layout matching
-    /// @param breakpoint target breakpoint
+    /// @param watchpoint target watchpoint
     /// @param header mapped header
-    uint32_t GetBreakpointInstrumentationHash(const Breakpoint& breakpoint, const BreakpointHeader* header);
+    uint32_t GetWatchpointInstrumentationHash(const Watchpoint& watchpoint, const WatchpointHeader* header);
 
-    /// Check if a breakpoint header has any valid data for collection
-    /// @param breakpoint target breakpoint
+    /// Check if a watchpoint header has any valid data for collection
+    /// @param watchpoint target watchpoint
     /// @param header mapped header
-    bool HasBreakpointStreambackData(const Breakpoint& breakpoint, const BreakpointHeader* header);
+    bool HasWatchpointStreambackData(const Watchpoint& watchpoint, const WatchpointHeader* header);
 
-    /// Get the actual breakpoint streaming size
-    /// @param breakpoint target breakpoint
+    /// Get the actual watchpoint streaming size
+    /// @param watchpoint target watchpoint
     /// @param header mapped header
     /// @return stream byte size
-    uint64_t GetBreakpointStreamRequestSize(const Breakpoint& breakpoint, const BreakpointHeader* header, const BreakpointDataHostLayout& hostLayout);
+    uint64_t GetWatchpointStreamRequestSize(const Watchpoint& watchpoint, const WatchpointHeader* header, const WatchpointDataHostLayout& hostLayout);
 
 private:
-    /// Create the payload for a given breakpoint
+    /// Create the payload for a given watchpoint
     /// and update the templated header
-    /// @param breakpoint breakpoint to update
-    void CreateAndUpdatePayload(Breakpoint& breakpoint);
+    /// @param watchpoint watchpoint to update
+    void CreateAndUpdatePayload(Watchpoint& watchpoint);
     
 private:
-    /// All breakpoints
-    std::vector<Breakpoint> breakpoints;
+    /// All watchpoints
+    std::vector<Watchpoint> watchpoints;
 
     /// Debug memory allocator
     BuddyAllocator buddyAllocator;

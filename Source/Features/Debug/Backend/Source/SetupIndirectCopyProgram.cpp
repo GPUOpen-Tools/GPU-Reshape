@@ -25,7 +25,7 @@
 // 
 
 #include <Features/Debug/SetupIndirectCopyProgram.h>
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -60,7 +60,7 @@ bool SetupIndirectCopyProgram::Install() {
     programID = programHost->Register(this);
 
     // Create patch data
-    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointCopyData>());
+    dataID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<WatchpointCopyData>());
 
     // Create the host binding
     hostDataID = shaderDataHost->CreateBufferBinding(programID, ShaderDataBufferBindingInfo{
@@ -97,27 +97,27 @@ void SetupIndirectCopyProgram::Inject(IL::Program &program) {
     IL::ID streamDataID = program.GetShaderDataMap().Get(streamBufferID)->id;
     
     // Get shader data
-    IL::ShaderStruct<BreakpointCopyData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
+    IL::ShaderStruct<WatchpointCopyData> acquisitionData = program.GetShaderDataMap().Get(dataID)->id;
     
     // Split the entry point for early out
     entryBlock->Split(exitBlock, entryBlock->GetTerminator());
 
-    // Breakpoint header
-    IL::ShaderBufferStruct<BreakpointHeader> header;
+    // Watchpoint header
+    IL::ShaderBufferStruct<WatchpointHeader> header;
 
     IL::Emitter<> entryEmitter(program, *entryBlock);
     {
         // Get the header
-        header = IL::ShaderBufferStruct<BreakpointHeader>(streamDataID, acquisitionData.Get<&BreakpointCopyData::allocationDWordOffset>(entryEmitter));
+        header = IL::ShaderBufferStruct<WatchpointHeader>(streamDataID, acquisitionData.Get<&WatchpointCopyData::allocationDWordOffset>(entryEmitter));
 
         // Was this produced?
         IL::ID hasProducer = entryEmitter.Or(
             entryEmitter.NotEqual(
-                header.Get<&BreakpointHeader::acquiredExecutionUID>(entryEmitter),
+                header.Get<&WatchpointHeader::acquiredExecutionUID>(entryEmitter),
                 entryEmitter.UInt32(0)
             ),
             entryEmitter.NotEqual(
-                header.Get<&BreakpointHeader::shaderInstrumentationHash32>(entryEmitter),
+                header.Get<&WatchpointHeader::shaderInstrumentationHash32>(entryEmitter),
                 entryEmitter.UInt32(0)
             )
         );
@@ -126,7 +126,7 @@ void SetupIndirectCopyProgram::Inject(IL::Program &program) {
         hasProducer = entryEmitter.And(
             hasProducer,
             entryEmitter.Equal(
-                header.Get<&BreakpointHeader::copyDispatchLock>(entryEmitter),
+                header.Get<&WatchpointHeader::copyDispatchLock>(entryEmitter),
                 entryEmitter.UInt32(0)
             )
         );
@@ -145,12 +145,12 @@ void SetupIndirectCopyProgram::Inject(IL::Program &program) {
         IL::ID hostDataBuffer = program.GetShaderDataMap().Get(hostDataID)->id;
         
         // Copy over the header separately
-        for (uint32_t i = 0; i < BreakpointHeaderDWordCount; i++) {
+        for (uint32_t i = 0; i < WatchpointHeaderDWordCount; i++) {
             IL::ID value = actEmitter.Extract(
                 actEmitter.LoadBuffer(
                     actEmitter.Load(streamDataID), 
                     actEmitter.Add(
-                        acquisitionData.Get<&BreakpointCopyData::allocationDWordOffset>(actEmitter),
+                        acquisitionData.Get<&WatchpointCopyData::allocationDWordOffset>(actEmitter),
                         actEmitter.UInt32(i)
                     )
                 ),
@@ -165,22 +165,22 @@ void SetupIndirectCopyProgram::Inject(IL::Program &program) {
         }
         
         // Total number of dwords produced
-        IL::ID streamSizeEvent = header.Get<&BreakpointHeader::dwordStreamCount>(actEmitter);
+        IL::ID streamSizeEvent = header.Get<&WatchpointHeader::dwordStreamCount>(actEmitter);
         
         // Loose dwords produced
         IL::ID streamSizeLoose = actEmitter.Mul(
-            header.Get<&BreakpointHeader::dynamicCounter>(actEmitter),
+            header.Get<&WatchpointHeader::dynamicCounter>(actEmitter),
             actEmitter.Add(
-                actEmitter.UInt32(BreakpointLooseHeaderDWordCount),
-                header.Get<&BreakpointHeader::payloadDataDWordStride>(actEmitter)
+                actEmitter.UInt32(WatchpointLooseHeaderDWordCount),
+                header.Get<&WatchpointHeader::payloadDataDWordStride>(actEmitter)
             )
         );
         
         // Select actual copy size
         IL::ID streamSize = actEmitter.Select(
             actEmitter.Equal(
-                header.Get<&BreakpointHeader::dataOrder>(actEmitter),
-                actEmitter.UInt32(static_cast<uint32_t>(BreakpointDataOrder::Loose))
+                header.Get<&WatchpointHeader::dataOrder>(actEmitter),
+                actEmitter.UInt32(static_cast<uint32_t>(WatchpointDataOrder::Loose))
             ),
             streamSizeLoose,
             streamSizeEvent
@@ -193,12 +193,12 @@ void SetupIndirectCopyProgram::Inject(IL::Program &program) {
         );
         
         // Write X, 1, 1
-        header.Set<&BreakpointHeader::copyDispatchParams>(actEmitter, dispatchCount, 0);
-        header.Set<&BreakpointHeader::copyDispatchParams>(actEmitter, actEmitter.UInt32(1), 1);
-        header.Set<&BreakpointHeader::copyDispatchParams>(actEmitter, actEmitter.UInt32(1), 2);
+        header.Set<&WatchpointHeader::copyDispatchParams>(actEmitter, dispatchCount, 0);
+        header.Set<&WatchpointHeader::copyDispatchParams>(actEmitter, actEmitter.UInt32(1), 1);
+        header.Set<&WatchpointHeader::copyDispatchParams>(actEmitter, actEmitter.UInt32(1), 2);
         
         // Mark as locked
-        header.Set<&BreakpointHeader::copyDispatchLock>(actEmitter, actEmitter.UInt32(1));
+        header.Set<&WatchpointHeader::copyDispatchLock>(actEmitter, actEmitter.UInt32(1));
         
         actEmitter.Branch(exitBlock);
     }
@@ -206,9 +206,9 @@ void SetupIndirectCopyProgram::Inject(IL::Program &program) {
     IL::Emitter<> relEmitter(program, *relBlock);
     {
         // Write 0, 0, 0
-        header.Set<&BreakpointHeader::copyDispatchParams>(relEmitter, relEmitter.UInt32(0), 0);
-        header.Set<&BreakpointHeader::copyDispatchParams>(relEmitter, relEmitter.UInt32(0), 1);
-        header.Set<&BreakpointHeader::copyDispatchParams>(relEmitter, relEmitter.UInt32(0), 2);
+        header.Set<&WatchpointHeader::copyDispatchParams>(relEmitter, relEmitter.UInt32(0), 0);
+        header.Set<&WatchpointHeader::copyDispatchParams>(relEmitter, relEmitter.UInt32(0), 1);
+        header.Set<&WatchpointHeader::copyDispatchParams>(relEmitter, relEmitter.UInt32(0), 2);
         relEmitter.Branch(exitBlock);
     }
 }

@@ -28,7 +28,7 @@
 
 
 <schema>
-    <shader-export name="BreakpointAcquisition" no-sguid="true" no-traceback="true">
+    <shader-export name="WatchpointAcquisition" no-sguid="true" no-traceback="true">
         <chunk name="ExtraData">
             <field name="instrumentationHash32" type="uint32"/>
         </chunk>

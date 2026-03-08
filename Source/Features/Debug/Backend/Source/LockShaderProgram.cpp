@@ -25,7 +25,7 @@
 // 
 
 #include <Features/Debug/LockShaderProgram.h>
-#include <Features/Debug/BreakpointHeader.h>
+#include <Features/Debug/WatchpointHeader.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -46,7 +46,7 @@ bool LockShaderProgram::Install() {
     shaderDataHost = registry->Get<IShaderDataHost>();
 
     // Create patch data
-    patchID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<BreakpointLooseAcquisitionData>());
+    patchID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo::FromStruct<WatchpointLooseAcquisitionData>());
 
     // OK
     return true;

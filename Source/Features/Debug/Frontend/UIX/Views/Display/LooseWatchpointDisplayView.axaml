@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:GRS.Features.Debug.UIX.ViewModels"
+             xmlns:controls="clr-namespace:UIX.Views.Controls"
+             xmlns:cvm="clr-namespace:Studio.ViewModels.Controls;assembly=UIX.Studio.Runtime"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="UIX.Views.Display.LooseWatchpointDisplayView"
+             x:DataType="viewModels:LooseWatchpointDisplayViewModel"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch">
+    <Grid>
+        <ListBox
+            ItemsSource="{Binding Items}"
+            Background="{StaticResource InfoMediumBackground}">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel Orientation="Vertical"/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Height" Value="20"/>
+                </Style>
+            </ListBox.Styles>
+            
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:LooseItemViewModel">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Expand Button -->
+                        <Button 
+                            Classes="Icon"
+                            Margin="0 0 2 0">
+                            <PathIcon Margin="0 1 0 0" Data="{StaticResource MagnifyExpand}" Width="14" Height="14"/>
+                            
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <TreeView ItemsSource="{Binding RootItemViewModel.Items}">
+                                        <TreeView.Styles>
+                                            <Style Selector="TreeViewItem">
+                                                <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}"/>
+                                            </Style>
+                                        </TreeView.Styles>
+                                        <TreeView.ItemTemplate>
+                                            <TreeDataTemplate ItemsSource="{Binding (cvm:IObservableTreeItem).Items}">
+                                                <TextBlock Text="{Binding Text }"/>
+                                            </TreeDataTemplate>
+                                        </TreeView.ItemTemplate>    
+                                    </TreeView>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                        
+                        <!-- Flattened view -->
+                        <TextBlock Text="{Binding FlatString}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>
