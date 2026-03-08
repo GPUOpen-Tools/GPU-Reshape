@@ -61,7 +61,7 @@ static void CreateVariableValues(const Backend::IL::Type* type, SmallArena& aren
             );
             
             for (uint32_t i = 0; i < _type->memberTypes.size(); i++) {
-                CreateVariableValues(_type->memberTypes[i], arena, value.values[i]);
+                CreateVariableValues(_type->memberTypes[i], arena, value.values[i] = {});
             }
             
             break;
@@ -75,7 +75,7 @@ static void CreateVariableValues(const Backend::IL::Type* type, SmallArena& aren
             );
                 
             for (uint32_t i = 0; i < _type->count; i++) {
-                CreateVariableValues(_type->elementType, arena, value.values[i]);
+                CreateVariableValues(_type->elementType, arena, value.values[i] = {});
             }
 
             break;
@@ -89,7 +89,7 @@ static void CreateVariableValues(const Backend::IL::Type* type, SmallArena& aren
             );
                 
             for (uint32_t i = 0; i < _type->dimension; i++) {
-                CreateVariableValues(_type->containedType, arena, value.values[i]);
+                CreateVariableValues(_type->containedType, arena, value.values[i] = {});
             }
 
             break;
@@ -104,7 +104,7 @@ static void CreateVariableValues(const Backend::IL::Type* type, SmallArena& aren
                 
             for (uint32_t column = 0; column < _type->columns; column++) {
                 for (uint32_t row = 0; row < _type->rows; row++) {
-                    CreateVariableValues(_type->containedType, arena, value.values[column * _type->rows + row]);
+                    CreateVariableValues(_type->containedType, arena, value.values[column * _type->rows + row] = {});
                 }
             }
 
