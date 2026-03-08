@@ -7,14 +7,8 @@
              x:Class="UIX.Views.BreakpointVariableView"
              x:DataType="viewModels:BreakpointVariableViewModel">
     <Grid>
-        <ComboBox 
-            SelectedItem="{Binding BreakpointViewModel.SelectedDebugVariable}" 
-            ItemsSource="{Binding BreakpointViewModel.DebugVariables}">
-            <ComboBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding Decoration}"/>
-                </DataTemplate>
-            </ComboBox.ItemTemplate>
-        </ComboBox>
+        <TextBox 
+            IsReadOnly="True" 
+            Text="{Binding BreakpointDebugVariable.Name, FallbackValue=No Variable}"/>
     </Grid>
 </UserControl>

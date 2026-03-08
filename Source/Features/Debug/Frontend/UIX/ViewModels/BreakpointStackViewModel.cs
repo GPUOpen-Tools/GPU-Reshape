@@ -11,6 +11,7 @@ using Runtime.ViewModels.Tools;
 using Studio;
 using Studio.Models.IL;
 using Studio.Services;
+using Studio.ViewModels.Controls;
 
 namespace GRS.Features.Debug.UIX.ViewModels;
 
@@ -74,16 +75,22 @@ public class BreakpointStackViewModel : ToolViewModel
         }
         
         // Assign the selection
+        _selectedBreakpointViewModel.SelectedDebugValue = GetValueFromViewModel(item);
+    }
+
+    /// <summary>
+    /// Get the underlying value binding
+    /// </summary>
+    private BreakpointDebugValue? GetValueFromViewModel(BreakpointStackTreeItemViewModel item)
+    {
         switch (item.ViewModel)
         {
             default:
-                return;
+                return null;
             case BreakpointDebugVariable var:
-                _selectedBreakpointViewModel.SelectedDebugValue = var.Value;
-                break;
+                return var.Value;
             case BreakpointDebugValue value:
-                _selectedBreakpointViewModel.SelectedDebugValue = value;
-                break;
+                return value;
         }
     }
 
@@ -109,6 +116,43 @@ public class BreakpointStackViewModel : ToolViewModel
             .OnItemRemoved(OnVariableRemoved)
             .Subscribe()
             .DisposeWith(_disposable);
+        
+        // Bind on selection changes
+        breakpointViewModel
+            .WhenAnyValue(x => x.SelectedDebugValue)
+            .Subscribe(value =>
+            {
+                if (value == null)
+                {
+                    SelectedStackTreeItemViewModel = null;
+                    return;
+                }
+                
+                // Just find the first item
+                SelectedStackTreeItemViewModel = FindItemViewModel(Root, value);
+            })
+            .DisposeWith(_disposable);
+    }
+
+    /// <summary>
+    /// Find the owning view model
+    /// </summary>
+    private BreakpointStackTreeItemViewModel? FindItemViewModel(BreakpointStackTreeItemViewModel item, BreakpointDebugValue value)
+    {
+        if (GetValueFromViewModel(item) == value)
+        {
+            return item;
+        }
+
+        foreach (IObservableTreeItem child in item.Items)
+        {
+            if (FindItemViewModel((BreakpointStackTreeItemViewModel)child, value) is { } childResult)
+            {
+                return childResult;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
