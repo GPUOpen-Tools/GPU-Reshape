@@ -1030,7 +1030,6 @@ static const IL::DebugSingleValue* GetValueFromId(const IL::DebugSingleValue& va
     
     switch (value.type->kind) {
         default: {
-            ASSERT(false, "Invalid state");
             return nullptr;
         }
         case Backend::IL::TypeKind::Struct: {
