@@ -37,27 +37,27 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Minimum value property
         /// </summary>
-        public static readonly StyledProperty<double> MinimumProperty = AvaloniaProperty.Register<SliderRange, double>(nameof(Minimum));
+        public static readonly StyledProperty<float> MinimumProperty = AvaloniaProperty.Register<SliderRange, float>(nameof(Minimum));
 
         /// <summary>
         /// Maximum value property
         /// </summary>
-        public static readonly StyledProperty<double> MaximumProperty = AvaloniaProperty.Register<SliderRange, double>(nameof(Maximum), 1.0);
+        public static readonly StyledProperty<float> MaximumProperty = AvaloniaProperty.Register<SliderRange, float>(nameof(Maximum), 1.0f);
 
         /// <summary>
         /// Current lower value property
         /// </summary>
-        public static readonly StyledProperty<double> LowerValueProperty = AvaloniaProperty.Register<SliderRange, double>(nameof(LowerValue));
+        public static readonly StyledProperty<float> LowerValueProperty = AvaloniaProperty.Register<SliderRange, float>(nameof(LowerValue));
 
         /// <summary>
         /// Current upper value property
         /// </summary>
-        public static readonly StyledProperty<double> UpperValueProperty = AvaloniaProperty.Register<SliderRange, double>(nameof(UpperValue), 1.0);
+        public static readonly StyledProperty<float> UpperValueProperty = AvaloniaProperty.Register<SliderRange, float>(nameof(UpperValue), 1.0f);
 
         /// <summary>
         /// Minimum value
         /// </summary>
-        public double Minimum
+        public float Minimum
         {
             get => GetValue(MinimumProperty);
             set => SetValue(MinimumProperty, value);
@@ -66,7 +66,7 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Maximum value
         /// </summary>
-        public double Maximum
+        public float Maximum
         {
             get => GetValue(MaximumProperty);
             set => SetValue(MaximumProperty, value);
@@ -75,7 +75,7 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Current lower value
         /// </summary>
-        public double LowerValue
+        public float LowerValue
         {
             get => GetValue(LowerValueProperty);
             set => SetValue(LowerValueProperty, value);
@@ -84,7 +84,7 @@ namespace Studio.Views.Controls
         /// <summary>
         /// Current upper value
         /// </summary>
-        public double UpperValue
+        public float UpperValue
         {
             get => GetValue(UpperValueProperty);
             set => SetValue(UpperValueProperty, value);
@@ -128,7 +128,7 @@ namespace Studio.Views.Controls
             
             // Recompute the lower value
             double w = _partLowerThumb.Margin.Left / (Bounds.Width - _partLowerThumb.Bounds.Width);
-            LowerValue = Minimum + w * (Maximum - Minimum);
+            LowerValue = (float)(Minimum + w * (Maximum - Minimum));
 
             // Handle case where thumb > max
             if (_partLowerThumb.Margin.Left > _partUpperThumb.Margin.Left)
@@ -153,7 +153,7 @@ namespace Studio.Views.Controls
 
             // Recompute the upper value
             double w = _partUpperThumb.Margin.Left / (Bounds.Width - _partUpperThumb.Bounds.Width);
-            UpperValue = Minimum + w * (Maximum - Minimum);
+            UpperValue = (float)(Minimum + w * (Maximum - Minimum));
             
             // Handle case where thumb < min
             if (_partUpperThumb.Margin.Left < _partLowerThumb.Margin.Left)
@@ -175,10 +175,17 @@ namespace Studio.Views.Controls
             {
                 return;
             }
+
+            // Safe denom
+            double denom = Maximum - Minimum;
+            if (denom < 1e-6f)
+            {
+                denom = 1;
+            }
             
             // Compute the new weights
-            double lowWeight = Math.Max(0, Math.Min(1, (LowerValue - Minimum) / (Maximum - Minimum)));
-            double highWeight = Math.Max(0, Math.Min(1, (UpperValue - Minimum) / (Maximum - Minimum)));
+            double lowWeight = Math.Max(0, Math.Min(1, (LowerValue - Minimum) / denom));
+            double highWeight = Math.Max(0, Math.Min(1, (UpperValue - Minimum) / denom));
 
             // Update margins from weights
             _partLowerThumb.Margin = new Thickness(Bounds.Width * lowWeight, 0, 0, 0);

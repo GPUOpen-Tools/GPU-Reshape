@@ -8,6 +8,7 @@ using Avalonia.Platform;
 using GRS.Features.Debug.UIX.Models;
 using GRS.Features.Debug.UIX.ViewModels.Utils;
 using Message.CLR;
+using Studio;
 using Studio.Models.IL;
 
 namespace GRS.Features.Debug.UIX.ViewModels.Processor;
@@ -419,6 +420,121 @@ public class ImageBreakpointProcessorViewModel : IBreakpointProcessorViewModel
             {
                 return new PixelInspectionRender { Color = Colors.Transparent, NativeFormatRender = "Failed" };
             }
+        }
+
+        /// <summary>
+        /// Summarize numeric ranges
+        /// </summary>
+        /// <returns></returns>
+        public PixelValueRange SummarizeRange()
+        {
+            ValueRangeInfo range = new();
+
+            // Slow path, but it's fine
+            try
+            {
+                if ((BreakpointDataOrder)Flat.dataOrder == BreakpointDataOrder.Static)
+                {
+                    // Static buffers are always fully resident
+                    uint exportCount = Flat.dataStaticWidth * Flat.dataStaticHeight;
+                    
+                    // If there's a data format, just unpack the format
+                    if (Flat.dataFormat != 0)
+                    {
+                        for (int i = 0; i < exportCount; i++)
+                        {
+                            Color color = TexelToColor(DWords[i]);
+                            range.MinValue = Math.Min(range.MinValue, color.R / 255.0f);
+                            range.MinValue = Math.Min(range.MinValue, color.G / 255.0f);
+                            range.MinValue = Math.Min(range.MinValue, color.B / 255.0f);
+                            range.MaxValue = Math.Max(range.MaxValue, color.R / 255.0f);
+                            range.MaxValue = Math.Max(range.MaxValue, color.G / 255.0f);
+                            range.MaxValue = Math.Max(range.MaxValue, color.B / 255.0f);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < exportCount; i++)
+                        {
+                            // Offset by data stride
+                            int dwordOffset = (int)(i * Flat.dataDWordStride);
+            
+                            Span<byte> dataSpan = MemoryMarshal.AsBytes(new Span<uint>(
+                                DWords, 
+                                dwordOffset,
+                                (int)Flat.dataDWordStride
+                            ));
+
+                            // Range the span
+                            ValueTypeRangeUtils.RangeValue(BreakpointViewModel.TinyType, dataSpan, range);
+                        }
+                    }
+                }
+                else
+                {
+                    // Deduce the actual safe number of dwords
+                    uint dataDWordCount   = Flat.dataDynamicCounter * (DynamicBreakpointHeader.DWordCount + Flat.dataDWordStride);
+                    uint dwordCount       = Math.Min((uint)DWords.Length, dataDWordCount);
+
+                    // Stride per export
+                    uint exportDWordStride = DynamicBreakpointHeader.DWordCount + Flat.dataDWordStride;
+        
+                    // Total export count
+                    uint exportCount = dwordCount / exportDWordStride;
+                    
+                    // Fast path, compressed and scatter memcpy
+                    if (Flat.dataFormat != 0)
+                    {
+                        for (int i = 0; i < exportCount; i++)
+                        {
+                            int dwordOffset = (int)(i * exportDWordStride);
+                            if (dwordOffset + 2 > dwordCount)
+                            {
+                                break;
+                            }
+            
+                            Color color = TexelToColor(DWords[dwordOffset + 1]);
+                            range.MinValue = Math.Min(range.MinValue, color.R / 255.0f);
+                            range.MinValue = Math.Min(range.MinValue, color.G / 255.0f);
+                            range.MinValue = Math.Min(range.MinValue, color.B / 255.0f);
+                            range.MaxValue = Math.Max(range.MaxValue, color.R / 255.0f);
+                            range.MaxValue = Math.Max(range.MaxValue, color.G / 255.0f);
+                            range.MaxValue = Math.Max(range.MaxValue, color.B / 255.0f);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < exportCount; i++)
+                        {
+                            int dwordOffset = (int)(i * exportDWordStride);
+                            if (dwordOffset + 2 > dwordCount)
+                            {
+                                break;
+                            }
+
+                            Span<byte> dataSpan = MemoryMarshal.AsBytes(new Span<uint>(
+                                DWords, 
+                                dwordOffset + 1,
+                                (int)Flat.dataDWordStride
+                            ));
+                            
+                            // Range the span
+                            ValueTypeRangeUtils.RangeValue(BreakpointViewModel.TinyType, dataSpan, range);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logging.Error($"Failed to range data, {ex}");
+            }
+
+            // Setup range
+            return new PixelValueRange()
+            {
+                MinValue = range.MinValue,
+                MaxValue = range.MaxValue
+            };
         }
 
         /// <summary>
