@@ -214,7 +214,6 @@ public class BreakpointViewModel : ReactiveObject, ISourceObjectDetailViewModel
         // Update shaders on variable changes
         this.WhenAnyValue(x => x.SelectedDebugValue)
             .WhereNotNull()
-            .Throttle(TimeSpan.FromMilliseconds(500))
             .Subscribe(_ => EnqueueAllShaderParentBus());
     }
 
