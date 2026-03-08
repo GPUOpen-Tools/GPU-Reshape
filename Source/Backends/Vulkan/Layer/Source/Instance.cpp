@@ -219,6 +219,9 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
 
     // Get common components
     table->bridge = table->registry.Get<IBridge>();
+        
+    // Install logging
+    table->logBuffer = table->registry.AddNew<LogBuffer>();
 
     // Install shader compiler
 #if SHADER_COMPILER_DEBUG
@@ -227,7 +230,7 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
 #endif
 
     // Diagnostic
-    table->logBuffer.Add("Vulkan", LogSeverity::Info, "Instance created");
+    table->logBuffer->Add("Vulkan", LogSeverity::Info, "Instance created");
 
     // OK
     return VK_SUCCESS;

@@ -150,7 +150,7 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlo
 
         // Out of indices
         else {
-            table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, "Exhausted shader SGUID allocation indices, source association may fail");
+            table->parent->logBuffer->Add("Vulkan", LogSeverity::Error, "Exhausted shader SGUID allocation indices, source association may fail");
             return InvalidShaderSGUID;
         }
 

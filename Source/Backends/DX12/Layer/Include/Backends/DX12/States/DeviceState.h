@@ -184,7 +184,7 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     std::atomic<uint32_t> rollingUIDs{0};
 
     /// Shared logging buffer
-    LogBuffer logBuffer;
+    ComRef<LogBuffer> logBuffer;
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;

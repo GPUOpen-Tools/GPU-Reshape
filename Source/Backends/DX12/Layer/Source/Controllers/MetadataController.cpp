@@ -369,7 +369,7 @@ void MetadataController::OnMessage(const struct ReleaseShaderMessage &message) {
             destroyRef(shader, allocators);
             shader->hasExternalReference = false;
         } else {
-            device->logBuffer.Add("DX12", LogSeverity::Error, "Releasing shader without external reference");
+            device->logBuffer->Add("DX12", LogSeverity::Error, "Releasing shader without external reference");
         }
     }
 }

@@ -61,12 +61,14 @@
 // Generated schema
 #include <Schemas/Features/Debug.h>
 #include <Schemas/Features/DebugConfig.h>
+#include <Schemas/Log.h>
 
 // Message
 #include <Message/IMessageStorage.h>
 #include <Message/MessageStreamCommon.h>
 
 // Bridge
+#include <Bridge/Log/LogBuffer.h>
 #include <Bridge/IBridge.h>
 
 // Common
@@ -821,7 +823,15 @@ void DebugFeature::OnWatchpointAcquired(const WatchpointAcquisitionMessage *acqM
             watchpoint->pendingCollectionHash = instrumentationHash32;
             watchpoint->pendingAcqDynamicCounter = *(reinterpret_cast<const uint32_t*>(acqMessage) + 2);
         } else {
-            ASSERT(!watchpoint->pendingCollection, "GPU double-signalled watchpoint for collection");
+            // Should be an assertion, but let's have this be recoverable
+            if (watchpoint->pendingCollection) {
+                registry->Get<LogBuffer>()->Add(
+                    "Debug",
+                    LogSeverity::Error,
+                    "Watchpoint double acquisition, synchronization error"
+                );
+            }
+            
             watchpoint->pendingCollection = true;
         
             // Read beyond primary key

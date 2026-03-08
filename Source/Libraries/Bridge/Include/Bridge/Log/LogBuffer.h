@@ -32,6 +32,9 @@
 // Message
 #include <Message/MessageStream.h>
 
+// Common
+#include <Common/IComponent.h>
+
 // Std
 #include <mutex>
 #include <string_view>
@@ -39,8 +42,10 @@
 // Forward declarations
 class IBridge;
 
-class LogBuffer {
+class LogBuffer : public TComponent<LogBuffer> {
 public:
+    COMPONENT(LogBuffer);
+    
     /// Add a new message
     ///   ? For formatting see LogFormat.h, separated for compile times
     /// \param system responsible system

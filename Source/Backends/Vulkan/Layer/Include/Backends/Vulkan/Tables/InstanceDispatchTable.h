@@ -119,7 +119,7 @@ struct InstanceDispatchTable {
     ComRef<IBridge> bridge;
 
     /// Shared logging buffer
-    LogBuffer logBuffer;
+    ComRef<LogBuffer> logBuffer;
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;

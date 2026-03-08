@@ -316,7 +316,7 @@ void MetadataController::OnMessage(const struct ReleaseShaderMessage &message) {
             destroyRef(shader, allocators);
             shader->hasExternalReference = false;
         } else {
-            table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, "Releasing shader without external reference");
+            table->parent->logBuffer->Add("Vulkan", LogSeverity::Error, "Releasing shader without external reference");
         }
     }
 }

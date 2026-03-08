@@ -293,7 +293,7 @@ void PDBController::OnMessage(const struct IndexPDPathsMessage &message) {
 
         // OK?
         if (!error) {
-            device->logBuffer.Add("DX12", LogSeverity::Error, Format("Failed to iterate path: '{0}'", path));
+            device->logBuffer->Add("DX12", LogSeverity::Error, Format("Failed to iterate path: '{0}'", path));
         }
     }
 }

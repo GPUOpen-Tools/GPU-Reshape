@@ -640,7 +640,7 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 
 void BridgeDeviceSyncPoint(DeviceDispatchTable *table, ShaderExportQueueState* queueState) {
     // Commit all logging to bridge
-    table->parent->logBuffer.Commit(table->bridge.GetUnsafe());
+    table->parent->logBuffer->Commit(table->bridge.GetUnsafe());
     
     // Commit controllers
     table->featureController->Commit();

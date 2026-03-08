@@ -256,6 +256,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
         // Get common components
         state->bridge = state->registry.Get<IBridge>();
+        
+        // Install logging
+        state->logBuffer = state->registry.AddNew<LogBuffer>();
 
         // Install the shader export host
         state->exportHost = state->registry.AddNew<ShaderExportHost>(state->allocators);
@@ -894,7 +897,7 @@ void GlobalDeviceDetour::Uninstall() {
 
 void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
     // Commit all logging to bridge
-    device->logBuffer.Commit(device->bridge.GetUnsafe());
+    device->logBuffer->Commit(device->bridge.GetUnsafe());
     
     // Commit controllers
     device->featureController->Commit();
