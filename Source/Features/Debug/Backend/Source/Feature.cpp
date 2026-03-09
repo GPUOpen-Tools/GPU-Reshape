@@ -57,6 +57,7 @@
 #include <Backend/IL/TypeSize.h>
 #include <Backend/IL/Emitters/IDebugEmitter.h>
 #include <Backend/Device/IDeviceProperties.h>
+#include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
 
 // Generated schema
 #include <Schemas/Features/Debug.h>
@@ -1571,6 +1572,10 @@ static uint32_t ShaderInstrumentationHashWideTo32(uint64_t wide) {
 
 IL::BasicBlock::Iterator DebugFeature::InjectWatchpoint(const IL::VisitContext &context, IL::BasicBlock::Iterator it, const DebugWatchpointMessage& watchpointMessage) {
     // TODO[dbg]: Send a message back "nothing to debug!" This shouldn't come from a message
+
+    // Invalidate all dominance analysis, instrumentation changes this all the time
+    // TODO[dbg]: We really need proper tracking
+    context.function.GetAnalysisMap().Remove<IL::DominatorAnalysis>();
 
     // Find the relevant watchpoint
     Watchpoint* watchpoint = FindWatchpointNoLock(watchpointMessage.uid);
