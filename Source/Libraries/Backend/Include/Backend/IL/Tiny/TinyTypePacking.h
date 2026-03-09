@@ -129,7 +129,7 @@ namespace Backend::IL::Tiny {
                     auto *typed = type->As<IL::ArrayType>();
 
                     ArrayType packed;
-                    packed.kind = TypeKind::Vector;
+                    packed.kind = TypeKind::Array;
                     packed.elementType = tinyID;
                     packed.count = typed->count;
                     PackAppend(packed, buffer);

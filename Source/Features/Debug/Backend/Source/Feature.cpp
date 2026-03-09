@@ -1025,7 +1025,7 @@ static void FillValueStream(MessageStreamView<DebugWatchpointValueMetadataMessag
             
             for (uint32_t column = 0; column < _type->columns; column++) {
                 for (uint32_t row = 0; row < _type->rows; row++) {
-                    FillValueStream(view, value.values[_type->columns * _type->rows], id);
+                    FillValueStream(view, value.values[column * _type->rows + row], id);
                 }
             }
 

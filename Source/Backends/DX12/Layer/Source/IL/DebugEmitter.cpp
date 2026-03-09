@@ -281,6 +281,38 @@ static void PropagateCodeConstant(SmallArena& arena, const IL::Constant* constan
             }
             break;
         }
+        case Backend::IL::TypeKind::Matrix: {
+            auto* _type = value.type->As<Backend::IL::MatrixType>();
+            
+            // DXIL allows representing it through vector constants
+            if (constant->Is<IL::VectorConstant>()) {
+                auto* _constant = constant->As<IL::VectorConstant>();
+            
+                for (uint32_t column = 0; column < _type->columns; column++) {
+                    for (uint32_t row = 0; row < _type->rows; row++) {
+                        PropagateCodeConstant(
+                            arena, 
+                            _constant->elements[column * _type->rows + row],
+                            value.values[column * _type->rows + row]
+                        );
+                    }
+                }
+            } else {
+                auto* _constant = constant->Cast<IL::ArrayConstant>();
+                ASSERT(_constant || constant->Is<IL::NullConstant>(), "Unexpected constant");
+            
+                for (uint32_t column = 0; column < _type->columns; column++) {
+                    for (uint32_t row = 0; row < _type->rows; row++) {
+                        PropagateCodeConstant(
+                            arena, 
+                            _constant ? _constant->elements[column]->As<IL::VectorConstant>()->elements[row] : constant,
+                            value.values[column * _type->rows + row]
+                        );
+                    }
+                }
+            }
+            break;
+        }
     }
 }
 
@@ -344,6 +376,28 @@ static void PropagateCodeOffset(SmallArena& arena, uint32_t codeOffset, const Ba
             for (uint32_t i = 0; i < _type->memberTypes.size(); i++) {
                 accessIndices.Add(i);
                 PropagateCodeOffset(arena, codeOffset, _valueType->memberTypes[i], value.values[i], accessIndices);
+                accessIndices.PopBack();
+            }
+            break;
+        }
+        case Backend::IL::TypeKind::Matrix: {
+            auto* _type = value.type->As<Backend::IL::MatrixType>();
+            auto* _valueType = valueType->As<Backend::IL::MatrixType>();
+            
+            for (uint32_t column = 0; column < _type->columns; column++) {
+                accessIndices.Add(column);
+                
+                for (uint32_t row = 0; row < _type->rows; row++) {
+                    accessIndices.Add(row);
+                    PropagateCodeOffset(
+                        arena, codeOffset, 
+                        _valueType->containedType, 
+                        value.values[column * _type->rows + row],
+                        accessIndices
+                    );
+                    accessIndices.PopBack();
+                }
+                
                 accessIndices.PopBack();
             }
             break;
