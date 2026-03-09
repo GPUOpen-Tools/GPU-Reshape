@@ -614,7 +614,6 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
             case LLVMMetadataRecord::DistinctNode:
             case LLVMMetadataRecord::Location:
             case LLVMMetadataRecord::GenericDebug:
-            case LLVMMetadataRecord::SubRange: 
             case LLVMMetadataRecord::Enumerator: 
             case LLVMMetadataRecord::SubroutineType: 
             case LLVMMetadataRecord::Module: 
@@ -734,7 +733,7 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                             break;
                         }
                         case LLVMDwarfTag::Array: {
-                            md.compositeType.arrayType.nameMdId = static_cast<uint32_t>(record.Op(2));
+                            md.compositeType.arrayType.baseTypeMdId = static_cast<uint32_t>(record.Op(6));
                             md.compositeType.arrayType.size = static_cast<uint32_t>(record.Op(7));
                             md.compositeType.arrayType.align = static_cast<uint32_t>(record.Op(8));
                             md.compositeType.arrayType.elementsMdId = static_cast<uint32_t>(record.Op(11));
@@ -742,6 +741,12 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                         }
                     }
                 }
+                break;
+            }
+                
+            case LLVMMetadataRecord::SubRange: {
+                md.subRange.count = static_cast<uint32_t>(record.Op(1));
+                md.subRange.lowerBound = static_cast<uint32_t>(record.Op(2));
                 break;
             }
 
@@ -1213,7 +1218,7 @@ const Backend::IL::Type* DXILDebugModule::GetTypeFromDwarf(Backend::IL::TypeMap&
                     return GetStructureTypeFromDwarf(typeMap, typeMd);
                 }
                 case LLVMDwarfTag::Array: {
-                    return nullptr;
+                    return GetArrayTypeFromDwarf(typeMap, typeMd);
                 }
             }
             break;
@@ -1388,6 +1393,26 @@ const Backend::IL::Type * DXILDebugModule::GetStructureTypeFromDwarf(Backend::IL
     }
     
     return typeMap.FindTypeOrAdd(_struct);
+}
+
+const Backend::IL::Type * DXILDebugModule::GetArrayTypeFromDwarf(Backend::IL::TypeMap &typeMap, const Metadata &typeMd) {
+    Metadata& elementsListMd = thinMetadata[typeMd.compositeType.arrayType.elementsMdId - 1];
+
+    // Base type we start from
+    const Backend::IL::Type* baseType = GetTypeFromDwarf(typeMap, typeMd.compositeType.arrayType.baseTypeMdId - 1);
+    
+    // Populate all sub-ranges
+    for (uint32_t i = 0; i < elementsListMd.record->opCount; i++) {
+        Metadata& subRangeMd = thinMetadata[elementsListMd.record->Op32(i) - 1];
+        ASSERT(subRangeMd.subRange.lowerBound == 0, "Lower bounds not supported");
+        
+        baseType = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+            .elementType = baseType,
+            .count = subRangeMd.subRange.count
+        });
+    }
+    
+    return baseType;
 }
 
 const Backend::IL::Type * DXILDebugModule::GetBasicTypeFromDwarf(Backend::IL::TypeMap &typeMap, const Metadata &typeMd) {

@@ -362,13 +362,18 @@ private:
                     } structureType;
                     
                     struct {
-                        uint32_t nameMdId;
+                        uint32_t baseTypeMdId;
                         uint32_t size;
                         uint32_t align;
                         uint32_t elementsMdId;
                     } arrayType;
                 };
             } compositeType;
+            
+            struct {
+                uint32_t count;
+                uint32_t lowerBound;
+            } subRange;
 
             struct {
                 uint32_t nameMdId;
@@ -408,6 +413,11 @@ private:
     /// @param typeMd class md
     /// @return type
     const Backend::IL::Type* GetStructureTypeFromDwarf(Backend::IL::TypeMap& typeMap, const Metadata& typeMd);
+
+    /// Get the array backend type from a dward type
+    /// @param typeMd array md
+    /// @return type
+    const Backend::IL::Type* GetArrayTypeFromDwarf(Backend::IL::TypeMap& typeMap, const Metadata& typeMd);
     
     /// Get the basic backend type from a dward type
     /// @param typeMd basic md

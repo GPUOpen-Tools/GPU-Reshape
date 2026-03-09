@@ -102,6 +102,14 @@ namespace IL {
             registry.Remove(analysis);
         }
 
+        /// Remove an existing pass
+        template<typename U>
+        void Remove() {
+            if (ComRef pass = FindPass<U>()) {
+                Remove(pass);
+            }
+        }
+
     private:
         /// Internal registry
         Registry registry;
