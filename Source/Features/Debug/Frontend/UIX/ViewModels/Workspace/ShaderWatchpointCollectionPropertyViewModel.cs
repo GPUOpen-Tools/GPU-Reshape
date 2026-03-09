@@ -101,7 +101,7 @@ public class ShaderWatchpointCollectionPropertyViewModel : BasePropertyViewModel
             watchpoint.codeOffset = binding.Source!.Mapping.CodeOffset;
             watchpoint.uid = binding.WatchpointViewModel.UID;
             watchpoint.flags = (uint)watchpointConfig.Flags;
-            watchpoint.variableId = binding.WatchpointViewModel.SelectedDebugValue?.VariableId ?? 0;
+            watchpoint.variableHash = binding.WatchpointViewModel.SelectedDebugValue?.VariableHash ?? 0;
             watchpoint.valueId = binding.WatchpointViewModel.SelectedDebugValue?.ValueId ?? 0;
             watchpoint.markerHash32 = 0;
 

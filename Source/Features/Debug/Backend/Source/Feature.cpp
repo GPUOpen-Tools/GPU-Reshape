@@ -75,6 +75,7 @@
 // Common
 #include <Common/FileSystem.h>
 #include <Common/Registry.h>
+#include <Common/Hash.h>
 
 /// Use predication for host streaming copies?
 #define USE_PREDICATION 1
@@ -1092,6 +1093,12 @@ static const IL::DebugSingleValue* GetValueFromId(const IL::DebugSingleValue& va
     }
 }
 
+static uint64_t GetVariableHash(const std::string_view& name, const std::vector<uint8_t>& tinyTypeStream) {
+    uint64_t hash = StringCRC32Short(name.data(), name.length());
+    CombineHash(hash, BufferCRC32Short(tinyTypeStream.data(), tinyTypeStream.size()));
+    return hash;
+}
+
 const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitContext &context, const IL::Instruction *instr, const DebugWatchpointMessage& watchpointMessage, WatchpointData& watchpointData, Watchpoint* watchpoint) {
     // Try to reconstruct the debug stack first
     debugEmitter->GetStack(context.program, instr, watchpointData.arena, watchpointData.debugStack);
@@ -1127,9 +1134,13 @@ const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitCo
             // Copy over tiny type
             std::memcpy(metadata->dataTinyType.Get(), tinyType.data(), tinyType.size());
             
+            // Keep hash around
+            uint64_t hash = GetVariableHash(src->name, tinyType);
+            watchpointData.variables[hash] = src;
+            
             // Copy over the info
             metadata->name.Set(src->name);
-            metadata->variableId = static_cast<uint32_t>(i);
+            metadata->variableHash = hash;
             metadata->values.Set(valueStream);
         }
         
@@ -1150,16 +1161,14 @@ const Backend::IL::Type* DebugFeature::GetInstructionDebugType(const IL::VisitCo
         bridge->GetOutput()->AddStreamAndSwap(metadataStream);
         
         // Assign ids
-        watchpointData.variableId = watchpointMessage.variableId;
+        watchpointData.variableHash = watchpointMessage.variableHash;
         watchpointData.valueId = watchpointMessage.valueId;
         
         // Find owning variable
-        if (watchpointData.variableId != UINT32_MAX) {
-            const IL::DebugVariable* variable = watchpointData.debugStack.variables[watchpointData.variableId];
-        
+        if (auto varIt = watchpointData.variables.find(watchpointData.variableHash); varIt != watchpointData.variables.end()) {
             // Try to find value
             uint32_t idDecrement = watchpointData.valueId;
-            if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, idDecrement)) {
+            if (const IL::DebugSingleValue* value = GetValueFromId(varIt->second->value, idDecrement)) {
                 return value->type;
             }
         }
@@ -1178,12 +1187,10 @@ IL::ID DebugFeature::GetInstructionDebugValue(const IL::VisitContext &context, c
     IL::Emitter<> emitter(context.program, context.basicBlock, insertIt);
 
     // Try to reconstruct the source value first
-    if (watchpointData.variableId != UINT32_MAX) {
-        const IL::DebugVariable* variable = watchpointData.debugStack.variables[watchpointData.variableId];
-        
+    if (auto varIt = watchpointData.variables.find(watchpointData.variableHash); varIt != watchpointData.variables.end()) {
         // Try to find value
         uint32_t idDecrement = watchpointData.valueId;
-        if (const IL::DebugSingleValue* value = GetValueFromId(variable->value, idDecrement)) {
+        if (const IL::DebugSingleValue* value = GetValueFromId(varIt->second->value, idDecrement)) {
             // Attempt to reconstruct
             if (IL::ID reconstructed = debugEmitter->ReconstructValue(emitter, *value, instr); reconstructed != IL::InvalidID) {
                 // Split after the constructed debug value

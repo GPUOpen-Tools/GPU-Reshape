@@ -32,7 +32,7 @@
         <field name="codeOffset" type="uint32"/>
         <field name="uid" type="uint32"/>
         <field name="flags" type="uint32"/>
-        <field name="variableId" type="uint32"/>
+        <field name="variableHash" type="uint64"/>
         <field name="valueId" type="uint32"/>
         <field name="markerHash32" type="uint32"/>
     </message>
@@ -86,7 +86,7 @@
 
     <message name="DebugWatchpointVariableMetadata">
         <field name="name" type="string"/>
-        <field name="variableId" type="uint32"/>
+        <field name="variableHash" type="uint64"/>
         <field name="dataTinyType" type="array" element="uint8"/>
         <field name="values" type="stream"/>
     </message>

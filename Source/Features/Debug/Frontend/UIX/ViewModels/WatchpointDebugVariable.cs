@@ -28,10 +28,10 @@ public class WatchpointDebugValue : ReactiveObject
     /// <summary>
     /// Variable handle
     /// </summary>
-    public uint VariableId
+    public UInt64 VariableHash
     {
-        get => _variableId;
-        set => this.RaiseAndSetIfChanged(ref _variableId, value);
+        get => _variableHash;
+        set => this.RaiseAndSetIfChanged(ref _variableHash, value);
     }
     
     /// <summary>
@@ -92,7 +92,7 @@ public class WatchpointDebugValue : ReactiveObject
     /// <summary>
     /// Internal handles
     /// </summary>
-    private uint _variableId;
+    private UInt64 _variableHash;
     private uint _valueId;
 
     /// <summary>
@@ -129,10 +129,10 @@ public class WatchpointDebugVariable : ReactiveObject
     /// <summary>
     /// Internal id
     /// </summary>
-    public uint VariableId
+    public UInt64 VariableHash
     {
-        get => _variableId;
-        set => this.RaiseAndSetIfChanged(ref _variableId, value);
+        get => _variableHash;
+        set => this.RaiseAndSetIfChanged(ref _variableHash, value);
     }
     
     /// <summary>
@@ -171,5 +171,5 @@ public class WatchpointDebugVariable : ReactiveObject
     /// <summary>
     /// Internal handle
     /// </summary>
-    private uint _variableId;
+    private UInt64 _variableHash;
 }

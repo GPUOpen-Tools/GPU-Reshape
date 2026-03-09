@@ -232,8 +232,11 @@ private:
         /// Reconstructed stack
         IL::DebugStack debugStack;
         
+        /// Variable lookup
+        std::unordered_map<uint64_t, const IL::DebugVariable*> variables;
+        
         /// Chosen variable
-        uint32_t variableId = UINT32_MAX;
+        uint64_t variableHash = UINT64_MAX;
         
         /// Chosen value within the variable
         uint32_t valueId = UINT32_MAX;

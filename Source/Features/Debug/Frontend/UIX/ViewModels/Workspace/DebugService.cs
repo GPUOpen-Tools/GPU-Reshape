@@ -190,7 +190,7 @@ namespace GRS.Features.Debug.UIX.Workspace
         /// <summary>
         /// Recreate the value structure
         /// </summary>
-        private void CreateValueStructure(Type type, uint variableId, WatchpointDebugValue value, IEnumerator<DebugWatchpointValueMetadataMessage> enumerator)
+        private void CreateValueStructure(Type type, UInt64 variableHash, WatchpointDebugValue value, IEnumerator<DebugWatchpointValueMetadataMessage> enumerator)
         {
             enumerator.MoveNext();
             var valueMessage = enumerator.Current;
@@ -198,7 +198,7 @@ namespace GRS.Features.Debug.UIX.Workspace
             // Set info
             value.Type = type;
             value.Name = valueMessage.name.String;
-            value.VariableId = variableId;
+            value.VariableHash = variableHash;
             value.ValueId = valueMessage.valueId;
             value.HasReconstruction = valueMessage.hasReconstruction == 1;
             
@@ -212,7 +212,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     
                     for (int i = 0; i < typed.MemberTypes.Length; i++)
                     {
-                        CreateValueStructure(typed.MemberTypes[i], variableId, value.Values[i] = new WatchpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.MemberTypes[i], variableHash, value.Values[i] = new WatchpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -223,7 +223,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     
                     for (int i = 0; i < typed.Count; i++)
                     {
-                        CreateValueStructure(typed.ElementType, variableId, value.Values[i] = new WatchpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ElementType, variableHash, value.Values[i] = new WatchpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -234,7 +234,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     
                     for (int i = 0; i < typed.Dimension; i++)
                     {
-                        CreateValueStructure(typed.ContainedType, variableId, value.Values[i] = new WatchpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ContainedType, variableHash, value.Values[i] = new WatchpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -245,7 +245,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     
                     for (int i = 0; i < typed.Columns * typed.Rows; i++)
                     {
-                        CreateValueStructure(typed.ContainedType, variableId, value.Values[i] = new WatchpointDebugValue(), enumerator);
+                        CreateValueStructure(typed.ContainedType, variableHash, value.Values[i] = new WatchpointDebugValue(), enumerator);
                     }
                     break;
                 }
@@ -282,13 +282,13 @@ namespace GRS.Features.Debug.UIX.Workspace
                     {
                         Name = variable.name.String,
                         Type = type,
-                        VariableId = variable.variableId
+                        VariableHash = variable.variableHash
                     };
 
                     // Parse all variables
                     CreateValueStructure(
                         type,
-                        debugVariable.VariableId,
+                        debugVariable.VariableHash,
                         debugVariable.Value,
                         new DynamicMessageView<DebugWatchpointValueMetadataMessage>(variable.values.Stream).GetEnumerator()
                     );
@@ -302,7 +302,7 @@ namespace GRS.Features.Debug.UIX.Workspace
                     // TODO: This is not correct, it's a multi-subscriber situation, again
                     foreach (WatchpointDebugVariable variable in remoteVariables)
                     {
-                        if (watchpointViewModel.DebugVariables.All(x => x.VariableId != variable.VariableId))
+                        if (watchpointViewModel.DebugVariables.All(x => x.VariableHash != variable.VariableHash))
                         {
                             watchpointViewModel.DebugVariables.Add(variable);
                         }
