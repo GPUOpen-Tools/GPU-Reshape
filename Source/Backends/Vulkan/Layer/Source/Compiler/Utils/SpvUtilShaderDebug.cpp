@@ -215,6 +215,7 @@ void SpvUtilShaderDebug::ParseDebug100InstructionCommon(T &ctx, uint32_t opCode)
 
             // Declare type
             SpvDebugVariableInfo &variableInfo = debugMap.variableInfos[ctx.GetResult()];
+            variableInfo.varId = ctx.GetResult();
             variableInfo.nameId = name;
             variableInfo.typeId = type;
             break;
@@ -232,6 +233,7 @@ void SpvUtilShaderDebug::ParseDebug100InstructionCommon(T &ctx, uint32_t opCode)
 
             // Declare type
             SpvDebugVariableInfo &variableInfo = debugMap.variableInfos[ctx.GetResult()];
+            variableInfo.varId = ctx.GetResult();
             variableInfo.nameId = name;
             variableInfo.typeId = type;
 
@@ -257,8 +259,7 @@ void SpvUtilShaderDebug::ParseDebug100InstructionCommon(T &ctx, uint32_t opCode)
             info.debugVariableId = ctx++;
             info.value = ctx++;
             info.expression = ctx++;
-            info.accessCount = ctx.PendingWords();
-            info.accessIndices = ctx.GetInstructionCode();
+            info.accessIndices = std::span<const SpvId>(ctx.GetInstructionCode(), ctx.PendingWords());
             pendingInfo.valueInfo.values.push_back(info);
             break;
         }

@@ -36,8 +36,12 @@
 // Std
 #include <vector>
 #include <string_view>
+#include <span>
 
 struct SpvDebugVariableInfo {
+    /// Id of this variable
+    SpvId varId = IL::InvalidID;
+    
     /// Name of this variable
     SpvId nameId = IL::InvalidID;
     
@@ -56,10 +60,7 @@ struct InstructionValueInfo {
     SpvId expression = IL::InvalidID;
     
     /// Optional structural indices
-    const SpvId* accessIndices = nullptr;
-    
-    /// Number of indices
-    uint32_t accessCount = 0;
+    std::span<const SpvId> accessIndices{};
 };
     
 struct SpvDebugInstructionValueSetInfo {

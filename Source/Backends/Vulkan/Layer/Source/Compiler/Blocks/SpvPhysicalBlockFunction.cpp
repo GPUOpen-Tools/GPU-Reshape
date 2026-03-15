@@ -176,6 +176,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
         // Provide traceback
         if (basicBlock != nullptr) {
             sourceTraceback[source.codeOffset] = SpvCodeOffsetTraceback {
+                .functionID = function->GetID(),
                 .basicBlockID = basicBlock->GetID(),
                 .instructionIndex = basicBlock->GetCount()
             };

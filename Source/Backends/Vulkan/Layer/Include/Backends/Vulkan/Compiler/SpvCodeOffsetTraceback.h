@@ -30,6 +30,9 @@
 #include <Backend/IL/ID.h>
 
 struct SpvCodeOffsetTraceback {
+    /// Originating function id
+    IL::ID functionID{IL::InvalidID};
+    
     /// Originating basic block id
     IL::ID basicBlockID{IL::InvalidID};
 
