@@ -320,7 +320,7 @@ void IterateDebugValues(IL::Program& program, const SpvDebugMap *debugMap, const
     }
 }
 
-static IL::DebugSingleValue* GetStructuredValueAtOffsetRef(IL::DebugSingleValue& value, std::span<const uint32_t> indices) {
+static IL::DebugSingleValue* GetStructuredValueAtOffsetRef(IL::Program& program, IL::DebugSingleValue& value, std::span<const uint32_t> indices) {
     IL::DebugSingleValue* valueInst = &value;
     
     for (uint32_t i = 0; i < indices.size(); i++) {
@@ -332,7 +332,16 @@ static IL::DebugSingleValue* GetStructuredValueAtOffsetRef(IL::DebugSingleValue&
             case Backend::IL::TypeKind::Array:
             case Backend::IL::TypeKind::Vector:
             case Backend::IL::TypeKind::Matrix: {
-                valueInst = &valueInst->values[indices[i]];
+                SpvId id = indices[i];
+
+                // May be dynamic
+                if (auto* constant = program.GetConstants().GetConstant<IL::IntConstant>(id)) {
+                    valueInst = &valueInst->values[constant->value];
+                } else {
+                    // TODO: How do we handle dynamic offsets?
+                    // We'd probably have to handle it at reconstruction, but that messes with this handling entirely
+                    return nullptr;
+                }
                 break;
             }
         }
@@ -553,9 +562,8 @@ void DebugEmitter::GetStack(IL::Program &program, const IL::Instruction *instr, 
                 }
                 
                 // Traverse to the value to be reconstructed
-                IL::DebugSingleValue* value = GetStructuredValueAtOffsetRef(variable->value, valueInfo.accessIndices);
+                IL::DebugSingleValue* value = GetStructuredValueAtOffsetRef(program, variable->value, valueInfo.accessIndices);
                 if (!value) {
-                    ASSERT(false, "Failed to get structured value at offset");
                     return;
                 }
                     
