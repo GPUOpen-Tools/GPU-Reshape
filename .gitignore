@@ -1,6 +1,8 @@
-# JetBrains
-.idea/
-.idea_modules/
+# IDEs and related
+.*/
+
+# Private data
+Restrict/
 
 # Python
 venv/
