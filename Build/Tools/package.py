@@ -25,6 +25,7 @@
 # 
 
 import os
+import re
 import sys
 import shutil
 import subprocess
@@ -53,8 +54,7 @@ ignore_list = [
 ]
 
 publish_projects = [
-    # "Source/UIX/Studio/Studio.csproj",
-    # "Source/Services/Discovery/DotNet/NotifyIcon/NotifyIcon.csproj"
+    "Source/UIX/Studio/Studio.csproj",
 ]
 
 # All required files
@@ -105,6 +105,7 @@ for package in packages:
     # Destination directory
     pck_dir = os.path.join(pck_dir_root, package)
     sym_dir = os.path.join(pck_dir_root, package + "Sym")
+    pub_int_dir = os.path.join(pck_dir_root, package + "PubInt")
 
     # Remove old package data
     if os.path.exists(pck_dir):
@@ -115,10 +116,16 @@ for package in packages:
     if os.path.exists(sym_dir):
         sys.stdout.write("\tRemoving old package symbols...\n")
         shutil.rmtree(sym_dir)
+
+    # Remove old package publish-int data
+    if os.path.exists(pub_int_dir):
+        sys.stdout.write("\tRemoving old package publish-int...\n")
+        shutil.rmtree(pub_int_dir)
        
     # Ensure tree exists
     os.makedirs(pck_dir)
     os.makedirs(sym_dir)
+    os.makedirs(pub_int_dir)
     
     # Process all files
     for filename in os.listdir(bin_dir):
@@ -176,8 +183,14 @@ for package in packages:
             "dotnet",
             "publish",
             os.path.join(root_dir, project),
-            "-c", package.split('/')[-1],
-            "-o", pck_dir,
+            "-c", re.split(r'\\|//', package)[-1],
+            "-o", pub_int_dir,
+            "-r", "win-x64",
+            "-f", "net8.0",
             "--self-contained",
-            "-r", "win-x64"
+            "-p:PublishReadyToRun=true"
         ])
+        
+        # Copy all contents
+        sys.stdout.write(f"\tPackaging published R2R {pub_int_dir} to {pck_dir}\n")
+        shutil.copytree(pub_int_dir, pck_dir, dirs_exist_ok=True)
