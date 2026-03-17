@@ -74,3 +74,22 @@ ExternalProject_Add(
 if (MINGW)
     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/VulkanLoader/loader/winres.h "#include <Windows.h>")
 endif()
+
+if (${ENABLE_UNIT_TESTS})
+    # CTS
+    ExternalProject_Add(
+        VulkanCTS
+        DEPENDS SPIRVTools SPIRVHeaders
+        GIT_REPOSITORY https://github.com/KhronosGroup/VK-GL-CTS
+        GIT_TAG vulkan-cts-1.4.5.2
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/VulkanCTS
+        USES_TERMINAL_INSTALL 0
+        UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
+        PATCH_COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_SOURCE_DIR}/VulkanCTS python external/fetch_sources.py
+        BUILD_COMMAND ${CMAKE_COMMAND} --build . --target deqp-vk --parallel
+        CMAKE_ARGS
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+            -G ${CMAKE_GENERATOR}
+    )
+endif()

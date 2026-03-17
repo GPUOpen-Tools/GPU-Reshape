@@ -27,6 +27,7 @@ ThirdParty/VulkanHeaders/
 ThirdParty/SPIRVHeaders/
 ThirdParty/SPIRVTools/
 ThirdParty/VulkanLoader/
+ThirdParty/VulkanCTS/
 ThirdParty/JSON/
 ThirdParty/Detour/
 ThirdParty/DXIL/
