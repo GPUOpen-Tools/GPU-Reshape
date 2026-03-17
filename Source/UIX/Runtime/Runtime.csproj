@@ -6,7 +6,6 @@
         <Nullable>enable</Nullable>
         <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
         <Platforms>x64</Platforms>
-        <PublishTrimmed>true</PublishTrimmed>
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AssemblyName>UIX.Studio.Runtime</AssemblyName>

@@ -6,7 +6,6 @@
         <Nullable>enable</Nullable>
         <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
         <Platforms>x64</Platforms>
-        <PublishTrimmed>true</PublishTrimmed>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AssemblyName>GRS.Features.Concurrency.UIX</AssemblyName>
     </PropertyGroup>
