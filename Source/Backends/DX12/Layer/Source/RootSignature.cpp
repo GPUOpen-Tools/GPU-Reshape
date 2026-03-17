@@ -655,7 +655,7 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
         eventParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
         eventParameter.Constants.ShaderRegister = outRoot->global.eventConstantBaseRegister;
         eventParameter.Constants.RegisterSpace = outRoot->global.space;
-        eventParameter.Constants.Num32BitValues = eventCount;
+        eventParameter.Constants.Num32BitValues = std::max(1u, eventCount);
     }
     
     // All deny flags
