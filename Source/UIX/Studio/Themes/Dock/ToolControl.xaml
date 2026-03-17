@@ -87,7 +87,7 @@
                         ZIndex="100"
                         HorizontalAlignment="Stretch"
                         Height="1" Width="NaN"
-                        VerticalAlignment="{Binding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}"
+                        VerticalAlignment="{ReflectionBinding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}"
                         Background="{DynamicResource BorderColor}"/>
                 </Grid>
             </ControlTemplate>
@@ -101,7 +101,7 @@
         <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="ZIndex" Value="1" />
         <Setter Property="DockPanel.Dock"
-                Value="{Binding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}" />
+                Value="{ReflectionBinding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}" />
         <Setter Property="ItemsPanel">
             <ItemsPanelTemplate>
                 <WrapPanel ClipToBounds="False" />

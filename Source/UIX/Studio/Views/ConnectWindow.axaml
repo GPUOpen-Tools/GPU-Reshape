@@ -36,6 +36,7 @@
         xmlns:r="using:Studio.Resources"
         xmlns:converters="clr-namespace:Avalonia.Markup.Xaml.Converters;assembly=Avalonia.Markup.Xaml"
         xmlns:controls="clr-namespace:Studio.Views.Controls"
+        xmlns:viewModels="clr-namespace:Studio.ViewModels"
         mc:Ignorable="d"
         d:DesignWidth="550" d:DesignHeight="350"
         Width="550" Height="350"
@@ -49,7 +50,8 @@
         Title="Create Workspace Connection"
         ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        SystemDecorations="BorderOnly">
+        SystemDecorations="BorderOnly"
+        x:DataType="viewModels:ConnectViewModel">
     <Window.Resources>
         <ResourceDictionary>
             <vc:ConnectionStatusToProgressConverter x:Key="ConnectionStatusToProgressConverter" />

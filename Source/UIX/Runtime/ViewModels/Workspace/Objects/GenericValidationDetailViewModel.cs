@@ -37,7 +37,11 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Is the collection paused?
         /// </summary>
-        public bool Paused = false;
+        public bool Paused
+        {
+            get => _paused;
+            set => this.RaiseAndSetIfChanged(ref _paused, value);
+        }
 
         /// <summary>
         /// All instances associated to this object
@@ -106,5 +110,10 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Pump for main collection
         /// </summary>
         private PumpedList<string> pump = new();
+
+        /// <summary>
+        /// Internal paused state
+        /// </summary>
+        private bool _paused = false;
     }
 }

@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -60,7 +61,10 @@ namespace Studio.ViewModels.Controls.Themes
                 switch (dockVisibleDockable)
                 {
                     case ToolDock toolDock:
-                        toolDock.WhenAnyValue(x => x.IsExpanded).Subscribe(_ => ChildExpansionStateChanged());
+                        toolDock
+                            .WhenAnyValue(x => x.IsExpanded)
+                            .Skip(1)
+                            .Subscribe(_ => ChildExpansionStateChanged());
                         break;
                     case IProportionalDock proportionalDock:
                         SubscribeExpansion(proportionalDock);

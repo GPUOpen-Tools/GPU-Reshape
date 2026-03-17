@@ -77,6 +77,15 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         public bool IsVisible
         {
+            get => _isVisible;
+            set => this.RaiseAndSetIfChanged(ref _isVisible, value);
+        }
+
+        /// <summary>
+        /// Is this context enabled?
+        /// </summary>
+        public bool IsEnabled
+        {
             get => _isEnabled;
             set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
         }
@@ -129,7 +138,12 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Internal enabled state
         /// </summary>
-        private bool _isEnabled = false;
+        private bool _isVisible = false;
+
+        /// <summary>
+        /// Internal enabled state
+        /// </summary>
+        private bool _isEnabled = true;
 
         /// <summary>
         /// Internal target view models

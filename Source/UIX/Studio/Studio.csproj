@@ -14,8 +14,7 @@
         <StartupObject>Studio.Program</StartupObject>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyName>GPUReshape</AssemblyName>
-        
-        
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
     </PropertyGroup>
 

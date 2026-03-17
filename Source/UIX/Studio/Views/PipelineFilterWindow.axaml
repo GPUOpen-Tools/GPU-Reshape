@@ -52,7 +52,8 @@
         Title="Create Pipeline Filter"
         ExtendClientAreaChromeHints="SystemChrome"
         ExtendClientAreaToDecorationsHint="True"
-        SystemDecorations="BorderOnly">
+        SystemDecorations="BorderOnly"
+        x:DataType="vm:PipelineFilterViewModel">
     <Window.Resources>
         <ResourceDictionary>
             <vc:QueryResultToProgressConverter x:Key="QueryResultToProgressConverter" />

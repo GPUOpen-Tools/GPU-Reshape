@@ -64,28 +64,28 @@
                                 <DataGridTemplateColumn Width="85">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <theme:PropertyGridDataTemplate>
-                                            <DataTemplate x:Key="{x:Type sys:Boolean}">
+                                            <DataTemplate x:Key="{x:Type sys:Boolean}" x:DataType="controls:PropertyFieldViewModel">
                                                 <CheckBox
                                                     Margin="0 0 0 2.5"
                                                     IsChecked="{Binding Value}"
                                                     HorizontalAlignment="Right"
                                                     ToolTip.Tip="{Binding Description}" />
                                             </DataTemplate>
-                                            <DataTemplate x:Key="{x:Type sys:Int32}">
+                                            <DataTemplate x:Key="{x:Type sys:Int32}" x:DataType="controls:PropertyFieldViewModel">
                                                 <NumericUpDown
                                                     Margin="0 0 0 2.5" Height="25"
                                                     Value="{Binding Value}"
                                                     Padding="0"
                                                     ToolTip.Tip="{Binding Description}" />
                                             </DataTemplate>
-                                            <DataTemplate x:Key="{x:Type sys:UInt32}">
+                                            <DataTemplate x:Key="{x:Type sys:UInt32}" x:DataType="controls:PropertyFieldViewModel">
                                                 <NumericUpDown
                                                     Margin="0 0 0 2.5" Height="25"
                                                     Value="{Binding Value}"
                                                     Padding="0"
                                                     ToolTip.Tip="{Binding Description}" />
                                             </DataTemplate>
-                                            <DataTemplate x:Key="{x:Type sys:Double}">
+                                            <DataTemplate x:Key="{x:Type sys:Double}" x:DataType="controls:PropertyFieldViewModel">
                                                 <NumericUpDown
                                                     Margin="0 0 0 2.5" Height="25"
                                                     Value="{Binding Value}"

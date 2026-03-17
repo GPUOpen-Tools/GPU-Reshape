@@ -32,6 +32,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:r="clr-namespace:Studio.Resources"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
              mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="20"
              x:Class="Studio.Views.Controls.EditLabel"
              Height="20">
@@ -47,7 +48,7 @@
             Background="Transparent"
             Padding="0"
             Margin="5 0 0 0"
-            Text="{Binding $parent[UserControl].Text}"/>
+            Text="{Binding $parent[controls:EditLabel].Text}"/>
     
         <TextBlock 
             VerticalAlignment="Center" 
@@ -56,13 +57,13 @@
             Height="20" 
             x:Name="Label" 
             Margin="5 0 0 0" 
-            Text="{Binding $parent[UserControl].Text}"/>
+            Text="{Binding $parent[controls:EditLabel].Text}"/>
     
         <Button
             x:Name="CloseButton"
             ToolTip.Tip="{x:Static r:Resources.EditLabel_Close_Tooltip}"
-            Command="{Binding $parent[UserControl].CloseCommand}"
-            CommandParameter="{Binding}"
+            Command="{Binding $parent[controls:EditLabel].CloseCommand}"
+            CommandParameter="{ReflectionBinding}"
             VerticalAlignment="Center"
             HorizontalAlignment="Right"
             Classes="Close"

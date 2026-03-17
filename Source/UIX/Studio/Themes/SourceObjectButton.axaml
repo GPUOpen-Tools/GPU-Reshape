@@ -29,7 +29,9 @@
 
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:valueConverters="clr-namespace:Studio.ValueConverters">
+        xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
+        xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
+        x:DataType="controls:TextualSourceObjectMarkerCategoryViewModel">
     <Design.PreviewWith>
         <Grid Width="200" Height="200">
             <Button Classes="SourceObject" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Click me!" />

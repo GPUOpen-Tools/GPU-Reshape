@@ -34,7 +34,8 @@
              xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
              xmlns:r="clr-namespace:Studio.Resources"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Studio.Views.Controls.DiscoveryDropdown">
+             x:Class="Studio.Views.Controls.DiscoveryDropdown"
+             x:DataType="controls:DiscoveryDropdownViewModel">
     <UserControl.DataContext>
         <controls:DiscoveryDropdownViewModel/>
     </UserControl.DataContext>
