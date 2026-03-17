@@ -66,17 +66,19 @@ add_custom_command(
 
 #----- Test Application -----#
 
-# Test files
-Project_AddBackendTest_Common(GeneratedTest Initialization)
-Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationSimpleTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationStructuredTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SampledTest.hlsl)
-
-Project_AddTest(
-    NAME GRS.Features.Initialization.Tests
-    SOURCE ${GeneratedTest}
-    LIBS GRS.Test.Device GRS.Features.Initialization.Backend
-)
+if (${ENABLE_UNIT_TESTS})
+    # Test files
+    Project_AddBackendTest_Common(GeneratedTest Initialization)
+    Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationSimpleTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationStructuredTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SampledTest.hlsl)
+    
+    Project_AddTest(
+        NAME GRS.Features.Initialization.Tests
+        SOURCE ${GeneratedTest}
+        LIBS GRS.Test.Device GRS.Features.Initialization.Backend
+    )
+endif()
 
 #----- .Net bindings -----#
 

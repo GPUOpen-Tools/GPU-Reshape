@@ -56,20 +56,22 @@ add_custom_command(
 
 #----- Test Application -----#
 
-# Test files
-Project_AddBackendTest_Common(GeneratedTest Descriptor)
-Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/DescriptorSimpleTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/SamplerIndexOOBTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/TextureIndexOOBTest.hlsl)
-
-Project_AddTest(
-    NAME GRS.Features.Descriptor.Tests
-    SOURCE
-        ${GeneratedTest}
-        Source/SamplerIndexOOB.cpp
-        Source/TextureIndexOOB.cpp
-    LIBS GRS.Test.Device GRS.Features.Descriptor.Backend
-)
+if (${ENABLE_UNIT_TESTS})
+    # Test files
+    Project_AddBackendTest_Common(GeneratedTest Descriptor)
+    Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/DescriptorSimpleTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/SamplerIndexOOBTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/TextureIndexOOBTest.hlsl)
+    
+    Project_AddTest(
+        NAME GRS.Features.Descriptor.Tests
+        SOURCE
+            ${GeneratedTest}
+            Source/SamplerIndexOOB.cpp
+            Source/TextureIndexOOB.cpp
+        LIBS GRS.Test.Device GRS.Features.Descriptor.Backend
+    )
+endif()
 
 #----- .Net bindings -----#
 

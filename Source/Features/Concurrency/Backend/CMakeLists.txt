@@ -64,17 +64,19 @@ add_custom_command(
 
 #----- Test Application -----#
 
-# Test files
-Project_AddBackendTest_Common(GeneratedTest Concurrency)
-Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencySimpleTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyAddressingTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyExpansionTest.hlsl)
-
-Project_AddTest(
-        NAME GRS.Features.Concurrency.Tests
-        SOURCE ${GeneratedTest}
-        LIBS GRS.Test.Device GRS.Features.Concurrency.Backend
-)
+if (${ENABLE_UNIT_TESTS})
+    # Test files
+    Project_AddBackendTest_Common(GeneratedTest Concurrency)
+    Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencySimpleTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyAddressingTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyExpansionTest.hlsl)
+    
+    Project_AddTest(
+            NAME GRS.Features.Concurrency.Tests
+            SOURCE ${GeneratedTest}
+            LIBS GRS.Test.Device GRS.Features.Concurrency.Backend
+    )
+endif()
 
 #----- .Net bindings -----#
 

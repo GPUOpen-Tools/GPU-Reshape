@@ -63,15 +63,17 @@ add_custom_command(
 
 #----- Test Application -----#
 
-# Test files
-Project_AddBackendTest_Common(GeneratedTest Loop)
-Project_AddBackendTest(GeneratedTest "-Od" Loop Tests/Data/LoopSimpleTest.hlsl)
-
-Project_AddTest(
-        NAME GRS.Features.Loop.Tests
-        SOURCE ${GeneratedTest}
-        LIBS GRS.Test.Device GRS.Features.Loop.Backend
-)
+if (${ENABLE_UNIT_TESTS})
+    # Test files
+    Project_AddBackendTest_Common(GeneratedTest Loop)
+    Project_AddBackendTest(GeneratedTest "-Od" Loop Tests/Data/LoopSimpleTest.hlsl)
+    
+    Project_AddTest(
+            NAME GRS.Features.Loop.Tests
+            SOURCE ${GeneratedTest}
+            LIBS GRS.Test.Device GRS.Features.Loop.Backend
+    )
+endif()
 
 #----- .Net bindings -----#
 

@@ -56,15 +56,17 @@ add_custom_command(
 
 #----- Test Application -----#
 
-# Test files
-Project_AddBackendTest_Common(GeneratedTest ExportStability)
-Project_AddBackendTest(GeneratedTest "-Od" ExportStability Tests/Data/ExportStabilitySimpleTest.hlsl)
-
-Project_AddTest(
-        NAME GRS.Features.ExportStability.Tests
-        SOURCE ${GeneratedTest}
-        LIBS GRS.Test.Device GRS.Features.ExportStability.Backend
-)
+if (${ENABLE_UNIT_TESTS})
+    # Test files
+    Project_AddBackendTest_Common(GeneratedTest ExportStability)
+    Project_AddBackendTest(GeneratedTest "-Od" ExportStability Tests/Data/ExportStabilitySimpleTest.hlsl)
+    
+    Project_AddTest(
+            NAME GRS.Features.ExportStability.Tests
+            SOURCE ${GeneratedTest}
+            LIBS GRS.Test.Device GRS.Features.ExportStability.Backend
+    )
+endif()
 
 #----- .Net bindings -----#
 

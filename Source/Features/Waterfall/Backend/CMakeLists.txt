@@ -56,21 +56,23 @@ add_custom_command(
 
 #----- Test Application -----#
 
-# Test files
-Project_AddBackendTest_Common(GeneratedTest Waterfall)
-Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-O3" Waterfall Tests/Data/WaterfallSimplePhiTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleConstantTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleDivergenceTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleLoopPartialTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleDivergenceReachingStoreTest.hlsl)
-Project_AddBackendTest(GeneratedTest "-O3" Waterfall Tests/Data/WaterfallSimpleConditionalMaskingTest.hlsl)
-
-Project_AddTest(
-    NAME GRS.Features.Waterfall.Tests
-    SOURCE ${GeneratedTest}
-    LIBS GRS.Test.Device GRS.Features.Waterfall.Backend
-)
+if (${ENABLE_UNIT_TESTS})
+    # Test files
+    Project_AddBackendTest_Common(GeneratedTest Waterfall)
+    Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-O3" Waterfall Tests/Data/WaterfallSimplePhiTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleConstantTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleDivergenceTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleLoopPartialTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleDivergenceReachingStoreTest.hlsl)
+    Project_AddBackendTest(GeneratedTest "-O3" Waterfall Tests/Data/WaterfallSimpleConditionalMaskingTest.hlsl)
+    
+    Project_AddTest(
+        NAME GRS.Features.Waterfall.Tests
+        SOURCE ${GeneratedTest}
+        LIBS GRS.Test.Device GRS.Features.Waterfall.Backend
+    )
+endif()
 
 #----- .Net bindings -----#
 

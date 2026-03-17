@@ -71,14 +71,16 @@ add_custom_command(
 
 #----- Test Application -----#
 
-# Test files
-Project_AddBackendTest_Common(GeneratedTest Debug)
-
-Project_AddTest(
-        NAME GRS.Features.Debug.Tests
-        SOURCE ${GeneratedTest}
-        LIBS GRS.Test.Device GRS.Features.Debug.Backend
-)
+if (${ENABLE_UNIT_TESTS})
+    # Test files
+    Project_AddBackendTest_Common(GeneratedTest Debug)
+    
+    Project_AddTest(
+            NAME GRS.Features.Debug.Tests
+            SOURCE ${GeneratedTest}
+            LIBS GRS.Test.Device GRS.Features.Debug.Backend
+    )
+endif()
 
 #----- .Net bindings -----#
 

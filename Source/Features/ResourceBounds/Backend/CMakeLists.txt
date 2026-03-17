@@ -61,15 +61,17 @@ add_custom_command(
 
 #----- Test Application -----#
 
-# Test files
-Project_AddBackendTest_Common(GeneratedTest ResourceBounds)
-Project_AddBackendTest(GeneratedTest "-Od" ResourceBounds Tests/Data/ResourceBoundsSimpleTest.hlsl)
-
-Project_AddTest(
-        NAME GRS.Features.ResourceBounds.Tests
-        SOURCE ${GeneratedTest}
-        LIBS GRS.Test.Device GRS.Features.ResourceBounds.Backend
-)
+if (${ENABLE_UNIT_TESTS})
+    # Test files
+    Project_AddBackendTest_Common(GeneratedTest ResourceBounds)
+    Project_AddBackendTest(GeneratedTest "-Od" ResourceBounds Tests/Data/ResourceBoundsSimpleTest.hlsl)
+    
+    Project_AddTest(
+            NAME GRS.Features.ResourceBounds.Tests
+            SOURCE ${GeneratedTest}
+            LIBS GRS.Test.Device GRS.Features.ResourceBounds.Backend
+    )
+endif()
 
 #----- .Net bindings -----#
 
