@@ -302,6 +302,8 @@ struct DeviceDispatchTable {
     PFN_vkCreateSemaphore                    next_vkCreateSemaphore;
     PFN_vkDestroySemaphore                   next_vkDestroySemaphore;
     PFN_vkGetRayTracingShaderGroupHandlesKHR next_vkGetRayTracingShaderGroupHandlesKHR;
+    PFN_vkDeferredOperationJoinKHR           next_vkDeferredOperationJoinKHR;
+    PFN_vkGetDeferredOperationResultKHR      next_vkGetDeferredOperationResultKHR;
     PFN_vkGetBufferDeviceAddress             next_vkGetBufferDeviceAddress;
 
     /// Properties

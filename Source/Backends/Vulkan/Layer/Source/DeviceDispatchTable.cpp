@@ -132,6 +132,8 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkCreateSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(getDeviceProcAddr(object, "vkCreateSemaphore"));
     next_vkDestroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(getDeviceProcAddr(object, "vkDestroySemaphore"));
     next_vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(getDeviceProcAddr(object, "vkGetRayTracingShaderGroupHandlesKHR"));
+    next_vkDeferredOperationJoinKHR = reinterpret_cast<PFN_vkDeferredOperationJoinKHR>(getDeviceProcAddr(object, "vkDeferredOperationJoinKHR"));
+    next_vkGetDeferredOperationResultKHR = reinterpret_cast<PFN_vkGetDeferredOperationResultKHR>(getDeviceProcAddr(object, "vkGetDeferredOperationResultKHR"));
     next_vkGetBufferDeviceAddress = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(getDeviceProcAddr(object, "vkGetBufferDeviceAddress"));
     
     // Populate all generated commands

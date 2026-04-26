@@ -325,6 +325,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice devi
     if (!Succeeded(result)) {
         return result;
     }
+    
+    // TODO: We could mirror the deferred states, but for now just join it explicitly
+    if (deferredOperation) {
+        table->next_vkDeferredOperationJoinKHR(device, deferredOperation);
+        table->next_vkGetDeferredOperationResultKHR(device, deferredOperation);
+    }
 
     // Allocate states
     for (uint32_t i = 0; i < createInfoCount; i++) {
