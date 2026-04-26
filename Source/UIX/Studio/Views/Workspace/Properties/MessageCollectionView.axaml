@@ -229,7 +229,7 @@
                         <TreeDataGrid.Resources>
                             <ResourceDictionary>
                                 <!-- Template for generic "messages" -->
-                                <DataTemplate x:Key="MessageColumn">
+                                <DataTemplate x:Key="MessageColumn" x:DataType="controls:IObservableTreeItem"> 
                                     <ContentControl Content="{Binding}">
                                         <ContentControl.DataTemplates>
                                             <!-- Category handler -->
@@ -259,7 +259,6 @@
                                                     HorizontalAlignment="Left"
                                                     VerticalAlignment="Center">
                                                     <PathIcon 
-                                                        x:DataType="message:ObservableMessageItem"
                                                         HorizontalAlignment="Left"
                                                         VerticalAlignment="Center"
                                                         Data="{Binding ValidationObject.Severity, Converter={StaticResource ValidationSeverityToIconConverter}}"
@@ -285,9 +284,8 @@
                                 </DataTemplate>
                                 
                                 <!-- Template for shader filenames -->
-                                <DataTemplate x:Key="ShaderColumn">
+                                <DataTemplate x:Key="ShaderColumn" x:DataType="message:ObservableMessageItem">
                                     <TextBlock 
-                                        x:DataType="message:ObservableMessageItem"
                                         HorizontalAlignment="Left"
                                         VerticalAlignment="Center"
                                         Margin="0 0 15 0"
@@ -302,9 +300,8 @@
                                 </DataTemplate>
                                 
                                 <!-- Template for shader extracts -->
-                                <DataTemplate x:Key="ExtractColumn">
+                                <DataTemplate x:Key="ExtractColumn" x:DataType="message:ObservableMessageItem">
                                     <TextBlock 
-                                        x:DataType="message:ObservableMessageItem"
                                         HorizontalAlignment="Left"
                                         VerticalAlignment="Center"
                                         Margin="0 0 15 0"
@@ -314,9 +311,8 @@
                                 </DataTemplate>
                                 
                                 <!-- Template for validation counters -->
-                                <DataTemplate x:Key="CountColumn">
+                                <DataTemplate x:Key="CountColumn" x:DataType="message:ObservableMessageItem">
                                     <TextBlock
-                                        x:DataType="message:ObservableMessageItem"
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
                                         Text="{Binding ValidationObject.Count}"/>
