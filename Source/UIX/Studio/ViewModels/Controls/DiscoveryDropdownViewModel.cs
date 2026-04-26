@@ -154,6 +154,11 @@ namespace Studio.ViewModels.Controls
             {
                 foreach (DiscoveryListenerCLR listener in listeners)
                 {
+                    if (listener.IsGloballyInstalled())
+                    {
+                        listener.UninstallGlobal();
+                    }
+                    
                     listener.Stop();
                 }
             }

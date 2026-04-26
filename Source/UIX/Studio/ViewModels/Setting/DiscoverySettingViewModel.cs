@@ -255,6 +255,11 @@ namespace Studio.ViewModels.Setting
             {
                 foreach (DiscoveryListenerViewModel listener in Listeners.Where(l => l.IsEnabled))
                 {
+                    if (listener.Listener.IsGloballyInstalled())
+                    {
+                        listener.Listener.UninstallGlobal();
+                    }
+
                     listener.Listener.Stop();
                 }
             }
