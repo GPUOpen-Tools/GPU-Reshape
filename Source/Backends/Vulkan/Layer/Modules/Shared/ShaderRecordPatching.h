@@ -41,3 +41,10 @@ struct SBTPatchConstantData {
 struct SBTShaderGroupIdentifierEmbeddedData {
     uint PatchIndex;
 };
+
+#ifdef __cplusplus
+inline uint32_t GetSBTHandleAlignedSize(uint32_t nativeHandleSize, uint32_t alignment) {
+    constexpr uint32_t embedded = static_cast<uint32_t>(sizeof(SBTShaderGroupIdentifierEmbeddedData));
+    return (nativeHandleSize + embedded + alignment - 1) & ~(alignment - 1);
+}
+#endif // __cplusplus

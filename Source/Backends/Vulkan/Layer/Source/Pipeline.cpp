@@ -416,7 +416,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkGetRayTracingShaderGroupHandlesKHR(VkDevic
 
     // Expected strides
     uint32_t srcHandleStride = table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize;
-    uint32_t dstHandleStride = table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize + sizeof(SBTShaderGroupIdentifierEmbeddedData);
+    uint32_t dstHandleStride = GetSBTHandleAlignedSize(table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleAlignment);
 
     // Write embedded handles
     for (uint32_t groupIndex = 0; groupIndex < groupCount; groupIndex++) {
@@ -437,6 +437,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkGetRayTracingShaderGroupHandlesKHR(VkDevic
 
     // OK
     return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkGetRayTracingShaderGroupHandlesNV(VkDevice device, VkPipeline pipeline, uint32_t firstGroup, uint32_t groupCount, size_t dataSize, void* pData) {
+    return Hook_vkGetRayTracingShaderGroupHandlesKHR(device, pipeline, firstGroup, groupCount, dataSize, pData);
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pipeline, const VkAllocationCallbacks* pAllocator) {

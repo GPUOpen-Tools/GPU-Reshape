@@ -353,6 +353,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(DeviceDispatchTable* tabl
 
     if (!std::strcmp(name, "vkGetRayTracingShaderGroupHandlesKHR"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetRayTracingShaderGroupHandlesKHR);
+
+    if (!std::strcmp(name, "vkGetRayTracingShaderGroupHandlesNV"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetRayTracingShaderGroupHandlesNV);
     
     // Check command hooks
     if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(table ? &table->commandBufferDispatchTable : nullptr, name)) {

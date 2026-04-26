@@ -156,7 +156,7 @@ void VKAPI_PTR Hook_vkGetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevi
 
     // For raytracing, extend the handle size by the internal embedded metadata
     if (auto* info = FindStructureTypeMutableUnsafe<VkPhysicalDeviceRayTracingPipelinePropertiesKHR, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR>(pProperties->pNext)) {
-        info->shaderGroupHandleSize = info->shaderGroupHandleSize + sizeof(SBTShaderGroupIdentifierEmbeddedData);
+        info->shaderGroupHandleSize = GetSBTHandleAlignedSize(info->shaderGroupHandleSize, info->shaderGroupHandleAlignment);
 
         if (info->shaderGroupHandleSize % info->shaderGroupHandleAlignment != 0) {
             info->shaderGroupHandleAlignment = std::lcm(info->shaderGroupHandleAlignment, info->shaderGroupHandleSize);

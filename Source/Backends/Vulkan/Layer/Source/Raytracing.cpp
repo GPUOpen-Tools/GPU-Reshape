@@ -113,7 +113,7 @@ static VkStridedDeviceAddressRegionKHR PatchRaytracingIdentifiersRangeImmediate(
     sbtPatchData->SBTRecordCount = recordCount;
     sbtPatchData->IdentifierDWordStride = static_cast<uint32_t>(range.stride / sizeof(uint32_t));
     sbtPatchData->NativeIdentifierDWordStride = commandBuffer->table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize / sizeof(uint32_t);
-    sbtPatchData->IdentifierHandleDWordStride = (commandBuffer->table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize + sizeof(SBTShaderGroupIdentifierEmbeddedData)) / sizeof(uint32_t);
+    sbtPatchData->IdentifierHandleDWordStride = GetSBTHandleAlignedSize(commandBuffer->table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, commandBuffer->table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleAlignment) / sizeof(uint32_t);
 
     // Allocate the descriptor set
     VkDescriptorSet descriptorSet = commandBuffer->streamState->freeDescriptorAllocator.Allocate(program.sbtPatchSetLayout);
