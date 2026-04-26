@@ -275,7 +275,7 @@ static uint64_t GetRaytracingShaderIdentifierPatchHandles(DeviceDispatchTable* t
     // Get handles for all nested libraries
     for (PipelineState* library : state->pipelineLibraries) {
         ASSERT(library->type == PipelineType::Raytracing, "Unexpected library type");
-        patchHandleOffset += GetRaytracingShaderIdentifierPatchHandles(table, static_cast<RaytracingPipelineState*>(library), instrument, patchHandleData, patchHandleOffset);
+        patchHandleOffset = GetRaytracingShaderIdentifierPatchHandles(table, static_cast<RaytracingPipelineState*>(library), instrument, patchHandleData, patchHandleOffset);
     }
 
     // Offset
@@ -366,7 +366,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice devi
         // Collect libraries
         if (createInfo.pLibraryInfo) {
             for (uint32_t libraryIndex = 0; libraryIndex < createInfo.pLibraryInfo->libraryCount; libraryIndex++) {
-                PipelineState* libraryState = table->states_pipeline.Get(createInfo.pLibraryInfo->pLibraries[i]);
+                PipelineState* libraryState = table->states_pipeline.Get(createInfo.pLibraryInfo->pLibraries[libraryIndex]);
 
                 // Add all the shader modules of this library as referenced
                 for (ShaderModuleState* shaderModuleState : libraryState->ownedShaderModules) {
