@@ -119,6 +119,26 @@ inline void PrependExtensionUnsafe(void* _struct, void* extension) {
     structHeader->pNext = extension;
 }
 
+inline bool Succeeded(VkResult result) {
+    switch (result) {
+        default:
+            return false;
+        case VK_SUCCESS:
+        case VK_NOT_READY:
+        case VK_TIMEOUT:
+        case VK_EVENT_SET:
+        case VK_EVENT_RESET:
+        case VK_INCOMPLETE:
+        case VK_SUBOPTIMAL_KHR:
+        case VK_THREAD_IDLE_KHR:
+        case VK_THREAD_DONE_KHR:
+        case VK_OPERATION_DEFERRED_KHR:
+        case VK_OPERATION_NOT_DEFERRED_KHR:
+        case VK_PIPELINE_COMPILE_REQUIRED:
+            return true;
+    }
+}
+
 /// Getter stub
 template<typename T>
 inline T* GetFirstKHR() {
@@ -134,3 +154,5 @@ inline auto GetFirstKHR(TA* first, TX*... args) {
 
     return GetFirstKHR<TA>(args...);
 }
+
+

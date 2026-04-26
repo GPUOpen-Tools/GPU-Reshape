@@ -72,7 +72,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
 
     // Pass down callchain
     VkResult result = table->next_vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pipelines);
-    if (result != VK_SUCCESS) {
+    if (!Succeeded(result)) {
         return result;
     }
 
@@ -151,7 +151,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
 
     // Pass down callchain
     VkResult result = table->next_vkCreateComputePipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pipelines);
-    if (result != VK_SUCCESS) {
+    if (!Succeeded(result)) {
         return result;
     }
 
@@ -292,7 +292,7 @@ RaytracingShaderIdentifierPatch* CreateRaytracingShaderIdentifierPatch(DeviceDis
     info.size = state->identifierSet.count * table->physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize;
 
     // Attempt to create the host buffer
-    if (table->next_vkCreateBuffer(table->object, &info, nullptr, &patch->buffer) != VK_SUCCESS) {
+    if (!Succeeded(table->next_vkCreateBuffer(table->object, &info, nullptr, &patch->buffer))) {
         return nullptr;
     }
 
@@ -322,7 +322,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRayTracingPipelinesKHR(VkDevice devi
 
     // Pass down callchain
     VkResult result = table->next_vkCreateRayTracingPipelinesKHR(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pipelines);
-    if (result != VK_SUCCESS) {
+    if (!Succeeded(result)) {
         return result;
     }
 
@@ -404,7 +404,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkGetRayTracingShaderGroupHandlesKHR(VkDevic
         data.size(), data.data()
     );
 
-    if (result != VK_SUCCESS) {
+    if (!Succeeded(result)) {
         return result;
     }
 
