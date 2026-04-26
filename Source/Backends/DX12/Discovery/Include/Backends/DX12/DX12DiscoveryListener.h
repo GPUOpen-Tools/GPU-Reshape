@@ -38,6 +38,7 @@ public:
     DX12DiscoveryListener();
 
     /// Overrides
+    DiscoveryListenerInfo GetInfo() override;
     bool IsRunning() override;
     bool IsGloballyInstalled() override;
     bool Start() override;

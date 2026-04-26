@@ -26,30 +26,26 @@
 
 #pragma once
 
-// Discovery
-#include <Discovery/IDiscoveryListener.h>
+class IDiscoveryListener;
 
-// Std
-#include <string_view>
+namespace Discovery::CLR {
+	public ref class DiscoveryListenerCLR {
+	public:
+		DiscoveryListenerCLR(::IDiscoveryListener* listener);
 
-class VulkanDiscoveryListener final : public IDiscoveryListener {
-public:
-    VulkanDiscoveryListener();
+		property System::String^ Name {
+			System::String^ get();
+		}
 
-    /// Overrides
-    DiscoveryListenerInfo GetInfo() override;
-    bool IsRunning() override;
-    bool IsGloballyInstalled() override;
-    bool Start() override;
-    bool Stop() override;
-    void SetupBootstrappingEnvironment(const DiscoveryProcessCreateInfo& info, DiscoveryBootstrappingEnvironment& env) override;
-    bool InstallGlobal() override;
-    bool UninstallGlobal() override;
-    bool InstallLocal() override;
-    bool HasConflictingInstances() override;
-    bool UninstallConflictingInstances() override;
+		bool IsRunning();
+		bool IsGloballyInstalled();
+		bool Start();
+		bool Stop();
+		bool InstallGlobal();
+		bool UninstallGlobal();
 
-private:
-    /// Is this listener presently globally installed?
-    bool isGlobal{false};
-};
+	private:
+		/// Underlying handle
+		::IDiscoveryListener* _listener;
+	};
+}

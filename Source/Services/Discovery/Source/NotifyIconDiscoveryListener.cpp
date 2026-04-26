@@ -210,6 +210,10 @@ inline void StartProcess(char* path) {
 }
 #endif // _WIN32
 
+DiscoveryListenerInfo NotifyIconDiscoveryListener::GetInfo() {
+    return DiscoveryListenerInfo{};
+}
+
 NotifyIconDiscoveryListener::NotifyIconDiscoveryListener() {
     // Determine the service path
     notifyPath = GetCurrentExecutableDirectory() / "GPUReshape.NotifyIcon.exe";
@@ -269,9 +273,9 @@ void NotifyIconDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryP
 }
 
 bool NotifyIconDiscoveryListener::IsGloballyInstalled() {
-    return true;
+    return false;
 }
 
 bool NotifyIconDiscoveryListener::IsRunning() {
-    return true;
+    return false;
 }

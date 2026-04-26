@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -25,17 +25,17 @@
 // 
 
 using System;
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Avalonia;
 using Avalonia.Threading;
+using Discovery.CLR;
 using DynamicData;
 using ReactiveUI;
 using Studio.Models.Logging;
 using Studio.Services;
 using Studio.Services.Suspension;
-using Studio.ViewModels.Setting;
 
 namespace Studio.ViewModels.Setting
 {
@@ -218,8 +218,9 @@ namespace Studio.ViewModels.Setting
                 return;
             }
 
-            IsRunning = _discoveryService.IsRunning();
-            IsGloballyInstalled = _discoveryService.IsGloballyInstalled();
+            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+            IsRunning = listeners.Any(l => l.IsRunning());
+            IsGloballyInstalled = listeners.Any(l => l.IsGloballyInstalled());
         }
 
         /// <summary>
@@ -231,14 +232,22 @@ namespace Studio.ViewModels.Setting
             {
                 return;
             }
-            
+
+            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+
             if (_isRunning)
             {
-                _discoveryService.Stop();
+                foreach (DiscoveryListenerCLR listener in listeners)
+                {
+                    listener.Stop();
+                }
             }
             else
             {
-                _discoveryService.Start();
+                foreach (DiscoveryListenerCLR listener in listeners)
+                {
+                    listener.Start();
+                }
             }
         }
 
@@ -251,10 +260,15 @@ namespace Studio.ViewModels.Setting
             {
                 return;
             }
-            
-            if (_discoveryService.IsGloballyInstalled())
+
+            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+
+            if (listeners.Any(l => l.IsGloballyInstalled()))
             {
-                _discoveryService.UninstallGlobal();
+                foreach (DiscoveryListenerCLR listener in listeners)
+                {
+                    listener.UninstallGlobal();
+                }
             }
             else
             {
@@ -264,9 +278,12 @@ namespace Studio.ViewModels.Setting
                     // User has rejected, do not install
                     return;
                 }
-                
+
                 // Consent has been granted, proceed
-                _discoveryService.InstallGlobal();
+                foreach (DiscoveryListenerCLR listener in listeners)
+                {
+                    listener.InstallGlobal();
+                }
             }
         }
 

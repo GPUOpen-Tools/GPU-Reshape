@@ -26,9 +26,11 @@
 
 // Discovery
 #include <Services/Discovery/DiscoveryService.h>
+#include <Discovery/IDiscoveryListener.h>
 
 // Std
 #include <iostream>
+#include <vector>
 
 int main(int32_t argc, const char *const *argv) {
     DiscoveryService service;
@@ -57,10 +59,22 @@ int main(int32_t argc, const char *const *argv) {
         }
     }
 
+    // Enumerate all listeners
+    uint32_t listenerCount{0};
+    service.EnumerateListeners(&listenerCount, nullptr);
+    
+    std::vector<IDiscoveryListener*> listeners(listenerCount);
+    service.EnumerateListeners(&listenerCount, listeners.data());
+
     // Stop all instance based services
     std::cout << "Stopping running instances... ";
     {
-        if (service.Stop()) {
+        bool success = true;
+        for (IDiscoveryListener* listener : listeners) {
+            success &= listener->Stop();
+        }
+
+        if (success) {
             std::cout << "OK." << std::endl;
         } else {
             std::cout << "Failed!" << std::endl;
@@ -71,7 +85,12 @@ int main(int32_t argc, const char *const *argv) {
     // Uninstall all services
     std::cout << "Uninstalling all services... ";
     {
-        if (service.UninstallGlobal()) {
+        bool success = true;
+        for (IDiscoveryListener* listener : listeners) {
+            success &= listener->UninstallGlobal();
+        }
+
+        if (success) {
             std::cout << "OK." << std::endl;
         } else {
             std::cout << "Failed!" << std::endl;

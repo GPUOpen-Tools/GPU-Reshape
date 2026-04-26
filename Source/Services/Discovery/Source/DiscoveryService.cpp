@@ -83,84 +83,14 @@ bool DiscoveryService::Install() {
     return true;
 }
 
-bool DiscoveryService::IsGloballyInstalled() {
-    // Install all
-    for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        if (!listener->IsGloballyInstalled()) {
-            return false;
+void DiscoveryService::EnumerateListeners(uint32_t* count, IDiscoveryListener** out) {
+    *count = static_cast<uint32_t>(listeners.size());
+
+    if (out) {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(listeners.size()); ++i) {
+            out[i] = listeners[i].GetUnsafe();
         }
     }
-
-    // OK
-    return true;
-}
-
-bool DiscoveryService::IsRunning() {
-    // Install all
-    for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        if (!listener->IsRunning()) {
-            return false;
-        }
-    }
-
-    // OK
-    return true;
-}
-
-bool DiscoveryService::Start() {
-    bool anyFailed = false;
-
-    // Install all
-    for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        if (!listener->Start()) {
-            anyFailed = true;
-        }
-    }
-
-    // OK
-    return !anyFailed;
-}
-
-bool DiscoveryService::Stop() {
-    bool anyFailed = false;
-
-    // Install all
-    for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        if (!listener->Stop()) {
-            anyFailed = true;
-        }
-    }
-
-    // OK
-    return !anyFailed;
-}
-
-bool DiscoveryService::InstallGlobal() {
-    bool anyFailed = false;
-
-    // Install all
-    for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        if (!listener->InstallGlobal()) {
-            anyFailed = true;
-        }
-    }
-
-    // OK
-    return !anyFailed;
-}
-
-bool DiscoveryService::UninstallGlobal() {
-    bool anyFailed = false;
-
-    // Uninstall all
-    for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        if (!listener->UninstallGlobal()) {
-            anyFailed = true;
-        }
-    }
-
-    // OK
-    return !anyFailed;
 }
 
 bool DiscoveryService::InstallLocal(const DiscoveryProcessLocalInfo& localInfo, const MessageStream& environment) {

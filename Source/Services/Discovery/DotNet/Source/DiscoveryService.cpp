@@ -31,6 +31,7 @@
 // Discovery
 #include <Services/Discovery/Managed/DiscoveryService.h>
 #include <Services/Discovery/DiscoveryService.h>
+#include <Discovery/IDiscoveryListener.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -53,34 +54,20 @@ bool Discovery::CLR::DiscoveryService::Install()
 	return service->Install();
 }
 
-bool Discovery::CLR::DiscoveryService::IsGloballyInstalled()
+Collections::Generic::List<Discovery::CLR::DiscoveryListenerCLR^>^ Discovery::CLR::DiscoveryService::GetListeners()
 {
-    return service->IsGloballyInstalled();
-}
+	uint32_t count;
+	service->EnumerateListeners(&count, nullptr);
 
-bool Discovery::CLR::DiscoveryService::IsRunning()
-{
-    return service->IsRunning();
-}
+	std::vector<::IDiscoveryListener*> raw(count);
+	service->EnumerateListeners(&count, raw.data());
 
-bool Discovery::CLR::DiscoveryService::Start()
-{
-	return service->Start();
-}
+	auto list = gcnew Collections::Generic::List<DiscoveryListenerCLR^>(count);
+	for (uint32_t i = 0; i < count; ++i) {
+		list->Add(gcnew DiscoveryListenerCLR(raw[i]));
+	}
 
-bool Discovery::CLR::DiscoveryService::Stop()
-{
-	return service->Stop();
-}
-
-bool Discovery::CLR::DiscoveryService::InstallGlobal()
-{
-	return service->InstallGlobal();
-}
-
-bool Discovery::CLR::DiscoveryService::UninstallGlobal()
-{
-	return service->UninstallGlobal();
+	return list;
 }
 
 bool Discovery::CLR::DiscoveryService::HasConflictingInstances()
@@ -155,6 +142,47 @@ bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryP
 
     // OK
     return true;
+}
+
+Discovery::CLR::DiscoveryListenerCLR::DiscoveryListenerCLR(::IDiscoveryListener* listener)
+	: _listener(listener)
+{
+}
+
+String^ Discovery::CLR::DiscoveryListenerCLR::Name::get()
+{
+	const char* name = _listener->GetInfo().name;
+	return name ? gcnew String(name) : nullptr;
+}
+
+bool Discovery::CLR::DiscoveryListenerCLR::IsRunning()
+{
+	return _listener->IsRunning();
+}
+
+bool Discovery::CLR::DiscoveryListenerCLR::IsGloballyInstalled()
+{
+	return _listener->IsGloballyInstalled();
+}
+
+bool Discovery::CLR::DiscoveryListenerCLR::Start()
+{
+	return _listener->Start();
+}
+
+bool Discovery::CLR::DiscoveryListenerCLR::Stop()
+{
+	return _listener->Stop();
+}
+
+bool Discovery::CLR::DiscoveryListenerCLR::InstallGlobal()
+{
+	return _listener->InstallGlobal();
+}
+
+bool Discovery::CLR::DiscoveryListenerCLR::UninstallGlobal()
+{
+	return _listener->UninstallGlobal();
 }
 
 #pragma warning(pop)

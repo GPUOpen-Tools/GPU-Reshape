@@ -27,14 +27,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Drawing;
 using System.Linq;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Text.RegularExpressions;
 using System.Windows.Input;
-using Avalonia;
-using Avalonia.Media;
 using Avalonia.Threading;
 using Bridge.CLR;
 using DynamicData;
@@ -482,7 +477,7 @@ namespace Studio.ViewModels
             if (ConnectionQuery?.IPvX?.Trim() == "localhost")
             {
                 // Check discovery, even if the local host connects, it's limited to manual registrations
-                if (ServiceRegistry.Get<IBackendDiscoveryService>()?.Service is { } service && !service.IsRunning())
+                if (ServiceRegistry.Get<IBackendDiscoveryService>()?.Service is { } service && !service.GetListeners().Any(l => l.IsRunning()))
                 {
                     return ConnectionStatus.DiscoveryNotActive;
                 }

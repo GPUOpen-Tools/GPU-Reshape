@@ -25,18 +25,17 @@
 // 
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Globalization;
 using System.Threading;
 using System.Windows.Input;
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data;
 using Avalonia.Markup.Xaml;
-using Avalonia.Markup.Xaml.Styling;
-using Avalonia.Styling;
 using Avalonia.Threading;
+using Discovery.CLR;
 using MsBox.Avalonia;
 using ReactiveUI;
 
@@ -90,8 +89,11 @@ namespace Studio
         /// </summary>
         private void OnPool(object? sender, EventArgs e)
         {
+            List<DiscoveryListenerCLR>? listeners = _service.GetListeners();
+
             // If either are valid, the service is enabled
-            if (_service.IsRunning() || _service.IsGloballyInstalled())
+            if (listeners.Any(l => l.IsRunning()) || 
+                listeners.Any(l => l.IsGloballyInstalled()))
             {
                 return;
             }
@@ -140,14 +142,17 @@ namespace Studio
         /// </summary>
         private void OnStop()
         {
-            // Try to uninstall and stop
-            if (!_service.UninstallGlobal() || !_service.Stop())
+            List<DiscoveryListenerCLR>? listeners = _service.GetListeners();
+
+            // Try to uninstall and stop all listeners
+            if (!listeners.All(l => l.UninstallGlobal()) ||
+                !listeners.All(l => l.Stop()))
             {
                 MessageBoxManager.GetMessageBoxStandard(
                     "GPU Reshape",
                     "Failed to stop and uninstall instances"
                 ).ShowAsync().Wait();
-                
+
                 // Can't continue
                 return;
             }

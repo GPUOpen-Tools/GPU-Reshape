@@ -167,10 +167,15 @@ namespace Studio.ViewModels
             // Get valid discovery
             if (ServiceRegistry.Get<IBackendDiscoveryService>() is { Service: { } } discovery)
             {
+                List<DiscoveryListenerCLR> listeners = discovery.Service.GetListeners();
+
                 // In case this is not a global install, remove the hooks on exit
-                if (!discovery.Service.IsGloballyInstalled())
+                if (!listeners.Any(l => l.IsGloballyInstalled()))
                 {
-                    discovery.Service.Stop();
+                    foreach (DiscoveryListenerCLR listener in listeners)
+                    {
+                        listener.Stop();
+                    }
                 }
             }
         }

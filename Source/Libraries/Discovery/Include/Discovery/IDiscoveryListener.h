@@ -35,9 +35,17 @@
 // Forward declarations
 struct DiscoveryBootstrappingEnvironment;
 
+struct DiscoveryListenerInfo {
+    /// Name of the listener
+    const char* name{nullptr};
+};
+
 class IDiscoveryListener : public TComponent<IDiscoveryListener> {
 public:
     COMPONENT(IDiscoveryListener);
+
+    /// Get info about this listener
+    virtual DiscoveryListenerInfo GetInfo() = 0;
 
     /// Check if this discovery is running
     /// \return if running, returns true

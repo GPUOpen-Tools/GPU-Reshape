@@ -221,6 +221,12 @@ inline bool UninstallService(const wchar_t *name) {
     return true;
 }
 
+DiscoveryListenerInfo DX12DiscoveryListener::GetInfo() {
+    return DiscoveryListenerInfo { 
+        .name = "D3D12"
+    };
+}
+
 DX12DiscoveryListener::DX12DiscoveryListener() {
     // Determine the service path
     servicePath = GetCurrentExecutableDirectory() / "GRS.Backends.DX12.Service.exe";

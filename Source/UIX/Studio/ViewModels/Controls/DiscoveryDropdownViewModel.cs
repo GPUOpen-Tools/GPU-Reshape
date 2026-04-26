@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -25,8 +25,9 @@
 // 
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Input;
-using Avalonia;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Discovery.CLR;
@@ -104,11 +105,16 @@ namespace Studio.ViewModels.Controls
             {
                 return;
             }
-            
+
+            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+
             // Toggle
-            if (_discoveryService.IsGloballyInstalled())
+            if (listeners.Any(l => l.IsGloballyInstalled()))
             {
-                _discoveryService.UninstallGlobal();
+                foreach (DiscoveryListenerCLR listener in listeners)
+                {
+                    listener.UninstallGlobal();
+                }
             }
             else
             {
@@ -118,11 +124,14 @@ namespace Studio.ViewModels.Controls
                     // User has rejected, do not install
                     return;
                 }
-                
+
                 // Consent has been granted, proceed
-                _discoveryService.InstallGlobal();
+                foreach (DiscoveryListenerCLR listener in listeners)
+                {
+                    listener.InstallGlobal();
+                }
             }
-            
+
             // Manual refresh
             Update();
         }
@@ -137,17 +146,25 @@ namespace Studio.ViewModels.Controls
             {
                 return;
             }
-            
+
+            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+
             // Toggle
-            if (_discoveryService.IsRunning())
+            if (listeners.Any(l => l.IsRunning()))
             {
-                _discoveryService.Stop();
+                foreach (DiscoveryListenerCLR listener in listeners)
+                {
+                    listener.Stop();
+                }
             }
             else
             {
-                _discoveryService.Start();
+                foreach (DiscoveryListenerCLR listener in listeners)
+                {
+                    listener.Start();
+                }
             }
-            
+
             // Manual refresh
             Update();
         }
@@ -174,13 +191,15 @@ namespace Studio.ViewModels.Controls
                 return;
             }
 
+            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+
             // Set status
-            bool isRunning = _discoveryService.IsRunning();
-            StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>( isRunning? "SuccessDefaultColor" : "WarningDefaultColor"));
+            bool isRunning = listeners.Any(l => l.IsRunning());
+            StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>(isRunning ? "SuccessDefaultColor" : "WarningDefaultColor"));
             InstanceLabel = isRunning ? "Stop discovery" : "Start discovery";
 
             // Set global status
-            IsGloballyEnabled = _discoveryService.IsGloballyInstalled();
+            IsGloballyEnabled = listeners.Any(l => l.IsGloballyInstalled());
         }
 
         /// <summary>

@@ -351,6 +351,12 @@ bool UninstallImplicitLayer(HKEY key, const wchar_t* path) {
 }
 #endif
 
+DiscoveryListenerInfo VulkanDiscoveryListener::GetInfo() {
+    return DiscoveryListenerInfo { 
+        .name = "Vulkan"
+    };
+}
+
 VulkanDiscoveryListener::VulkanDiscoveryListener() {
     // Query current status
     isGlobal |= QueryImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers");

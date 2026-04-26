@@ -46,38 +46,15 @@ struct MessageStream;
 class DiscoveryService : public IComponent {
 public:
     COMPONENT(DiscoveryService);
-    
+
     ~DiscoveryService();
 
     /// Install this service
     /// \return success state
     bool Install();
 
-    /// Check if all listeners are installed globally
-    /// \return if all are installed, returns true
-    bool IsGloballyInstalled();
-
-    /// Check if all listeners are running
-    /// \return if all are running, returns true
-    bool IsRunning();
-
-    /// Starts all listeners
-    /// \return success state
-    bool Start();
-
-    /// Stops all listeners
-    /// \return success state
-    bool Stop();
-
-    /// Install all listeners
-    ///   ? Enables global hooking of respective discovery, always on for the end user
-    /// \return success state
-    bool InstallGlobal();
-
-    /// Uninstall all listeners
-    ///   ? Disables global hooking of respective discovery
-    /// \return success state
-    bool UninstallGlobal();
+    /// Enumerate all installed listeners.
+    void EnumerateListeners(uint32_t* count, IDiscoveryListener** out);
 
     /// Install all listeners onto the local process
     /// @param localInfo the local install information
