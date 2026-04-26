@@ -478,7 +478,11 @@ target_compile_definitions(
 add_dependencies(
     GRS.Backends.Vulkan.Tests
     GRS.Backends.Vulkan.Tests.UserDataLayer
-    
-    # Have the CTS build before
-    VulkanCTS
 )
+
+# Have the CTS build before
+if (${ENABLE_UNIT_TESTS})
+    add_dependencies(
+        VulkanCTS
+    )
+endif()
