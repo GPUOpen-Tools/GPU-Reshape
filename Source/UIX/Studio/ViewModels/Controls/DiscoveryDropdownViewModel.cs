@@ -106,7 +106,7 @@ namespace Studio.ViewModels.Controls
                 return;
             }
 
-            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+            List<DiscoveryListenerCLR> listeners = GetEnabledListeners();
 
             // Toggle
             if (listeners.Any(l => l.IsGloballyInstalled()))
@@ -147,7 +147,7 @@ namespace Studio.ViewModels.Controls
                 return;
             }
 
-            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+            List<DiscoveryListenerCLR> listeners = GetEnabledListeners();
 
             // Toggle
             if (listeners.Any(l => l.IsRunning()))
@@ -191,7 +191,7 @@ namespace Studio.ViewModels.Controls
                 return;
             }
 
-            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
+            List<DiscoveryListenerCLR> listeners = GetEnabledListeners();
 
             // Set status
             bool isRunning = listeners.Any(l => l.IsRunning());
@@ -200,6 +200,22 @@ namespace Studio.ViewModels.Controls
 
             // Set global status
             IsGloballyEnabled = listeners.Any(l => l.IsGloballyInstalled());
+        }
+
+        /// <summary>
+        /// Returns enabled listeners from the settings VM
+        /// </summary>
+        private List<DiscoveryListenerCLR> GetEnabledListeners()
+        {
+            if (_settingViewModel != null)
+            {
+                return _settingViewModel.Listeners
+                    .Where(l => l.IsEnabled)
+                    .Select(l => l.Listener)
+                    .ToList();
+            }
+
+            return _discoveryService?.GetListeners() ?? new List<DiscoveryListenerCLR>();
         }
 
         /// <summary>

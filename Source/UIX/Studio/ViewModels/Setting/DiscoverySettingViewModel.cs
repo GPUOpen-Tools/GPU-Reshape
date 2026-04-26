@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -126,27 +127,45 @@ namespace Studio.ViewModels.Setting
         /// </summary>
         public ICommand CleanConflictingInstances { get; }
 
+        /// <summary>
+        /// All individual discovery listeners
+        /// </summary>
+        [DataMember(DataMemberContract.SubContracted)]
+        public ObservableCollection<DiscoveryListenerViewModel> Listeners { get; } = new();
+
         public DiscoverySettingViewModel() : base("Discovery")
         {
             // Create service
             _discoveryService = ServiceRegistry.Get<IBackendDiscoveryService>()?.Service;
-            
+
             // Set status on failure
             if (_discoveryService != null)
             {
                 HasConflictingInstances = _discoveryService.HasConflictingInstances();
+
+                // Populate per-listener view models, skip unnamed listeners
+                foreach (DiscoveryListenerCLR listener in _discoveryService.GetListeners())
+                {
+                    if (!string.IsNullOrEmpty(listener.Name))
+                    {
+                        Listeners.Add(new DiscoveryListenerViewModel(listener));
+                    }
+                }
             }
             else
             {
                 Status = "Failed initialization";
                 ButtonText = "None";
             }
-            
+
             // Create commands
             LocalStateToggle = ReactiveCommand.Create(OnLocalStateToggle);
             GlobalStateToggle = ReactiveCommand.Create(OnGlobalStateToggle);
             CleanConflictingInstances = ReactiveCommand.Create(OnCleanConflictingInstances);
-            
+
+            // Restore persistent state
+            this.BindTypedSuspension();
+
             // Subscribe tick
             _timer.Tick += OnTick;
         }
@@ -218,9 +237,8 @@ namespace Studio.ViewModels.Setting
                 return;
             }
 
-            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
-            IsRunning = listeners.Any(l => l.IsRunning());
-            IsGloballyInstalled = listeners.Any(l => l.IsGloballyInstalled());
+            IsRunning = Listeners.Any(l => l.IsEnabled && l.Listener.IsRunning());
+            IsGloballyInstalled = Listeners.Any(l => l.IsEnabled && l.Listener.IsGloballyInstalled());
         }
 
         /// <summary>
@@ -233,20 +251,18 @@ namespace Studio.ViewModels.Setting
                 return;
             }
 
-            List<DiscoveryListenerCLR> listeners = _discoveryService.GetListeners();
-
             if (_isRunning)
             {
-                foreach (DiscoveryListenerCLR listener in listeners)
+                foreach (DiscoveryListenerViewModel listener in Listeners.Where(l => l.IsEnabled))
                 {
-                    listener.Stop();
+                    listener.Listener.Stop();
                 }
             }
             else
             {
-                foreach (DiscoveryListenerCLR listener in listeners)
+                foreach (DiscoveryListenerViewModel listener in Listeners.Where(l => l.IsEnabled))
                 {
-                    listener.Start();
+                    listener.Listener.Start();
                 }
             }
         }
