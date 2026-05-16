@@ -217,14 +217,14 @@ static const Backend::IL::Type* ConstructType(IL::Program& program, const SpvDeb
             break;
         }
         case NonSemanticShaderDebugInfo100DebugTypedef: {
-            return ConstructType(program, map, type.operands[0]);
+            return ConstructType(program, map, type.operands[1]);
         }
         case NonSemanticShaderDebugInfo100DebugTypeFunction: {
             Backend::IL::FunctionType fn;
             
-            fn.returnType = ConstructType(program, map, type.operands[1]);
+            fn.returnType = ConstructType(program, map, type.operands[0]);
             
-            for (uint32_t i = 2; i < type.opCount; i++) {
+            for (uint32_t i = 1; i < type.opCount; i++) {
                 fn.parameterTypes.push_back(ConstructType(program, map, type.operands[i]));
             }
             
@@ -236,7 +236,7 @@ static const Backend::IL::Type* ConstructType(IL::Program& program, const SpvDeb
         case NonSemanticShaderDebugInfo100DebugTypeComposite: {
             Backend::IL::StructType str;
             
-            for (uint32_t i = 9; i < type.opCount; i++) {
+            for (uint32_t i = 8; i < type.opCount; i++) {
                 str.memberTypes.push_back(ConstructType(program, map, type.operands[i]));
             }
             
