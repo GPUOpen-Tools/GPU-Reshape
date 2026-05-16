@@ -25,6 +25,7 @@
 // 
 
 using System;
+using System.Reactive.Linq;
 using System.Windows.Input;
 using ReactiveUI;
 using Studio.Services;
@@ -112,7 +113,9 @@ namespace Studio.ViewModels.Status
             });
 
             // Bind diagnostics
-            _networkDiagnosticService?.WhenAnyValue(x => x.BytesReadPerSecond, x => x.BytesWrittenPerSecond).Subscribe(x =>
+            _networkDiagnosticService?.WhenAnyValue(x => x.BytesReadPerSecond, x => x.BytesWrittenPerSecond)
+                .Sample(TimeSpan.FromSeconds(1), RxApp.MainThreadScheduler)
+                .Subscribe(x =>
             {
                 // Set strings
                 ReadAmount = DecorateByteCount(x.Item1);
