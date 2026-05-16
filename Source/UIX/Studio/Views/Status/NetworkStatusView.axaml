@@ -32,8 +32,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Studio.ViewModels.Status"
-             xmlns:vc="using:Studio.ValueConverters"
-             xmlns:controls="clr-namespace:Studio.Views.Controls"
              xmlns:r="clr-namespace:Studio.Resources"
              VerticalAlignment="Stretch"
              mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="20"
@@ -42,10 +40,12 @@
     <UserControl.DataContext>
         <vm:NetworkStatusViewModel />
     </UserControl.DataContext>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 0 15 0">
-        <TextBlock ToolTip.Tip="{x:Static r:Resources.NetworkStatus_Download_Tooltip}" VerticalAlignment="Center" Text="{Binding ReadAmount}" Margin="0 0 5 0" />
-        <PathIcon ToolTip.Tip="{x:Static r:Resources.NetworkStatus_Download_Tooltip}" Data="{StaticResource Download}" Width="10" Opacity="{Binding ReadOpacity}" Margin="0 0 5 0" />
-        <TextBlock ToolTip.Tip="{x:Static r:Resources.NetworkStatus_Upload_Tooltip}" VerticalAlignment="Center" Text="{Binding WrittenAmount}" Margin="0 0 5 0" />
-        <PathIcon ToolTip.Tip="{x:Static r:Resources.NetworkStatus_Upload_Tooltip}" Data="{StaticResource Upload}" Width="10" Opacity="{Binding WriteOpacity}" />
-    </StackPanel>
+    <Button Classes="Icon" Padding="0" VerticalAlignment="Stretch" Command="{Binding OpenNetworkGraph}" ToolTip.Tip="Open Network Graph">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 0 15 0">
+            <TextBlock ToolTip.Tip="{x:Static r:Resources.NetworkStatus_Download_Tooltip}" VerticalAlignment="Center" Text="{Binding ReadAmount}" Margin="0 0 5 0" />
+            <PathIcon ToolTip.Tip="{x:Static r:Resources.NetworkStatus_Download_Tooltip}" Data="{StaticResource Download}" Width="10" Opacity="{Binding ReadOpacity}" Margin="0 0 5 0" />
+            <TextBlock ToolTip.Tip="{x:Static r:Resources.NetworkStatus_Upload_Tooltip}" VerticalAlignment="Center" Text="{Binding WrittenAmount}" Margin="0 0 5 0" />
+            <PathIcon ToolTip.Tip="{x:Static r:Resources.NetworkStatus_Upload_Tooltip}" Data="{StaticResource Upload}" Width="10" Opacity="{Binding WriteOpacity}" />
+        </StackPanel>
+    </Button>
 </UserControl>

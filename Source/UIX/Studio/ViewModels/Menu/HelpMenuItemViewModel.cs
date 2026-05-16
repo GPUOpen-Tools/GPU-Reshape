@@ -93,19 +93,37 @@ namespace Studio.ViewModels.Menu
                     Command = ReactiveCommand.Create(OnDocumentation),
                     IconPath = "Question"
                 },
-                
+
                 new MenuItemViewModel()
                 {
                     Header = "What's New",
                     Command = ReactiveCommand.Create(OnWhatsNew),
                     IconPath = "Speaker"
                 },
-                
+
                 new MenuItemViewModel()
                 {
                     Header = "-"
                 },
-                
+
+                new MenuItemViewModel()
+                {
+                    Header = "Diagnostics",
+                    Items =
+                    {
+                        new MenuItemViewModel()
+                        {
+                            Header = "Network Graph",
+                            Command = ReactiveCommand.Create(OnNetworkGraph)
+                        }
+                    }
+                },
+
+                new MenuItemViewModel()
+                {
+                    Header = "-"
+                },
+
                 new MenuItemViewModel()
                 {
                     Header = "About",
@@ -136,6 +154,14 @@ namespace Studio.ViewModels.Menu
             {
                 layoutViewModel.DocumentLayout?.OpenDocument(new WhatsNewDescriptor());
             }
+        }
+
+        /// <summary>
+        /// Invoked on diagnostics network graph
+        /// </summary>
+        private void OnNetworkGraph()
+        {
+            ServiceRegistry.Get<IWindowService>()?.OpenFor(new NetworkGraphViewModel());
         }
 
         /// <summary>

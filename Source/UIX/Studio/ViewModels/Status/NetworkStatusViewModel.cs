@@ -25,14 +25,9 @@
 // 
 
 using System;
-using Avalonia;
-using Avalonia.Threading;
-using Bridge.CLR;
-using DynamicData;
-using Message.CLR;
+using System.Windows.Input;
 using ReactiveUI;
 using Studio.Services;
-using Studio.ViewModels.Workspace;
 
 namespace Studio.ViewModels.Status
 {
@@ -85,6 +80,11 @@ namespace Studio.ViewModels.Status
         }
 
         /// <summary>
+        /// Opens the network graph window
+        /// </summary>
+        public ICommand OpenNetworkGraph { get; }
+
+        /// <summary>
         /// Decorate a measure
         /// </summary>
         private string DecorateByteCount(double bytes)
@@ -106,6 +106,11 @@ namespace Studio.ViewModels.Status
         /// </summary>
         public NetworkStatusViewModel()
         {
+            OpenNetworkGraph = ReactiveCommand.Create(() =>
+            {
+                ServiceRegistry.Get<IWindowService>()?.OpenFor(new NetworkGraphViewModel());
+            });
+
             // Bind diagnostics
             _networkDiagnosticService?.WhenAnyValue(x => x.BytesReadPerSecond, x => x.BytesWrittenPerSecond).Subscribe(x =>
             {

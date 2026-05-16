@@ -52,6 +52,7 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.Setting.GlobalSettingViewModel), typeof(Views.Setting.GlobalSettingView));
             
             // Window types
+            AddDerived(typeof(ViewModels.NetworkGraphViewModel), typeof(Views.NetworkGraphWindow));
             AddDerived(typeof(ViewModels.SettingsViewModel), typeof(Views.SettingsWindow));
             AddDerived(typeof(ViewModels.AboutViewModel), typeof(Views.AboutWindow));
             AddDerived(typeof(ViewModels.ConnectViewModel), typeof(Views.ConnectWindow));

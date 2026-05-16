@@ -25,7 +25,8 @@
 // 
 
 using System;
-using Avalonia;
+using System.Reactive;
+using System.Reactive.Subjects;
 using Avalonia.Threading;
 using Bridge.CLR;
 using ReactiveUI;
@@ -43,7 +44,7 @@ namespace Studio.Services
             get => _bytesReadPerSecond;
             set => this.RaiseAndSetIfChanged(ref _bytesReadPerSecond, value);
         }
-        
+
         /// <summary>
         /// Total number of bytes written per second
         /// </summary>
@@ -53,12 +54,17 @@ namespace Studio.Services
             set => this.RaiseAndSetIfChanged(ref _bytesWrittenPerSecond, value);
         }
         
+        /// <summary>
+        /// Invoked on history changes
+        /// </summary>
+        public readonly Subject<Unit> TickSubject = new();
+
         public NetworkDiagnosticService()
         {
             // Create timer on main thread
             _timer = new DispatcherTimer(DispatcherPriority.Background)
             {
-                Interval = TimeSpan.FromMilliseconds(1000),
+                Interval = TimeSpan.FromMilliseconds(250),
                 IsEnabled = true
             };
 
@@ -85,6 +91,9 @@ namespace Studio.Services
             // Average
             BytesReadPerSecond = Math.Max(0, (long)info.bytesRead - (long)_lastInfo.bytesRead) / _timer.Interval.TotalSeconds;
             BytesWrittenPerSecond = Math.Max(0, (long)info.bytesWritten - (long)_lastInfo.bytesWritten) / _timer.Interval.TotalSeconds;
+            
+            // Invoke change
+            TickSubject.OnNext(Unit.Default);
 
             // Set last
             _lastInfo = info;
